@@ -24,7 +24,7 @@ class OpenAIException(Exception):
         self.error = error
 
     def __str__(self) -> str:
-        return f"OpenAIException(status_code={self.status_code}, error={self.error})"
+        return f"{self.__class__.__name__}(status_code={self.status_code}, error={self.error})"
 
 
 def to_open_ai_exception(e: Exception) -> OpenAIException:
