@@ -52,7 +52,9 @@ def test_model_list_openai(server):
 
 
 @dataclass
-class ValidationTestCase:
+class TestCase:
+    __test__ = False
+
     name: str
     deployment: ChatCompletionDeployment
     messages: List[BaseMessage]
@@ -79,23 +81,23 @@ INCORRECT_DIALOG_STRUCTURE_ROLES_ERROR = (
 )
 
 
-def get_validation_test_cases(
+def get_test_cases(
     deployment: ChatCompletionDeployment,
-) -> List[ValidationTestCase]:
+) -> List[TestCase]:
     return [
-        ValidationTestCase(
+        TestCase(
             name="empty history",
             deployment=deployment,
             messages=[],
             expected_error=EMPTY_HISTORY_ERROR,
         ),
-        ValidationTestCase(
+        TestCase(
             name="single system message",
             deployment=deployment,
             messages=[sys("Act as a helpful assistant")],
             expected_error=ONLY_SYS_MESSAGE_ERROR,
         ),
-        ValidationTestCase(
+        TestCase(
             name="two system messages",
             deployment=deployment,
             messages=[
@@ -105,37 +107,37 @@ def get_validation_test_cases(
             ],
             expected_error=EXTRA_SYS_MESSAGE_ERROR,
         ),
-        ValidationTestCase(
+        TestCase(
             name="single empty user message",
             deployment=deployment,
             messages=[user("")],
             expected_error=EMPTY_MESSAGE_ERROR,
         ),
-        ValidationTestCase(
+        TestCase(
             name="last empty user message",
             deployment=deployment,
             messages=[user("2+2=?"), ai("4"), user("")],
             expected_error=EMPTY_MESSAGE_ERROR,
         ),
-        ValidationTestCase(
+        TestCase(
             name="last message is not human",
             deployment=deployment,
             messages=[ai("5"), user("2+2=?"), ai("4")],
             expected_error=LAST_IS_NOT_HUMAN_ERROR,
         ),
-        ValidationTestCase(
+        TestCase(
             name="three user messages in a row",
             deployment=deployment,
             messages=[user("2+3=?"), user("2+4=?"), user("2+5=?")],
             expected_error=INCORRECT_DIALOG_STRUCTURE_ROLES_ERROR,
         ),
-        ValidationTestCase(
+        TestCase(
             name="two user messages in a row",
             deployment=deployment,
             messages=[ai("5"), user("2+4=?")],
             expected_error=INCORRECT_DIALOG_STRUCTURE_LEN_ERROR,
         ),
-        ValidationTestCase(
+        TestCase(
             name="ai then user",
             deployment=deployment,
             messages=[ai("5"), user("2+4=?"), user("2+4=?")],
@@ -144,12 +146,12 @@ def get_validation_test_cases(
     ]
 
 
-validation_test_cases: List[ValidationTestCase] = [
+validation_test_cases: List[TestCase] = [
     test_case
     for deployment in deployments
-    for test_case in get_validation_test_cases(deployment)
+    for test_case in get_test_cases(deployment)
 ] + [
-    ValidationTestCase(
+    TestCase(
         name="system message in codechat",
         deployment=ChatCompletionDeployment.CODECHAT_BISON_1,
         messages=[sys("Act as a helpful assistant"), user("2+2=?")],
@@ -162,7 +164,7 @@ validation_test_cases: List[ValidationTestCase] = [
 @pytest.mark.parametrize(
     "test", validation_test_cases, ids=lambda test: test.get_id()
 )
-async def test_input_validation(server, test: ValidationTestCase):
+async def test_input_validation(server, test: TestCase):
     streaming = False
     model = create_chat_model(BASE_URL, test.deployment, streaming)
 
