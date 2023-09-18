@@ -1,9 +1,9 @@
+import os
 from multiprocessing import Process
 
 import pytest
 import uvicorn
 
-from app import app
 from utils.server import ping_server, wait_for_server
 
 DEFAULT_API_VERSION = "2023-03-15-preview"
@@ -13,8 +13,14 @@ PORT = 5001
 BASE_URL = f"http://{HOST}:{PORT}"
 
 
+def pytest_configure(config):
+    os.environ["DEFAULT_REGION"] = "us-central1"
+    os.environ["ADAPTER_PROJECT_ID"] = "EPM-AI-PROXY"
+    os.environ["GCP_PROJECT_ID"] = "or2-msq-epm-rtc-t1iylu"
+
+
 def run_server():
-    uvicorn.run(app, host=HOST, port=PORT)
+    uvicorn.run("app:app", host=HOST, port=PORT)
 
 
 @pytest.fixture(scope="module")
