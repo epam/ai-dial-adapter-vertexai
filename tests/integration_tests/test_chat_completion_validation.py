@@ -10,7 +10,7 @@ from langchain.schema import BaseMessage
 from client.client_adapter import create_chat_model
 from llm.vertex_ai_deployments import ChatCompletionDeployment
 from tests.conftest import BASE_URL
-from tests.utils import ai, assert_dialog, sys, user
+from tests.utils import ai, assert_dialog, sanitize_test_name, sys, user
 
 deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
@@ -28,7 +28,7 @@ class TestCase:
     expected_error: str
 
     def get_id(self) -> str:
-        return f"{self.deployment.value}: {self.name}"
+        return sanitize_test_name(f"{self.deployment.value} {self.name}")
 
 
 EMPTY_MESSAGE_ERROR = "Empty messages are not allowed"

@@ -7,7 +7,7 @@ from langchain.schema import BaseMessage
 from client.client_adapter import create_chat_model
 from llm.vertex_ai_deployments import ChatCompletionDeployment
 from tests.conftest import BASE_URL
-from tests.utils import assert_dialog, user
+from tests.utils import assert_dialog, sanitize_test_name, user
 
 deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
@@ -26,7 +26,9 @@ class TestCase:
     test: Callable[[str], bool]
 
     def get_id(self):
-        return f"{self.deployment.value}[stream={self.streaming}]: {self.query}"
+        return sanitize_test_name(
+            f"{self.deployment.value} {self.streaming} {self.query}"
+        )
 
     def get_messages(self) -> List[BaseMessage]:
         return [user(self.query)] if isinstance(self.query, str) else self.query

@@ -16,6 +16,10 @@ def user(content: str) -> HumanMessage:
     return HumanMessage(content=content)
 
 
+def sanitize_test_name(name: str) -> str:
+    return "".join(c if c.isalnum() else "_" for c in name.lower())
+
+
 async def assert_dialog(
     model: BaseChatModel,
     messages: List[BaseMessage],

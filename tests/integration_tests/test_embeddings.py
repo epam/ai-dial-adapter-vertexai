@@ -8,6 +8,7 @@ import pytest
 
 from llm.vertex_ai_deployments import EmbeddingsDeployment
 from tests.conftest import BASE_URL, DEFAULT_API_VERSION
+from tests.utils import sanitize_test_name
 from universal_api.request import EmbeddingsType
 from universal_api.response import EmbeddingsResponseDict
 
@@ -33,7 +34,9 @@ class TestCase:
     expected: Callable[[EmbeddingsResponseDict], None] | Exception
 
     def get_id(self):
-        return f"{self.deployment.value}{self.headers}: {self.input}"
+        return sanitize_test_name(
+            f"{self.deployment.value} {self.headers} {self.input}"
+        )
 
 
 def get_test_cases(
