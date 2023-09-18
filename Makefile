@@ -11,18 +11,18 @@ endif
 VENV=.venv
 BUILD=$(VENV)/bin/activate
 
-all: $(BUILD)
+install: $(BUILD)
 
 $(BUILD): $(REQ)
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -r $(REQ)
 	@echo "\033[31mActivate venv by running:\n> source $(BUILD)\033[0m"
 
-.PHONY: all server-run client-run clean lint format test docker-build docker-run
+.PHONY: install server-run client-run clean lint format test integration_test docker-build docker-run
 
 server-run: $(BUILD)
 	@source ./load_env.sh; load_env; \
-	python -m debug_app --port=$(PORT)
+	python -m server.main --port=$(PORT)
 
 client-run: $(BUILD)
 	@source ./load_env.sh; load_env; \
@@ -42,12 +42,17 @@ format: $(BUILD)
 	isort . $(ARGS)
 	black . $(ARGS)
 
-TEST_FILES ?= ./tests
+TEST_FILES ?= ./tests/unit_tests
 
 # Add options "-s --log-cli-level=NOTSET" to pytest to see all logs
 test: $(BUILD)
 	@source ./load_env.sh; load_env; \
 	python -m pytest $(TEST_FILES) -v --durations=0 -rA
+
+integration_test: $(BUILD)
+	@source ./load_env.sh; load_env; \
+	python -m pytest ./tests/integration_tests -v --durations=0 -rA
+
 
 docker-build: Dockerfile
 	docker build --platform linux/amd64 -t $(IMAGE_NAME) .

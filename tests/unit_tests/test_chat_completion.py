@@ -1,17 +1,17 @@
 import re
 from dataclasses import dataclass
-from test.conftest import BASE_URL, DEFAULT_API_VERSION
-from typing import Any, Callable, List
+from typing import Any, List
 
 import openai
 import openai.error
 import pytest
 import requests
-from langchain.chat_models.base import BaseChatModel
-from langchain.schema import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain.schema import BaseMessage
 
 from client.client_adapter import create_chat_model
 from llm.vertex_ai_deployments import ChatCompletionDeployment
+from tests.conftest import BASE_URL, DEFAULT_API_VERSION
+from tests.utils import ai, assert_dialog, sys, user
 
 deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
@@ -49,102 +49,6 @@ def test_model_list_http(server):
 
 def test_model_list_openai(server):
     assert_models_subset(models_request_openai())
-
-
-def sys(content: str) -> SystemMessage:
-    return SystemMessage(content=content)
-
-
-def ai(content: str) -> AIMessage:
-    return AIMessage(content=content)
-
-
-def user(content: str) -> HumanMessage:
-    return HumanMessage(content=content)
-
-
-async def assert_dialog(
-    model: BaseChatModel,
-    messages: List[BaseMessage],
-    output_predicate: Callable[[str], bool],
-    streaming: bool,
-):
-    llm_result = await model.agenerate([messages])
-
-    actual_usage = (
-        llm_result.llm_output.get("token_usage", None)
-        if llm_result.llm_output
-        else None
-    )
-
-    # Usage is missing when and only where streaming is enabled
-    assert (actual_usage in [None, {}]) == streaming
-
-    actual_output = llm_result.generations[0][-1].text
-
-    assert output_predicate(
-        actual_output
-    ), f"Failed output test, actual output: {actual_output}"
-
-
-@dataclass
-class TestCase:
-    __test__ = False
-
-    deployment: ChatCompletionDeployment
-    streaming: bool
-
-    query: str | List[BaseMessage]
-    test: Callable[[str], bool]
-
-    def get_id(self):
-        return f"{self.deployment.value}[stream={self.streaming}]: {self.query}"
-
-    def get_messages(self) -> List[BaseMessage]:
-        return [user(self.query)] if isinstance(self.query, str) else self.query
-
-
-def get_test_cases(
-    deployment: ChatCompletionDeployment, streaming: bool
-) -> List[TestCase]:
-    ret: List[TestCase] = []
-
-    ret.append(
-        TestCase(
-            deployment=deployment,
-            streaming=streaming,
-            query="2+3=?",
-            test=lambda s: "5" in s,
-        )
-    )
-
-    ret.append(
-        TestCase(
-            deployment=deployment,
-            streaming=streaming,
-            query='Reply with "Hello"',
-            test=lambda s: "hello" in s.lower(),
-        )
-    )
-
-    return ret
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "test",
-    [
-        test_case
-        for model in deployments
-        for streaming in [False, True]
-        for test_case in get_test_cases(model, streaming)
-    ],
-    ids=lambda test: test.get_id(),
-)
-async def test_chat_completion_langchain(server, test: TestCase):
-    streaming = test.streaming
-    model = create_chat_model(BASE_URL, test.deployment, streaming)
-    await assert_dialog(model, test.get_messages(), test.test, streaming)
 
 
 @dataclass

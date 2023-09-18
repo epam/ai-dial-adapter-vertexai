@@ -1,13 +1,13 @@
 import re
 from dataclasses import dataclass
 from itertools import product
-from test.conftest import BASE_URL, DEFAULT_API_VERSION
 from typing import Callable, Dict, List, cast
 
 import openai
 import pytest
 
 from llm.vertex_ai_deployments import EmbeddingsDeployment
+from tests.conftest import BASE_URL, DEFAULT_API_VERSION
 from universal_api.request import EmbeddingsType
 from universal_api.response import EmbeddingsResponseDict
 
