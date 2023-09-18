@@ -46,13 +46,11 @@ TEST_FILES ?= ./tests/unit_tests
 
 # Add options "-s --log-cli-level=NOTSET" to pytest to see all logs
 test: $(BUILD)
-	@source ./load_env.sh; load_env; \
 	python -m pytest $(TEST_FILES) -v --durations=0 -rA
 
 integration_test: $(BUILD)
 	@source ./load_env.sh; load_env; \
 	python -m pytest ./tests/integration_tests -v --durations=0 -rA
-
 
 docker-build: Dockerfile
 	docker build --platform linux/amd64 -t $(IMAGE_NAME) .

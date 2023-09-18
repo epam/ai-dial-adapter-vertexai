@@ -74,7 +74,8 @@ async def models():
 
 default_region = get_env("DEFAULT_REGION")
 default_user_project_id = get_env("ADAPTER_PROJECT_ID")
-user_to_palm_mapping = {default_user_project_id: get_env("GCP_PROJECT_ID")}
+gcp_project_id = get_env("GCP_PROJECT_ID")
+user_to_palm_mapping = {default_user_project_id: gcp_project_id}
 
 
 @app.post("/openai/deployments/{deployment}/chat/completions")
