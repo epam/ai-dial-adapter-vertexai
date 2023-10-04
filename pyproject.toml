@@ -17,7 +17,7 @@ repository = "https://gitlab.deltixhub.com/Deltix/openai-apps/vertex-to-openai-a
 clean = "scripts.clean:main"
 
 [tool.poetry.dependencies]
-python = "^3.11,<4.0"
+python = "~3.10"
 aidial-sdk = "0.1.0"
 fastapi = "0.97.0"
 flask = "2.3.2"

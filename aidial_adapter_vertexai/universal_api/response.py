@@ -47,5 +47,8 @@ def make_embeddings_response(
         "object": "list",
         "model": model_id,
         "data": data,
-        "usage": usage.to_dict(),
+        "usage": {
+            "prompt_tokens": usage.prompt_tokens,
+            "total_tokens": usage.total_tokens,
+        },
     }

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Self, Tuple
+from typing import List, Optional, Tuple
 
 from aidial_adapter_vertexai.llm.vertex_ai import (
     TextEmbeddingModel,
@@ -20,7 +20,7 @@ class EmbeddingsAdapter(ABC):
         model_id: str,
         project_id: str,
         location: str,
-    ) -> Self:
+    ):
         await init_vertex_ai(project_id, location)
         model = await get_vertex_ai_embeddings_model(model_id)
         return cls(model)

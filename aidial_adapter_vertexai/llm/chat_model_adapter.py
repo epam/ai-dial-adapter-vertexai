@@ -1,4 +1,4 @@
-from typing import Self, TypedDict
+from typing import TypedDict
 
 from vertexai.preview.language_models import ChatModel, CodeChatModel
 
@@ -84,7 +84,7 @@ class ChatModelAdapter(ChatCompletionAdapter):
         project_id: str,
         location: str,
         model_params: ModelParameters,
-    ) -> Self:
+    ):
         params = prepare_chat_model_kwargs(model_params)
 
         await init_vertex_ai(project_id, location)
@@ -111,7 +111,7 @@ class CodeChatModelAdapter(ChatCompletionAdapter):
         project_id: str,
         location: str,
         model_params: ModelParameters,
-    ) -> Self:
+    ):
         params = prepare_code_chat_model_kwargs(model_params)
 
         await init_vertex_ai(project_id, location)

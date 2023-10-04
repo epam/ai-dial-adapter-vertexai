@@ -1,13 +1,13 @@
-from typing import NotRequired, TypedDict
+from typing import Optional, TypedDict
 
 from pydantic import BaseModel
 
 
-class TokenUsageDict(TypedDict):
+class TokenUsageDict(TypedDict, total=False):
     prompt_tokens: int
-    completion_tokens: NotRequired[
+    completion_tokens: Optional[
         int
-    ]  # None in case if nothing has been generated
+    ]  # None in case when nothing has been generated
     total_tokens: int
 
 

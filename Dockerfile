@@ -1,6 +1,12 @@
-FROM python:3.11-slim as builder
+FROM ubuntu:22.04 as builder
 
-RUN pip install poetry
+# python3.10 is used in ubuntu:22.04 (https://packages.ubuntu.com/jammy/python3)
+RUN apt-get update && \
+  apt-get install -y \
+    python3 \
+    python3-pip
+
+RUN pip install "poetry==1.6.1"
 
 WORKDIR /app
 
@@ -12,7 +18,11 @@ RUN poetry install --no-interaction --no-ansi --no-cache --no-root --no-director
 COPY . .
 RUN poetry install --no-interaction --no-ansi --no-cache --only main
 
-FROM python:3.11-slim as server
+FROM ubuntu:22.04 as server
+
+# python3.10 is used in ubuntu:22.04
+RUN apt-get update && \
+  apt-get install -y python3
 
 WORKDIR /app
 
