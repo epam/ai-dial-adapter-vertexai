@@ -17,13 +17,7 @@ from tests.conftest import DEFAULT_API_VERSION, TEST_SERVER_URL
 from tests.utils.llm import sanitize_test_name
 
 deployments: Dict[EmbeddingsDeployment, List[EmbeddingsType]] = {
-    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1: [e for e in EmbeddingsType],
-    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1_CLASSIFICATION: [
-        EmbeddingsType.SYMMETRIC
-    ],
-    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1_CLUSTERING: [
-        EmbeddingsType.SYMMETRIC
-    ],
+    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1: [EmbeddingsType.SYMMETRIC],
 }
 
 
@@ -68,9 +62,10 @@ def get_test_cases(
             headers["X-DIAL-Type"] = ty
 
         expected: Callable[[EmbeddingsResponseDict], None] | Exception = test
-        if instr != "":
+        if instr:
             expected = Exception("Instruction prompt is not supported")
-        elif ty != "" and ty not in allowed_types:
+        elif (ty or "symmetric") not in allowed_types:
+            assert len(allowed_types) != 0
             allowed = ", ".join([e.value for e in allowed_types])
             expected = Exception(
                 f"Embedding types other than {allowed} are not supported"

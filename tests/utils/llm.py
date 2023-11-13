@@ -1,5 +1,5 @@
 import re
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 from langchain.callbacks.base import Callbacks
 from langchain.chat_models import AzureChatOpenAI
@@ -32,8 +32,9 @@ async def assert_dialog(
     messages: List[BaseMessage],
     output_predicate: Callable[[str], bool],
     streaming: bool,
+    stop: Optional[List[str]],
 ):
-    llm_result = await model.agenerate([messages])
+    llm_result = await model.agenerate([messages], stop=stop)
 
     actual_usage = (
         llm_result.llm_output.get("token_usage", None)
@@ -52,7 +53,10 @@ async def assert_dialog(
 
 
 def create_chat_model(
-    base_url: str, model_id: str, streaming: bool
+    base_url: str,
+    model_id: str,
+    streaming: bool,
+    max_tokens: Optional[int],
 ) -> BaseChatModel:
     callbacks: Callbacks = [CallbackWithNewLines()]
     return AzureChatOpenAI(
@@ -66,5 +70,6 @@ def create_chat_model(
         temperature=0,
         request_timeout=10,
         max_retries=0,
+        max_tokens=max_tokens,
         client=None,
     )

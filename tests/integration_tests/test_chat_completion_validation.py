@@ -1,8 +1,7 @@
 import re
 from dataclasses import dataclass
-from typing import List
+from typing import Callable, List
 
-import openai
 import openai.error
 import pytest
 from langchain.schema import BaseMessage
@@ -33,13 +32,13 @@ class TestCase:
     name: str
     deployment: ChatCompletionDeployment
     messages: List[BaseMessage]
-    expected_error: str
+    expected: Callable[[str], bool] | Exception
 
     def get_id(self) -> str:
         return sanitize_test_name(f"{self.deployment.value} {self.name}")
 
 
-EMPTY_MESSAGE_ERROR = "Empty messages are not allowed"
+UNSUPPORTED_SYSTEM_MESSAGE = "System message is not supported"
 EMPTY_HISTORY_ERROR = "The chat history must have at least one message"
 ONLY_SYS_MESSAGE_ERROR = (
     "The chat history must have at least one non-system message"
@@ -64,13 +63,13 @@ def get_test_cases(
             name="empty history",
             deployment=deployment,
             messages=[],
-            expected_error=EMPTY_HISTORY_ERROR,
+            expected=Exception(EMPTY_HISTORY_ERROR),
         ),
         TestCase(
             name="single system message",
             deployment=deployment,
             messages=[sys("Act as a helpful assistant")],
-            expected_error=ONLY_SYS_MESSAGE_ERROR,
+            expected=Exception(ONLY_SYS_MESSAGE_ERROR),
         ),
         TestCase(
             name="two system messages",
@@ -80,43 +79,43 @@ def get_test_cases(
                 sys("Act as a tax accountant"),
                 user("2+2=?"),
             ],
-            expected_error=EXTRA_SYS_MESSAGE_ERROR,
+            expected=Exception(EXTRA_SYS_MESSAGE_ERROR),
         ),
         TestCase(
             name="single empty user message",
             deployment=deployment,
             messages=[user("")],
-            expected_error=EMPTY_MESSAGE_ERROR,
+            expected=lambda _: True,
         ),
         TestCase(
             name="last empty user message",
             deployment=deployment,
             messages=[user("2+2=?"), ai("4"), user("")],
-            expected_error=EMPTY_MESSAGE_ERROR,
+            expected=lambda _: True,
         ),
         TestCase(
             name="last message is not human",
             deployment=deployment,
             messages=[ai("5"), user("2+2=?"), ai("4")],
-            expected_error=LAST_IS_NOT_HUMAN_ERROR,
+            expected=Exception(LAST_IS_NOT_HUMAN_ERROR),
         ),
         TestCase(
             name="three user messages in a row",
             deployment=deployment,
             messages=[user("2+3=?"), user("2+4=?"), user("2+5=?")],
-            expected_error=INCORRECT_DIALOG_STRUCTURE_ROLES_ERROR,
+            expected=Exception(INCORRECT_DIALOG_STRUCTURE_ROLES_ERROR),
         ),
         TestCase(
             name="two user messages in a row",
             deployment=deployment,
             messages=[ai("5"), user("2+4=?")],
-            expected_error=INCORRECT_DIALOG_STRUCTURE_LEN_ERROR,
+            expected=Exception(INCORRECT_DIALOG_STRUCTURE_LEN_ERROR),
         ),
         TestCase(
             name="ai then user",
             deployment=deployment,
             messages=[ai("5"), user("2+4=?"), user("2+4=?")],
-            expected_error=INCORRECT_DIALOG_STRUCTURE_ROLES_ERROR,
+            expected=Exception(INCORRECT_DIALOG_STRUCTURE_ROLES_ERROR),
         ),
     ]
 
@@ -130,7 +129,7 @@ validation_test_cases: List[TestCase] = [
         name="system message in codechat",
         deployment=ChatCompletionDeployment.CODECHAT_BISON_1,
         messages=[sys("Act as a helpful assistant"), user("2+2=?")],
-        expected_error="System message is not supported",
+        expected=Exception(UNSUPPORTED_SYSTEM_MESSAGE),
     ),
 ]
 
@@ -141,11 +140,28 @@ validation_test_cases: List[TestCase] = [
 )
 async def test_input_validation(server, test: TestCase):
     streaming = False
-    model = create_chat_model(TEST_SERVER_URL, test.deployment, streaming)
+    model = create_chat_model(
+        TEST_SERVER_URL, test.deployment, streaming, max_tokens=None
+    )
 
-    with pytest.raises(Exception) as exc_info:
-        await assert_dialog(model, test.messages, lambda s: True, streaming)
+    if isinstance(test.expected, Exception):
+        with pytest.raises(Exception) as exc_info:
+            await assert_dialog(
+                model=model,
+                messages=test.messages,
+                output_predicate=lambda s: True,
+                streaming=streaming,
+                stop=None,
+            )
 
-    assert isinstance(exc_info.value, openai.error.OpenAIError)
-    assert exc_info.value.http_status == 422
-    assert re.search(test.expected_error, str(exc_info.value))
+        assert isinstance(exc_info.value, openai.error.OpenAIError)
+        assert exc_info.value.http_status == 422
+        assert re.search(str(test.expected), str(exc_info.value))
+    else:
+        await assert_dialog(
+            model=model,
+            messages=test.messages,
+            output_predicate=test.expected,
+            streaming=streaming,
+            stop=None,
+        )
