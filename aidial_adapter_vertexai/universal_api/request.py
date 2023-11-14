@@ -14,6 +14,8 @@ class ModelParameters(BaseModel):
     presence_penalty: Optional[float] = None
     frequency_penalty: Optional[float] = None
     logit_bias: Optional[Mapping[int, float]] = None
+    max_prompt_tokens: Optional[int] = None
+    stream: bool = False
 
     @classmethod
     def create(cls, request: Request) -> "ModelParameters":
@@ -26,6 +28,8 @@ class ModelParameters(BaseModel):
             presence_penalty=request.presence_penalty,
             frequency_penalty=request.frequency_penalty,
             logit_bias=request.logit_bias,
+            max_prompt_tokens=request.max_prompt_tokens,
+            stream=request.stream,
         )
 
 

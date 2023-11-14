@@ -18,10 +18,12 @@ class GeckoEmbeddingType(str, Enum):
     CLUSTERING = "CLUSTERING"
 
 
-def to_gecko_embedding_type(ty: EmbeddingsType) -> GeckoEmbeddingType:
+def to_gecko_embedding_type(
+    ty: EmbeddingsType,
+) -> Optional[GeckoEmbeddingType]:
     match ty:
         case EmbeddingsType.SYMMETRIC:
-            return GeckoEmbeddingType.SEMANTIC_SIMILARITY
+            return None
         case EmbeddingsType.DOCUMENT:
             return GeckoEmbeddingType.RETRIEVAL_DOCUMENT
         case EmbeddingsType.QUERY:
@@ -31,7 +33,7 @@ def to_gecko_embedding_type(ty: EmbeddingsType) -> GeckoEmbeddingType:
 async def get_gecko_embeddings(
     model: TextEmbeddingModel,
     input: str | List[str],
-    task_type: GeckoEmbeddingType,
+    task_type: Optional[GeckoEmbeddingType],
 ) -> Tuple[List[List[float]], TokenUsage]:
     inputs = [input] if isinstance(input, str) else input
     texts: List[str | TextEmbeddingInput] = [
@@ -42,7 +44,7 @@ async def get_gecko_embeddings(
 
     vectors = [embedding.values for embedding in embeddings]
     token_count = sum(
-        embedding.statistics.token_count for embedding in embeddings
+        embedding.statistics.token_count for embedding in embeddings  # type: ignore
     )
 
     return vectors, TokenUsage(prompt_tokens=token_count, completion_tokens=0)
@@ -55,6 +57,10 @@ def validate_parameters(
 ) -> None:
     if embedding_instruction is not None:
         raise ValidationError("Instruction prompt is not supported")
+
+    assert (
+        len(supported_embedding_types) != 0
+    ), "The embedding model doesn't support any embedding types"
 
     if embedding_type not in supported_embedding_types:
         allowed = ", ".join([e.value for e in supported_embedding_types])
@@ -71,40 +77,8 @@ class GeckoTextGenericEmbeddingsAdapter(EmbeddingsAdapter):
         embedding_type: EmbeddingsType,
     ) -> Tuple[List[List[float]], TokenUsage]:
         validate_parameters(
-            embedding_type, embedding_instruction, [e for e in EmbeddingsType]
+            embedding_type, embedding_instruction, [EmbeddingsType.SYMMETRIC]
         )
 
         task_type = to_gecko_embedding_type(embedding_type)
         return await get_gecko_embeddings(self.model, input, task_type)
-
-
-class GeckoTextClassificationEmbeddingsAdapter(EmbeddingsAdapter):
-    async def embeddings(
-        self,
-        input: str | List[str],
-        embedding_instruction: Optional[str],
-        embedding_type: EmbeddingsType,
-    ) -> Tuple[List[List[float]], TokenUsage]:
-        validate_parameters(
-            embedding_type, embedding_instruction, [EmbeddingsType.SYMMETRIC]
-        )
-
-        return await get_gecko_embeddings(
-            self.model, input, GeckoEmbeddingType.CLASSIFICATION
-        )
-
-
-class GeckoTextClusteringEmbeddingsAdapter(EmbeddingsAdapter):
-    async def embeddings(
-        self,
-        input: str | List[str],
-        embedding_instruction: Optional[str],
-        embedding_type: EmbeddingsType,
-    ) -> Tuple[List[List[float]], TokenUsage]:
-        validate_parameters(
-            embedding_type, embedding_instruction, [EmbeddingsType.SYMMETRIC]
-        )
-
-        return await get_gecko_embeddings(
-            self.model, input, GeckoEmbeddingType.CLUSTERING
-        )

@@ -55,6 +55,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |DEFAULT_REGION||Default region for Vertex AI (e.g. "us-central1")|
 |GCP_PROJECT_ID||GCP project ID|
 |LOG_LEVEL|INFO|Log level. Use DEBUG for dev purposes and INFO in prod|
+|AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |TEST_SERVER_URL|http://0.0.0.0:5001|Server URL used in the integration tests|
 

@@ -8,4 +8,4 @@ secret
 dist
 .vscode/launch.json
 ~*
-leftovers
+.idea/

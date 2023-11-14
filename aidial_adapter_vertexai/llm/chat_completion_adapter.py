@@ -1,90 +1,79 @@
+import asyncio
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from aidial_sdk.chat_completion import Message
-from vertexai.language_models._language_models import ChatMessage
-
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.message import (
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    SystemMessage,
-    parse_message,
+from aidial_adapter_vertexai.llm.consumer import Consumer
+from aidial_adapter_vertexai.llm.vertex_ai import get_vertex_ai_chat
+from aidial_adapter_vertexai.llm.vertex_ai_chat import (
+    VertexAIAuthor,
+    VertexAIChat,
+    VertexAIMessage,
 )
+from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 
 
-def to_chat_message(message: BaseMessage) -> ChatMessage:
-    author = "bot" if isinstance(message, AIMessage) else "user"
-    return ChatMessage(author=author, content=message.content)
-
-
-ChatCompletionResponse = Tuple[str, TokenUsage]
-
-
 class ChatCompletionAdapter(ABC):
+    def __init__(self, model: VertexAIChat):
+        self.model = model
+
     @abstractmethod
-    async def _call(
-        self,
-        streaming: bool,
-        context: Optional[str],
-        message_history: List[ChatMessage],
-        prompt: str,
-    ) -> ChatCompletionResponse:
+    def _create_instance(
+        self, context: Optional[str], messages: List[VertexAIMessage]
+    ) -> Dict[str, Any]:
         pass
 
-    async def completion(
-        self, streaming: bool, prompt: str
-    ) -> ChatCompletionResponse:
-        return await self._call(streaming, None, [], prompt)
+    @abstractmethod
+    def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
+        pass
 
     async def chat(
-        self, streaming: bool, history: List[Message]
-    ) -> ChatCompletionResponse:
-        messages = list(map(parse_message, history))
-
-        if len(messages) == 0:
-            raise ValidationError(
-                "The chat history must have at least one message"
-            )
-
-        context: Optional[str] = None
-        if len(messages) > 0 and isinstance(messages[0], SystemMessage):
-            context = messages.pop(0).content
-            context = context if context.strip() else None
-
-        if len(messages) == 0 and context is not None:
-            raise ValidationError(
-                "The chat history must have at least one non-system message"
-            )
-
-        role: Optional[str] = None
-        for message in messages:
-            if isinstance(message, SystemMessage):
-                raise ValidationError(
-                    "System messages other than the initial system message are not allowed"
-                )
-            if message.content == "":
-                raise ValidationError("Empty messages are not allowed")
-
-            if role is not None and role == message.type:
-                raise ValidationError("Messages must alternate between authors")
-
-            role = message.type
-
-        message_history = list(map(to_chat_message, messages[:-1]))
-
-        if len(message_history) % 2 != 0:
-            raise ValidationError(
-                "There should be odd number of messages for correct alternating turn"
-            )
-
-        prompt_message = messages[-1]
-
-        if not isinstance(prompt_message, HumanMessage):
-            raise ValidationError("The last message must be a user message")
-
-        return await self._call(
-            streaming, context, message_history, prompt_message.content
+        self,
+        consumer: Consumer,
+        context: Optional[str],
+        messages: List[VertexAIMessage],
+        params: ModelParameters,
+    ) -> None:
+        content_task = self.model.predict(
+            params.stream,
+            consumer,
+            self._create_instance(context, messages),
+            self._create_parameters(params),
         )
+
+        if params.stream:
+            # Token usage isn't reported for streaming requests.
+            # Computing it manually
+            prompt_tokens, content = await asyncio.gather(
+                self.count_prompt_tokens(context, messages), content_task
+            )
+            completion_tokens = await self.count_completion_tokens(content)
+
+            await consumer.set_usage(
+                TokenUsage(
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                )
+            )
+        else:
+            await content_task
+
+    async def count_prompt_tokens(
+        self, context: Optional[str], messages: List[VertexAIMessage]
+    ) -> int:
+        return await self.model.count_tokens(
+            self._create_instance(context, messages)
+        )
+
+    async def count_completion_tokens(self, string: str) -> int:
+        return await self.model.count_tokens(
+            self._create_instance(
+                None,
+                [VertexAIMessage(author=VertexAIAuthor.USER, content=string)],
+            )
+        )
+
+    @classmethod
+    def create(cls, model_id: str, project_id: str, location: str):
+        model = get_vertex_ai_chat(model_id, project_id, location)
+        return cls(model)
