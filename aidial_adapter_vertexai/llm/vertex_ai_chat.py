@@ -82,7 +82,7 @@ class VertexAIChat:
         completion_tokens = token_metadata["outputTokenCount"]["totalTokens"]
 
         await consumer.append_content(content)
-        await consumer.add_usage(
+        await consumer.set_usage(
             TokenUsage(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,

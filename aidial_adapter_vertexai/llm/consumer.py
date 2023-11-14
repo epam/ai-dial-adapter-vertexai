@@ -12,7 +12,7 @@ class Consumer(ABC):
         pass
 
     @abstractmethod
-    async def add_usage(self, usage: TokenUsage):
+    async def set_usage(self, usage: TokenUsage):
         pass
 
 
@@ -27,8 +27,8 @@ class ChoiceConsumer(Consumer):
     async def append_content(self, content: str):
         self.choice.append_content(content)
 
-    async def add_usage(self, usage: TokenUsage):
-        self.usage += usage
+    async def set_usage(self, usage: TokenUsage):
+        self.usage = usage
 
 
 ContentCallback = Callable[[str], Coroutine[None, str, None]]
@@ -49,5 +49,5 @@ class CollectConsumer(Consumer):
             await self.on_content(content)
         self.content += content
 
-    async def add_usage(self, usage: TokenUsage):
-        self.usage += usage
+    async def set_usage(self, usage: TokenUsage):
+        self.usage = usage

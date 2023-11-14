@@ -49,7 +49,7 @@ class ChatCompletionAdapter(ABC):
             )
             completion_tokens = await self.count_completion_tokens(content)
 
-            await consumer.add_usage(
+            await consumer.set_usage(
                 TokenUsage(
                     prompt_tokens=prompt_tokens,
                     completion_tokens=completion_tokens,

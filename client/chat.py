@@ -13,7 +13,7 @@ from vertexai.preview.language_models import (
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.consumer import CollectConsumer, Consumer
+from aidial_adapter_vertexai.llm.consumer import CollectConsumer
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
 )
@@ -129,7 +129,7 @@ class AdapterChat(Chat):
             VertexAIMessage(author=VertexAIAuthor.USER, content=prompt)
         )
 
-        consumer: Optional[Consumer] = None
+        consumer: Optional[CollectConsumer] = None
 
         async def task(on_content):
             nonlocal consumer
