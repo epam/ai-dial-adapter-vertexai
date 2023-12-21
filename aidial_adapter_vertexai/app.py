@@ -32,7 +32,7 @@ logging.config.dictConfig(LogConfig().dict())
 region = get_env("DEFAULT_REGION")
 gcp_project_id = get_env("GCP_PROJECT_ID")
 
-app = DIALApp(description="Google VertexAI adapter for RAIL API")
+app = DIALApp(description="Google VertexAI adapter for DIAL API")
 
 
 @app.get("/healthcheck")

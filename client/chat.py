@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, List, Optional, assert_never
 
 import vertexai
 from vertexai.preview.language_models import (
@@ -35,10 +35,7 @@ class Chat(ABC):
     @classmethod
     @abstractmethod
     async def create(
-        cls,
-        location: str,
-        project: str,
-        model_id: ChatCompletionDeployment,
+        cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "Chat":
         pass
 
@@ -49,6 +46,32 @@ class Chat(ABC):
         pass
 
 
+def get_model_by_deployment(
+    deployment: ChatCompletionDeployment,
+) -> ChatModel | CodeChatModel:
+    def get_chat():
+        return ChatModel.from_pretrained(deployment)
+
+    def get_codechat():
+        return CodeChatModel.from_pretrained(deployment)
+
+    match deployment:
+        case ChatCompletionDeployment.CHAT_BISON_1:
+            return get_chat()
+        case ChatCompletionDeployment.CHAT_BISON_2:
+            return get_chat()
+        case ChatCompletionDeployment.CHAT_BISON_2_32K:
+            return get_chat()
+        case ChatCompletionDeployment.CODECHAT_BISON_1:
+            return get_codechat()
+        case ChatCompletionDeployment.CODECHAT_BISON_2:
+            return get_codechat()
+        case ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+            return get_codechat()
+        case _:
+            assert_never(deployment)
+
+
 class SDKChat(Chat):
     chat: ChatSession | CodeChatSession
 
@@ -57,21 +80,11 @@ class SDKChat(Chat):
 
     @classmethod
     async def create(
-        cls,
-        location: str,
-        project: str,
-        model_id: ChatCompletionDeployment,
+        cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "SDKChat":
         vertexai.init(project=project, location=location)
-
-        match model_id:
-            case ChatCompletionDeployment.CHAT_BISON_1:
-                model = ChatModel.from_pretrained(model_id)
-            case ChatCompletionDeployment.CODECHAT_BISON_1:
-                model = CodeChatModel.from_pretrained(model_id)
-
+        model = get_model_by_deployment(deployment)
         chat = model.start_chat()
-
         return cls(chat)
 
     async def send_message(
@@ -109,15 +122,10 @@ class AdapterChat(Chat):
 
     @classmethod
     async def create(
-        cls,
-        location: str,
-        project: str,
-        model_id: ChatCompletionDeployment,
+        cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "AdapterChat":
         model = await get_chat_completion_model(
-            location=location,
-            project_id=project,
-            deployment=model_id,
+            location=location, project_id=project, deployment=deployment
         )
 
         return cls(model)
