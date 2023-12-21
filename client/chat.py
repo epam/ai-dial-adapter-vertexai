@@ -1,13 +1,15 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, List, Optional, assert_never
 
 import vertexai
+from vertexai.preview.generative_models import ChatSession as GenChatSession
+from vertexai.preview.generative_models import GenerativeModel
+from vertexai.preview.language_models import ChatModel
+from vertexai.preview.language_models import ChatSession as LangChatSession
+from vertexai.preview.language_models import CodeChatModel
 from vertexai.preview.language_models import (
-    ChatModel,
-    ChatSession,
-    CodeChatModel,
-    CodeChatSession,
+    CodeChatSession as LangCodeChatSession,
 )
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
@@ -49,18 +51,18 @@ class Chat(ABC):
         pass
 
 
-class SDKChat(Chat):
-    chat: ChatSession | CodeChatSession
+Session = LangChatSession | LangCodeChatSession | GenChatSession
 
-    def __init__(self, chat: ChatSession | CodeChatSession):
+
+class SDKChat(Chat):
+    chat: Session
+
+    def __init__(self, chat: Session):
         self.chat = chat
 
     @classmethod
     async def create(
-        cls,
-        location: str,
-        project: str,
-        model_id: ChatCompletionDeployment,
+        cls, location: str, project: str, model_id: ChatCompletionDeployment
     ) -> "SDKChat":
         vertexai.init(project=project, location=location)
 
@@ -69,6 +71,10 @@ class SDKChat(Chat):
                 model = ChatModel.from_pretrained(model_id)
             case ChatCompletionDeployment.CODECHAT_BISON_1:
                 model = CodeChatModel.from_pretrained(model_id)
+            case ChatCompletionDeployment.GEMINI_PRO_1:
+                model = GenerativeModel(model_id)
+            case _:
+                raise ValueError(f"Unsupported model: {model_id}")
 
         chat = model.start_chat()
 
@@ -109,10 +115,7 @@ class AdapterChat(Chat):
 
     @classmethod
     async def create(
-        cls,
-        location: str,
-        project: str,
-        model_id: ChatCompletionDeployment,
+        cls, location: str, project: str, model_id: ChatCompletionDeployment
     ) -> "AdapterChat":
         model = await get_chat_completion_model(
             location=location,

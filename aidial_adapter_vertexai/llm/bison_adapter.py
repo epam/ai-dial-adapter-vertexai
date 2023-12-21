@@ -13,9 +13,7 @@ from aidial_adapter_vertexai.universal_api.request import ModelParameters
 class BisonChatAdapter(ChatCompletionAdapter):
     @override
     def _create_instance(
-        self,
-        context: Optional[str],
-        messages: List[VertexAIMessage],
+        self, context: Optional[str], messages: List[VertexAIMessage]
     ) -> Dict[str, Any]:
         return {
             "context": context or "",
@@ -23,10 +21,7 @@ class BisonChatAdapter(ChatCompletionAdapter):
         }
 
     @override
-    def _create_parameters(
-        self,
-        params: ModelParameters,
-    ) -> Dict[str, Any]:
+    def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
         # See chat playground: https://console.cloud.google.com/vertex-ai/generative/language/create/chat
         ret: Dict[str, Any] = {}
 
@@ -50,9 +45,7 @@ class BisonChatAdapter(ChatCompletionAdapter):
 class BisonCodeChatAdapter(ChatCompletionAdapter):
     @override
     def _create_instance(
-        self,
-        context: Optional[str],
-        messages: List[VertexAIMessage],
+        self, context: Optional[str], messages: List[VertexAIMessage]
     ) -> Dict[str, Any]:
         if context is not None:
             raise ValidationError("System message is not supported")
@@ -62,10 +55,7 @@ class BisonCodeChatAdapter(ChatCompletionAdapter):
         }
 
     @override
-    def _create_parameters(
-        self,
-        params: ModelParameters,
-    ) -> Dict[str, Any]:
+    def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
         ret: Dict[str, Any] = {}
 
         if params.max_tokens is not None:
