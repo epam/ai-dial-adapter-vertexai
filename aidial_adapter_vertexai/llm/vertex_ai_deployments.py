@@ -10,11 +10,8 @@ class ChatCompletionDeployment(str, Enum):
         return self.value
 
 
-GECKO_MODEL_1 = "textembedding-gecko@001"
-
-
 class EmbeddingsDeployment(str, Enum):
-    TEXT_EMBEDDING_GECKO_1 = GECKO_MODEL_1
+    TEXT_EMBEDDING_GECKO_1 = "textembedding-gecko@001"
 
     def get_model_id(self) -> str:
-        return GECKO_MODEL_1
+        return self.value
