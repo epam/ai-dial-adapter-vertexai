@@ -1,10 +1,26 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, List, Optional, assert_never
+from typing import (
+    AsyncGenerator,
+    AsyncIterable,
+    AsyncIterator,
+    Awaitable,
+    Dict,
+    List,
+    Optional,
+    Union,
+    assert_never,
+    cast,
+)
 
 import vertexai
+from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
 from vertexai.preview.generative_models import ChatSession as GenChatSession
-from vertexai.preview.generative_models import GenerativeModel
+from vertexai.preview.generative_models import (
+    GenerationConfig,
+    GenerationResponse,
+    GenerativeModel,
+)
 from vertexai.preview.language_models import ChatModel
 from vertexai.preview.language_models import ChatSession as LangChatSession
 from vertexai.preview.language_models import CodeChatModel
@@ -28,6 +44,7 @@ from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
 )
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 from client.utils.concurrency import str_callback_to_stream_generator
 
 log = logging.getLogger(__name__)
@@ -37,33 +54,30 @@ class Chat(ABC):
     @classmethod
     @abstractmethod
     async def create(
-        cls,
-        location: str,
-        project: str,
-        model_id: ChatCompletionDeployment,
+        cls, location: str, project: str, model_id: ChatCompletionDeployment
     ) -> "Chat":
         pass
 
     @abstractmethod
     def send_message(
         self, prompt: str, params: ModelParameters, usage: TokenUsage
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncIterator[str]:
         pass
 
 
-Session = LangChatSession | LangCodeChatSession | GenChatSession
+LangSession = LangChatSession | LangCodeChatSession
 
 
-class SDKChat(Chat):
-    chat: Session
+class SDKLangChat(Chat):
+    chat: LangSession
 
-    def __init__(self, chat: Session):
+    def __init__(self, chat: LangSession):
         self.chat = chat
 
     @classmethod
     async def create(
         cls, location: str, project: str, model_id: ChatCompletionDeployment
-    ) -> "SDKChat":
+    ) -> "SDKLangChat":
         vertexai.init(project=project, location=location)
 
         match model_id:
@@ -71,8 +85,6 @@ class SDKChat(Chat):
                 model = ChatModel.from_pretrained(model_id)
             case ChatCompletionDeployment.CODECHAT_BISON_1:
                 model = CodeChatModel.from_pretrained(model_id)
-            case ChatCompletionDeployment.GEMINI_PRO_1:
-                model = GenerativeModel(model_id)
             case _:
                 raise ValueError(f"Unsupported model: {model_id}")
 
@@ -82,7 +94,7 @@ class SDKChat(Chat):
 
     async def send_message(
         self, prompt: str, params: ModelParameters, usage: TokenUsage
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncIterator[str]:
         parameters = {
             "max_output_tokens": params.max_tokens,
             "temperature": params.temperature,
@@ -103,6 +115,97 @@ class SDKChat(Chat):
                 yield response.text
         else:
             yield self.chat.send_message(message=prompt, **parameters).text
+
+
+class SDKGenChat(Chat):
+    chat: GenChatSession
+
+    def __init__(self, chat: GenChatSession):
+        self.chat = chat
+
+    @classmethod
+    async def create(
+        cls, location: str, project: str, model_id: ChatCompletionDeployment
+    ) -> "SDKGenChat":
+        vertexai.init(project=project, location=location)
+
+        match model_id:
+            case ChatCompletionDeployment.GEMINI_PRO_1:
+                model = GenerativeModel(model_id)
+            case _:
+                raise ValueError(f"Unsupported model: {model_id}")
+
+        chat = GenChatSession(model=model, history=[], raise_on_blocked=False)
+
+        return cls(chat)
+
+    async def send_message(
+        self, prompt: str, params: ModelParameters, usage: TokenUsage
+    ) -> AsyncIterator[str]:
+        parameters: GenerationConfig = GenerationConfig(
+            max_output_tokens=params.max_tokens,
+            temperature=params.temperature,
+            stop_sequences=[params.stop]
+            if isinstance(params.stop, str)
+            else params.stop,
+            top_p=params.top_p,
+            candidate_count=1 if params.stream else params.n,
+        )
+
+        HarmCategory = gapic_content_types.HarmCategory
+        HarmBlockThreshold = (
+            gapic_content_types.SafetySetting.HarmBlockThreshold
+        )
+
+        safety_settings: Dict[HarmCategory, HarmBlockThreshold] = {
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
+        response: Union[
+            Awaitable[GenerationResponse],
+            Awaitable[AsyncIterable[GenerationResponse]],
+        ] = self.chat.send_message_async(
+            content=prompt,
+            generation_config=parameters,
+            safety_settings=safety_settings,
+            stream=params.stream,
+            tools=None,
+        )
+
+        if params.stream:
+            response = cast(
+                Awaitable[AsyncIterable[GenerationResponse]], response
+            )
+            async for chunk in await response:
+                # print(chunk)
+                yield chunk.text
+        else:
+            response = cast(Awaitable[GenerationResponse], response)
+            resp = await response
+            print(resp)
+            usage_proto = resp._raw_response.usage_metadata
+            usage_dict = message_to_dict(usage_proto)
+            print(usage_dict)
+            yield resp.text
+
+
+async def create_sdk_chat(
+    location: str, project: str, model_id: ChatCompletionDeployment
+) -> Chat:
+    vertexai.init(project=project, location=location)
+
+    match model_id:
+        case ChatCompletionDeployment.CHAT_BISON_1:
+            return await SDKLangChat.create(location, project, model_id)
+        case ChatCompletionDeployment.CODECHAT_BISON_1:
+            return await SDKLangChat.create(location, project, model_id)
+        case ChatCompletionDeployment.GEMINI_PRO_1:
+            return await SDKGenChat.create(location, project, model_id)
+        case _:
+            assert_never(model_id)
 
 
 class AdapterChat(Chat):

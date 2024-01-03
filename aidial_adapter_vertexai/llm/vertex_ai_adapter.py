@@ -11,7 +11,6 @@ from aidial_adapter_vertexai.llm.embeddings_adapter import EmbeddingsAdapter
 from aidial_adapter_vertexai.llm.gecko_embeddings import (
     GeckoTextGenericEmbeddingsAdapter,
 )
-from aidial_adapter_vertexai.llm.gemini_pro.adapter import GeminiProAdapter
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
@@ -30,7 +29,7 @@ async def get_chat_completion_model(
         case ChatCompletionDeployment.CODECHAT_BISON_1:
             return BisonCodeChatAdapter.create(model_id, project_id, location)
         case ChatCompletionDeployment.GEMINI_PRO_1:
-            return GeminiProAdapter.create(model_id, project_id, location)
+            raise NotImplementedError("Gemini Pro is not supported yet")
         case _:
             assert_never(deployment)
 
