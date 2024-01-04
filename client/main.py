@@ -35,7 +35,7 @@ async def init_chat(params: Config) -> Tuple[Chat, ModelParameters]:
 
 
 async def main():
-    chat, model_parameters = await init_chat(Config.get_interactive())
+    chat, model_parameters = await init_chat(Config.create(read_from_args=True))
 
     input = make_input()
 
@@ -48,7 +48,9 @@ async def main():
         if content in [":q", ":quit"]:
             break
         elif content in [":r", ":restart"]:
-            chat, model_parameters = await init_chat(Config.get_interactive())
+            chat, model_parameters = await init_chat(
+                Config.create(read_from_args=False)
+            )
             continue
         elif content == "":
             continue

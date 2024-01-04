@@ -28,7 +28,7 @@ class Config(BaseModel):
     temperature: float
 
     @classmethod
-    def get_interactive(cls) -> "Config":
+    def create(cls, read_from_args: bool) -> "Config":
         parser = argparse.ArgumentParser()
 
         parser.add_argument(
@@ -64,28 +64,28 @@ class Config(BaseModel):
 
         args = parser.parse_args()
 
-        if args.mode is not None:
+        if read_from_args and args.mode is not None:
             mode = ClientMode(args.mode)
         else:
             mode = select_enum("Mode", ClientMode)
 
-        if args.model is not None:
+        if read_from_args and args.model is not None:
             model_id = ChatCompletionDeployment(args.model)
         else:
             model_id = select_enum("Model", ChatCompletionDeployment)
 
-        if args.streaming is not None:
+        if read_from_args and args.streaming is not None:
             streaming = args.streaming
         else:
             streaming = select_option("Streaming", [False, True])
 
-        if args.max_tokens is not None:
+        if read_from_args and args.max_tokens is not None:
             max_tokens = args.max_tokens
         else:
             max_tokens_str = input("Max tokens [int|no limit]: ")
             max_tokens = int(max_tokens_str) if max_tokens_str else None
 
-        if args.t is not None:
+        if read_from_args and args.t is not None:
             temperature = args.t
         else:
             temperature_str = input("Temperature [float|0.0]: ")
