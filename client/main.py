@@ -9,7 +9,7 @@ from aidial_adapter_vertexai.utils.log_config import LogConfig
 from aidial_adapter_vertexai.utils.timer import Timer
 from client.chat.adapter import AdapterChat
 from client.chat.base import Chat
-from client.chat.sdk import SDKLangChat
+from client.chat.sdk_bison import SDKBisonChat
 from client.conf import MAX_CHAT_TURNS, MAX_INPUT_CHARS
 from client.config import ClientMode, Config
 from client.utils.input import make_input
@@ -27,7 +27,7 @@ async def init_chat(params: Config) -> Tuple[Chat, ModelParameters]:
         case ClientMode.ADAPTER:
             chat = await AdapterChat.create(location, project, params.model_id)
         case ClientMode.SDK:
-            chat = await SDKLangChat.create(location, project, params.model_id)
+            chat = await SDKBisonChat.create(location, project, params.model_id)
         case _:
             assert_never(params.mode)
 

@@ -1,11 +1,11 @@
 from typing import AsyncIterator, assert_never
 
 import vertexai
-from vertexai.preview.language_models import ChatModel
-from vertexai.preview.language_models import ChatSession as LangChatSession
-from vertexai.preview.language_models import CodeChatModel
 from vertexai.preview.language_models import (
-    CodeChatSession as LangCodeChatSession,
+    ChatModel,
+    ChatSession,
+    CodeChatModel,
+    CodeChatSession,
 )
 
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
@@ -17,13 +17,13 @@ from aidial_adapter_vertexai.utils.timer import Timer
 from client.chat.base import Chat
 from client.utils.printing import print_info
 
-LangSession = LangChatSession | LangCodeChatSession
-LangModel = ChatModel | CodeChatModel
+BisonChatSession = ChatSession | CodeChatSession
+BisonChatModel = ChatModel | CodeChatModel
 
 
 def get_model_by_deployment(
     deployment: ChatCompletionDeployment,
-) -> LangModel:
+) -> BisonChatModel:
     def get_chat():
         return ChatModel.from_pretrained(deployment)
 
@@ -47,18 +47,18 @@ def get_model_by_deployment(
             assert_never(deployment)
 
 
-class SDKLangChat(Chat):
-    chat: LangSession
-    model: LangModel
+class SDKBisonChat(Chat):
+    chat: BisonChatSession
+    model: BisonChatModel
 
-    def __init__(self, model: LangModel):
+    def __init__(self, model: BisonChatModel):
         self.model = model
         self.chat = self.model.start_chat()
 
     @classmethod
     async def create(
         cls, location: str, project: str, deployment: ChatCompletionDeployment
-    ) -> "SDKLangChat":
+    ) -> "SDKBisonChat":
         vertexai.init(project=project, location=location)
         return cls(get_model_by_deployment(deployment))
 
