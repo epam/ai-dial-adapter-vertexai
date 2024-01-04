@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, assert_never
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
 from vertexai.preview.language_models import (
     ChatMessage,
@@ -13,11 +13,6 @@ from vertexai.preview.language_models import (
 
 from aidial_adapter_vertexai.llm.consumer import Consumer
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai import get_vertex_ai_chat
-from aidial_adapter_vertexai.llm.vertex_ai_chat import VertexAIChat
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
@@ -36,46 +31,21 @@ BisonChatModel = ChatModel | CodeChatModel
 BisonChatSession = ChatSession | CodeChatSession
 
 
-def get_model_by_deployment(
-    deployment: ChatCompletionDeployment,
-) -> BisonChatModel:
-    def get_chat():
-        return ChatModel.from_pretrained(deployment)
-
-    def get_codechat():
-        return CodeChatModel.from_pretrained(deployment)
-
-    match deployment:
-        case ChatCompletionDeployment.CHAT_BISON_1:
-            return get_chat()
-        case ChatCompletionDeployment.CHAT_BISON_2:
-            return get_chat()
-        case ChatCompletionDeployment.CHAT_BISON_2_32K:
-            return get_chat()
-        case ChatCompletionDeployment.CODECHAT_BISON_1:
-            return get_codechat()
-        case ChatCompletionDeployment.CODECHAT_BISON_2:
-            return get_codechat()
-        case ChatCompletionDeployment.CODECHAT_BISON_2_32K:
-            return get_codechat()
-        case _:
-            assert_never(deployment)
-
-
 def display_token_count(response: CountTokensResponse) -> str:
     return f"tokens: {response.total_tokens}, billable characters: {response.total_billable_characters}"
 
 
 class ChatCompletionAdapter(ABC):
-    lang_model: BisonChatModel
+    model: BisonChatModel
 
-    def __init__(self, model: VertexAIChat, lang_model: BisonChatModel):
-        self.lang_model = lang_model
+    def __init__(self, model: BisonChatModel):
+        self.model = model
 
+    @classmethod
     @abstractmethod
-    def _create_instance(
-        self, context: Optional[str], messages: List[ChatMessage]
-    ) -> Dict[str, Any]:
+    async def create(
+        cls, model_id: str, project_id: str, location: str
+    ) -> "ChatCompletionAdapter":
         pass
 
     @abstractmethod
@@ -92,7 +62,7 @@ class ChatCompletionAdapter(ABC):
             [params.stop] if isinstance(params.stop, str) else params.stop
         )
 
-        is_codechat = isinstance(self.lang_model, CodeChatModel)
+        is_codechat = isinstance(self.model, CodeChatModel)
 
         if stop_sequences is not None:
             if is_codechat:
@@ -155,7 +125,7 @@ class ChatCompletionAdapter(ABC):
 
         with Timer("predict timing: {time}", log.debug):
             message_history, prompt = self.parse_messages(messages)
-            chat_session = self.lang_model.start_chat(
+            chat_session = self.model.start_chat(
                 context=context, message_history=message_history
             )
 
@@ -193,7 +163,7 @@ class ChatCompletionAdapter(ABC):
         self, context: Optional[str], messages: List[ChatMessage]
     ) -> int:
         message_history, prompt = self.parse_messages(messages)
-        chat_session = self.lang_model.start_chat(
+        chat_session = self.model.start_chat(
             context=context, message_history=message_history
         )
 
@@ -206,19 +176,8 @@ class ChatCompletionAdapter(ABC):
 
     async def count_completion_tokens(self, string: str) -> int:
         with Timer("count_tokens[completion] timing: {time}", log.debug):
-            resp = self.lang_model.start_chat().count_tokens(message=string)
+            resp = self.model.start_chat().count_tokens(message=string)
             log.debug(
                 f"count_tokens[completion] response: {display_token_count(resp)}"
             )
             return resp.total_tokens
-
-    @classmethod
-    def create(
-        cls,
-        lang_model: BisonChatModel,
-        model_id: str,
-        project_id: str,
-        location: str,
-    ):
-        model = get_vertex_ai_chat(model_id, project_id, location)
-        return cls(model, lang_model)

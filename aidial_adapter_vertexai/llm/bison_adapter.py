@@ -1,24 +1,27 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from typing_extensions import override
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
-    ChatMessage,
 )
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
+from aidial_adapter_vertexai.llm.vertex_ai import (
+    get_chat_model,
+    get_code_chat_model,
+    init_vertex_ai,
+)
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 
 
 class BisonChatAdapter(ChatCompletionAdapter):
     @override
-    def _create_instance(
-        self, context: Optional[str], messages: List[ChatMessage]
-    ) -> Dict[str, Any]:
-        return {
-            "context": context or "",
-            "messages": messages,
-        }
+    @classmethod
+    async def create(
+        cls, model_id: str, project_id: str, location: str
+    ) -> "BisonChatAdapter":
+        await init_vertex_ai(project_id, location)
+        return cls(await get_chat_model(model_id))
 
     @override
     def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
@@ -44,15 +47,12 @@ class BisonChatAdapter(ChatCompletionAdapter):
 
 class BisonCodeChatAdapter(ChatCompletionAdapter):
     @override
-    def _create_instance(
-        self, context: Optional[str], messages: List[ChatMessage]
-    ) -> Dict[str, Any]:
-        if context is not None:
-            raise ValidationError("System message is not supported")
-
-        return {
-            "messages": messages,
-        }
+    @classmethod
+    async def create(
+        cls, model_id: str, project_id: str, location: str
+    ) -> "BisonCodeChatAdapter":
+        await init_vertex_ai(project_id, location)
+        return cls(await get_code_chat_model(model_id))
 
     @override
     def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
