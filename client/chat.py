@@ -54,7 +54,7 @@ class Chat(ABC):
     @classmethod
     @abstractmethod
     async def create(
-        cls, location: str, project: str, model_id: ChatCompletionDeployment
+        cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "Chat":
         pass
 
@@ -63,6 +63,34 @@ class Chat(ABC):
         self, prompt: str, params: ModelParameters, usage: TokenUsage
     ) -> AsyncIterator[str]:
         pass
+
+
+def get_model_by_deployment(
+    deployment: ChatCompletionDeployment,
+) -> ChatModel | CodeChatModel:
+    def get_chat():
+        return ChatModel.from_pretrained(deployment)
+
+    def get_codechat():
+        return CodeChatModel.from_pretrained(deployment)
+
+    match deployment:
+        case ChatCompletionDeployment.CHAT_BISON_1:
+            return get_chat()
+        case ChatCompletionDeployment.CHAT_BISON_2:
+            return get_chat()
+        case ChatCompletionDeployment.CHAT_BISON_2_32K:
+            return get_chat()
+        case ChatCompletionDeployment.CODECHAT_BISON_1:
+            return get_codechat()
+        case ChatCompletionDeployment.CODECHAT_BISON_2:
+            return get_codechat()
+        case ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+            return get_codechat()
+        case ChatCompletionDeployment.GEMINI_PRO_1:
+            raise NotImplementedError("Gemini Pro is not supported yet")
+        case _:
+            assert_never(deployment)
 
 
 LangSession = LangChatSession | LangCodeChatSession
@@ -76,20 +104,11 @@ class SDKLangChat(Chat):
 
     @classmethod
     async def create(
-        cls, location: str, project: str, model_id: ChatCompletionDeployment
+        cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "SDKLangChat":
         vertexai.init(project=project, location=location)
-
-        match model_id:
-            case ChatCompletionDeployment.CHAT_BISON_1:
-                model = ChatModel.from_pretrained(model_id)
-            case ChatCompletionDeployment.CODECHAT_BISON_1:
-                model = CodeChatModel.from_pretrained(model_id)
-            case _:
-                raise ValueError(f"Unsupported model: {model_id}")
-
+        model = get_model_by_deployment(deployment)
         chat = model.start_chat()
-
         return cls(chat)
 
     async def send_message(
@@ -125,15 +144,15 @@ class SDKGenChat(Chat):
 
     @classmethod
     async def create(
-        cls, location: str, project: str, model_id: ChatCompletionDeployment
+        cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "SDKGenChat":
         vertexai.init(project=project, location=location)
 
-        match model_id:
+        match deployment:
             case ChatCompletionDeployment.GEMINI_PRO_1:
-                model = GenerativeModel(model_id)
+                model = GenerativeModel(deployment)
             case _:
-                raise ValueError(f"Unsupported model: {model_id}")
+                raise ValueError(f"Unsupported model: {deployment}")
 
         chat = GenChatSession(model=model, history=[], raise_on_blocked=False)
 
@@ -198,14 +217,10 @@ async def create_sdk_chat(
     vertexai.init(project=project, location=location)
 
     match model_id:
-        case ChatCompletionDeployment.CHAT_BISON_1:
-            return await SDKLangChat.create(location, project, model_id)
-        case ChatCompletionDeployment.CODECHAT_BISON_1:
-            return await SDKLangChat.create(location, project, model_id)
         case ChatCompletionDeployment.GEMINI_PRO_1:
             return await SDKGenChat.create(location, project, model_id)
         case _:
-            assert_never(model_id)
+            return await SDKLangChat.create(location, project, model_id)
 
 
 class AdapterChat(Chat):
@@ -218,12 +233,10 @@ class AdapterChat(Chat):
 
     @classmethod
     async def create(
-        cls, location: str, project: str, model_id: ChatCompletionDeployment
+        cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "AdapterChat":
         model = await get_chat_completion_model(
-            location=location,
-            project_id=project,
-            deployment=model_id,
+            location=location, project_id=project, deployment=deployment
         )
 
         return cls(model)

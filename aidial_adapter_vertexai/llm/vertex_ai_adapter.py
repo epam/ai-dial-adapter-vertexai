@@ -18,16 +18,29 @@ from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
 
 
 async def get_chat_completion_model(
-    deployment: ChatCompletionDeployment,
-    project_id: str,
-    location: str,
+    deployment: ChatCompletionDeployment, project_id: str, location: str
 ) -> ChatCompletionAdapter:
     model_id = deployment.get_model_id()
+
+    def get_chat():
+        return BisonChatAdapter.create(model_id, project_id, location)
+
+    def get_codechat():
+        return BisonCodeChatAdapter.create(model_id, project_id, location)
+
     match deployment:
         case ChatCompletionDeployment.CHAT_BISON_1:
-            return BisonChatAdapter.create(model_id, project_id, location)
+            return get_chat()
+        case ChatCompletionDeployment.CHAT_BISON_2:
+            return get_chat()
+        case ChatCompletionDeployment.CHAT_BISON_2_32K:
+            return get_chat()
         case ChatCompletionDeployment.CODECHAT_BISON_1:
             return BisonCodeChatAdapter.create(model_id, project_id, location)
+        case ChatCompletionDeployment.CODECHAT_BISON_2:
+            return get_codechat()
+        case ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+            return get_codechat()
         case ChatCompletionDeployment.GEMINI_PRO_1:
             raise NotImplementedError("Gemini Pro is not supported yet")
         case _:
@@ -35,9 +48,7 @@ async def get_chat_completion_model(
 
 
 async def get_embeddings_model(
-    deployment: EmbeddingsDeployment,
-    project_id: str,
-    location: str,
+    deployment: EmbeddingsDeployment, project_id: str, location: str
 ) -> EmbeddingsAdapter:
     model_id = deployment.get_model_id()
     match deployment:
