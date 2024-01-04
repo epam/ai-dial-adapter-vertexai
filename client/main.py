@@ -57,14 +57,12 @@ async def main():
 
         usage = TokenUsage()
 
-        timer = Timer()
+        with Timer("Timing: {time}", print_info):
+            async for chunk in chat.send_message(
+                content, model_parameters, usage
+            ):
+                print_ai(chunk, end="")
 
-        async for chunk in chat.send_message(content, model_parameters, usage):
-            print_ai(chunk, end="")
-
-        print_ai("")
-
-        print_info(f"Timing: {timer}")
         print_info(f"Usage: {usage}")
 
 
