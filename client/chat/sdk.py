@@ -1,13 +1,9 @@
 import logging
-from abc import ABC, abstractmethod
 from typing import (
-    AsyncGenerator,
     AsyncIterable,
     AsyncIterator,
     Awaitable,
     Dict,
-    List,
-    Optional,
     Union,
     assert_never,
     cast,
@@ -28,41 +24,15 @@ from vertexai.preview.language_models import (
     CodeChatSession as LangCodeChatSession,
 )
 
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
-    ChatCompletionAdapter,
-)
-from aidial_adapter_vertexai.llm.consumer import CollectConsumer
-from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
-    get_chat_completion_model,
-)
-from aidial_adapter_vertexai.llm.vertex_ai_chat import (
-    VertexAIAuthor,
-    VertexAIMessage,
-)
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
 )
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
-from client.utils.concurrency import str_callback_to_stream_generator
+from client.chat.base import Chat
 
 log = logging.getLogger(__name__)
-
-
-class Chat(ABC):
-    @classmethod
-    @abstractmethod
-    async def create(
-        cls, location: str, project: str, deployment: ChatCompletionDeployment
-    ) -> "Chat":
-        pass
-
-    @abstractmethod
-    def send_message(
-        self, prompt: str, params: ModelParameters, usage: TokenUsage
-    ) -> AsyncIterator[str]:
-        pass
 
 
 def get_model_by_deployment(
@@ -212,59 +182,12 @@ class SDKGenChat(Chat):
 
 
 async def create_sdk_chat(
-    location: str, project: str, model_id: ChatCompletionDeployment
+    location: str, project: str, deployment: ChatCompletionDeployment
 ) -> Chat:
     vertexai.init(project=project, location=location)
 
-    match model_id:
+    match deployment:
         case ChatCompletionDeployment.GEMINI_PRO_1:
-            return await SDKGenChat.create(location, project, model_id)
+            return await SDKGenChat.create(location, project, deployment)
         case _:
-            return await SDKLangChat.create(location, project, model_id)
-
-
-class AdapterChat(Chat):
-    model: ChatCompletionAdapter
-    history: List[VertexAIMessage]
-
-    def __init__(self, model: ChatCompletionAdapter):
-        self.model = model
-        self.history = []
-
-    @classmethod
-    async def create(
-        cls, location: str, project: str, deployment: ChatCompletionDeployment
-    ) -> "AdapterChat":
-        model = await get_chat_completion_model(
-            location=location, project_id=project, deployment=deployment
-        )
-
-        return cls(model)
-
-    async def send_message(
-        self, prompt: str, params: ModelParameters, usage: TokenUsage
-    ) -> AsyncGenerator[str, None]:
-        self.history.append(
-            VertexAIMessage(author=VertexAIAuthor.USER, content=prompt)
-        )
-
-        consumer: Optional[CollectConsumer] = None
-
-        async def task(on_content):
-            nonlocal consumer
-            consumer = CollectConsumer(on_content=on_content)
-            await self.model.chat(consumer, None, self.history, params)
-
-        async def on_content(chunk: str):
-            return
-
-        async for chunk in str_callback_to_stream_generator(task, on_content):
-            yield chunk
-
-        assert consumer is not None
-
-        self.history.append(
-            VertexAIMessage(author=VertexAIAuthor.BOT, content=consumer.content)
-        )
-
-        usage.accumulate(consumer.usage)
+            return await SDKLangChat.create(location, project, deployment)

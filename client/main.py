@@ -7,7 +7,9 @@ from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.env import get_env
 from aidial_adapter_vertexai.utils.log_config import LogConfig
 from aidial_adapter_vertexai.utils.timer import Timer
-from client.chat import AdapterChat, Chat, create_sdk_chat
+from client.chat.adapter import AdapterChat
+from client.chat.base import Chat
+from client.chat.sdk import create_sdk_chat
 from client.conf import MAX_CHAT_TURNS, MAX_INPUT_CHARS
 from client.config import ClientMode, Config
 from client.utils.input import make_input
