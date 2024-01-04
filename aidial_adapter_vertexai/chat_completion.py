@@ -9,6 +9,10 @@ from aidial_sdk.chat_completion import (
     Role,
 )
 
+from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+    VertexAIAuthor,
+    VertexAIMessage,
+)
 from aidial_adapter_vertexai.llm.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
 from aidial_adapter_vertexai.llm.history_trimming import (
@@ -16,10 +20,6 @@ from aidial_adapter_vertexai.llm.history_trimming import (
 )
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
-)
-from aidial_adapter_vertexai.llm.vertex_ai_chat import (
-    VertexAIAuthor,
-    VertexAIMessage,
 )
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,

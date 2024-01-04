@@ -1,19 +1,28 @@
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional, TypedDict
 
 from aidial_adapter_vertexai.llm.consumer import Consumer
 from aidial_adapter_vertexai.llm.vertex_ai import get_vertex_ai_chat
-from aidial_adapter_vertexai.llm.vertex_ai_chat import (
-    VertexAIAuthor,
-    VertexAIChat,
-    VertexAIMessage,
-)
+from aidial_adapter_vertexai.llm.vertex_ai_chat import VertexAIChat
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 
 
+class VertexAIAuthor(str, Enum):
+    USER = "user"
+    BOT = "bot"
+
+
+class VertexAIMessage(TypedDict):
+    author: VertexAIAuthor
+    content: str
+
+
 class ChatCompletionAdapter(ABC):
+    model: VertexAIChat
+
     def __init__(self, model: VertexAIChat):
         self.model = model
 

@@ -2,14 +2,12 @@ from typing import AsyncGenerator, List, Optional
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
+    VertexAIAuthor,
+    VertexAIMessage,
 )
 from aidial_adapter_vertexai.llm.consumer import CollectConsumer
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
-)
-from aidial_adapter_vertexai.llm.vertex_ai_chat import (
-    VertexAIAuthor,
-    VertexAIMessage,
 )
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,

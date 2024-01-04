@@ -4,9 +4,9 @@ from typing_extensions import override
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
+    VertexAIMessage,
 )
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai_chat import VertexAIMessage
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 
 

@@ -1,6 +1,5 @@
 import logging
-from enum import Enum
-from typing import Any, Dict, List, TypedDict
+from typing import Any, Dict, List
 
 from google.cloud.aiplatform import compat, initializer
 from google.cloud.aiplatform._streaming_prediction import (
@@ -19,21 +18,12 @@ from aidial_adapter_vertexai.utils.protobuf import message_to_str
 from aidial_adapter_vertexai.utils.timer import Timer
 
 
-class VertexAIAuthor(str, Enum):
-    USER = "user"
-    BOT = "bot"
-
-
-class VertexAIMessage(TypedDict):
-    author: VertexAIAuthor
-    content: str
-
-
 class VertexAIChat:
+    client: PredictionAsyncClientWithOverride
+    endpoint: str
+
     def __init__(
-        self,
-        client: PredictionAsyncClientWithOverride,
-        endpoint: str,
+        self, client: PredictionAsyncClientWithOverride, endpoint: str
     ):
         self.client = client
         self.endpoint = endpoint
