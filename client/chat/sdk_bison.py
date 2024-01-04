@@ -23,17 +23,9 @@ async def get_model_by_deployment(
 ) -> BisonChatModel:
     model_id = deployment.get_model_id()
     match deployment:
-        case ChatCompletionDeployment.CHAT_BISON_1:
+        case ChatCompletionDeployment.CHAT_BISON_1 | ChatCompletionDeployment.CHAT_BISON_2 | ChatCompletionDeployment.CHAT_BISON_2_32K:
             return await get_chat_model(model_id)
-        case ChatCompletionDeployment.CHAT_BISON_2:
-            return await get_chat_model(model_id)
-        case ChatCompletionDeployment.CHAT_BISON_2_32K:
-            return await get_chat_model(model_id)
-        case ChatCompletionDeployment.CODECHAT_BISON_1:
-            return await get_code_chat_model(model_id)
-        case ChatCompletionDeployment.CODECHAT_BISON_2:
-            return await get_code_chat_model(model_id)
-        case ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+        case ChatCompletionDeployment.CODECHAT_BISON_1 | ChatCompletionDeployment.CODECHAT_BISON_2 | ChatCompletionDeployment.CODECHAT_BISON_2_32K:
             return await get_code_chat_model(model_id)
         case _:
             assert_never(deployment)
