@@ -5,8 +5,8 @@ from typing import AsyncIterator, List, Optional, Tuple
 from vertexai.preview.language_models import (
     ChatMessage,
     ChatModel,
+    ChatSession,
     CodeChatModel,
-    CodeChatSession,
     CountTokensResponse,
 )
 
@@ -19,8 +19,8 @@ from aidial_adapter_vertexai.utils.timer import Timer
 
 
 class ChatAuthor(str, Enum):
-    USER = CodeChatSession.USER_AUTHOR
-    BOT = CodeChatSession.MODEL_AUTHOR
+    USER = ChatSession.USER_AUTHOR
+    BOT = ChatSession.MODEL_AUTHOR
 
     def __repr__(self) -> str:
         return f"{self.value!r}"
