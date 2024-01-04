@@ -1,6 +1,11 @@
-from typing import Any, Dict
+from typing import AsyncIterator, List, Optional, TypedDict
 
 from typing_extensions import override
+from vertexai.preview.language_models import (
+    ChatMessage,
+    ChatModel,
+    CodeChatModel,
+)
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
@@ -14,7 +19,40 @@ from aidial_adapter_vertexai.llm.vertex_ai import (
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 
 
+class CodeChatParamsBase(TypedDict, total=False):
+    max_output_tokens: Optional[int]
+    temperature: Optional[float]
+
+
+class ChatParamsBase(TypedDict, total=False):
+    max_output_tokens: Optional[int]
+    temperature: Optional[float]
+
+    # Extra compared to CodeChatParams
+    stop_sequences: Optional[List[str]]
+    top_k: Optional[int]
+    top_p: Optional[float]
+
+
+ChatParamsStream = ChatParamsBase
+CodeChatParamsStream = CodeChatParamsBase
+
+
+class NoStreamParams(TypedDict, total=False):
+    candidate_count: Optional[int]
+
+
+class ChatParamsNoStream(ChatParamsBase, NoStreamParams):
+    pass
+
+
+class CodeChatParamsNoStream(CodeChatParamsBase, NoStreamParams):
+    pass
+
+
 class BisonChatAdapter(ChatCompletionAdapter):
+    model: ChatModel
+
     @override
     @classmethod
     async def create(
@@ -23,29 +61,55 @@ class BisonChatAdapter(ChatCompletionAdapter):
         await init_vertex_ai(project_id, location)
         return cls(await get_chat_model(model_id))
 
+    def prepare_parameters_no_stream(
+        self, params: ModelParameters
+    ) -> ChatParamsNoStream:
+        return {
+            "max_output_tokens": params.max_tokens,
+            "temperature": params.temperature,
+            "stop_sequences": params.stop,
+            "top_p": params.top_p,
+            "candidate_count": params.n,
+        }
+
+    def prepare_parameters_stream(
+        self, params: ModelParameters
+    ) -> ChatParamsStream:
+        return {
+            "max_output_tokens": params.max_tokens,
+            "temperature": params.temperature,
+            "stop_sequences": params.stop,
+            "top_p": params.top_p,
+        }
+
     @override
-    def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
-        # See chat playground: https://console.cloud.google.com/vertex-ai/generative/language/create/chat
-        ret: Dict[str, Any] = {}
+    async def send_message_async(
+        self,
+        params: ModelParameters,
+        context: Optional[str],
+        messages: List[ChatMessage],
+        prompt: str,
+    ) -> AsyncIterator[str]:
+        chat = self.model.start_chat(context=context, message_history=messages)
 
-        if params.max_tokens is not None:
-            ret["maxOutputTokens"] = params.max_tokens
+        generic_validate_parameters(params)
 
-        if params.temperature is not None:
-            ret["temperature"] = params.temperature
-
-        if params.stop is not None:
-            ret["stopSequences"] = (
-                [params.stop] if isinstance(params.stop, str) else params.stop
+        if params.stream:
+            stream = chat.send_message_streaming_async(
+                message=prompt, **self.prepare_parameters_stream(params)
             )
-
-        if params.top_p is not None:
-            ret["topP"] = params.top_p
-
-        return ret
+            async for chunk in stream:
+                yield chunk.text
+        else:
+            response = await chat.send_message_async(
+                message=prompt, **self.prepare_parameters_no_stream(params)
+            )
+            yield response.text
 
 
 class BisonCodeChatAdapter(ChatCompletionAdapter):
+    model: CodeChatModel
+
     @override
     @classmethod
     async def create(
@@ -54,16 +118,7 @@ class BisonCodeChatAdapter(ChatCompletionAdapter):
         await init_vertex_ai(project_id, location)
         return cls(await get_code_chat_model(model_id))
 
-    @override
-    def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
-        ret: Dict[str, Any] = {}
-
-        if params.max_tokens is not None:
-            ret["maxOutputTokens"] = params.max_tokens
-
-        if params.temperature is not None:
-            ret["temperature"] = params.temperature
-
+    def validate_parameters(self, params: ModelParameters) -> None:
         if params.stop is not None:
             raise ValidationError(
                 "stop sequences are not supported for code chat model"
@@ -72,4 +127,49 @@ class BisonCodeChatAdapter(ChatCompletionAdapter):
         if params.top_p is not None:
             raise ValidationError("top_p is not supported for code chat model")
 
-        return ret
+    def prepare_parameters_no_stream(
+        self, params: ModelParameters
+    ) -> CodeChatParamsNoStream:
+        return {
+            "max_output_tokens": params.max_tokens,
+            "temperature": params.temperature,
+            "candidate_count": params.n,
+        }
+
+    def prepare_parameters_stream(
+        self, params: ModelParameters
+    ) -> CodeChatParamsStream:
+        return {
+            "max_output_tokens": params.max_tokens,
+            "temperature": params.temperature,
+        }
+
+    @override
+    async def send_message_async(
+        self,
+        params: ModelParameters,
+        context: Optional[str],
+        messages: List[ChatMessage],
+        prompt: str,
+    ) -> AsyncIterator[str]:
+        chat = self.model.start_chat(context=context, message_history=messages)
+
+        generic_validate_parameters(params)
+        self.validate_parameters(params)
+
+        if params.stream:
+            stream = chat.send_message_streaming_async(
+                message=prompt, **self.prepare_parameters_stream(params)
+            )
+            async for chunk in stream:
+                yield chunk.text
+        else:
+            response = await chat.send_message_async(
+                message=prompt, **self.prepare_parameters_no_stream(params)
+            )
+            yield response.text
+
+
+def generic_validate_parameters(params: ModelParameters) -> None:
+    if params.stream and params.n is not None and params.n > 1:
+        raise ValidationError("n>1 is not supported in streaming mode")

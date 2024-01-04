@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
+from typing import AsyncIterator, List, Optional, Tuple
 
 from vertexai.preview.language_models import (
     ChatMessage,
     ChatModel,
-    ChatSession,
     CodeChatModel,
     CodeChatSession,
     CountTokensResponse,
@@ -28,11 +27,6 @@ class ChatAuthor(str, Enum):
 
 
 BisonChatModel = ChatModel | CodeChatModel
-BisonChatSession = ChatSession | CodeChatSession
-
-
-def display_token_count(response: CountTokensResponse) -> str:
-    return f"tokens: {response.total_tokens}, billable characters: {response.total_billable_characters}"
 
 
 class ChatCompletionAdapter(ABC):
@@ -49,70 +43,14 @@ class ChatCompletionAdapter(ABC):
         pass
 
     @abstractmethod
-    def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
-        pass
-
-    def prepare_parameters(self, params: ModelParameters) -> dict:
-        parameters = {
-            "max_output_tokens": params.max_tokens,
-            "temperature": params.temperature,
-        }
-
-        stop_sequences = (
-            [params.stop] if isinstance(params.stop, str) else params.stop
-        )
-
-        is_codechat = isinstance(self.model, CodeChatModel)
-
-        if stop_sequences is not None:
-            if is_codechat:
-                raise ValidationError(
-                    "stop sequences are not supported for code chat model"
-                )
-            parameters["stop_sequences"] = stop_sequences
-
-        if params.top_p is not None:
-            if is_codechat:
-                raise ValidationError(
-                    "top_p is not supported for code chat model"
-                )
-            parameters["top_p"] = params.top_p
-
-        if params.stream:
-            if params.n is not None and params.n > 1:
-                raise ValidationError("n>1 is not supported in streaming mode")
-        else:
-            parameters["candidate_count"] = params.n
-
-        return parameters
-
-    @staticmethod
-    async def send_message_async(
-        chat: BisonChatSession, prompt: str, is_stream: bool, parameters: dict
-    ) -> AsyncIterator[str]:
-        if is_stream:
-            stream = chat.send_message_streaming_async(
-                message=prompt, **parameters
-            )
-            async for chunk in stream:
-                yield chunk.text
-        else:
-            response = await chat.send_message_async(
-                message=prompt, **parameters
-            )
-            yield response.text
-
-    @staticmethod
-    def parse_messages(
+    def send_message_async(
+        self,
+        params: ModelParameters,
+        context: Optional[str],
         messages: List[ChatMessage],
-    ) -> Tuple[List[ChatMessage], str]:
-        if len(messages) == 0:
-            raise ValidationError("Messages should not be empty")
-
-        message_history = messages[:-1]
-        prompt = messages[-1].content
-
-        return message_history, prompt
+        prompt: str,
+    ) -> AsyncIterator[str]:
+        pass
 
     async def chat(
         self,
@@ -122,26 +60,21 @@ class ChatCompletionAdapter(ABC):
         params: ModelParameters,
     ) -> None:
         prompt_tokens = await self.count_prompt_tokens(context, messages)
+        message_history, prompt = _parse_messages(messages)
 
         with Timer("predict timing: {time}", log.debug):
-            message_history, prompt = self.parse_messages(messages)
-            chat_session = self.model.start_chat(
-                context=context, message_history=message_history
-            )
-
-            parameters = self.prepare_parameters(params)
-
             log.debug(
                 "predict request: "
-                f"parameters=({parameters}), "
-                f"context={chat_session._context!r}, "
-                f"history={chat_session.message_history}, "
+                f"parameters=({params}), "
+                f"context={context!r}, "
+                f"history={messages}, "
                 f"prompt={prompt!r}"
             )
 
             completion = ""
+
             async for chunk in self.send_message_async(
-                chat_session, prompt, params.stream, parameters
+                params, context, message_history, prompt
             ):
                 completion += chunk
                 await consumer.append_content(chunk)
@@ -162,7 +95,7 @@ class ChatCompletionAdapter(ABC):
     async def count_prompt_tokens(
         self, context: Optional[str], messages: List[ChatMessage]
     ) -> int:
-        message_history, prompt = self.parse_messages(messages)
+        message_history, prompt = _parse_messages(messages)
         chat_session = self.model.start_chat(
             context=context, message_history=message_history
         )
@@ -170,7 +103,7 @@ class ChatCompletionAdapter(ABC):
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = chat_session.count_tokens(message=prompt)
             log.debug(
-                f"count_tokens[prompt] response: {display_token_count(resp)}"
+                f"count_tokens[prompt] response: {_display_token_count(resp)}"
             )
             return resp.total_tokens
 
@@ -178,6 +111,22 @@ class ChatCompletionAdapter(ABC):
         with Timer("count_tokens[completion] timing: {time}", log.debug):
             resp = self.model.start_chat().count_tokens(message=string)
             log.debug(
-                f"count_tokens[completion] response: {display_token_count(resp)}"
+                f"count_tokens[completion] response: {_display_token_count(resp)}"
             )
             return resp.total_tokens
+
+
+def _parse_messages(
+    messages: List[ChatMessage],
+) -> Tuple[List[ChatMessage], str]:
+    if len(messages) == 0:
+        raise ValidationError("Messages should not be empty")
+
+    message_history = messages[:-1]
+    prompt = messages[-1].content
+
+    return message_history, prompt
+
+
+def _display_token_count(response: CountTokensResponse) -> str:
+    return f"tokens: {response.total_tokens}, billable characters: {response.total_billable_characters}"

@@ -1,9 +1,8 @@
 from typing import AsyncIterator, assert_never
 
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
-    BisonChatModel,
-    BisonChatSession,
-)
+from vertexai.preview.language_models import ChatSession, CodeChatSession
+
+from aidial_adapter_vertexai.llm.chat_completion_adapter import BisonChatModel
 from aidial_adapter_vertexai.llm.vertex_ai import (
     get_chat_model,
     get_code_chat_model,
@@ -40,6 +39,9 @@ async def get_model_by_deployment(
             assert_never(deployment)
 
 
+BisonChatSession = ChatSession | CodeChatSession
+
+
 class SDKBisonChat(Chat):
     chat: BisonChatSession
     model: BisonChatModel
@@ -60,9 +62,7 @@ class SDKBisonChat(Chat):
         parameters = {
             "max_output_tokens": params.max_tokens,
             "temperature": params.temperature,
-            "stop_sequences": [params.stop]
-            if isinstance(params.stop, str)
-            else params.stop,
+            "stop_sequences": params.stop,
             "top_p": params.top_p,
         }
 
