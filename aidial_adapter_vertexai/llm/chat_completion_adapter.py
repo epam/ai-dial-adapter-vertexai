@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, AsyncIterator, Dict, List, Optional, assert_never
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, assert_never
 
 from vertexai.preview.language_models import (
     ChatMessage,
@@ -27,6 +27,9 @@ from aidial_adapter_vertexai.utils.timer import Timer
 class ChatAuthor(str, Enum):
     USER = CodeChatSession.USER_AUTHOR
     BOT = CodeChatSession.MODEL_AUTHOR
+
+    def __repr__(self) -> str:
+        return f"{self.value!r}"
 
 
 BisonChatModel = ChatModel | CodeChatModel
@@ -64,11 +67,9 @@ def display_token_count(response: CountTokensResponse) -> str:
 
 
 class ChatCompletionAdapter(ABC):
-    model: VertexAIChat
     lang_model: BisonChatModel
 
     def __init__(self, model: VertexAIChat, lang_model: BisonChatModel):
-        self.model = model
         self.lang_model = lang_model
 
     @abstractmethod
@@ -131,6 +132,18 @@ class ChatCompletionAdapter(ABC):
             )
             yield response.text
 
+    @staticmethod
+    def parse_messages(
+        messages: List[ChatMessage],
+    ) -> Tuple[List[ChatMessage], str]:
+        if len(messages) == 0:
+            raise ValidationError("Messages should not be empty")
+
+        message_history = messages[:-1]
+        prompt = messages[-1].content
+
+        return message_history, prompt
+
     async def chat(
         self,
         consumer: Consumer,
@@ -138,32 +151,14 @@ class ChatCompletionAdapter(ABC):
         messages: List[ChatMessage],
         params: ModelParameters,
     ) -> None:
-        # TODO: make sure `context` is supported by CodeChatModel
-
-        if len(messages) == 0:
-            raise ValidationError("Messages should not be empty")
-        last_message = messages[-1]
-
-        if last_message.author != ChatAuthor.USER:
-            raise ValidationError(
-                "The last message should be a message from user"
-            )
-
-        message_history = messages[:-1]
-        prompt = last_message.content
-
-        chat_session = self.lang_model.start_chat(
-            context=context, message_history=message_history
-        )
-
-        with Timer("count_tokens[prompt] timing: {time}", log.debug):
-            resp = chat_session.count_tokens(message=prompt)
-            log.debug(
-                f"count_tokens[prompt] response: {display_token_count(resp)}"
-            )
-            prompt_tokens = resp.total_tokens
+        prompt_tokens = await self.count_prompt_tokens(context, messages)
 
         with Timer("predict timing: {time}", log.debug):
+            message_history, prompt = self.parse_messages(messages)
+            chat_session = self.lang_model.start_chat(
+                context=context, message_history=message_history
+            )
+
             parameters = self.prepare_parameters(params)
 
             log.debug(
@@ -185,12 +180,7 @@ class ChatCompletionAdapter(ABC):
 
         await consumer.append_content(None)
 
-        with Timer("count_tokens[completion] timing: {time}", log.debug):
-            resp = self.lang_model.start_chat().count_tokens(message=completion)
-            log.debug(
-                f"count_tokens[completion] response: {display_token_count(resp)}"
-            )
-            completion_tokens = resp.total_tokens
+        completion_tokens = await self.count_completion_tokens(completion)
 
         await consumer.set_usage(
             TokenUsage(
@@ -202,17 +192,25 @@ class ChatCompletionAdapter(ABC):
     async def count_prompt_tokens(
         self, context: Optional[str], messages: List[ChatMessage]
     ) -> int:
-        return await self.model.count_tokens(
-            self._create_instance(context, messages)
+        message_history, prompt = self.parse_messages(messages)
+        chat_session = self.lang_model.start_chat(
+            context=context, message_history=message_history
         )
 
-    async def count_completion_tokens(self, string: str) -> int:
-        return await self.model.count_tokens(
-            self._create_instance(
-                None,
-                [ChatMessage(author=ChatAuthor.USER, content=string)],
+        with Timer("count_tokens[prompt] timing: {time}", log.debug):
+            resp = chat_session.count_tokens(message=prompt)
+            log.debug(
+                f"count_tokens[prompt] response: {display_token_count(resp)}"
             )
-        )
+            return resp.total_tokens
+
+    async def count_completion_tokens(self, string: str) -> int:
+        with Timer("count_tokens[completion] timing: {time}", log.debug):
+            resp = self.lang_model.start_chat().count_tokens(message=string)
+            log.debug(
+                f"count_tokens[completion] response: {display_token_count(resp)}"
+            )
+            return resp.total_tokens
 
     @classmethod
     def create(
