@@ -1,9 +1,9 @@
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncIterator, List, Optional
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+    ChatAuthor,
     ChatCompletionAdapter,
-    VertexAIAuthor,
-    VertexAIMessage,
+    ChatMessage,
 )
 from aidial_adapter_vertexai.llm.consumer import CollectConsumer
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
@@ -20,7 +20,7 @@ from client.utils.concurrency import str_callback_to_stream_generator
 
 class AdapterChat(Chat):
     model: ChatCompletionAdapter
-    history: List[VertexAIMessage]
+    history: List[ChatMessage]
 
     def __init__(self, model: ChatCompletionAdapter):
         self.model = model
@@ -38,10 +38,8 @@ class AdapterChat(Chat):
 
     async def send_message(
         self, prompt: str, params: ModelParameters, usage: TokenUsage
-    ) -> AsyncGenerator[str, None]:
-        self.history.append(
-            VertexAIMessage(author=VertexAIAuthor.USER, content=prompt)
-        )
+    ) -> AsyncIterator[str]:
+        self.history.append(ChatMessage(author=ChatAuthor.USER, content=prompt))
 
         consumer: Optional[CollectConsumer] = None
 
@@ -59,7 +57,7 @@ class AdapterChat(Chat):
         assert consumer is not None
 
         self.history.append(
-            VertexAIMessage(author=VertexAIAuthor.BOT, content=consumer.content)
+            ChatMessage(author=ChatAuthor.BOT, content=consumer.content)
         )
 
         usage.accumulate(consumer.usage)

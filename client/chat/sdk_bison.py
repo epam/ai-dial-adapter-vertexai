@@ -1,13 +1,12 @@
-from typing import AsyncIterator, assert_never
+from typing import AsyncIterator
 
 import vertexai
-from vertexai.preview.language_models import (
-    ChatModel,
-    ChatSession,
-    CodeChatModel,
-    CodeChatSession,
-)
 
+from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+    BisonChatModel,
+    BisonChatSession,
+    get_model_by_deployment,
+)
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
 )
@@ -16,35 +15,6 @@ from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.timer import Timer
 from client.chat.base import Chat
 from client.utils.printing import print_info
-
-BisonChatSession = ChatSession | CodeChatSession
-BisonChatModel = ChatModel | CodeChatModel
-
-
-def get_model_by_deployment(
-    deployment: ChatCompletionDeployment,
-) -> BisonChatModel:
-    def get_chat():
-        return ChatModel.from_pretrained(deployment)
-
-    def get_codechat():
-        return CodeChatModel.from_pretrained(deployment)
-
-    match deployment:
-        case ChatCompletionDeployment.CHAT_BISON_1:
-            return get_chat()
-        case ChatCompletionDeployment.CHAT_BISON_2:
-            return get_chat()
-        case ChatCompletionDeployment.CHAT_BISON_2_32K:
-            return get_chat()
-        case ChatCompletionDeployment.CODECHAT_BISON_1:
-            return get_codechat()
-        case ChatCompletionDeployment.CODECHAT_BISON_2:
-            return get_codechat()
-        case ChatCompletionDeployment.CODECHAT_BISON_2_32K:
-            return get_codechat()
-        case _:
-            assert_never(deployment)
 
 
 class SDKBisonChat(Chat):
@@ -62,9 +32,8 @@ class SDKBisonChat(Chat):
         vertexai.init(project=project, location=location)
         return cls(get_model_by_deployment(deployment))
 
-    async def send_message(
-        self, prompt: str, params: ModelParameters, usage: TokenUsage
-    ) -> AsyncIterator[str]:
+    @staticmethod
+    def prepare_parameters(params: ModelParameters) -> dict:
         parameters = {
             "max_output_tokens": params.max_tokens,
             "temperature": params.temperature,
@@ -77,25 +46,38 @@ class SDKBisonChat(Chat):
         if not params.stream:
             parameters["candidate_count"] = params.n
 
+        return parameters
+
+    async def send_message_async(
+        self, prompt: str, is_stream: bool, parameters: dict
+    ) -> AsyncIterator[str]:
+        if is_stream:
+            stream = self.chat.send_message_streaming_async(
+                message=prompt, **parameters
+            )
+            async for chunk in stream:
+                yield chunk.text
+        else:
+            response = await self.chat.send_message_async(
+                message=prompt, **parameters
+            )
+            yield response.text
+
+    async def send_message(
+        self, prompt: str, params: ModelParameters, usage: TokenUsage
+    ) -> AsyncIterator[str]:
         with Timer("Timing (prompt count_tokens): {time}", print_info):
             prompt_tokens = self.chat.count_tokens(message=prompt).total_tokens
 
         with Timer("Timing (predict): {time}", print_info):
-            completion = ""
+            parameters = self.prepare_parameters(params)
 
-            if params.stream:
-                stream = self.chat.send_message_streaming_async(
-                    message=prompt, **parameters
-                )
-                async for chunk in stream:
-                    completion += chunk.text
-                    yield chunk.text
-            else:
-                response = await self.chat.send_message_async(
-                    message=prompt, **parameters
-                )
-                completion += response.text
-                yield response.text
+            completion = ""
+            async for chunk in self.send_message_async(
+                prompt, params.stream, parameters
+            ):
+                completion += chunk
+                yield chunk
 
             print("")
 

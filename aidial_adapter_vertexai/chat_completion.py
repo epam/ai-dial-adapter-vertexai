@@ -10,8 +10,8 @@ from aidial_sdk.chat_completion import (
 )
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
-    VertexAIAuthor,
-    VertexAIMessage,
+    ChatAuthor,
+    ChatMessage,
 )
 from aidial_adapter_vertexai.llm.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
@@ -32,13 +32,12 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 _SUPPORTED_ROLES = {Role.SYSTEM, Role.USER, Role.ASSISTANT}
 
 
-def _parse_message(message: Message) -> VertexAIMessage:
+def _parse_message(message: Message) -> ChatMessage:
     author = (
-        VertexAIAuthor.BOT
-        if message.role == Role.ASSISTANT
-        else VertexAIAuthor.USER
+        ChatAuthor.BOT if message.role == Role.ASSISTANT else ChatAuthor.USER
     )
-    return VertexAIMessage(author=author, content=message.content)  # type: ignore
+    assert message.content is not None
+    return ChatMessage(author=author, content=message.content)
 
 
 def _validate_messages_and_split(
@@ -96,9 +95,8 @@ def _validate_messages_and_split(
 
 def _parse_history(
     history: List[Message],
-) -> Tuple[Optional[str], List[VertexAIMessage]]:
+) -> Tuple[Optional[str], List[ChatMessage]]:
     context, history = _validate_messages_and_split(history)
-
     return context, list(map(_parse_message, history))
 
 

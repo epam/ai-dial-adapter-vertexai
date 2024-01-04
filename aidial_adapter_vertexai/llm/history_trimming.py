@@ -2,25 +2,23 @@ from typing import List, Optional
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
-    VertexAIMessage,
+    ChatMessage,
 )
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
 
 
 def _estimate_discarded_messages(
     context: Optional[str],
-    messages: List[VertexAIMessage],
+    messages: List[ChatMessage],
     prompt_tokens: int,
     max_prompt_tokens: int,
 ) -> int:
-    text_size = len(context or "") + sum(len(m["content"]) for m in messages)
+    text_size = len(context or "") + sum(len(m.content) for m in messages)
     estimated_token_size: float = text_size / prompt_tokens
 
     discarded_messages = 0
     for index in range(0, len(messages) - 1, 2):
-        text_size -= len(
-            messages[index]["content"] + messages[index + 1]["content"]
-        )
+        text_size -= len(messages[index].content + messages[index + 1].content)
         discarded_messages += 2
 
         if text_size / estimated_token_size <= max_prompt_tokens:
@@ -32,7 +30,7 @@ def _estimate_discarded_messages(
 async def get_discarded_messages_count(
     model: ChatCompletionAdapter,
     context,
-    messages: List[VertexAIMessage],
+    messages: List[ChatMessage],
     max_prompt_tokens: int,
 ) -> int:
     prompt_tokens = await model.count_prompt_tokens(context, messages)

@@ -4,7 +4,7 @@ from typing_extensions import override
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
-    VertexAIMessage,
+    ChatMessage,
 )
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
@@ -13,7 +13,7 @@ from aidial_adapter_vertexai.universal_api.request import ModelParameters
 class BisonChatAdapter(ChatCompletionAdapter):
     @override
     def _create_instance(
-        self, context: Optional[str], messages: List[VertexAIMessage]
+        self, context: Optional[str], messages: List[ChatMessage]
     ) -> Dict[str, Any]:
         return {
             "context": context or "",
@@ -45,7 +45,7 @@ class BisonChatAdapter(ChatCompletionAdapter):
 class BisonCodeChatAdapter(ChatCompletionAdapter):
     @override
     def _create_instance(
-        self, context: Optional[str], messages: List[VertexAIMessage]
+        self, context: Optional[str], messages: List[ChatMessage]
     ) -> Dict[str, Any]:
         if context is not None:
             raise ValidationError("System message is not supported")
