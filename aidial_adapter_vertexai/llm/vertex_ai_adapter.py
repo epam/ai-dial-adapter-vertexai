@@ -22,25 +22,13 @@ async def get_chat_completion_model(
 ) -> ChatCompletionAdapter:
     model_id = deployment.get_model_id()
 
-    def get_chat():
-        return BisonChatAdapter.create(model_id, project_id, location)
-
-    def get_codechat():
-        return BisonCodeChatAdapter.create(model_id, project_id, location)
-
     match deployment:
-        case ChatCompletionDeployment.CHAT_BISON_1:
-            return get_chat()
-        case ChatCompletionDeployment.CHAT_BISON_2:
-            return get_chat()
-        case ChatCompletionDeployment.CHAT_BISON_2_32K:
-            return get_chat()
-        case ChatCompletionDeployment.CODECHAT_BISON_1:
-            return get_codechat()
-        case ChatCompletionDeployment.CODECHAT_BISON_2:
-            return get_codechat()
-        case ChatCompletionDeployment.CODECHAT_BISON_2_32K:
-            return get_codechat()
+        case ChatCompletionDeployment.CHAT_BISON_1 | ChatCompletionDeployment.CHAT_BISON_2 | ChatCompletionDeployment.CHAT_BISON_2_32K:
+            return await BisonChatAdapter.create(model_id, project_id, location)
+        case ChatCompletionDeployment.CODECHAT_BISON_1 | ChatCompletionDeployment.CODECHAT_BISON_2 | ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+            return await BisonCodeChatAdapter.create(
+                model_id, project_id, location
+            )
         case _:
             assert_never(deployment)
 

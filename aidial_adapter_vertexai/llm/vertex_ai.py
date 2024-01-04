@@ -1,28 +1,34 @@
-from functools import cache
-
 import vertexai
 from aiocache import cached
-from vertexai.preview.language_models import TextEmbeddingModel
+from vertexai.preview.language_models import (
+    ChatModel,
+    CodeChatModel,
+    TextEmbeddingModel,
+)
 
-from aidial_adapter_vertexai.llm.vertex_ai_chat import VertexAIChat
 from aidial_adapter_vertexai.utils.concurrency import make_async
 
 
-# TODO: For now assume that there will be only one project and location.
+# NOTE: For now assume that there will be only one project and location.
 # We need to fix it otherwise.
 @cached()
-async def init_vertex_ai(project_id: str, location: str):
+async def init_vertex_ai(project_id: str, location: str) -> None:
     await make_async(
         lambda _: vertexai.init(project=project_id, location=location),
         (),
     )
 
 
-@cache
-def get_vertex_ai_chat(model_id: str, project_id: str, location: str):
-    return VertexAIChat.create(model_id, project_id, location)
+@cached()
+async def get_code_chat_model(model_id: str) -> CodeChatModel:
+    return await make_async(CodeChatModel.from_pretrained, model_id)
 
 
 @cached()
-async def get_vertex_ai_embeddings_model(model_id: str):
+async def get_chat_model(model_id: str) -> ChatModel:
+    return await make_async(ChatModel.from_pretrained, model_id)
+
+
+@cached()
+async def get_text_embedding_model(model_id: str):
     return await make_async(TextEmbeddingModel.from_pretrained, model_id)

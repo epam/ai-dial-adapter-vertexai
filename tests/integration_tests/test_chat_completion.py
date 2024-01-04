@@ -19,8 +19,8 @@ from tests.utils.llm import (
 )
 
 deployments = [
-    ChatCompletionDeployment.CHAT_BISON_1,
-    ChatCompletionDeployment.CODECHAT_BISON_1,
+    ChatCompletionDeployment.CHAT_BISON_2,
+    ChatCompletionDeployment.CODECHAT_BISON_2,
 ]
 
 
@@ -48,6 +48,8 @@ class TestCase:
 def get_test_cases(
     deployment: ChatCompletionDeployment, streaming: bool
 ) -> List[TestCase]:
+    is_codechat = "codechat" in deployment.value
+
     ret: List[TestCase] = []
 
     ret.append(
@@ -58,6 +60,18 @@ def get_test_cases(
             max_tokens=None,
             stop=None,
             messages=[user("2+3=?")],
+            expected=lambda s: "5" in s,
+        )
+    )
+
+    ret.append(
+        TestCase(
+            name="sys message & 2+3=5",
+            deployment=deployment,
+            streaming=streaming,
+            max_tokens=None,
+            stop=None,
+            messages=[sys("Act as helpful assistant"), user("2+3=?")],
             expected=lambda s: "5" in s,
         )
     )
@@ -98,6 +112,8 @@ def get_test_cases(
         )
     )
 
+    # NOTE: the stop sequences seems to not work
+    # for bison@002 in streaming mode
     ret.append(
         TestCase(
             name="stop sequence",
@@ -109,7 +125,7 @@ def get_test_cases(
             expected=Exception(
                 "stop sequences are not supported for code chat model"
             )
-            if deployment == ChatCompletionDeployment.CODECHAT_BISON_1
+            if is_codechat
             else lambda s: "world" not in s.lower(),
         )
     )

@@ -8,7 +8,7 @@ from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 
 class Consumer(ABC):
     @abstractmethod
-    async def append_content(self, content: str):
+    async def append_content(self, content: Optional[str]):
         pass
 
     @abstractmethod
@@ -24,14 +24,15 @@ class ChoiceConsumer(Consumer):
         self.choice = choice
         self.usage = TokenUsage()
 
-    async def append_content(self, content: str):
-        self.choice.append_content(content)
+    async def append_content(self, content: Optional[str]):
+        if content is not None:
+            self.choice.append_content(content)
 
     async def set_usage(self, usage: TokenUsage):
         self.usage = usage
 
 
-ContentCallback = Callable[[str], Coroutine[None, str, None]]
+ContentCallback = Callable[[Optional[str]], Coroutine[None, str, None]]
 
 
 class CollectConsumer(Consumer):
@@ -44,10 +45,11 @@ class CollectConsumer(Consumer):
         self.content = ""
         self.on_content = on_content
 
-    async def append_content(self, content: str):
+    async def append_content(self, content: Optional[str]):
         if self.on_content:
             await self.on_content(content)
-        self.content += content
+        if content is not None:
+            self.content += content
 
     async def set_usage(self, usage: TokenUsage):
         self.usage = usage
