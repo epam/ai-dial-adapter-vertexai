@@ -99,6 +99,6 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
 
     @override
     @classmethod
-    def create(cls, model_id: str, project_id: str, location: str):
+    async def create(cls, model_id: str, project_id: str, location: str):
         model = get_vertex_ai_chat(model_id, project_id, location)
         return cls(model)

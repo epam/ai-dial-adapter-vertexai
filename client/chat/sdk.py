@@ -1,22 +1,10 @@
 import logging
-from typing import (
-    AsyncIterable,
-    AsyncIterator,
-    Awaitable,
-    Dict,
-    Union,
-    assert_never,
-    cast,
-)
+from typing import AsyncIterator, Dict, assert_never
 
 import vertexai
 from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
 from vertexai.preview.generative_models import ChatSession as GenChatSession
-from vertexai.preview.generative_models import (
-    GenerationConfig,
-    GenerationResponse,
-    GenerativeModel,
-)
+from vertexai.preview.generative_models import GenerationConfig, GenerativeModel
 from vertexai.preview.language_models import ChatModel
 from vertexai.preview.language_models import ChatSession as LangChatSession
 from vertexai.preview.language_models import CodeChatModel
@@ -153,32 +141,30 @@ class SDKGenChat(Chat):
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
         }
 
-        response: Union[
-            Awaitable[GenerationResponse],
-            Awaitable[AsyncIterable[GenerationResponse]],
-        ] = self.chat.send_message_async(
-            content=prompt,
-            generation_config=parameters,
-            safety_settings=safety_settings,
-            stream=params.stream,
-            tools=None,
-        )
-
         if params.stream:
-            response = cast(
-                Awaitable[AsyncIterable[GenerationResponse]], response
+            response = await self.chat._send_message_streaming_async(
+                content=prompt,
+                generation_config=parameters,
+                safety_settings=safety_settings,
+                tools=None,
             )
-            async for chunk in await response:
-                # print(chunk)
+
+            async for chunk in response:
+                print(chunk)
                 yield chunk.text
         else:
-            response = cast(Awaitable[GenerationResponse], response)
-            resp = await response
-            print(resp)
-            usage_proto = resp._raw_response.usage_metadata
+            response = await self.chat._send_message_async(
+                content=prompt,
+                generation_config=parameters,
+                safety_settings=safety_settings,
+                tools=None,
+            )
+
+            print(response)
+            usage_proto = response._raw_response.usage_metadata
             usage_dict = message_to_dict(usage_proto)
             print(usage_dict)
-            yield resp.text
+            yield response.text
 
 
 async def create_sdk_chat(

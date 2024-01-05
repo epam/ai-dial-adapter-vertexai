@@ -12,7 +12,7 @@ P = TypeVar("P")
 class ChatCompletionAdapter(ABC, Generic[P]):
     @classmethod
     @abstractmethod
-    def create(
+    async def create(
         cls, model_id: str, project_id: str, location: str
     ) -> "ChatCompletionAdapter":
         pass
