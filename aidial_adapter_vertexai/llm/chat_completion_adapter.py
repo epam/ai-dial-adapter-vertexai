@@ -2,6 +2,8 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
+from typing_extensions import override
+
 from aidial_adapter_vertexai.llm.consumer import Consumer
 from aidial_adapter_vertexai.llm.vertex_ai import get_vertex_ai_chat
 from aidial_adapter_vertexai.llm.vertex_ai_chat import (
@@ -14,6 +16,35 @@ from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 
 
 class ChatCompletionAdapter(ABC):
+    @abstractmethod
+    async def chat(
+        self,
+        consumer: Consumer,
+        context: Optional[str],
+        messages: List[VertexAIMessage],
+        params: ModelParameters,
+    ) -> None:
+        pass
+
+    @abstractmethod
+    async def count_prompt_tokens(
+        self, context: Optional[str], messages: List[VertexAIMessage]
+    ) -> int:
+        pass
+
+    @abstractmethod
+    async def count_completion_tokens(self, string: str) -> int:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def create(
+        cls, model_id: str, project_id: str, location: str
+    ) -> "ChatCompletionAdapter":
+        pass
+
+
+class LowLevelChatCompletionAdapter(ChatCompletionAdapter):
     def __init__(self, model: VertexAIChat):
         self.model = model
 
@@ -27,6 +58,7 @@ class ChatCompletionAdapter(ABC):
     def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
         pass
 
+    @override
     async def chat(
         self,
         consumer: Consumer,
@@ -58,6 +90,7 @@ class ChatCompletionAdapter(ABC):
         else:
             await content_task
 
+    @override
     async def count_prompt_tokens(
         self, context: Optional[str], messages: List[VertexAIMessage]
     ) -> int:
@@ -65,6 +98,7 @@ class ChatCompletionAdapter(ABC):
             self._create_instance(context, messages)
         )
 
+    @override
     async def count_completion_tokens(self, string: str) -> int:
         return await self.model.count_tokens(
             self._create_instance(
@@ -73,6 +107,7 @@ class ChatCompletionAdapter(ABC):
             )
         )
 
+    @override
     @classmethod
     def create(cls, model_id: str, project_id: str, location: str):
         model = get_vertex_ai_chat(model_id, project_id, location)

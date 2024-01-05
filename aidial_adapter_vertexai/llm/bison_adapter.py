@@ -3,14 +3,14 @@ from typing import Any, Dict, List, Optional
 from typing_extensions import override
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
-    ChatCompletionAdapter,
+    LowLevelChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
 from aidial_adapter_vertexai.llm.vertex_ai_chat import VertexAIMessage
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 
 
-class BisonChatAdapter(ChatCompletionAdapter):
+class BisonChatAdapter(LowLevelChatCompletionAdapter):
     @override
     def _create_instance(
         self, context: Optional[str], messages: List[VertexAIMessage]
@@ -42,7 +42,7 @@ class BisonChatAdapter(ChatCompletionAdapter):
         return ret
 
 
-class BisonCodeChatAdapter(ChatCompletionAdapter):
+class BisonCodeChatAdapter(LowLevelChatCompletionAdapter):
     @override
     def _create_instance(
         self, context: Optional[str], messages: List[VertexAIMessage]
