@@ -1,16 +1,13 @@
 from typing import AsyncGenerator, List, Optional
 
-from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
+from aidial_sdk.chat_completion import Message, Role
+
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import CollectConsumer
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
-)
-from aidial_adapter_vertexai.llm.vertex_ai_chat import (
-    VertexAIAuthor,
-    VertexAIMessage,
 )
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
@@ -23,7 +20,7 @@ from client.utils.concurrency import str_callback_to_stream_generator
 
 class AdapterChat(Chat):
     model: ChatCompletionAdapter
-    history: List[VertexAIMessage]
+    history: List[Message]
 
     def __init__(self, model: ChatCompletionAdapter):
         self.model = model
@@ -42,16 +39,14 @@ class AdapterChat(Chat):
     async def send_message(
         self, prompt: str, params: ModelParameters, usage: TokenUsage
     ) -> AsyncGenerator[str, None]:
-        self.history.append(
-            VertexAIMessage(author=VertexAIAuthor.USER, content=prompt)
-        )
+        self.history.append(Message(role=Role.USER, content=prompt))
 
         consumer: Optional[CollectConsumer] = None
 
         async def task(on_content):
             nonlocal consumer
             consumer = CollectConsumer(on_content=on_content)
-            prompt = BisonPrompt(context=None, messages=self.history)
+            prompt = await self.model.parse_prompt(self.history)
             await self.model.chat(params, consumer, prompt)
 
         async def on_content(chunk: str):
@@ -63,7 +58,7 @@ class AdapterChat(Chat):
         assert consumer is not None
 
         self.history.append(
-            VertexAIMessage(author=VertexAIAuthor.BOT, content=consumer.content)
+            Message(role=Role.ASSISTANT, content=consumer.content)
         )
 
         usage.accumulate(consumer.usage)

@@ -1,5 +1,5 @@
 import logging
-from typing import AsyncIterator, Dict, assert_never
+from typing import AsyncIterator, Dict
 
 import vertexai
 from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
@@ -17,38 +17,20 @@ from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
 )
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
-from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 from client.chat.base import Chat
 
 log = logging.getLogger(__name__)
 
 
-def get_model_by_deployment(
-    deployment: ChatCompletionDeployment,
-) -> ChatModel | CodeChatModel:
-    def get_chat():
-        return ChatModel.from_pretrained(deployment)
+HarmCategory = gapic_content_types.HarmCategory
+HarmBlockThreshold = gapic_content_types.SafetySetting.HarmBlockThreshold
 
-    def get_codechat():
-        return CodeChatModel.from_pretrained(deployment)
-
-    match deployment:
-        case ChatCompletionDeployment.CHAT_BISON_1:
-            return get_chat()
-        case ChatCompletionDeployment.CHAT_BISON_2:
-            return get_chat()
-        case ChatCompletionDeployment.CHAT_BISON_2_32K:
-            return get_chat()
-        case ChatCompletionDeployment.CODECHAT_BISON_1:
-            return get_codechat()
-        case ChatCompletionDeployment.CODECHAT_BISON_2:
-            return get_codechat()
-        case ChatCompletionDeployment.CODECHAT_BISON_2_32K:
-            return get_codechat()
-        case ChatCompletionDeployment.GEMINI_PRO_1:
-            raise NotImplementedError("Gemini Pro is not supported yet")
-        case _:
-            assert_never(deployment)
+BLOCK_NONE_SAFETY_SETTINGS: Dict[HarmCategory, HarmBlockThreshold] = {
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+}
 
 
 LangSession = LangChatSession | LangCodeChatSession
@@ -94,6 +76,18 @@ class SDKLangChat(Chat):
             yield self.chat.send_message(message=prompt, **parameters).text
 
 
+def create_generation_config(params: ModelParameters) -> GenerationConfig:
+    return GenerationConfig(
+        max_output_tokens=params.max_tokens,
+        temperature=params.temperature,
+        stop_sequences=[params.stop]
+        if isinstance(params.stop, str)
+        else params.stop,
+        top_p=params.top_p,
+        candidate_count=1 if params.stream else params.n,
+    )
+
+
 class SDKGenChat(Chat):
     chat: GenChatSession
 
@@ -119,61 +113,46 @@ class SDKGenChat(Chat):
     async def send_message(
         self, prompt: str, params: ModelParameters, usage: TokenUsage
     ) -> AsyncIterator[str]:
-        parameters: GenerationConfig = GenerationConfig(
-            max_output_tokens=params.max_tokens,
-            temperature=params.temperature,
-            stop_sequences=[params.stop]
-            if isinstance(params.stop, str)
-            else params.stop,
-            top_p=params.top_p,
-            candidate_count=1 if params.stream else params.n,
-        )
-
-        HarmCategory = gapic_content_types.HarmCategory
-        HarmBlockThreshold = (
-            gapic_content_types.SafetySetting.HarmBlockThreshold
-        )
-
-        safety_settings: Dict[HarmCategory, HarmBlockThreshold] = {
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        }
+        parameters = create_generation_config(params)
 
         if params.stream:
             response = await self.chat._send_message_streaming_async(
                 content=prompt,
                 generation_config=parameters,
-                safety_settings=safety_settings,
+                safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
                 tools=None,
             )
 
             async for chunk in response:
-                print(chunk)
                 yield chunk.text
         else:
             response = await self.chat._send_message_async(
                 content=prompt,
                 generation_config=parameters,
-                safety_settings=safety_settings,
+                safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
                 tools=None,
             )
 
-            print(response)
-            usage_proto = response._raw_response.usage_metadata
-            usage_dict = message_to_dict(usage_proto)
-            print(usage_dict)
             yield response.text
 
 
 async def create_sdk_chat(
     location: str, project: str, deployment: ChatCompletionDeployment
 ) -> Chat:
-    vertexai.init(project=project, location=location)
-
     match deployment:
         case ChatCompletionDeployment.GEMINI_PRO_1:
             return await SDKGenChat.create(location, project, deployment)
         case _:
             return await SDKLangChat.create(location, project, deployment)
+
+
+def get_model_by_deployment(
+    deployment: ChatCompletionDeployment,
+) -> ChatModel | CodeChatModel:
+    match deployment:
+        case ChatCompletionDeployment.CHAT_BISON_1 | ChatCompletionDeployment.CHAT_BISON_2 | ChatCompletionDeployment.CHAT_BISON_2_32K:
+            return ChatModel.from_pretrained(deployment)
+        case ChatCompletionDeployment.CODECHAT_BISON_1 | ChatCompletionDeployment.CODECHAT_BISON_2 | ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+            return CodeChatModel.from_pretrained(deployment)
+        case _:
+            raise ValueError(f"Unsupported model: {deployment}")
