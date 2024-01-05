@@ -1,13 +1,13 @@
 import base64
 import hashlib
 import io
+import os
 from typing import Mapping, Optional, TypedDict
 from urllib.parse import urljoin
 
 import aiohttp
 
 from aidial_adapter_vertexai.utils.auth import Auth
-from aidial_adapter_vertexai.utils.env import get_env
 from aidial_adapter_vertexai.utils.log_config import app_logger as logger
 
 
@@ -121,7 +121,7 @@ def _get_extension(content_type: str) -> Optional[str]:
     return None
 
 
-DIAL_URL = get_env("DIAL_URL")
+DIAL_URL = os.getenv("DIAL_URL")
 
 
 def create_file_storage(
