@@ -10,13 +10,6 @@ P = TypeVar("P")
 
 
 class ChatCompletionAdapter(ABC, Generic[P]):
-    @classmethod
-    @abstractmethod
-    async def create(
-        cls, model_id: str, project_id: str, location: str
-    ) -> "ChatCompletionAdapter":
-        pass
-
     @abstractmethod
     async def parse_prompt(self, messages: List[Message]) -> P:
         pass

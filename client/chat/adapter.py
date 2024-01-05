@@ -31,7 +31,10 @@ class AdapterChat(Chat):
         cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "AdapterChat":
         model = await get_chat_completion_model(
-            location=location, project_id=project, deployment=deployment
+            location=location,
+            project_id=project,
+            deployment=deployment,
+            headers={},
         )
 
         return cls(model)

@@ -1,4 +1,4 @@
-from typing import AsyncIterator, Dict, List, Tuple
+from typing import AsyncIterator, Dict, List, Optional, Tuple
 
 from aidial_sdk.chat_completion import Message
 from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
@@ -21,6 +21,7 @@ from aidial_adapter_vertexai.llm.vertex_ai import (
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.storage import FileStorage
 from aidial_adapter_vertexai.utils.timer import Timer
 
 HarmCategory = gapic_content_types.HarmCategory
@@ -47,12 +48,21 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
-    def __init__(self, model: GenerativeModel):
+    def __init__(
+        self,
+        file_storage: Optional[FileStorage],
+        model: GenerativeModel,
+        has_vision: bool,
+    ):
+        self.file_storage = file_storage
         self.model = model
+        self.has_vision = has_vision
 
     @override
     async def parse_prompt(self, messages: List[Message]) -> GeminiPrompt:
-        return GeminiPrompt.parse(messages)
+        return await GeminiPrompt.parse(
+            self.file_storage, self.has_vision, messages
+        )
 
     @override
     async def truncate_prompt(
@@ -132,11 +142,15 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             resp = await self.model.count_tokens_async(string)
             return resp.total_tokens
 
-    @override
     @classmethod
     async def create(
-        cls, model_id: str, project_id: str, location: str
+        cls,
+        file_storage: Optional[FileStorage],
+        model_id: str,
+        has_vision: bool,
+        project_id: str,
+        location: str,
     ) -> "GeminiChatCompletionAdapter":
         await init_vertex_ai(project_id, location)
         model = await get_gemini_model(model_id)
-        return cls(model)
+        return cls(file_storage, model, has_vision)
