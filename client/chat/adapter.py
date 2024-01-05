@@ -1,5 +1,6 @@
 from typing import AsyncGenerator, List, Optional
 
+from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -50,7 +51,8 @@ class AdapterChat(Chat):
         async def task(on_content):
             nonlocal consumer
             consumer = CollectConsumer(on_content=on_content)
-            await self.model.chat(consumer, None, self.history, params)
+            prompt = BisonPrompt(context=None, messages=self.history)
+            await self.model.chat(params, consumer, prompt)
 
         async def on_content(chunk: str):
             return

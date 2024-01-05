@@ -4,6 +4,7 @@ from aidial_adapter_vertexai.llm.bison_adapter import (
     BisonChatAdapter,
     BisonCodeChatAdapter,
 )
+from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -22,10 +23,10 @@ async def get_chat_completion_model(
 ) -> ChatCompletionAdapter:
     model_id = deployment.get_model_id()
 
-    def get_chat():
+    def get_chat() -> ChatCompletionAdapter[BisonPrompt]:
         return BisonChatAdapter.create(model_id, project_id, location)
 
-    def get_codechat():
+    def get_codechat() -> ChatCompletionAdapter[BisonPrompt]:
         return BisonCodeChatAdapter.create(model_id, project_id, location)
 
     match deployment:
@@ -36,7 +37,7 @@ async def get_chat_completion_model(
         case ChatCompletionDeployment.CHAT_BISON_2_32K:
             return get_chat()
         case ChatCompletionDeployment.CODECHAT_BISON_1:
-            return BisonCodeChatAdapter.create(model_id, project_id, location)
+            return get_codechat()
         case ChatCompletionDeployment.CODECHAT_BISON_2:
             return get_codechat()
         case ChatCompletionDeployment.CODECHAT_BISON_2_32K:

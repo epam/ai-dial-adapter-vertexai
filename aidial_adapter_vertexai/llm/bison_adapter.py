@@ -1,23 +1,21 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from typing_extensions import override
 
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
-    LowLevelChatCompletionAdapter,
+from aidial_adapter_vertexai.llm.bison_chat_completion_adapter import (
+    BisonChatCompletionAdapter,
 )
+from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai_chat import VertexAIMessage
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 
 
-class BisonChatAdapter(LowLevelChatCompletionAdapter):
+class BisonChatAdapter(BisonChatCompletionAdapter):
     @override
-    def _create_instance(
-        self, context: Optional[str], messages: List[VertexAIMessage]
-    ) -> Dict[str, Any]:
+    def _create_instance(self, prompt: BisonPrompt) -> Dict[str, Any]:
         return {
-            "context": context or "",
-            "messages": messages,
+            "context": prompt.context or "",
+            "messages": prompt.messages,
         }
 
     @override
@@ -42,16 +40,14 @@ class BisonChatAdapter(LowLevelChatCompletionAdapter):
         return ret
 
 
-class BisonCodeChatAdapter(LowLevelChatCompletionAdapter):
+class BisonCodeChatAdapter(BisonChatCompletionAdapter):
     @override
-    def _create_instance(
-        self, context: Optional[str], messages: List[VertexAIMessage]
-    ) -> Dict[str, Any]:
-        if context is not None:
+    def _create_instance(self, prompt: BisonPrompt) -> Dict[str, Any]:
+        if prompt.context is not None:
             raise ValidationError("System message is not supported")
 
         return {
-            "messages": messages,
+            "messages": prompt.messages,
         }
 
     @override
