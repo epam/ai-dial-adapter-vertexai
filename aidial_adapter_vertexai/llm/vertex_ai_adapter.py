@@ -18,7 +18,7 @@ from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
-from aidial_adapter_vertexai.utils.storage import create_file_storage
+from aidial_adapter_vertexai.universal_api.storage import create_file_storage
 
 
 async def get_chat_completion_model(

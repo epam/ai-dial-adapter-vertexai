@@ -1,16 +1,22 @@
 import base64
-from typing import Dict, List, Optional, Tuple, assert_never, cast
+from typing import List, Optional, assert_never
 
-from aidial_sdk.chat_completion import Attachment, Message, Role
+from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
-from aidial_adapter_vertexai.llm.download_image import download_image
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.utils.image_data_url import ImageDataURL
-from aidial_adapter_vertexai.utils.log_config import app_logger as logger
-from aidial_adapter_vertexai.utils.storage import FileStorage
-from aidial_adapter_vertexai.utils.text import format_ordinal
+from aidial_adapter_vertexai.llm.process_inputs import (
+    MessageWithInputs,
+    download_inputs,
+)
+from aidial_adapter_vertexai.universal_api.storage import FileStorage
+
+# Officially supported image types by Gemini Pro Vision
+SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png"]
+SUPPORTED_FILE_EXTS = ["jpg", "jpeg", "png"]
+
+# NOTE: Gemini also supports video: "mkv", "mov", "mp4", "webm"
 
 
 class GeminiPrompt(BaseModel):
@@ -32,20 +38,35 @@ class GeminiPrompt(BaseModel):
                 "The chat history must have at least one message"
             )
 
-        res = await transform_messages(file_storage, download_images, messages)
+        image_types = SUPPORTED_IMAGE_TYPES if download_images else []
+        res = await download_inputs(file_storage, image_types, messages)
 
         if isinstance(res, str):
             raise ValidationError(res)
-
-        history, _ = res
-
-        return cls(history=history[:-1], prompt=history[-1].parts)
+        else:
+            history = list(map(to_content, res))
+            return cls(history=history[:-1], prompt=history[-1].parts)
 
     @property
     def contents(self) -> List[Content]:
         return self.history + [
             Content(role=ChatSession._USER_ROLE, parts=self.prompt)
         ]
+
+
+def to_content(msg: MessageWithInputs) -> Content:
+    message = msg.message
+    content = message.content
+    if content is None:
+        raise ValueError("Message content must be present")
+
+    parts: List[Part] = [Part.from_text(content)]
+
+    for image in msg.image_inputs:
+        data = base64.b64decode(image.data)
+        parts.append(Part.from_data(data=data, mime_type=image.type))
+
+    return Content(role=get_part_role(message.role), parts=parts)
 
 
 def get_part_role(role: Role) -> str:
@@ -64,96 +85,16 @@ def get_part_role(role: Role) -> str:
             assert_never(role)
 
 
-def get_attachments(message: Message) -> List[Attachment]:
-    custom_content = message.custom_content
-    if custom_content is None:
-        return []
-    return custom_content.attachments or []
+def get_usage(supported_exts: List[str]) -> str:
+    return f"""
+### Usage
 
+The application answers queries about attached images.
+Attach images and ask questions about them.
 
-class DownloadErrors(BaseModel):
-    errors: List[Tuple[int, str]]
+Supported image types: {', '.join(supported_exts)}.
 
-
-async def download_image_attachments(
-    file_storage: Optional[FileStorage], attachments: List[Attachment]
-) -> List[ImageDataURL] | DownloadErrors:
-    logger.debug(f"original attachments: {attachments}")
-
-    download_results: List[ImageDataURL | str] = [
-        await download_image(file_storage, attachment)
-        for attachment in attachments
-    ]
-
-    logger.debug(f"download results: {download_results}")
-
-    errors: List[Tuple[int, str]] = [
-        (idx, result)
-        for idx, result in enumerate(download_results)
-        if isinstance(result, str)
-    ]
-
-    if len(errors) > 0:
-        logger.debug(f"download errors: {errors}")
-        return DownloadErrors(errors=errors)
-
-    return cast(List[ImageDataURL], download_results)
-
-
-async def transform_message(
-    file_storage: Optional[FileStorage], download_images: bool, message: Message
-) -> Tuple[Content, int] | DownloadErrors:
-    content = message.content
-    if content is None:
-        raise ValueError("Message content must be present")
-
-    attachments = get_attachments(message)
-
-    parts: List[Part] = [Part.from_text(content)]
-
-    if download_images:
-        images = await download_image_attachments(file_storage, attachments)
-        if isinstance(images, DownloadErrors):
-            return images
-
-        for image in images:
-            data = base64.b64decode(image.data)
-            parts.append(Part.from_data(data=data, mime_type=image.type))
-
-    new_message = Content(role=get_part_role(message.role), parts=parts)
-    return new_message, len(parts) - 1
-
-
-def format_error_message(errors: Dict[int, DownloadErrors]) -> str:
-    msg = "Some of the image attachments failed to download:"
-    for i, error in errors.items():
-        msg += f"\n- {format_ordinal(i)} message from end:"
-        for j, err in error.errors:
-            msg += f"\n  - {format_ordinal(j + 1)} attachment: {err}"
-    return msg
-
-
-async def transform_messages(
-    file_storage: Optional[FileStorage],
-    download_images: bool,
-    messages: List[Message],
-) -> Tuple[List[Content], int] | str:
-    new_messages: List[Content] = []
-    image_stats = 0
-
-    errors: Dict[int, DownloadErrors] = {}
-
-    n = len(messages)
-    for idx, message in enumerate(messages):
-        result = await transform_message(file_storage, download_images, message)
-        if isinstance(result, DownloadErrors):
-            errors[n - idx] = result
-        else:
-            new_message, stats = result
-            new_messages.append(new_message)
-            image_stats += stats
-
-    if errors:
-        return format_error_message(errors)
-
-    return new_messages, image_stats
+Examples of queries:
+- "Describe this picture" for one image,
+- "What are in these images? Is there any difference between them?" for multiple images.
+""".strip()

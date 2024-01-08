@@ -19,9 +19,9 @@ from aidial_adapter_vertexai.llm.vertex_ai import (
     init_vertex_ai,
 )
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
+from aidial_adapter_vertexai.universal_api.storage import FileStorage
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.utils.storage import FileStorage
 from aidial_adapter_vertexai.utils.timer import Timer
 
 HarmCategory = gapic_content_types.HarmCategory
