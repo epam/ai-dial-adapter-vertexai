@@ -6,6 +6,7 @@ from typing import Mapping, Optional, TypedDict
 from urllib.parse import urljoin
 
 import aiohttp
+from aiohttp import hdrs
 
 from aidial_adapter_vertexai.utils.auth import Auth
 from aidial_adapter_vertexai.utils.log_config import app_logger as logger
@@ -130,7 +131,7 @@ def create_file_storage(
     if DIAL_URL is None:
         return None
 
-    auth = Auth.from_headers("authorization", headers)
+    auth = Auth.from_headers(hdrs.AUTHORIZATION, headers)
     if auth is None:
         logger.debug(
             "The request doesn't have required headers to use the DIAL file storage. "

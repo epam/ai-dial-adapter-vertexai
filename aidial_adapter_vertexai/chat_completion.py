@@ -6,6 +6,7 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import ChoiceConsumer
+from aidial_adapter_vertexai.llm.exceptions import UserError
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
 )
@@ -13,6 +14,7 @@ from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
 )
 from aidial_adapter_vertexai.server.exceptions import dial_exception_decorator
+from aidial_adapter_vertexai.universal_api.errors import report_user_error
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -28,18 +30,21 @@ class VertexAIChatCompletion(ChatCompletion):
 
     @dial_exception_decorator
     async def chat_completion(self, request: Request, response: Response):
+        headers = request.headers
         model: ChatCompletionAdapter = await get_chat_completion_model(
             deployment=ChatCompletionDeployment(request.deployment_id),
             project_id=self.project_id,
             location=self.region,
-            headers=request.headers,
+            headers=headers,
         )
 
         params = ModelParameters.create(request)
         prompt = await model.parse_prompt(request.messages)
 
         discarded_messages_count = 0
-        if params.max_prompt_tokens is not None:
+        if params.max_prompt_tokens is not None and not isinstance(
+            prompt, UserError
+        ):
             prompt, discarded_messages_count = await model.truncate_prompt(
                 prompt, params.max_prompt_tokens
             )
@@ -47,8 +52,11 @@ class VertexAIChatCompletion(ChatCompletion):
         async def generate_response(usage: TokenUsage, choice_idx: int) -> None:
             with response.create_choice() as choice:
                 consumer = ChoiceConsumer(choice)
-                await model.chat(params, consumer, prompt)
-                usage.accumulate(consumer.usage)
+                if isinstance(prompt, UserError):
+                    await report_user_error(choice, headers, prompt)
+                else:
+                    await model.chat(params, consumer, prompt)
+                    usage.accumulate(consumer.usage)
 
         usage = TokenUsage()
 

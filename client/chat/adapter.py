@@ -6,6 +6,7 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import CollectConsumer
+from aidial_adapter_vertexai.llm.exceptions import UserError
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
 )
@@ -50,7 +51,10 @@ class AdapterChat(Chat):
             nonlocal consumer
             consumer = CollectConsumer(on_content=on_content)
             prompt = await self.model.parse_prompt(self.history)
-            await self.model.chat(params, consumer, prompt)
+            if isinstance(prompt, UserError):
+                raise prompt
+            else:
+                await self.model.chat(params, consumer, prompt)
 
         async def on_content(chunk: str):
             return

@@ -4,6 +4,7 @@ from typing import Generic, List, Tuple, TypeVar
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.llm.consumer import Consumer
+from aidial_adapter_vertexai.llm.exceptions import UserError
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 
 P = TypeVar("P")
@@ -11,7 +12,7 @@ P = TypeVar("P")
 
 class ChatCompletionAdapter(ABC, Generic[P]):
     @abstractmethod
-    async def parse_prompt(self, messages: List[Message]) -> P:
+    async def parse_prompt(self, messages: List[Message]) -> P | UserError:
         pass
 
     @abstractmethod

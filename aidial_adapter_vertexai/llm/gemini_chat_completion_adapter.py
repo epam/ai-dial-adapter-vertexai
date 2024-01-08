@@ -13,6 +13,7 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import Consumer
+from aidial_adapter_vertexai.llm.exceptions import UserError
 from aidial_adapter_vertexai.llm.gemini_prompt import GeminiPrompt
 from aidial_adapter_vertexai.llm.vertex_ai import (
     get_gemini_model,
@@ -59,7 +60,9 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         self.has_vision = has_vision
 
     @override
-    async def parse_prompt(self, messages: List[Message]) -> GeminiPrompt:
+    async def parse_prompt(
+        self, messages: List[Message]
+    ) -> GeminiPrompt | UserError:
         return await GeminiPrompt.parse(
             self.file_storage, self.has_vision, messages
         )

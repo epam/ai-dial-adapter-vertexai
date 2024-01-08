@@ -1,11 +1,11 @@
 import base64
-from typing import List, Optional, assert_never
+from typing import List, Optional, Union, assert_never
 
 from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
+from aidial_adapter_vertexai.llm.exceptions import UserError, ValidationError
 from aidial_adapter_vertexai.llm.process_inputs import (
     MessageWithInputs,
     download_inputs,
@@ -32,7 +32,7 @@ class GeminiPrompt(BaseModel):
         file_storage: Optional[FileStorage],
         download_images: bool,
         messages: List[Message],
-    ) -> "GeminiPrompt":
+    ) -> Union["GeminiPrompt", UserError]:
         if len(messages) == 0:
             raise ValidationError(
                 "The chat history must have at least one message"
@@ -42,7 +42,7 @@ class GeminiPrompt(BaseModel):
         res = await download_inputs(file_storage, image_types, messages)
 
         if isinstance(res, str):
-            raise ValidationError(res)
+            return UserError(res)
         else:
             history = list(map(to_content, res))
             return cls(history=history[:-1], prompt=history[-1].parts)
@@ -58,7 +58,7 @@ def to_content(msg: MessageWithInputs) -> Content:
     message = msg.message
     content = message.content
     if content is None:
-        raise ValueError("Message content must be present")
+        raise ValidationError("Message content must be present")
 
     parts: List[Part] = [Part.from_text(content)]
 
