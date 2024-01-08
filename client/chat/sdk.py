@@ -101,7 +101,7 @@ class SDKGenChat(Chat):
         vertexai.init(project=project, location=location)
 
         match deployment:
-            case ChatCompletionDeployment.GEMINI_PRO_1:
+            case ChatCompletionDeployment.GEMINI_PRO_1 | ChatCompletionDeployment.GEMINI_PRO_VISION_1:
                 model = GenerativeModel(deployment)
             case _:
                 raise ValueError(f"Unsupported model: {deployment}")
@@ -140,7 +140,7 @@ async def create_sdk_chat(
     location: str, project: str, deployment: ChatCompletionDeployment
 ) -> Chat:
     match deployment:
-        case ChatCompletionDeployment.GEMINI_PRO_1:
+        case ChatCompletionDeployment.GEMINI_PRO_1 | ChatCompletionDeployment.GEMINI_PRO_VISION_1:
             return await SDKGenChat.create(location, project, deployment)
         case _:
             return await SDKLangChat.create(location, project, deployment)

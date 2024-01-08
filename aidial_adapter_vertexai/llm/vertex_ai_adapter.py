@@ -1,4 +1,4 @@
-from typing import assert_never
+from typing import Mapping, assert_never
 
 from aidial_adapter_vertexai.llm.bison_adapter import (
     BisonChatAdapter,
@@ -18,10 +18,14 @@ from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
+from aidial_adapter_vertexai.universal_api.storage import create_file_storage
 
 
 async def get_chat_completion_model(
-    deployment: ChatCompletionDeployment, project_id: str, location: str
+    headers: Mapping[str, str],
+    deployment: ChatCompletionDeployment,
+    project_id: str,
+    location: str,
 ) -> ChatCompletionAdapter:
     model_id = deployment.get_model_id()
 
@@ -34,7 +38,12 @@ async def get_chat_completion_model(
             )
         case ChatCompletionDeployment.GEMINI_PRO_1:
             return await GeminiChatCompletionAdapter.create(
-                model_id, project_id, location
+                None, model_id, False, project_id, location
+            )
+        case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
+            storage = create_file_storage("images/gemini-pro-vision", headers)
+            return await GeminiChatCompletionAdapter.create(
+                storage, model_id, True, project_id, location
             )
         case _:
             assert_never(deployment)

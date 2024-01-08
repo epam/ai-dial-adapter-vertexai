@@ -11,6 +11,7 @@ class ChatCompletionDeployment(str, Enum):
     CODECHAT_BISON_2_32K = "codechat-bison-32k@002"
 
     GEMINI_PRO_1 = "gemini-pro"
+    GEMINI_PRO_VISION_1 = "gemini-pro-vision"
 
     def get_model_id(self) -> str:
         return self.value

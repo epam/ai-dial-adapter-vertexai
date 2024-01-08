@@ -15,7 +15,7 @@ from google.protobuf import json_format
 from aidial_adapter_vertexai.llm.consumer import Consumer
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.utils.protobuf import print_proto_message
+from aidial_adapter_vertexai.utils.protobuf import message_to_string
 from aidial_adapter_vertexai.utils.timer import Timer
 
 
@@ -62,14 +62,14 @@ class VertexAIChat:
         request.instances.append(instance)  # type: ignore
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"predict request:\n{print_proto_message(request)}")
+            log.debug(f"predict request:\n{message_to_string(request)}")
 
         timer = Timer()
         response = await self.client.predict(request)
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"predict response [{timer}]:\n{print_proto_message(response)}"
+                f"predict response [{timer}]:\n{message_to_string(response)}"
             )
 
         prediction = json_format.MessageToDict(response.predictions.pb[0])  # type: ignore
@@ -104,7 +104,7 @@ class VertexAIChat:
         request.inputs.append(value_to_tensor(instance))  # type: ignore
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"predict request:\n{print_proto_message(request)}")
+            log.debug(f"predict request:\n{message_to_string(request)}")
 
         timer = Timer()
         response = await self.client.server_streaming_predict(request)
@@ -113,7 +113,7 @@ class VertexAIChat:
         async for chunk in response:
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
-                    f"predict response chunk:\n{print_proto_message(chunk)}"
+                    f"predict response chunk:\n{message_to_string(chunk)}"
                 )
 
             outputs: List[Any] = [
@@ -133,7 +133,7 @@ class VertexAIChat:
         request.instances.append(instance)  # type: ignore
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"count_token request:\n{print_proto_message(request)}")
+            log.debug(f"count_token request:\n{message_to_string(request)}")
 
         timer = Timer()
         response = await self.client.select_version(
@@ -142,7 +142,7 @@ class VertexAIChat:
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"count_token response [{timer}]:\n{print_proto_message(response)}"
+                f"count_token response [{timer}]:\n{message_to_string(response)}"
             )
 
         return response.total_tokens
