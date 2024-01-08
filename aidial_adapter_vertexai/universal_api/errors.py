@@ -12,6 +12,7 @@ async def report_user_error(
     is_chat_usage = headers.get(hdrs.AUTHORIZATION) is not None
     if is_chat_usage:
         stage = choice.create_stage("Error")
+        stage.open()
         stage.append_content(error.to_error_for_chat_user())
         stage.close(Status.FAILED)
     else:
