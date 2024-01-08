@@ -12,7 +12,7 @@ from aidial_adapter_vertexai.llm.process_inputs import (
 )
 from aidial_adapter_vertexai.universal_api.storage import FileStorage
 
-# Gemini Pro Pricing
+# Pricing
 # https://cloud.google.com/vertex-ai/pricing
 # Image      : $0.0025  / image
 # Video      : $0.002   / second
@@ -23,10 +23,12 @@ from aidial_adapter_vertexai.universal_api.storage import FileStorage
 # https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#image-requirements
 SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png"]
 SUPPORTED_FILE_EXTS = ["jpg", "jpeg", "png"]
-TOKENS_PER_IMAGE = 258  # Contradicts Gemini Pro Pricing
+# NOTE: Tokens per image: 258. count_tokens API call takes this into account.
+# Up to 16 images. Total max size 4MB.
 
 # NOTE: see also supported video formats
 # https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#video-requirements
+# Tokens per video: 1032
 
 
 class GeminiPrompt(BaseModel):
@@ -37,10 +39,26 @@ class GeminiPrompt(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    async def parse(
+    def parse_non_vision(
+        cls, messages: List[Message]
+    ) -> Union["GeminiPrompt", UserError]:
+        if len(messages) == 0:
+            raise ValidationError(
+                "The chat history must have at least one message"
+            )
+
+        msgs = [
+            MessageWithInputs(message=message, image_inputs=[])
+            for message in messages
+        ]
+
+        history = list(map(to_content, msgs))
+        return cls(history=history[:-1], prompt=history[-1].parts)
+
+    @classmethod
+    async def parse_vision(
         cls,
         file_storage: Optional[FileStorage],
-        download_images: bool,
         messages: List[Message],
     ) -> Union["GeminiPrompt", UserError]:
         if len(messages) == 0:
@@ -48,14 +66,25 @@ class GeminiPrompt(BaseModel):
                 "The chat history must have at least one message"
             )
 
-        image_types = SUPPORTED_IMAGE_TYPES if download_images else []
-        res = await download_inputs(file_storage, image_types, messages)
+        # NOTE: Vision model can't handle multiple messages with images.
+        # It throws "Invalid request 500" error.
+        messages = messages[-1:]
 
-        if isinstance(res, str):
-            return UserError(res, get_usage(SUPPORTED_FILE_EXTS))
-        else:
-            history = list(map(to_content, res))
-            return cls(history=history[:-1], prompt=history[-1].parts)
+        download_result = await download_inputs(
+            file_storage, SUPPORTED_IMAGE_TYPES, messages
+        )
+
+        usage = get_usage(SUPPORTED_FILE_EXTS)
+
+        if isinstance(download_result, str):
+            return UserError(download_result, usage)
+
+        image_count = sum(len(msg.image_inputs) for msg in download_result)
+        if image_count == 0:
+            return UserError("No images inputs were found", usage)
+
+        history = list(map(to_content, download_result))
+        return cls(history=history[:-1], prompt=history[-1].parts)
 
     @property
     def contents(self) -> List[Content]:
@@ -102,7 +131,9 @@ def get_usage(supported_exts: List[str]) -> str:
 ### Usage
 
 The application answers queries about attached images.
-Attach images and ask questions about them.
+Attach images and ask questions about them in the same message.
+
+Only the last message will be taken into account.
 
 Supported image types: {', '.join(supported_exts)}.
 

@@ -55,19 +55,20 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         self,
         file_storage: Optional[FileStorage],
         model: GenerativeModel,
-        has_vision: bool,
+        is_vision_model: bool,
     ):
         self.file_storage = file_storage
         self.model = model
-        self.has_vision = has_vision
+        self.is_vision_model = is_vision_model
 
     @override
     async def parse_prompt(
         self, messages: List[Message]
     ) -> GeminiPrompt | UserError:
-        return await GeminiPrompt.parse(
-            self.file_storage, self.has_vision, messages
-        )
+        if self.is_vision_model:
+            return await GeminiPrompt.parse_vision(self.file_storage, messages)
+        else:
+            return GeminiPrompt.parse_non_vision(messages)
 
     @override
     async def truncate_prompt(

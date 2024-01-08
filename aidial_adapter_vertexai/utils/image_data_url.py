@@ -23,7 +23,7 @@ class ImageDataURL(BaseModel):
         data = match.group(2)
 
         try:
-            base64.b64decode(data)
+            base64.b64decode(data, validate=True)
         except Exception:
             raise ValueError("Invalid base64 data")
 
