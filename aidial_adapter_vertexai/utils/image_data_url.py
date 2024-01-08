@@ -34,6 +34,3 @@ class ImageDataURL(BaseModel):
 
     def to_data_url(self) -> str:
         return f"data:{self.type};base64,{self.data}"
-
-    def __repr__(self) -> str:
-        return self.to_data_url()[:100] + "..."

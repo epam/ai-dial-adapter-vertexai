@@ -1,4 +1,5 @@
 import mimetypes
+from logging import DEBUG
 from typing import Dict, List, Optional, Tuple
 
 from aidial_sdk.chat_completion import Attachment, Message
@@ -10,6 +11,7 @@ from aidial_adapter_vertexai.universal_api.storage import (
     download_file_as_base64,
 )
 from aidial_adapter_vertexai.utils.image_data_url import ImageDataURL
+from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import app_logger as logger
 from aidial_adapter_vertexai.utils.text import format_ordinal
 
@@ -90,14 +92,16 @@ async def download_images(
     image_types: List[str],
     attachments: List[Attachment],
 ) -> List[ImageDataURL] | DownloadErrors:
-    logger.debug(f"original attachments: {attachments}")
+    if logger.isEnabledFor(DEBUG):
+        logger.debug(f"original attachments: {json_dumps_short(attachments)}")
 
     download_results: List[ImageDataURL | str] = [
         await download_image(file_storage, image_types, attachment)
         for attachment in attachments
     ]
 
-    logger.debug(f"download results: {download_results}")
+    if logger.isEnabledFor(DEBUG):
+        logger.debug(f"download results: {json_dumps_short(download_results)}")
 
     ret: List[ImageDataURL] = []
     errors: List[Tuple[int, str]] = []

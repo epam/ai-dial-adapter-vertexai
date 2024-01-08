@@ -9,11 +9,10 @@ from aidial_adapter_vertexai.llm.exceptions import UserError
 async def report_user_error(
     choice: Choice, headers: Mapping[str, str], error: UserError
 ) -> None:
-    message = error.message
     is_chat_usage = headers.get(hdrs.AUTHORIZATION) is not None
     if is_chat_usage:
         stage = choice.create_stage("Error")
-        stage.append_content(message)
+        stage.append_content(error.to_error_for_chat_user())
         stage.close(Status.FAILED)
     else:
-        raise Exception(message)
+        raise Exception(error.message)

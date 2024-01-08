@@ -5,6 +5,10 @@ class ValidationError(Exception):
 
 
 class UserError(Exception):
-    def __init__(self, message: str):
+    def __init__(self, message: str, usage: str):
         self.message = message
+        self.usage = usage
         super().__init__(self.message)
+
+    def to_error_for_chat_user(self) -> str:
+        return f"{self.message}\n\n{self.usage}"

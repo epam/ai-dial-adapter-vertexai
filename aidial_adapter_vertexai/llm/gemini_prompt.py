@@ -12,11 +12,21 @@ from aidial_adapter_vertexai.llm.process_inputs import (
 )
 from aidial_adapter_vertexai.universal_api.storage import FileStorage
 
-# Officially supported image types by Gemini Pro Vision
+# Gemini Pro Pricing
+# https://cloud.google.com/vertex-ai/pricing
+# Image      : $0.0025  / image
+# Video      : $0.002   / second
+# Text Input : $0.00025 / 1k characters
+# Text Output: $0.0005  / 1k characters
+
+# Supported image types
+# https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#image-requirements
 SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png"]
 SUPPORTED_FILE_EXTS = ["jpg", "jpeg", "png"]
+TOKENS_PER_IMAGE = 258  # Contradicts Gemini Pro Pricing
 
-# NOTE: Gemini also supports video: "mkv", "mov", "mp4", "webm"
+# NOTE: see also supported video formats
+# https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#video-requirements
 
 
 class GeminiPrompt(BaseModel):
@@ -42,7 +52,7 @@ class GeminiPrompt(BaseModel):
         res = await download_inputs(file_storage, image_types, messages)
 
         if isinstance(res, str):
-            return UserError(res)
+            return UserError(res, get_usage(SUPPORTED_FILE_EXTS))
         else:
             history = list(map(to_content, res))
             return cls(history=history[:-1], prompt=history[-1].parts)
@@ -60,11 +70,13 @@ def to_content(msg: MessageWithInputs) -> Content:
     if content is None:
         raise ValidationError("Message content must be present")
 
-    parts: List[Part] = [Part.from_text(content)]
+    parts: List[Part] = []
 
     for image in msg.image_inputs:
-        data = base64.b64decode(image.data)
+        data = base64.b64decode(image.data, validate=True)
         parts.append(Part.from_data(data=data, mime_type=image.type))
+
+    parts.append(Part.from_text(content))
 
     return Content(role=get_part_role(message.role), parts=parts)
 

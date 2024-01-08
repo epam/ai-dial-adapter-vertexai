@@ -1,3 +1,4 @@
+from logging import DEBUG
 from typing import AsyncIterator, Dict, List, Optional, Tuple
 
 from aidial_sdk.chat_completion import Message
@@ -22,6 +23,7 @@ from aidial_adapter_vertexai.llm.vertex_ai import (
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.storage import FileStorage
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
 
@@ -110,11 +112,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         prompt_tokens = await self.count_prompt_tokens(prompt)
 
         with Timer("predict timing: {time}", log.debug):
-            log.debug(
-                "predict request: "
-                f"parameters=({params}), "
-                f"prompt=({prompt}), "
-            )
+            if log.isEnabledFor(DEBUG):
+                log.debug(
+                    "predict request: "
+                    + json_dumps_short({"parameters": params, "prompt": prompt})
+                )
 
             completion = ""
 

@@ -2,7 +2,7 @@ import proto
 from google.protobuf import json_format
 
 
-def print_proto_message(message: proto.Message) -> str:
+def message_to_string(message: proto.Message) -> str:
     return json_format.MessageToJson(message._pb)
 
 
