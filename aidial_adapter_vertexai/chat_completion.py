@@ -53,7 +53,7 @@ class VertexAIChatCompletion(ChatCompletion):
             with response.create_choice() as choice:
                 consumer = ChoiceConsumer(choice)
                 if isinstance(prompt, UserError):
-                    await report_user_error(choice, headers, prompt)
+                    report_user_error(choice, headers, prompt)
                 else:
                     await model.chat(params, consumer, prompt)
                     usage.accumulate(consumer.usage)
