@@ -45,6 +45,8 @@ async def get_chat_completion_model(
             return await GeminiChatCompletionAdapter.create(
                 storage, model_id, True, project_id, location
             )
+        case ChatCompletionDeployment.IMAGEN_005:
+            raise NotImplementedError()
         case _:
             assert_never(deployment)
 
