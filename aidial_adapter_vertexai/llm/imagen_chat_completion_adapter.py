@@ -1,4 +1,3 @@
-import base64
 from typing import List, Optional, Tuple
 
 from aidial_sdk.chat_completion import Attachment, Message

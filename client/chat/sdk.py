@@ -7,8 +7,9 @@ import vertexai
 from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
 from vertexai.preview.generative_models import ChatSession as GenChatSession
 from vertexai.preview.generative_models import GenerationConfig, GenerativeModel
-from vertexai.preview.language_models import ChatModel, CodeChatModel
+from vertexai.preview.language_models import ChatModel
 from vertexai.preview.language_models import ChatSession as LangChatSession
+from vertexai.preview.language_models import CodeChatModel
 from vertexai.preview.language_models import (
     CodeChatSession as LangCodeChatSession,
 )
@@ -24,7 +25,7 @@ from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.files import get_project_root
 from client.chat.base import Chat
-from client.utils.printing import print_error, print_info
+from client.utils.printing import print_info
 
 log = logging.getLogger(__name__)
 
