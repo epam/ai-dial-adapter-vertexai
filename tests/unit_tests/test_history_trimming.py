@@ -3,13 +3,14 @@ from unittest.mock import Mock, call
 
 import pytest
 
+from aidial_adapter_vertexai.llm.bison_history_trimming import (
+    get_discarded_messages_count,
+)
+from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.history_trimming import (
-    get_discarded_messages_count,
-)
 from aidial_adapter_vertexai.llm.vertex_ai_chat import (
     VertexAIAuthor,
     VertexAIMessage,
@@ -25,14 +26,14 @@ async def test_history_truncation_no_discarded_messages():
         VertexAIMessage(author=VertexAIAuthor.USER, content="Hello"),
     ]
 
+    prompt = BisonPrompt(context=None, messages=messages)
+
     discarded_messages_count = await get_discarded_messages_count(
-        chat_adapter, None, messages, 1
+        chat_adapter, prompt, 1
     )
 
     assert discarded_messages_count == 0
-    assert chat_adapter.count_prompt_tokens.call_args_list == [
-        call(None, messages)
-    ]
+    assert chat_adapter.count_prompt_tokens.call_args_list == [call(prompt)]
 
 
 @pytest.mark.asyncio
@@ -44,8 +45,10 @@ async def test_history_truncation_prompt_is_too_big():
         VertexAIMessage(author=VertexAIAuthor.USER, content="Hello")
     ]
 
+    prompt = BisonPrompt(context=None, messages=messages)
+
     with pytest.raises(ValidationError) as exc_info:
-        await get_discarded_messages_count(chat_adapter, None, messages, 1)
+        await get_discarded_messages_count(chat_adapter, prompt, 1)
 
     assert (
         str(exc_info.value)
@@ -67,13 +70,15 @@ async def test_history_truncation_estimated_precisely():
         VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
     ]
 
+    prompt = BisonPrompt(context=context, messages=messages)
+
     discarded_messages_count = await get_discarded_messages_count(
-        chat_adapter, context, messages, 2
+        chat_adapter, prompt, 2
     )
     assert discarded_messages_count == 4
     assert chat_adapter.count_prompt_tokens.call_args_list == [
-        call(context, messages),
-        call(context, [messages[4]]),
+        call(prompt),
+        call(BisonPrompt(context=context, messages=[messages[4]])),
     ]
 
 
@@ -91,14 +96,16 @@ async def test_history_truncation_correct_but_not_exact():
         VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
     ]
 
+    prompt = BisonPrompt(context=context, messages=messages)
+
     discarded_messages_count = await get_discarded_messages_count(
-        chat_adapter, context, messages, 2
+        chat_adapter, prompt, 2
     )
     assert discarded_messages_count == 4
     assert chat_adapter.count_prompt_tokens.call_args_list == [
-        call(context, messages),
-        call(context, [messages[4]]),
-        call(None, messages[2:4]),
+        call(prompt),
+        call(BisonPrompt(context=context, messages=[messages[4]])),
+        call(BisonPrompt(context=None, messages=messages[2:4])),
     ]
 
 
@@ -116,14 +123,16 @@ async def test_history_truncation_underestimated():
         VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
     ]
 
+    prompt = BisonPrompt(context=context, messages=messages)
+
     discarded_messages_count = await get_discarded_messages_count(
-        chat_adapter, context, messages, 2
+        chat_adapter, prompt, 2
     )
     assert discarded_messages_count == 2
     assert chat_adapter.count_prompt_tokens.call_args_list == [
-        call(context, messages),
-        call(context, [messages[4]]),
-        call(None, messages[2:4]),
+        call(prompt),
+        call(BisonPrompt(context=context, messages=[messages[4]])),
+        call(BisonPrompt(context=None, messages=messages[2:4])),
     ]
 
 
@@ -147,14 +156,16 @@ async def test_history_truncation_overestimated():
         VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
     ]
 
+    prompt = BisonPrompt(context=context, messages=messages)
+
     discarded_messages_count = await get_discarded_messages_count(
-        chat_adapter, context, messages, 2
+        chat_adapter, prompt, 2
     )
     assert discarded_messages_count == 4
     assert chat_adapter.count_prompt_tokens.call_args_list == [
-        call(context, messages),
-        call(context, messages[2:5]),
-        call(None, messages[2:4]),
+        call(prompt),
+        call(BisonPrompt(context=context, messages=messages[2:5])),
+        call(BisonPrompt(context=None, messages=messages[2:4])),
     ]
 
 
@@ -178,8 +189,10 @@ async def test_history_truncation_overestimated_and_last_message_is_too_big():
         VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
     ]
 
+    prompt = BisonPrompt(context=context, messages=messages)
+
     with pytest.raises(ValidationError) as exc_info:
-        await get_discarded_messages_count(chat_adapter, context, messages, 2)
+        await get_discarded_messages_count(chat_adapter, prompt, 2)
 
     assert (
         str(exc_info.value)

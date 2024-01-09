@@ -1,18 +1,15 @@
-from typing import List, Optional
-
+from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai_chat import VertexAIMessage
 
 
 def _estimate_discarded_messages(
-    context: Optional[str],
-    messages: List[VertexAIMessage],
-    prompt_tokens: int,
-    max_prompt_tokens: int,
+    prompt: BisonPrompt, prompt_tokens: int, max_prompt_tokens: int
 ) -> int:
+    context, messages = prompt.context, prompt.messages
+
     text_size = len(context or "") + sum(len(m["content"]) for m in messages)
     estimated_token_size: float = text_size / prompt_tokens
 
@@ -30,12 +27,13 @@ def _estimate_discarded_messages(
 
 
 async def get_discarded_messages_count(
-    model: ChatCompletionAdapter,
-    context,
-    messages: List[VertexAIMessage],
+    model: ChatCompletionAdapter[BisonPrompt],
+    prompt: BisonPrompt,
     max_prompt_tokens: int,
 ) -> int:
-    prompt_tokens = await model.count_prompt_tokens(context, messages)
+    context, messages = prompt.context, prompt.messages
+
+    prompt_tokens = await model.count_prompt_tokens(prompt)
     if prompt_tokens <= max_prompt_tokens or prompt_tokens == 0:
         return 0
 
@@ -45,10 +43,13 @@ async def get_discarded_messages_count(
         )
 
     discarded_messages_count = _estimate_discarded_messages(
-        context, messages, prompt_tokens, max_prompt_tokens
+        prompt, prompt_tokens, max_prompt_tokens
     )
+
     prompt_tokens = await model.count_prompt_tokens(
-        context, messages[discarded_messages_count:]
+        BisonPrompt(
+            context=context, messages=messages[discarded_messages_count:]
+        )
     )
 
     if prompt_tokens == max_prompt_tokens:
@@ -56,7 +57,7 @@ async def get_discarded_messages_count(
     elif prompt_tokens > max_prompt_tokens:
         for index in range(discarded_messages_count, len(messages) - 1, 2):
             prompt_tokens -= await model.count_prompt_tokens(
-                None, messages[index : index + 2]
+                BisonPrompt(context=None, messages=messages[index : index + 2])
             )
             discarded_messages_count += 2
 
@@ -70,7 +71,7 @@ async def get_discarded_messages_count(
     else:  # prompt_tokens < max_prompt_tokens
         for index in range(discarded_messages_count - 2, 0, -2):
             prompt_tokens += await model.count_prompt_tokens(
-                None, messages[index : index + 2]
+                BisonPrompt(context=None, messages=messages[index : index + 2])
             )
             if prompt_tokens > max_prompt_tokens:
                 break

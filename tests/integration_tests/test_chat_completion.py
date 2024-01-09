@@ -21,6 +21,7 @@ from tests.utils.llm import (
 deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
     ChatCompletionDeployment.CODECHAT_BISON_1,
+    ChatCompletionDeployment.GEMINI_PRO_1,
 ]
 
 
@@ -82,7 +83,11 @@ def get_test_cases(
             max_tokens=None,
             stop=None,
             messages=[sys(""), user("2+4=?")],
-            expected=lambda s: "6" in s,
+            expected=Exception(
+                "System messages are not allowed in Gemini models"
+            )
+            if "gemini" in deployment.value.lower()
+            else lambda s: "6" in s,
         )
     )
 
@@ -109,7 +114,7 @@ def get_test_cases(
             expected=Exception(
                 "stop sequences are not supported for code chat model"
             )
-            if deployment == ChatCompletionDeployment.CODECHAT_BISON_1
+            if "codechat" in deployment.value.lower()
             else lambda s: "world" not in s.lower(),
         )
     )

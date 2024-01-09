@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 
 from aidial_adapter_vertexai.llm.vertex_ai import (
     TextEmbeddingModel,
-    get_vertex_ai_embeddings_model,
+    get_embedding_model,
     init_vertex_ai,
 )
 from aidial_adapter_vertexai.universal_api.request import EmbeddingsType
@@ -22,7 +22,7 @@ class EmbeddingsAdapter(ABC):
         location: str,
     ):
         await init_vertex_ai(project_id, location)
-        model = await get_vertex_ai_embeddings_model(model_id)
+        model = await get_embedding_model(model_id)
         return cls(model)
 
     @abstractmethod
