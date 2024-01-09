@@ -7,9 +7,8 @@ import vertexai
 from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
 from vertexai.preview.generative_models import ChatSession as GenChatSession
 from vertexai.preview.generative_models import GenerationConfig, GenerativeModel
-from vertexai.preview.language_models import ChatModel
+from vertexai.preview.language_models import ChatModel, CodeChatModel
 from vertexai.preview.language_models import ChatSession as LangChatSession
-from vertexai.preview.language_models import CodeChatModel
 from vertexai.preview.language_models import (
     CodeChatSession as LangCodeChatSession,
 )
@@ -25,6 +24,7 @@ from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.files import get_project_root
 from client.chat.base import Chat
+from client.utils.printing import print_error, print_info
 
 log = logging.getLogger(__name__)
 
@@ -180,6 +180,11 @@ class SDKImagenChat(Chat):
         response: ImageGenerationResponse = self.model.generate_images(
             prompt, number_of_images=1, seed=None
         )
+
+        print_info(f"Response: {response}")
+
+        if len(response.images) == 0:
+            raise RuntimeError("Expected 1 image in response, but got none")
 
         filename = str(SDKImagenChat.get_filename(".png"))
         response[0].save(filename)

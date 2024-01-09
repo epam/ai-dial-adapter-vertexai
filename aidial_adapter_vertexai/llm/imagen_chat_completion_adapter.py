@@ -1,8 +1,14 @@
-from typing import AsyncIterator, List, Optional, Tuple
+import base64
+from typing import List, Optional, Tuple
 
-from aidial_sdk.chat_completion import Message
+from aidial_sdk.chat_completion import Attachment, Message
+from PIL import Image as PIL_Image
 from typing_extensions import override
-from vertexai.preview.generative_models import GenerativeModel
+from vertexai.preview.vision_models import (
+    GeneratedImage,
+    ImageGenerationModel,
+    ImageGenerationResponse,
+)
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
@@ -10,11 +16,14 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
 from aidial_adapter_vertexai.llm.consumer import Consumer
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
 from aidial_adapter_vertexai.llm.vertex_ai import (
-    get_gemini_model,
+    get_image_generation_model,
     init_vertex_ai,
 )
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.storage import FileStorage
+from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.timer import Timer
 
 ImagenPrompt = str
 
@@ -23,12 +32,10 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     def __init__(
         self,
         file_storage: Optional[FileStorage],
-        model: GenerativeModel,
-        is_vision_model: bool,
+        model: ImageGenerationModel,
     ):
         self.file_storage = file_storage
         self.model = model
-        self.is_vision_model = is_vision_model
 
     @override
     async def parse_prompt(self, messages: List[Message]) -> ImagenPrompt:
@@ -47,16 +54,57 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     ) -> Tuple[ImagenPrompt, int]:
         return prompt, 0
 
-    async def send_message_async(
-        self, params: ModelParameters, prompt: ImagenPrompt
-    ) -> AsyncIterator[str]:
-        yield "oops"
+    @staticmethod
+    def get_image_type(image: PIL_Image.Image) -> str:
+        match image.format:
+            case "JPEG":
+                return "image/jpeg"
+            case "PNG":
+                return "image/png"
+            case _:
+                raise ValueError(f"Unknown image mode: {image.mode}")
 
     @override
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: ImagenPrompt
     ) -> None:
-        pass
+        prompt_tokens = await self.count_prompt_tokens(prompt)
+
+        with Timer("predict timing: {time}", log.debug):
+            response: ImageGenerationResponse = self.model.generate_images(
+                prompt, number_of_images=1, seed=None
+            )
+
+        if len(response.images) == 0:
+            raise RuntimeError("Expected 1 image in response, but got none")
+
+        image: GeneratedImage = response[0]
+
+        type: str = self.get_image_type(image._pil_image)
+        data: str = image._as_base64_string()
+
+        attachment: Attachment = Attachment(title="Image", type=type, data=data)
+
+        if self.file_storage is not None:
+            with Timer("upload to file storage: {time}", log.debug):
+                meta = await self.file_storage.upload_file_as_base64(data, type)
+
+            attachment.data = None
+            attachment.url = meta["url"]
+
+        await consumer.add_attachment(attachment)
+
+        # Avoid generating empty content
+        completion = " "
+        await consumer.append_content(completion)
+
+        completion_tokens = await self.count_completion_tokens(completion)
+        await consumer.set_usage(
+            TokenUsage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+        )
 
     @override
     async def count_prompt_tokens(self, prompt: ImagenPrompt) -> int:
@@ -71,10 +119,9 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         cls,
         file_storage: Optional[FileStorage],
         model_id: str,
-        has_vision: bool,
         project_id: str,
         location: str,
     ) -> "ImagenChatCompletionAdapter":
         await init_vertex_ai(project_id, location)
-        model = await get_gemini_model(model_id)
-        return cls(file_storage, model, has_vision)
+        model = await get_image_generation_model(model_id)
+        return cls(file_storage, model)

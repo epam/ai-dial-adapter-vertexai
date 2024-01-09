@@ -14,6 +14,9 @@ from aidial_adapter_vertexai.llm.gecko_embeddings import (
 from aidial_adapter_vertexai.llm.gemini_chat_completion_adapter import (
     GeminiChatCompletionAdapter,
 )
+from aidial_adapter_vertexai.llm.imagen_chat_completion_adapter import (
+    ImagenChatCompletionAdapter,
+)
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
@@ -46,7 +49,10 @@ async def get_chat_completion_model(
                 storage, model_id, True, project_id, location
             )
         case ChatCompletionDeployment.IMAGEN_005:
-            raise NotImplementedError()
+            storage = create_file_storage("images/imagen", headers)
+            return await ImagenChatCompletionAdapter.create(
+                storage, model_id, project_id, location
+            )
         case _:
             assert_never(deployment)
 
