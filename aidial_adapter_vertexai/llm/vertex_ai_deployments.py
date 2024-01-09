@@ -13,6 +13,8 @@ class ChatCompletionDeployment(str, Enum):
     GEMINI_PRO_1 = "gemini-pro"
     GEMINI_PRO_VISION_1 = "gemini-pro-vision"
 
+    IMAGEN_005 = "imagegeneration@005"
+
     def get_model_id(self) -> str:
         return self.value
 

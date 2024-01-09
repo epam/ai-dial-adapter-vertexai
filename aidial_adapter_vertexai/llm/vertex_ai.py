@@ -4,6 +4,7 @@ import vertexai
 from aiocache import cached
 from vertexai.preview.generative_models import GenerativeModel
 from vertexai.preview.language_models import TextEmbeddingModel
+from vertexai.preview.vision_models import ImageGenerationModel
 
 from aidial_adapter_vertexai.llm.vertex_ai_chat import VertexAIChat
 from aidial_adapter_vertexai.utils.concurrency import make_async
@@ -33,3 +34,8 @@ async def get_gemini_model(model_id: str) -> GenerativeModel:
 @cached()
 async def get_embedding_model(model_id: str) -> TextEmbeddingModel:
     return await make_async(TextEmbeddingModel.from_pretrained, model_id)
+
+
+@cached()
+async def get_image_generation_model(model_id: str) -> ImageGenerationModel:
+    return await make_async(ImageGenerationModel.from_pretrained, model_id)
