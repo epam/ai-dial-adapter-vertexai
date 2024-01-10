@@ -46,7 +46,8 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
         if isinstance(params.stop, str)
         else params.stop,
         top_p=params.top_p,
-        candidate_count=1 if params.stream else params.n,
+        # NOTE: param.n is currently emulated via multiple requests
+        candidate_count=1,
     )
 
 

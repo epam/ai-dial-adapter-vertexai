@@ -12,21 +12,15 @@ from aidial_adapter_vertexai.llm.process_inputs import (
 )
 from aidial_adapter_vertexai.universal_api.storage import FileStorage
 
-# Pricing
-# https://cloud.google.com/vertex-ai/pricing
-# Image      : $0.0025  / image
-# Video      : $0.002   / second
-# Text Input : $0.00025 / 1k characters
-# Text Output: $0.0005  / 1k characters
-
-# Supported image types
+# Pricing info: https://cloud.google.com/vertex-ai/pricing
+# Supported image types:
 # https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#image-requirements
 SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png"]
 SUPPORTED_FILE_EXTS = ["jpg", "jpeg", "png"]
 # NOTE: Tokens per image: 258. count_tokens API call takes this into account.
 # Up to 16 images. Total max size 4MB.
 
-# NOTE: see also supported video formats
+# NOTE: See also supported video formats:
 # https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#video-requirements
 # Tokens per video: 1032
 
@@ -39,13 +33,13 @@ class GeminiPrompt(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    def parse_non_vision(
-        cls, messages: List[Message]
-    ) -> Union["GeminiPrompt", UserError]:
+    def parse_non_vision(cls, messages: List[Message]) -> "GeminiPrompt":
         if len(messages) == 0:
             raise ValidationError(
                 "The chat history must have at least one message"
             )
+
+        messages = accommodate_first_system_message(messages)
 
         msgs = [
             MessageWithInputs(message=message, image_inputs=[])
@@ -93,6 +87,30 @@ class GeminiPrompt(BaseModel):
         ]
 
 
+def accommodate_first_system_message(messages: List[Message]) -> List[Message]:
+    if len(messages) == 0:
+        return messages
+
+    first_message: Message = messages[0]
+    if first_message.role != Role.SYSTEM:
+        return messages
+
+    if len(messages) == 1:
+        first_message = first_message.copy()
+        first_message.role = Role.USER
+        return [first_message]
+
+    second_message = messages[1]
+    if second_message.role != Role.USER:
+        return messages
+
+    if first_message.content is None or second_message.content is None:
+        return messages
+
+    content = first_message.content + "\n" + second_message.content
+    return [Message(role=Role.USER, content=content)] + messages[2:]
+
+
 def to_content(msg: MessageWithInputs) -> Content:
     message = msg.message
     content = message.content
@@ -114,7 +132,7 @@ def get_part_role(role: Role) -> str:
     match role:
         case Role.SYSTEM:
             raise ValidationError(
-                "System messages are not allowed in Gemini models"
+                "System messages other than the first system message are not allowed"
             )
         case Role.USER:
             return ChatSession._USER_ROLE
