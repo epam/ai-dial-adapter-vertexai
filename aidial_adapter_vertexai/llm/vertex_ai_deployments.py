@@ -10,15 +10,14 @@ class ChatCompletionDeployment(str, Enum):
     CODECHAT_BISON_2 = "codechat-bison@002"
     CODECHAT_BISON_2_32K = "codechat-bison-32k@002"
 
+    GEMINI_PRO_1 = "gemini-pro"
+
     def get_model_id(self) -> str:
         return self.value
 
 
-GECKO_MODEL_1 = "textembedding-gecko@001"
-
-
 class EmbeddingsDeployment(str, Enum):
-    TEXT_EMBEDDING_GECKO_1 = GECKO_MODEL_1
+    TEXT_EMBEDDING_GECKO_1 = "textembedding-gecko@001"
 
     def get_model_id(self) -> str:
-        return GECKO_MODEL_1
+        return self.value

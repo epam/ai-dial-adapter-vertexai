@@ -21,6 +21,7 @@ from tests.utils.llm import (
 deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
     ChatCompletionDeployment.CODECHAT_BISON_1,
+    ChatCompletionDeployment.GEMINI_PRO_1,
 ]
 
 
@@ -38,11 +39,21 @@ class TestCase:
     expected: Callable[[str], bool] | Exception
 
     def get_id(self):
-        max_tokens_str = str(self.max_tokens) if self.max_tokens else "inf"
-        stop_sequence_str = str(self.stop) if self.stop else "nonstop"
-        return sanitize_test_name(
-            f"{self.deployment.value} {self.streaming} {max_tokens_str} {stop_sequence_str} {self.name}"
+        max_tokens_str = (
+            f"max_tokens={self.max_tokens}"
+            if self.max_tokens is not None
+            else ""
         )
+        stop_sequence_str = f"stop={self.stop}" if self.stop is not None else ""
+        streaming_str = "streaming" if self.streaming else "non-streaming"
+        segments = [
+            self.deployment.value,
+            streaming_str,
+            max_tokens_str,
+            stop_sequence_str,
+            self.name,
+        ]
+        return sanitize_test_name(" ".join(s for s in segments if s))
 
 
 def get_test_cases(
@@ -88,6 +99,20 @@ def get_test_cases(
 
     ret.append(
         TestCase(
+            name="non empty sys message",
+            deployment=deployment,
+            streaming=streaming,
+            max_tokens=None,
+            stop=None,
+            messages=[sys("Act as helpful assistant"), user("2+5=?")],
+            expected=Exception("System message is not supported")
+            if "codechat" in deployment.value.lower()
+            else lambda s: "7" in s,
+        )
+    )
+
+    ret.append(
+        TestCase(
             name="max tokens 1",
             deployment=deployment,
             streaming=streaming,
@@ -109,7 +134,7 @@ def get_test_cases(
             expected=Exception(
                 "stop sequences are not supported for code chat model"
             )
-            if deployment == ChatCompletionDeployment.CODECHAT_BISON_1
+            if "codechat" in deployment.value.lower()
             else lambda s: "world" not in s.lower(),
         )
     )
