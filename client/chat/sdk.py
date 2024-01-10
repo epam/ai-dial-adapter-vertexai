@@ -1,8 +1,11 @@
+"""
+Classes to test the various models directly through the VertexAI SDK
+"""
+
 import logging
-from typing import AsyncIterator, Dict
+from typing import AsyncIterator
 
 import vertexai
-from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
 from vertexai.preview.generative_models import ChatSession as GenChatSession
 from vertexai.preview.generative_models import GenerationConfig, GenerativeModel
 from vertexai.preview.language_models import ChatModel
@@ -12,6 +15,9 @@ from vertexai.preview.language_models import (
     CodeChatSession as LangCodeChatSession,
 )
 
+from aidial_adapter_vertexai.llm.gemini_chat_completion_adapter import (
+    BLOCK_NONE_SAFETY_SETTINGS,
+)
 from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
     ChatCompletionDeployment,
 )
@@ -20,18 +26,6 @@ from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from client.chat.base import Chat
 
 log = logging.getLogger(__name__)
-
-
-HarmCategory = gapic_content_types.HarmCategory
-HarmBlockThreshold = gapic_content_types.SafetySetting.HarmBlockThreshold
-
-BLOCK_NONE_SAFETY_SETTINGS: Dict[HarmCategory, HarmBlockThreshold] = {
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-}
-
 
 LangSession = LangChatSession | LangCodeChatSession
 
