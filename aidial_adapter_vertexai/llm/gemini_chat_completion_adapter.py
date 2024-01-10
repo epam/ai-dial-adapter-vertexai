@@ -154,10 +154,10 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         cls,
         file_storage: Optional[FileStorage],
         model_id: str,
-        has_vision: bool,
+        is_vision_model: bool,
         project_id: str,
         location: str,
     ) -> "GeminiChatCompletionAdapter":
         await init_vertex_ai(project_id, location)
         model = await get_gemini_model(model_id)
-        return cls(file_storage, model, has_vision)
+        return cls(file_storage, model, is_vision_model)

@@ -1,8 +1,8 @@
 import json
 from typing import Any
 
-import proto
 from pydantic import BaseModel
+from vertexai.preview.generative_models import Content, Part
 
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
@@ -25,12 +25,11 @@ def to_dict(item: Any) -> Any:
     if isinstance(item, BaseModel):
         return to_dict(item.dict())
 
-    # For vertexai.preview.generative_models.[Content|Part]
-    msg = getattr(item, "_raw_part", None) or getattr(
-        item, "_raw_content", None
-    )
-    if msg is not None and isinstance(msg, proto.Message):
-        return to_dict(message_to_dict(msg))
+    if isinstance(item, Content):
+        return message_to_dict(item._raw_content)
+
+    if isinstance(item, Part):
+        return message_to_dict(item._raw_part)
 
     return item
 

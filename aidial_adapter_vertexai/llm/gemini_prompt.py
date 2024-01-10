@@ -68,14 +68,14 @@ class GeminiPrompt(BaseModel):
             file_storage, SUPPORTED_IMAGE_TYPES, messages
         )
 
-        usage = get_usage(SUPPORTED_FILE_EXTS)
+        usage_message = get_usage_message(SUPPORTED_FILE_EXTS)
 
         if isinstance(download_result, str):
-            return UserError(download_result, usage)
+            return UserError(download_result, usage_message)
 
         image_count = sum(len(msg.image_inputs) for msg in download_result)
         if image_count == 0:
-            return UserError("No images inputs were found", usage)
+            return UserError("No images inputs were found", usage_message)
 
         history = list(map(to_content, download_result))
         return cls(history=history[:-1], prompt=history[-1].parts)
@@ -144,7 +144,7 @@ def get_part_role(role: Role) -> str:
             assert_never(role)
 
 
-def get_usage(supported_exts: List[str]) -> str:
+def get_usage_message(supported_exts: List[str]) -> str:
     return f"""
 ### Usage
 
