@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, assert_never
 
 from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
@@ -54,8 +54,10 @@ class SimpleMessage(BaseModel):
                 role = ChatSession._USER_ROLE
             case Role.ASSISTANT:
                 role = ChatSession._MODEL_ROLE
-            case Role.FUNCTION:
+            case Role.FUNCTION | Role.TOOL:
                 raise ValidationError("Function messages are not supported")
+            case _:
+                assert_never(message.role)
 
         return SimpleMessage(role=role, content=content)
 
