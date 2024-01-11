@@ -46,6 +46,7 @@ class VertexAIChatCompletion(ChatCompletion):
                 stage.open()
                 stage.append_content(prompt.to_message_for_chat_user())
                 stage.close(Status.FAILED)
+            await response.aflush()
 
             # Raise exception for a DIAL API client
             raise Exception(prompt.message)
