@@ -1,10 +1,12 @@
 import json
 import logging.config
+import os
 from typing import Optional
 
 from aidial_sdk import DIALApp
 from aidial_sdk import HTTPException as DialException
-from fastapi import Body, Header, Path, Request, Response
+from aidial_sdk.telemetry.types import TelemetryConfig, TracingConfig
+from fastapi import Body, Header, Path, Request
 from fastapi.responses import JSONResponse
 
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
@@ -29,15 +31,26 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 logging.config.dictConfig(LogConfig().dict())
 
-region = get_env("DEFAULT_REGION")
-gcp_project_id = get_env("GCP_PROJECT_ID")
+DEFAULT_REGION = get_env("DEFAULT_REGION")
+GCP_PROJECT_ID = get_env("GCP_PROJECT_ID")
 
-app = DIALApp(description="Google VertexAI adapter for DIAL API")
+OTLP_EXPORT_ENABLED: bool = (
+    os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") is not None
+)
 
-
-@app.get("/healthcheck")
-def healthcheck():
-    return Response("OK")
+app = DIALApp(
+    description="Google VertexAI adapter for DIAL API",
+    add_healthcheck=True,
+    telemetry_config=TelemetryConfig(
+        service_name="bedrock",
+        tracing=TracingConfig(
+            otlp_export=OTLP_EXPORT_ENABLED,
+            logging=True,
+        ),
+    )
+    if OTLP_EXPORT_ENABLED
+    else None,
+)
 
 
 @app.get("/openai/models")
@@ -55,8 +68,8 @@ for deployment in ChatCompletionDeployment:
     app.add_chat_completion(
         deployment.get_model_id(),
         VertexAIChatCompletion(
-            project_id=gcp_project_id,
-            region=region,
+            project_id=GCP_PROJECT_ID,
+            region=DEFAULT_REGION,
         ),
     )
 
@@ -76,9 +89,9 @@ async def embeddings(
     log.debug(f"query:\n{json.dumps(query.dict(exclude_none=True))}")
 
     model = await get_embeddings_model(
-        location=region,
+        location=DEFAULT_REGION,
         deployment=deployment,
-        project_id=gcp_project_id,
+        project_id=GCP_PROJECT_ID,
     )
 
     response = await model.embeddings(
