@@ -140,6 +140,8 @@ def get_part_role(role: Role) -> str:
             return ChatSession._MODEL_ROLE
         case Role.FUNCTION:
             raise ValidationError("Function messages are not supported")
+        case Role.TOOL:
+            raise ValidationError("Tool messages are not supported")
         case _:
             assert_never(role)
 
