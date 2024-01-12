@@ -93,11 +93,7 @@ def get_test_cases(
             max_tokens=None,
             stop=None,
             messages=[sys(""), user("2+4=?")],
-            expected=Exception(
-                "System messages are not allowed in Gemini models"
-            )
-            if "gemini" in deployment.value.lower()
-            else lambda s: "6" in s,
+            expected=lambda s: "6" in s,
         )
     )
 
