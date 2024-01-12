@@ -1,9 +1,10 @@
 """
 Classes to test the various models directly through the VertexAI SDK
 """
-
 import logging
-from typing import AsyncIterator
+from datetime import datetime
+from pathlib import Path
+from typing import AsyncIterator, assert_never
 
 import vertexai
 from vertexai.preview.generative_models import ChatSession as GenChatSession
@@ -13,6 +14,10 @@ from vertexai.preview.language_models import ChatSession as LangChatSession
 from vertexai.preview.language_models import CodeChatModel
 from vertexai.preview.language_models import (
     CodeChatSession as LangCodeChatSession,
+)
+from vertexai.preview.vision_models import (
+    ImageGenerationModel,
+    ImageGenerationResponse,
 )
 
 from aidial_adapter_vertexai.llm.gemini_chat_completion_adapter import (
@@ -24,6 +29,8 @@ from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from client.chat.base import Chat
+from client.utils.files import get_project_root
+from client.utils.printing import print_info
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +48,7 @@ class SDKLangChat(Chat):
         cls, location: str, project: str, deployment: ChatCompletionDeployment
     ) -> "SDKLangChat":
         vertexai.init(project=project, location=location)
-        model = get_model_by_deployment(deployment)
+        model = get_language_model_by_deployment(deployment)
         chat = model.start_chat()
         return cls(chat)
 
@@ -130,17 +137,63 @@ class SDKGenChat(Chat):
             yield response.text
 
 
+class SDKImagenChat(Chat):
+    model: ImageGenerationModel
+
+    def __init__(self, model):
+        self.model = model
+
+    @classmethod
+    async def create(
+        cls, location: str, project: str, deployment: ChatCompletionDeployment
+    ) -> "SDKImagenChat":
+        vertexai.init(project=project, location=location)
+        model = ImageGenerationModel.from_pretrained(deployment.value)
+        return cls(model)
+
+    @staticmethod
+    def get_filename(ext) -> Path:
+        dir = get_project_root() / "~images"
+        dir.mkdir(parents=True, exist_ok=True)
+
+        current_time = datetime.now()
+        filename = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+        filename += ext
+
+        return dir / filename
+
+    async def send_message(
+        self, prompt: str, params: ModelParameters, usage: TokenUsage
+    ) -> AsyncIterator[str]:
+        response: ImageGenerationResponse = self.model.generate_images(
+            prompt, number_of_images=1, seed=None
+        )
+
+        print_info(f"Response: {response}")
+
+        if len(response.images) == 0:
+            raise RuntimeError("Expected 1 image in response, but got none")
+
+        filename = str(SDKImagenChat.get_filename(".png"))
+        response[0].save(filename)
+        yield f"Generated image: {filename}"
+
+
 async def create_sdk_chat(
     location: str, project: str, deployment: ChatCompletionDeployment
 ) -> Chat:
     match deployment:
+        case ChatCompletionDeployment.CHAT_BISON_1 | ChatCompletionDeployment.CHAT_BISON_2 | ChatCompletionDeployment.CHAT_BISON_2_32K | ChatCompletionDeployment.CODECHAT_BISON_1 | ChatCompletionDeployment.CODECHAT_BISON_2 | ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+            return await SDKLangChat.create(location, project, deployment)
         case ChatCompletionDeployment.GEMINI_PRO_1 | ChatCompletionDeployment.GEMINI_PRO_VISION_1:
             return await SDKGenChat.create(location, project, deployment)
+        case ChatCompletionDeployment.IMAGEN_005:
+            return await SDKImagenChat.create(location, project, deployment)
         case _:
-            return await SDKLangChat.create(location, project, deployment)
+            assert_never(deployment)
 
 
-def get_model_by_deployment(
+def get_language_model_by_deployment(
     deployment: ChatCompletionDeployment,
 ) -> ChatModel | CodeChatModel:
     match deployment:

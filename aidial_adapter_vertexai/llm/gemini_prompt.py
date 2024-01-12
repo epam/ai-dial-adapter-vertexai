@@ -75,7 +75,7 @@ class GeminiPrompt(BaseModel):
 
         image_count = sum(len(msg.image_inputs) for msg in download_result)
         if image_count == 0:
-            return UserError("No images inputs were found", usage_message)
+            return UserError("No image inputs were found", usage_message)
 
         history = list(map(to_content, download_result))
         return cls(history=history[:-1], prompt=history[-1].parts)

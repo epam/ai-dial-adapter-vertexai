@@ -1,6 +1,7 @@
 import json
 from typing import Any
 
+import proto
 from pydantic import BaseModel
 from vertexai.preview.generative_models import Content, Part
 
@@ -15,41 +16,44 @@ def json_dumps_short(obj: Any, string_limit: int = 100, *args, **kwargs) -> str:
     )
 
 
-def to_dict(item: Any) -> Any:
-    if isinstance(item, dict):
-        return {key: to_dict(value) for key, value in item.items()}
+def to_dict(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {key: to_dict(value) for key, value in obj.items()}
 
-    if isinstance(item, list):
-        return [to_dict(element) for element in item]
+    if isinstance(obj, list):
+        return [to_dict(element) for element in obj]
 
-    if isinstance(item, BaseModel):
-        return to_dict(item.dict())
+    if isinstance(obj, BaseModel):
+        return to_dict(obj.dict())
 
-    if isinstance(item, Content):
-        return message_to_dict(item._raw_content)
+    if isinstance(obj, proto.Message):
+        return message_to_dict(obj)
 
-    if isinstance(item, Part):
-        return message_to_dict(item._raw_part)
+    if isinstance(obj, Content):
+        return to_dict(obj._raw_content)
 
-    return item
+    if isinstance(obj, Part):
+        return to_dict(obj._raw_part)
+
+    return obj
 
 
-def _truncate_strings(item: Any, string_limit: int) -> Any:
-    if isinstance(item, dict):
+def _truncate_strings(obj: Any, string_limit: int) -> Any:
+    if isinstance(obj, dict):
         return {
             key: _truncate_strings(value, string_limit)
-            for key, value in item.items()
+            for key, value in obj.items()
         }
 
-    if isinstance(item, list):
-        return [_truncate_strings(element, string_limit) for element in item]
+    if isinstance(obj, list):
+        return [_truncate_strings(element, string_limit) for element in obj]
 
-    if isinstance(item, str) and len(item) > string_limit:
-        skip = len(item) - string_limit
+    if isinstance(obj, str) and len(obj) > string_limit:
+        skip = len(obj) - string_limit
         return (
-            item[: string_limit // 2]
+            obj[: string_limit // 2]
             + f"...({skip} skipped)..."
-            + item[-string_limit // 2 :]
+            + obj[-string_limit // 2 :]
         )
 
-    return item
+    return obj
