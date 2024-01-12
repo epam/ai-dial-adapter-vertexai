@@ -61,7 +61,7 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
             case "PNG":
                 return "image/png"
             case _:
-                raise ValueError(f"Unknown image mode: {image.mode}")
+                raise ValueError(f"Unknown image format: {image.format}")
 
     @override
     async def chat(

@@ -152,12 +152,6 @@ class SDKImagenChat(Chat):
         return cls(model)
 
     @staticmethod
-    def save_file(data: bytes, ext: str) -> Path:
-        path: Path = SDKImagenChat.get_filename(ext)
-        path.write_bytes(data)
-        return path
-
-    @staticmethod
     def get_filename(ext) -> Path:
         dir = get_project_root() / "~images"
         dir.mkdir(parents=True, exist_ok=True)
