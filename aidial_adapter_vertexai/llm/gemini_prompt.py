@@ -1,11 +1,28 @@
-from typing import List, assert_never
+import base64
+from typing import List, Optional, Union, assert_never
 
 from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.utils.list import cluster_by
+from aidial_adapter_vertexai.llm.exceptions import UserError, ValidationError
+from aidial_adapter_vertexai.llm.process_inputs import (
+    MessageWithInputs,
+    download_inputs,
+)
+from aidial_adapter_vertexai.universal_api.storage import FileStorage
+
+# Pricing info: https://cloud.google.com/vertex-ai/pricing
+# Supported image types:
+# https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#image-requirements
+SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png"]
+SUPPORTED_FILE_EXTS = ["jpg", "jpeg", "png"]
+# NOTE: Tokens per image: 258. count_tokens API call takes this into account.
+# Up to 16 images. Total max size 4MB.
+
+# NOTE: See also supported video formats:
+# https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#video-requirements
+# Tokens per video: 1032
 
 
 class GeminiPrompt(BaseModel):
@@ -16,18 +33,51 @@ class GeminiPrompt(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    def parse(cls, messages: List[Message]) -> "GeminiPrompt":
+    def parse_non_vision(cls, messages: List[Message]) -> "GeminiPrompt":
         if len(messages) == 0:
             raise ValidationError(
                 "The chat history must have at least one message"
             )
 
-        simple_messages = list(map(SimpleMessage.from_message, messages))
-        history = [
-            SimpleMessage.from_messages(cluster).to_content()
-            for cluster in cluster_by(lambda c: c.role, simple_messages)
+        messages = accommodate_first_system_message(messages)
+
+        msgs = [
+            MessageWithInputs(message=message, image_inputs=[])
+            for message in messages
         ]
 
+        history = list(map(to_content, msgs))
+        return cls(history=history[:-1], prompt=history[-1].parts)
+
+    @classmethod
+    async def parse_vision(
+        cls,
+        file_storage: Optional[FileStorage],
+        messages: List[Message],
+    ) -> Union["GeminiPrompt", UserError]:
+        if len(messages) == 0:
+            raise ValidationError(
+                "The chat history must have at least one message"
+            )
+
+        # NOTE: Vision model can't handle multiple messages with images.
+        # It throws "Invalid request 500" error.
+        messages = messages[-1:]
+
+        download_result = await download_inputs(
+            file_storage, SUPPORTED_IMAGE_TYPES, messages
+        )
+
+        usage_message = get_usage_message(SUPPORTED_FILE_EXTS)
+
+        if isinstance(download_result, str):
+            return UserError(download_result, usage_message)
+
+        image_count = sum(len(msg.image_inputs) for msg in download_result)
+        if image_count == 0:
+            return UserError("No images inputs were found", usage_message)
+
+        history = list(map(to_content, download_result))
         return cls(history=history[:-1], prompt=history[-1].parts)
 
     @property
@@ -37,39 +87,77 @@ class GeminiPrompt(BaseModel):
         ]
 
 
-class SimpleMessage(BaseModel):
-    role: str
-    content: str
+def accommodate_first_system_message(messages: List[Message]) -> List[Message]:
+    if len(messages) == 0:
+        return messages
 
-    @classmethod
-    def from_message(cls, message: Message) -> "SimpleMessage":
-        content = message.content
-        if content is None:
-            raise ValueError("Message content must be present")
+    first_message: Message = messages[0]
+    if first_message.role != Role.SYSTEM:
+        return messages
 
-        match message.role:
-            case Role.SYSTEM:
-                role = ChatSession._USER_ROLE
-            case Role.USER:
-                role = ChatSession._USER_ROLE
-            case Role.ASSISTANT:
-                role = ChatSession._MODEL_ROLE
-            case Role.FUNCTION | Role.TOOL:
-                raise ValidationError("Function messages are not supported")
-            case _:
-                assert_never(message.role)
+    if len(messages) == 1:
+        first_message = first_message.copy()
+        first_message.role = Role.USER
+        return [first_message]
 
-        return SimpleMessage(role=role, content=content)
+    second_message = messages[1]
+    if second_message.role != Role.USER:
+        return messages
 
-    @classmethod
-    def from_messages(cls, messages: List["SimpleMessage"]) -> "SimpleMessage":
-        if len(messages) == 0:
-            raise ValueError("Messages must not be empty")
+    if first_message.content is None or second_message.content is None:
+        return messages
 
-        return SimpleMessage(
-            role=messages[0].role,
-            content="\n".join(message.content for message in messages),
-        )
+    content = first_message.content + "\n" + second_message.content
+    return [Message(role=Role.USER, content=content)] + messages[2:]
 
-    def to_content(self) -> Content:
-        return Content(role=self.role, parts=[Part.from_text(self.content)])
+
+def to_content(msg: MessageWithInputs) -> Content:
+    message = msg.message
+    content = message.content
+    if content is None:
+        raise ValidationError("Message content must be present")
+
+    parts: List[Part] = []
+
+    for image in msg.image_inputs:
+        data = base64.b64decode(image.data, validate=True)
+        parts.append(Part.from_data(data=data, mime_type=image.type))
+
+    parts.append(Part.from_text(content))
+
+    return Content(role=get_part_role(message.role), parts=parts)
+
+
+def get_part_role(role: Role) -> str:
+    match role:
+        case Role.SYSTEM:
+            raise ValidationError(
+                "System messages other than the first system message are not allowed"
+            )
+        case Role.USER:
+            return ChatSession._USER_ROLE
+        case Role.ASSISTANT:
+            return ChatSession._MODEL_ROLE
+        case Role.FUNCTION:
+            raise ValidationError("Function messages are not supported")
+        case Role.TOOL:
+            raise ValidationError("Tool messages are not supported")
+        case _:
+            assert_never(role)
+
+
+def get_usage_message(supported_exts: List[str]) -> str:
+    return f"""
+### Usage
+
+The application answers queries about attached images.
+Attach images and ask questions about them in the same message.
+
+Only the last message will be taken into account.
+
+Supported image types: {', '.join(supported_exts)}.
+
+Examples of queries:
+- "Describe this picture" for one image,
+- "What are in these images? Is there any difference between them?" for multiple images.
+""".strip()

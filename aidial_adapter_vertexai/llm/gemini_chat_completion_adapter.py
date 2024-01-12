@@ -1,4 +1,5 @@
-from typing import AsyncIterator, Dict, List, Tuple
+from logging import DEBUG
+from typing import AsyncIterator, Dict, List, Optional, Tuple
 
 from aidial_sdk.chat_completion import Message
 from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
@@ -13,13 +14,16 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import Consumer
+from aidial_adapter_vertexai.llm.exceptions import UserError
 from aidial_adapter_vertexai.llm.gemini_prompt import GeminiPrompt
 from aidial_adapter_vertexai.llm.vertex_ai import (
     get_gemini_model,
     init_vertex_ai,
 )
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
+from aidial_adapter_vertexai.universal_api.storage import FileStorage
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
 
@@ -48,12 +52,24 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
-    def __init__(self, model: GenerativeModel):
+    def __init__(
+        self,
+        file_storage: Optional[FileStorage],
+        model: GenerativeModel,
+        is_vision_model: bool,
+    ):
+        self.file_storage = file_storage
         self.model = model
+        self.is_vision_model = is_vision_model
 
     @override
-    async def parse_prompt(self, messages: List[Message]) -> GeminiPrompt:
-        return GeminiPrompt.parse(messages)
+    async def parse_prompt(
+        self, messages: List[Message]
+    ) -> GeminiPrompt | UserError:
+        if self.is_vision_model:
+            return await GeminiPrompt.parse_vision(self.file_storage, messages)
+        else:
+            return GeminiPrompt.parse_non_vision(messages)
 
     @override
     async def truncate_prompt(
@@ -98,11 +114,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         prompt_tokens = await self.count_prompt_tokens(prompt)
 
         with Timer("predict timing: {time}", log.debug):
-            log.debug(
-                "predict request: "
-                f"parameters=({params}), "
-                f"prompt=({prompt}), "
-            )
+            if log.isEnabledFor(DEBUG):
+                log.debug(
+                    "predict request: "
+                    + json_dumps_short({"parameters": params, "prompt": prompt})
+                )
 
             completion = ""
 
@@ -133,11 +149,15 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             resp = await self.model.count_tokens_async(string)
             return resp.total_tokens
 
-    @override
     @classmethod
     async def create(
-        cls, model_id: str, project_id: str, location: str
+        cls,
+        file_storage: Optional[FileStorage],
+        model_id: str,
+        is_vision_model: bool,
+        project_id: str,
+        location: str,
     ) -> "GeminiChatCompletionAdapter":
         await init_vertex_ai(project_id, location)
         model = await get_gemini_model(model_id)
-        return cls(model)
+        return cls(file_storage, model, is_vision_model)

@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Mapping, Optional, Union
 
-from aidial_sdk.chat_completion import Request
+from aidial_sdk.chat_completion import Attachment, Message, Request
 from pydantic import BaseModel
 
 
@@ -46,3 +46,10 @@ class EmbeddingsQuery(BaseModel):
     @staticmethod
     def example() -> "EmbeddingsQuery":
         return EmbeddingsQuery(input=["fish", "ball"])
+
+
+def get_attachments(message: Message) -> List[Attachment]:
+    custom_content = message.custom_content
+    if custom_content is None:
+        return []
+    return custom_content.attachments or []

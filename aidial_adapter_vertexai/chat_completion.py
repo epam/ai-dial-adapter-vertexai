@@ -1,11 +1,12 @@
 import asyncio
 
-from aidial_sdk.chat_completion import ChatCompletion, Request, Response
+from aidial_sdk.chat_completion import ChatCompletion, Request, Response, Status
 
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import ChoiceConsumer
+from aidial_adapter_vertexai.llm.exceptions import UserError
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
 )
@@ -28,14 +29,29 @@ class VertexAIChatCompletion(ChatCompletion):
 
     @dial_exception_decorator
     async def chat_completion(self, request: Request, response: Response):
+        headers = request.headers
         model: ChatCompletionAdapter = await get_chat_completion_model(
             deployment=ChatCompletionDeployment(request.deployment_id),
             project_id=self.project_id,
             location=self.region,
+            headers=headers,
         )
 
-        params = ModelParameters.create(request)
         prompt = await model.parse_prompt(request.messages)
+
+        if isinstance(prompt, UserError):
+            # Show the error message in a stage for a web UI user
+            with response.create_choice() as choice:
+                stage = choice.create_stage("Error")
+                stage.open()
+                stage.append_content(prompt.to_message_for_chat_user())
+                stage.close(Status.FAILED)
+            await response.aflush()
+
+            # Raise exception for a DIAL API client
+            raise Exception(prompt.message)
+
+        params = ModelParameters.create(request)
 
         discarded_messages_count = 0
         if params.max_prompt_tokens is not None:
