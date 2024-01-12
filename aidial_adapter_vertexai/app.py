@@ -38,11 +38,13 @@ OTLP_EXPORT_ENABLED: bool = (
     os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") is not None
 )
 
+SERVICE_NAME = os.environ.get("OTEL_SERVICE_NAME", "aidial-vertexai")
+
 app = DIALApp(
     description="Google VertexAI adapter for DIAL API",
     add_healthcheck=True,
     telemetry_config=TelemetryConfig(
-        service_name="bedrock",
+        service_name=SERVICE_NAME,
         tracing=TracingConfig(
             otlp_export=OTLP_EXPORT_ENABLED,
             logging=True,
