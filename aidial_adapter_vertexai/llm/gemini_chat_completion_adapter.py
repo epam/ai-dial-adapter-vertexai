@@ -46,7 +46,8 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
         if isinstance(params.stop, str)
         else params.stop,
         top_p=params.top_p,
-        candidate_count=1 if params.stream else params.n,
+        # NOTE: param.n is currently emulated via multiple requests
+        candidate_count=1,
     )
 
 
@@ -153,10 +154,10 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         cls,
         file_storage: Optional[FileStorage],
         model_id: str,
-        has_vision: bool,
+        is_vision_model: bool,
         project_id: str,
         location: str,
     ) -> "GeminiChatCompletionAdapter":
         await init_vertex_ai(project_id, location)
         model = await get_gemini_model(model_id)
-        return cls(file_storage, model, has_vision)
+        return cls(file_storage, model, is_vision_model)

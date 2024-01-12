@@ -2,7 +2,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.styles import Style
 
-from aidial_adapter_vertexai.utils.files import get_project_root
+from client.utils.files import get_project_root
 
 
 def make_input(max_input_chars: int = 1024):

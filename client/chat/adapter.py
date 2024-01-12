@@ -1,3 +1,7 @@
+"""
+Classes to test the various models supported by the DIAL adapter.
+"""
+
 from typing import AsyncGenerator, List, Optional
 
 from aidial_sdk.chat_completion import Message, Role
