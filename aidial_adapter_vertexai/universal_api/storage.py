@@ -7,10 +7,9 @@ from typing import Mapping, Optional, TypedDict
 from urllib.parse import urljoin
 
 import aiohttp
-from aiohttp import hdrs
 
 from aidial_adapter_vertexai.utils.auth import Auth
-from aidial_adapter_vertexai.utils.log_config import app_logger as logger
+from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
 class FileMetadata(TypedDict):
@@ -24,11 +23,16 @@ class FileMetadata(TypedDict):
     contentType: str
 
 
+class Bucket(TypedDict):
+    bucket: str
+    appdata: str
+
+
 class FileStorage:
     dial_url: str
     upload_dir: str
     auth: Auth
-    bucket: Optional[str]
+    bucket: Optional[Bucket]
 
     def __init__(self, dial_url: str, upload_dir: str, auth: Auth):
         self.dial_url = dial_url
@@ -36,15 +40,15 @@ class FileStorage:
         self.auth = auth
         self.bucket = None
 
-    async def _get_bucket(self, session: aiohttp.ClientSession) -> str:
+    async def _get_bucket(self, session: aiohttp.ClientSession) -> Bucket:
         if self.bucket is None:
             async with session.get(
                 f"{self.dial_url}/v1/bucket",
                 headers=self.auth.headers,
             ) as response:
                 response.raise_for_status()
-                body = await response.json()
-                self.bucket = body["bucket"]
+                self.bucket = await response.json()
+                log.debug(f"bucket: {self.bucket}")
 
         return self.bucket
 
@@ -66,9 +70,12 @@ class FileStorage:
     ) -> FileMetadata:
         async with aiohttp.ClientSession() as session:
             bucket = await self._get_bucket(session)
+
+            appdata = bucket["appdata"]
+            ext = mimetypes.guess_extension(content_type) or ""
+            url = f"{self.dial_url}/v1/files/{appdata}/{self.upload_dir}/{filename}{ext}"
+
             data = FileStorage._to_form_data(filename, content_type, content)
-            ext = mimetypes.guess_extension(content_type)
-            url = f"{self.dial_url}/v1/files/{bucket}/{self.upload_dir}/{filename}{ext}"
 
             async with session.put(
                 url=url,
@@ -77,7 +84,7 @@ class FileStorage:
             ) as response:
                 response.raise_for_status()
                 meta = await response.json()
-                logger.debug(f"Uploaded file: url={url}, metadata={meta}")
+                log.debug(f"Uploaded file: url={url}, metadata={meta}")
                 return meta
 
     async def upload_file_as_base64(
@@ -126,9 +133,9 @@ def create_file_storage(
     if DIAL_URL is None:
         return None
 
-    auth = Auth.from_headers(hdrs.AUTHORIZATION, headers)
+    auth = Auth.from_headers("api-key", headers)
     if auth is None:
-        logger.debug(
+        log.debug(
             "The request doesn't have required headers to use the DIAL file storage. "
             "Fallback to base64 encoding of images."
         )

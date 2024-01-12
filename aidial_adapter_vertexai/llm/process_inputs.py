@@ -12,7 +12,7 @@ from aidial_adapter_vertexai.universal_api.storage import (
 )
 from aidial_adapter_vertexai.utils.image_data_url import ImageDataURL
 from aidial_adapter_vertexai.utils.json import json_dumps_short
-from aidial_adapter_vertexai.utils.log_config import app_logger as logger
+from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.text import format_ordinal
 
 
@@ -83,7 +83,7 @@ async def download_image(
         return "Invalid attachment"
 
     except Exception as e:
-        logger.debug(f"Failed to download image: {e}")
+        log.debug(f"Failed to download image: {e}")
         return "Failed to download image"
 
 
@@ -92,16 +92,16 @@ async def download_images(
     image_types: List[str],
     attachments: List[Attachment],
 ) -> List[ImageDataURL] | DownloadErrors:
-    if logger.isEnabledFor(DEBUG):
-        logger.debug(f"original attachments: {json_dumps_short(attachments)}")
+    if log.isEnabledFor(DEBUG):
+        log.debug(f"original attachments: {json_dumps_short(attachments)}")
 
     download_results: List[ImageDataURL | str] = [
         await download_image(file_storage, image_types, attachment)
         for attachment in attachments
     ]
 
-    if logger.isEnabledFor(DEBUG):
-        logger.debug(f"download results: {json_dumps_short(download_results)}")
+    if log.isEnabledFor(DEBUG):
+        log.debug(f"download results: {json_dumps_short(download_results)}")
 
     ret: List[ImageDataURL] = []
     errors: List[Tuple[int, str]] = []
@@ -113,7 +113,7 @@ async def download_images(
             errors.append((idx, result))
 
     if len(errors) > 0:
-        logger.debug(f"download errors: {errors}")
+        log.debug(f"download errors: {errors}")
         return DownloadErrors(errors=errors)
     else:
         return ret
