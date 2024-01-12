@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 import aiohttp
 
 from aidial_adapter_vertexai.utils.auth import Auth
-from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
 class FileMetadata(TypedDict):
