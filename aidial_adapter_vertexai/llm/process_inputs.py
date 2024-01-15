@@ -20,6 +20,9 @@ class MessageWithInputs(BaseModel):
     message: Message
     image_inputs: List[ImageDataURL]
 
+    def has_empty_content(self) -> bool:
+        return (self.message.content or "").strip() == ""
+
 
 class DownloadErrors(BaseModel):
     """Download errors for a particular message"""
