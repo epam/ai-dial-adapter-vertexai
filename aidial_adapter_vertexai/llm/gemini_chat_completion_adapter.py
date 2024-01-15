@@ -88,15 +88,20 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         parameters = create_generation_config(params)
 
         if params.stream:
-            response = await session._send_message_streaming_async(
-                content=prompt.prompt,  # type: ignore
-                generation_config=parameters,
-                safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
-                tools=None,
-            )
+            try:
+                response = await session._send_message_streaming_async(
+                    content=prompt.prompt,  # type: ignore
+                    generation_config=parameters,
+                    safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
+                    tools=None,
+                )
 
-            async for chunk in response:
-                yield chunk.text
+                async for chunk in response:
+                    yield chunk.text
+            except Exception as e:
+                log.debug(f"streaming request failed: {e}")
+                log.exception("streaming request failed")
+                raise
         else:
             response = await session._send_message_async(
                 content=prompt.prompt,  # type: ignore
