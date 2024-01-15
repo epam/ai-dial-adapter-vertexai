@@ -77,6 +77,11 @@ class GeminiPrompt(BaseModel):
         if image_count == 0:
             return UserError("No image inputs were found", usage_message)
 
+        if any(msg.has_empty_content() for msg in download_result):
+            return UserError(
+                "Messages with empty prompts are not allowed", usage_message
+            )
+
         history = list(map(to_content, download_result))
         return cls(history=history[:-1], prompt=history[-1].parts)
 
