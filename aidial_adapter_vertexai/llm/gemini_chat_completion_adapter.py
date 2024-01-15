@@ -25,6 +25,7 @@ from aidial_adapter_vertexai.universal_api.storage import FileStorage
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.protobuf import message_to_string
 from aidial_adapter_vertexai.utils.timer import Timer
 
 HarmCategory = gapic_content_types.HarmCategory
@@ -97,6 +98,10 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 )
 
                 async for chunk in response:
+                    if log.isEnabledFor(DEBUG):
+                        log.debug(
+                            f"streaming request chunk: {message_to_string(chunk._raw_response)}"
+                        )
                     yield chunk.text
             except Exception as e:
                 log.debug(f"streaming request failed: {e}")
