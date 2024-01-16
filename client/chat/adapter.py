@@ -9,7 +9,6 @@ from aidial_sdk.chat_completion import Message, Role
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.consumer import CollectConsumer
 from aidial_adapter_vertexai.llm.exceptions import UserError
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
@@ -20,6 +19,7 @@ from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 from client.chat.base import Chat
+from client.chat.collect_consumer import CollectConsumer
 from client.utils.concurrency import str_callback_to_stream_generator
 
 

@@ -60,10 +60,16 @@ class VertexAIChatCompletion(ChatCompletion):
             )
 
         async def generate_response(usage: TokenUsage, choice_idx: int) -> None:
-            with response.create_choice() as choice:
-                consumer = ChoiceConsumer(choice)
-                await model.chat(params, consumer, prompt)
-                usage.accumulate(consumer.usage)
+            choice = response.create_choice()
+            choice.open()
+
+            consumer = ChoiceConsumer(choice)
+            await model.chat(params, consumer, prompt)
+            usage.accumulate(consumer.usage)
+
+            finish_reason = consumer.finish_reason
+            log.debug(f"finish_reason[{choice_idx}]: {finish_reason}")
+            choice.close(finish_reason)
 
         usage = TokenUsage()
 

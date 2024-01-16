@@ -3,15 +3,14 @@ from typing import Any
 
 import proto
 from pydantic import BaseModel
-from vertexai.preview.generative_models import Content, Part
+from vertexai.preview.generative_models import Content, GenerationResponse, Part
 
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
 
-def json_dumps_short(obj: Any, string_limit: int = 100, *args, **kwargs) -> str:
+def json_dumps_short(obj: Any, string_limit: int = 100, **kwargs) -> str:
     return json.dumps(
         _truncate_strings(to_dict(obj), string_limit),
-        *args,
         **kwargs,
     )
 
@@ -28,6 +27,9 @@ def to_dict(obj: Any) -> Any:
 
     if isinstance(obj, proto.Message):
         return message_to_dict(obj)
+
+    if isinstance(obj, GenerationResponse):
+        return to_dict(obj._raw_response)
 
     if isinstance(obj, Content):
         return to_dict(obj._raw_content)
