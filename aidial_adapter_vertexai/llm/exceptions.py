@@ -12,3 +12,11 @@ class UserError(Exception):
 
     def to_message_for_chat_user(self) -> str:
         return f"{self.message}\n\n{self.usage}"
+
+
+class RetryException(Exception):
+    exc: Exception
+
+    def __init__(self, exc: Exception):
+        self.exc = exc
+        super().__init__(str(self.exc))

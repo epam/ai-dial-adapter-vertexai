@@ -1,12 +1,22 @@
 from logging import DEBUG
-from typing import AsyncIterator, Dict, List, Optional, Tuple
+from typing import (
+    AsyncIterator,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    assert_never,
+)
 
-from aidial_sdk.chat_completion import Message
+from aidial_sdk.chat_completion import FinishReason, Message
 from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
 from typing_extensions import override
 from vertexai.preview.generative_models import (
     ChatSession,
     GenerationConfig,
+    GenerationResponse,
     GenerativeModel,
 )
 
@@ -14,7 +24,7 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import Consumer
-from aidial_adapter_vertexai.llm.exceptions import UserError
+from aidial_adapter_vertexai.llm.exceptions import RetryException, UserError
 from aidial_adapter_vertexai.llm.gemini_prompt import GeminiPrompt
 from aidial_adapter_vertexai.llm.vertex_ai import (
     get_gemini_model,
@@ -23,13 +33,13 @@ from aidial_adapter_vertexai.llm.vertex_ai import (
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.storage import FileStorage
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
-from aidial_adapter_vertexai.utils.json import json_dumps_short
+from aidial_adapter_vertexai.utils.json import json_dumps_short, to_dict
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.utils.protobuf import message_to_string
 from aidial_adapter_vertexai.utils.timer import Timer
 
 HarmCategory = gapic_content_types.HarmCategory
 HarmBlockThreshold = gapic_content_types.SafetySetting.HarmBlockThreshold
+Candidate = gapic_content_types.Candidate
 
 BLOCK_NONE_SAFETY_SETTINGS: Dict[HarmCategory, HarmBlockThreshold] = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
@@ -37,6 +47,8 @@ BLOCK_NONE_SAFETY_SETTINGS: Dict[HarmCategory, HarmBlockThreshold] = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
 }
+
+UNEXPECTED_ERROR_MESSAGE = "The model terminated generation unexpectedly"
 
 
 def create_generation_config(params: ModelParameters) -> GenerationConfig:
@@ -82,31 +94,22 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[GenerationResponse]:
         session = ChatSession(
             model=self.model, history=prompt.history, raise_on_blocked=False
         )
         parameters = create_generation_config(params)
 
         if params.stream:
-            try:
-                response = await session._send_message_streaming_async(
-                    content=prompt.prompt,  # type: ignore
-                    generation_config=parameters,
-                    safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
-                    tools=None,
-                )
+            response = await session._send_message_streaming_async(
+                content=prompt.prompt,  # type: ignore
+                generation_config=parameters,
+                safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
+                tools=None,
+            )
 
-                async for chunk in response:
-                    if log.isEnabledFor(DEBUG):
-                        log.debug(
-                            f"streaming request chunk: {message_to_string(chunk._raw_response)}"
-                        )
-                    yield chunk.text
-            except Exception as e:
-                log.debug(f"streaming request failed: {e}")
-                log.exception("streaming request failed")
-                raise
+            async for chunk in response:
+                yield chunk
         else:
             response = await session._send_message_async(
                 content=prompt.prompt,  # type: ignore
@@ -115,7 +118,36 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 tools=None,
             )
 
-            yield response.text
+            yield response
+
+    @staticmethod
+    async def process_chunks(
+        consumer: Consumer,
+        generator: Callable[[], AsyncIterator[GenerationResponse]],
+    ) -> AsyncIterator[str]:
+        completion = ""
+
+        async for chunk in generator():
+            if log.isEnabledFor(DEBUG):
+                log.debug(f"response chunk: {to_dict(chunk)}")
+
+            finish_reason = chunk.candidates[0].finish_reason
+
+            if (
+                completion == ""
+                and finish_reason == Candidate.FinishReason.OTHER
+            ):
+                # Misc finish reason could be usually fixed with a retry
+                raise RetryException(RuntimeError(UNEXPECTED_ERROR_MESSAGE))
+
+            openai_finish_reason = to_openai_finish_reason(finish_reason)
+            if openai_finish_reason is not None:
+                await consumer.set_finish_reason(openai_finish_reason)
+
+            content = get_content(chunk)
+            if content is not None:
+                completion += content
+                yield content
 
     @override
     async def chat(
@@ -132,9 +164,15 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
             completion = ""
 
-            async for chunk in self.send_message_async(params, prompt):
-                completion += chunk
-                await consumer.append_content(chunk)
+            async for content in generate_with_retries(
+                lambda: self.process_chunks(
+                    consumer,
+                    lambda: self.send_message_async(params, prompt),
+                ),
+                2,
+            ):
+                completion += content
+                await consumer.append_content(content)
 
             log.debug(f"predict response: {completion!r}")
 
@@ -171,3 +209,51 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         await init_vertex_ai(project_id, location)
         model = await get_gemini_model(model_id)
         return cls(file_storage, model, is_vision_model)
+
+
+def get_content(response: GenerationResponse) -> Optional[str]:
+    try:
+        return response.text
+    except Exception:
+        return None
+
+
+def to_openai_finish_reason(
+    finish_reason: Candidate.FinishReason,
+) -> FinishReason | None:
+    match finish_reason:
+        case Candidate.FinishReason.FINISH_REASON_UNSPECIFIED:
+            return None
+        case Candidate.FinishReason.MAX_TOKENS:
+            return FinishReason.LENGTH
+        case Candidate.FinishReason.STOP:
+            return FinishReason.STOP
+        case Candidate.FinishReason.SAFETY:
+            return FinishReason.CONTENT_FILTER
+        case Candidate.FinishReason.RECITATION:
+            return FinishReason.CONTENT_FILTER
+        case Candidate.FinishReason.OTHER:
+            raise RuntimeError(UNEXPECTED_ERROR_MESSAGE)
+        case _:
+            assert_never(finish_reason)
+
+
+T = TypeVar("T")
+
+
+async def generate_with_retries(
+    generator: Callable[[], AsyncIterator[T]], max_retries: int
+) -> AsyncIterator[T]:
+    retries = 0
+    while True:
+        try:
+            async for content in generator():
+                yield content
+            break
+
+        except RetryException as e:
+            retries += 1
+            if retries > max_retries:
+                raise e.exc
+            else:
+                log.debug(f"retrying [{retries}/{max_retries}]")
