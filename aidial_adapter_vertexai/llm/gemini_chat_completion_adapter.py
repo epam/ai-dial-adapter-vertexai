@@ -24,7 +24,7 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import Consumer
-from aidial_adapter_vertexai.llm.exceptions import RetryException, UserError
+from aidial_adapter_vertexai.llm.exceptions import UserError
 from aidial_adapter_vertexai.llm.gemini_prompt import GeminiPrompt
 from aidial_adapter_vertexai.llm.vertex_ai import (
     get_gemini_model,
@@ -48,8 +48,6 @@ BLOCK_NONE_SAFETY_SETTINGS: Dict[HarmCategory, HarmBlockThreshold] = {
     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
 }
 
-UNEXPECTED_ERROR_MESSAGE = "The model terminated generation unexpectedly"
-
 
 def create_generation_config(params: ModelParameters) -> GenerationConfig:
     return GenerationConfig(
@@ -62,6 +60,13 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
         # NOTE: param.n is currently emulated via multiple requests
         candidate_count=1,
     )
+
+
+class FinishReasonOtherError(Exception):
+    def __init__(self, msg: str, retriable: bool):
+        self.msg = msg
+        self.retriable = retriable
+        super().__init__(self.msg)
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
@@ -125,7 +130,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         consumer: Consumer,
         generator: Callable[[], AsyncIterator[GenerationResponse]],
     ) -> AsyncIterator[str]:
-        completion = ""
+        no_content_generated = True
 
         async for chunk in generator():
             if log.isEnabledFor(DEBUG):
@@ -133,20 +138,17 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
             finish_reason = chunk.candidates[0].finish_reason
 
-            if (
-                completion == ""
-                and finish_reason == Candidate.FinishReason.OTHER
-            ):
-                # Misc finish reason could be usually fixed with a retry
-                raise RetryException(RuntimeError(UNEXPECTED_ERROR_MESSAGE))
+            openai_finish_reason = to_openai_finish_reason(
+                finish_reason=finish_reason,
+                retriable=no_content_generated,
+            )
 
-            openai_finish_reason = to_openai_finish_reason(finish_reason)
             if openai_finish_reason is not None:
                 await consumer.set_finish_reason(openai_finish_reason)
 
             content = get_content(chunk)
             if content is not None:
-                completion += content
+                no_content_generated = no_content_generated and content == ""
                 yield content
 
     @override
@@ -219,7 +221,7 @@ def get_content(response: GenerationResponse) -> Optional[str]:
 
 
 def to_openai_finish_reason(
-    finish_reason: Candidate.FinishReason,
+    finish_reason: Candidate.FinishReason, retriable: bool
 ) -> FinishReason | None:
     match finish_reason:
         case Candidate.FinishReason.FINISH_REASON_UNSPECIFIED:
@@ -233,7 +235,11 @@ def to_openai_finish_reason(
         case Candidate.FinishReason.RECITATION:
             return FinishReason.CONTENT_FILTER
         case Candidate.FinishReason.OTHER:
-            raise RuntimeError(UNEXPECTED_ERROR_MESSAGE)
+            # OTHER finish reason could be usually fixed with a retry
+            raise FinishReasonOtherError(
+                msg="The model terminated generation unexpectedly",
+                retriable=retriable,
+            )
         case _:
             assert_never(finish_reason)
 
@@ -242,7 +248,8 @@ T = TypeVar("T")
 
 
 async def generate_with_retries(
-    generator: Callable[[], AsyncIterator[T]], max_retries: int
+    generator: Callable[[], AsyncIterator[T]],
+    max_retries: int,
 ) -> AsyncIterator[T]:
     retries = 0
     while True:
@@ -251,9 +258,13 @@ async def generate_with_retries(
                 yield content
             break
 
-        except RetryException as e:
+        except FinishReasonOtherError as e:
+            if not e.retriable:
+                raise e
+
             retries += 1
             if retries > max_retries:
-                raise e.exc
-            else:
-                log.debug(f"retrying [{retries}/{max_retries}]")
+                log.debug(f"max retries exceeded ({max_retries})")
+                raise e
+
+            log.debug(f"retrying [{retries}/{max_retries}]")

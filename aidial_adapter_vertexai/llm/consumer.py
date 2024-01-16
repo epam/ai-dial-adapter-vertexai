@@ -54,4 +54,6 @@ class ChoiceConsumer(Consumer):
         if self.finish_reason is None:
             self.finish_reason = finish_reason
         else:
-            assert self.finish_reason == finish_reason, "finish reason mismatch"
+            assert (
+                self.finish_reason == finish_reason
+            ), "finish_reason was set twice with different values"
