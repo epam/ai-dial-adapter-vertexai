@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Coroutine, List, Optional
+from typing import Optional
 
-from aidial_sdk.chat_completion import Attachment, Choice
+from aidial_sdk.chat_completion import Attachment, Choice, FinishReason
 
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 
@@ -19,14 +19,20 @@ class Consumer(ABC):
     async def set_usage(self, usage: TokenUsage):
         pass
 
+    @abstractmethod
+    async def set_finish_reason(self, finish_reason: FinishReason):
+        pass
+
 
 class ChoiceConsumer(Consumer):
-    usage: TokenUsage
     choice: Choice
+    usage: TokenUsage
+    finish_reason: Optional[FinishReason]
 
     def __init__(self, choice: Choice):
         self.choice = choice
         self.usage = TokenUsage()
+        self.finish_reason = None
 
     async def append_content(self, content: str):
         self.choice.append_content(content)
@@ -44,31 +50,10 @@ class ChoiceConsumer(Consumer):
     async def set_usage(self, usage: TokenUsage):
         self.usage = usage
 
-
-ContentCallback = Callable[[str], Coroutine[None, str, None]]
-
-
-class CollectConsumer(Consumer):
-    usage: TokenUsage
-    content: str
-    attachments: List[Attachment]
-
-    on_content: Optional[ContentCallback]
-
-    def __init__(self, on_content: Optional[ContentCallback] = None):
-        self.usage = TokenUsage()
-        self.content = ""
-        self.attachments = []
-
-        self.on_content = on_content
-
-    async def append_content(self, content: str):
-        if self.on_content:
-            await self.on_content(content)
-        self.content += content
-
-    async def add_attachment(self, attachment: Attachment):
-        self.attachments.append(attachment)
-
-    async def set_usage(self, usage: TokenUsage):
-        self.usage = usage
+    async def set_finish_reason(self, finish_reason: FinishReason):
+        if self.finish_reason is None:
+            self.finish_reason = finish_reason
+        else:
+            assert (
+                self.finish_reason == finish_reason
+            ), "finish_reason was set twice with different values"
