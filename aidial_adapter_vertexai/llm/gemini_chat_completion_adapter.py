@@ -1,12 +1,22 @@
 from logging import DEBUG
-from typing import AsyncIterator, Dict, List, Optional, Tuple
+from typing import (
+    AsyncIterator,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    assert_never,
+)
 
-from aidial_sdk.chat_completion import Message
+from aidial_sdk.chat_completion import FinishReason, Message
 from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
 from typing_extensions import override
 from vertexai.preview.generative_models import (
     ChatSession,
     GenerationConfig,
+    GenerationResponse,
     GenerativeModel,
 )
 
@@ -23,12 +33,13 @@ from aidial_adapter_vertexai.llm.vertex_ai import (
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.storage import FileStorage
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
-from aidial_adapter_vertexai.utils.json import json_dumps_short
+from aidial_adapter_vertexai.utils.json import json_dumps_short, to_dict
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
 
 HarmCategory = gapic_content_types.HarmCategory
 HarmBlockThreshold = gapic_content_types.SafetySetting.HarmBlockThreshold
+Candidate = gapic_content_types.Candidate
 
 BLOCK_NONE_SAFETY_SETTINGS: Dict[HarmCategory, HarmBlockThreshold] = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
@@ -49,6 +60,13 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
         # NOTE: param.n is currently emulated via multiple requests
         candidate_count=1,
     )
+
+
+class FinishReasonOtherError(Exception):
+    def __init__(self, msg: str, retriable: bool):
+        self.msg = msg
+        self.retriable = retriable
+        super().__init__(self.msg)
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
@@ -81,7 +99,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[GenerationResponse]:
         session = ChatSession(
             model=self.model, history=prompt.history, raise_on_blocked=False
         )
@@ -96,7 +114,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             )
 
             async for chunk in response:
-                yield chunk.text
+                yield chunk
         else:
             response = await session._send_message_async(
                 content=prompt.prompt,  # type: ignore
@@ -105,7 +123,33 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 tools=None,
             )
 
-            yield response.text
+            yield response
+
+    @staticmethod
+    async def process_chunks(
+        consumer: Consumer,
+        generator: Callable[[], AsyncIterator[GenerationResponse]],
+    ) -> AsyncIterator[str]:
+        no_content_generated = True
+
+        async for chunk in generator():
+            if log.isEnabledFor(DEBUG):
+                log.debug(f"response chunk: {to_dict(chunk)}")
+
+            finish_reason = chunk.candidates[0].finish_reason
+
+            openai_finish_reason = to_openai_finish_reason(
+                finish_reason=finish_reason,
+                retriable=no_content_generated,
+            )
+
+            if openai_finish_reason is not None:
+                await consumer.set_finish_reason(openai_finish_reason)
+
+            content = get_content(chunk)
+            if content is not None:
+                no_content_generated = no_content_generated and content == ""
+                yield content
 
     @override
     async def chat(
@@ -122,9 +166,15 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
             completion = ""
 
-            async for chunk in self.send_message_async(params, prompt):
-                completion += chunk
-                await consumer.append_content(chunk)
+            async for content in generate_with_retries(
+                lambda: self.process_chunks(
+                    consumer,
+                    lambda: self.send_message_async(params, prompt),
+                ),
+                2,
+            ):
+                completion += content
+                await consumer.append_content(content)
 
             log.debug(f"predict response: {completion!r}")
 
@@ -161,3 +211,60 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         await init_vertex_ai(project_id, location)
         model = await get_gemini_model(model_id)
         return cls(file_storage, model, is_vision_model)
+
+
+def get_content(response: GenerationResponse) -> Optional[str]:
+    try:
+        return response.text
+    except Exception:
+        return None
+
+
+def to_openai_finish_reason(
+    finish_reason: Candidate.FinishReason, retriable: bool
+) -> FinishReason | None:
+    match finish_reason:
+        case Candidate.FinishReason.FINISH_REASON_UNSPECIFIED:
+            return None
+        case Candidate.FinishReason.MAX_TOKENS:
+            return FinishReason.LENGTH
+        case Candidate.FinishReason.STOP:
+            return FinishReason.STOP
+        case Candidate.FinishReason.SAFETY:
+            return FinishReason.CONTENT_FILTER
+        case Candidate.FinishReason.RECITATION:
+            return FinishReason.CONTENT_FILTER
+        case Candidate.FinishReason.OTHER:
+            # OTHER finish reason could be usually fixed with a retry
+            raise FinishReasonOtherError(
+                msg="The model terminated generation unexpectedly",
+                retriable=retriable,
+            )
+        case _:
+            assert_never(finish_reason)
+
+
+T = TypeVar("T")
+
+
+async def generate_with_retries(
+    generator: Callable[[], AsyncIterator[T]],
+    max_retries: int,
+) -> AsyncIterator[T]:
+    retries = 0
+    while True:
+        try:
+            async for content in generator():
+                yield content
+            break
+
+        except FinishReasonOtherError as e:
+            if not e.retriable:
+                raise e
+
+            retries += 1
+            if retries > max_retries:
+                log.debug(f"max retries exceeded ({max_retries})")
+                raise e
+
+            log.debug(f"retrying [{retries}/{max_retries}]")
