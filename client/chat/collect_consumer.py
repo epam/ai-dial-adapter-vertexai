@@ -35,7 +35,7 @@ class CollectConsumer(Consumer):
     async def set_usage(self, usage: TokenUsage):
         self.usage = usage
 
-    async def set_finish_reason(self, finish_reason: Optional[FinishReason]):
+    async def set_finish_reason(self, finish_reason: FinishReason):
         if self.finish_reason is None:
             self.finish_reason = finish_reason
         else:
