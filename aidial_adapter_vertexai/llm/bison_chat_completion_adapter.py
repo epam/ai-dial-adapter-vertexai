@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import AsyncIterator, List, Tuple
 
-from aidial_sdk.chat_completion import Message
+from aidial_sdk.chat_completion import FinishReason, Message
 from typing_extensions import override
 from vertexai.preview.language_models import (
     ChatModel,
@@ -68,7 +68,7 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
             log.debug(
                 "predict request: "
                 f"parameters=({params}), "
-                f"prompt={prompt}"
+                f"prompt=({prompt})"
             )
 
             completion = ""
@@ -80,6 +80,11 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
             log.debug(f"predict response: {completion!r}")
 
         completion_tokens = await self.count_completion_tokens(completion)
+
+        # PaLM models do not return finish reason.
+        # Use the heuristic to estimate it.
+        if completion_tokens == params.max_tokens:
+            await consumer.set_finish_reason(FinishReason.LENGTH)
 
         await consumer.set_usage(
             TokenUsage(
