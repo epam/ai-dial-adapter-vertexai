@@ -59,6 +59,8 @@ class TestCase:
 def get_test_cases(
     deployment: ChatCompletionDeployment, streaming: bool
 ) -> List[TestCase]:
+    is_codechat = "codechat" in deployment.value
+
     ret: List[TestCase] = []
 
     ret.append(
@@ -105,9 +107,7 @@ def get_test_cases(
             max_tokens=None,
             stop=None,
             messages=[sys("Act as helpful assistant"), user("2+5=?")],
-            expected=Exception("System message is not supported")
-            if "codechat" in deployment.value.lower()
-            else lambda s: "7" in s,
+            expected=lambda s: "7" in s,
         )
     )
 
@@ -134,7 +134,7 @@ def get_test_cases(
             expected=Exception(
                 "stop sequences are not supported for code chat model"
             )
-            if "codechat" in deployment.value.lower()
+            if is_codechat
             else lambda s: "world" not in s.lower(),
         )
     )

@@ -53,9 +53,7 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
     return GenerationConfig(
         max_output_tokens=params.max_tokens,
         temperature=params.temperature,
-        stop_sequences=[params.stop]
-        if isinstance(params.stop, str)
-        else params.stop,
+        stop_sequences=params.stop,
         top_p=params.top_p,
         # NOTE: param.n is currently emulated via multiple requests
         candidate_count=1,

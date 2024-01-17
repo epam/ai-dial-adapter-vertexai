@@ -6,15 +6,15 @@ import pytest
 from aidial_adapter_vertexai.llm.bison_history_trimming import (
     get_discarded_messages_count,
 )
-from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
+from aidial_adapter_vertexai.llm.bison_prompt import (
+    BisonPrompt,
+    ChatAuthor,
+    ChatMessage,
+)
 from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai_chat import (
-    VertexAIAuthor,
-    VertexAIMessage,
-)
 
 
 @pytest.mark.asyncio
@@ -22,8 +22,8 @@ async def test_history_truncation_no_discarded_messages():
     chat_adapter = Mock(spec=ChatCompletionAdapter)
     chat_adapter.count_prompt_tokens.side_effect = [1]
 
-    messages: List[VertexAIMessage] = [
-        VertexAIMessage(author=VertexAIAuthor.USER, content="Hello"),
+    messages: List[ChatMessage] = [
+        ChatMessage(author=ChatAuthor.USER, content="Hello"),
     ]
 
     prompt = BisonPrompt(context=None, messages=messages)
@@ -41,8 +41,8 @@ async def test_history_truncation_prompt_is_too_big():
     chat_adapter = Mock(spec=ChatCompletionAdapter)
     chat_adapter.count_prompt_tokens.side_effect = [2]
 
-    messages: List[VertexAIMessage] = [
-        VertexAIMessage(author=VertexAIAuthor.USER, content="Hello")
+    messages: List[ChatMessage] = [
+        ChatMessage(author=ChatAuthor.USER, content="Hello")
     ]
 
     prompt = BisonPrompt(context=None, messages=messages)
@@ -62,12 +62,12 @@ async def test_history_truncation_estimated_precisely():
     chat_adapter.count_prompt_tokens.side_effect = [6, 2]
 
     context = "message1"
-    messages: List[VertexAIMessage] = [
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message2"),
-        VertexAIMessage(author=VertexAIAuthor.BOT, content="message3"),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message4"),
-        VertexAIMessage(author=VertexAIAuthor.BOT, content="message5"),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
+    messages: List[ChatMessage] = [
+        ChatMessage(author=ChatAuthor.USER, content="message2"),
+        ChatMessage(author=ChatAuthor.BOT, content="message3"),
+        ChatMessage(author=ChatAuthor.USER, content="message4"),
+        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        ChatMessage(author=ChatAuthor.USER, content="message6"),
     ]
 
     prompt = BisonPrompt(context=context, messages=messages)
@@ -88,12 +88,12 @@ async def test_history_truncation_correct_but_not_exact():
     chat_adapter.count_prompt_tokens.side_effect = [6, 1, 2]
 
     context = "message1"
-    messages: List[VertexAIMessage] = [
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message2"),
-        VertexAIMessage(author=VertexAIAuthor.BOT, content="message3"),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message4"),
-        VertexAIMessage(author=VertexAIAuthor.BOT, content="message5"),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
+    messages: List[ChatMessage] = [
+        ChatMessage(author=ChatAuthor.USER, content="message2"),
+        ChatMessage(author=ChatAuthor.BOT, content="message3"),
+        ChatMessage(author=ChatAuthor.USER, content="message4"),
+        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        ChatMessage(author=ChatAuthor.USER, content="message6"),
     ]
 
     prompt = BisonPrompt(context=context, messages=messages)
@@ -115,12 +115,12 @@ async def test_history_truncation_underestimated():
     chat_adapter.count_prompt_tokens.side_effect = [6, 1, 1]
 
     context = "message1"
-    messages: List[VertexAIMessage] = [
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message2"),
-        VertexAIMessage(author=VertexAIAuthor.BOT, content="message3"),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message4"),
-        VertexAIMessage(author=VertexAIAuthor.BOT, content="message5"),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
+    messages: List[ChatMessage] = [
+        ChatMessage(author=ChatAuthor.USER, content="message2"),
+        ChatMessage(author=ChatAuthor.BOT, content="message3"),
+        ChatMessage(author=ChatAuthor.USER, content="message4"),
+        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        ChatMessage(author=ChatAuthor.USER, content="message6"),
     ]
 
     prompt = BisonPrompt(context=context, messages=messages)
@@ -142,18 +142,18 @@ async def test_history_truncation_overestimated():
     chat_adapter.count_prompt_tokens.side_effect = [6, 4, 2]
 
     context = "message1"
-    messages: List[VertexAIMessage] = [
-        VertexAIMessage(
-            author=VertexAIAuthor.USER,
+    messages: List[ChatMessage] = [
+        ChatMessage(
+            author=ChatAuthor.USER,
             content="loooooooooooooooooooooooonger_message2",
         ),
-        VertexAIMessage(
-            author=VertexAIAuthor.BOT,
+        ChatMessage(
+            author=ChatAuthor.BOT,
             content="loooooooooooooooooooooooonger_message3",
         ),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message4"),
-        VertexAIMessage(author=VertexAIAuthor.BOT, content="message5"),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
+        ChatMessage(author=ChatAuthor.USER, content="message4"),
+        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        ChatMessage(author=ChatAuthor.USER, content="message6"),
     ]
 
     prompt = BisonPrompt(context=context, messages=messages)
@@ -175,18 +175,18 @@ async def test_history_truncation_overestimated_and_last_message_is_too_big():
     chat_adapter.count_prompt_tokens.side_effect = [6, 4, 1]
 
     context = "message1"
-    messages: List[VertexAIMessage] = [
-        VertexAIMessage(
-            author=VertexAIAuthor.USER,
+    messages: List[ChatMessage] = [
+        ChatMessage(
+            author=ChatAuthor.USER,
             content="loooooooooooooooooooooooonger_message2",
         ),
-        VertexAIMessage(
-            author=VertexAIAuthor.BOT,
+        ChatMessage(
+            author=ChatAuthor.BOT,
             content="loooooooooooooooooooooooonger_message3",
         ),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message4"),
-        VertexAIMessage(author=VertexAIAuthor.BOT, content="message5"),
-        VertexAIMessage(author=VertexAIAuthor.USER, content="message6"),
+        ChatMessage(author=ChatAuthor.USER, content="message4"),
+        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        ChatMessage(author=ChatAuthor.USER, content="message6"),
     ]
 
     prompt = BisonPrompt(context=context, messages=messages)

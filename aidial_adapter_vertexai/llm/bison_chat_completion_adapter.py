@@ -1,9 +1,13 @@
-import asyncio
 from abc import abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import AsyncIterator, List, Tuple
 
 from aidial_sdk.chat_completion import Message
 from typing_extensions import override
+from vertexai.preview.language_models import (
+    ChatModel,
+    CodeChatModel,
+    CountTokensResponse,
+)
 
 from aidial_adapter_vertexai.llm.bison_history_trimming import (
     get_discarded_messages_count,
@@ -13,26 +17,22 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import Consumer
-from aidial_adapter_vertexai.llm.vertex_ai import get_vertex_ai_chat
-from aidial_adapter_vertexai.llm.vertex_ai_chat import (
-    VertexAIAuthor,
-    VertexAIChat,
-    VertexAIMessage,
-)
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
 from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.timer import Timer
+
+BisonChatModel = ChatModel | CodeChatModel
 
 
 class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
-    def __init__(self, model: VertexAIChat):
+    def __init__(self, model: BisonChatModel):
         self.model = model
 
     @abstractmethod
-    def _create_instance(self, prompt: BisonPrompt) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def _create_parameters(self, params: ModelParameters) -> Dict[str, Any]:
+    def send_message_async(
+        self, params: ModelParameters, prompt: BisonPrompt
+    ) -> AsyncIterator[str]:
         pass
 
     @override
@@ -62,42 +62,54 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: BisonPrompt
     ) -> None:
-        content_task = self.model.predict(
-            params.stream,
-            consumer,
-            self._create_instance(prompt),
-            self._create_parameters(params),
+        prompt_tokens = await self.count_prompt_tokens(prompt)
+
+        with Timer("predict timing: {time}", log.debug):
+            log.debug(
+                "predict request: "
+                f"parameters=({params}), "
+                f"prompt={prompt}"
+            )
+
+            completion = ""
+
+            async for chunk in self.send_message_async(params, prompt):
+                completion += chunk
+                await consumer.append_content(chunk)
+
+            log.debug(f"predict response: {completion!r}")
+
+        completion_tokens = await self.count_completion_tokens(completion)
+
+        await consumer.set_usage(
+            TokenUsage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
         )
-
-        if params.stream:
-            # Token usage isn't reported for streaming requests.
-            # Computing it manually
-            prompt_tokens, content = await asyncio.gather(
-                self.count_prompt_tokens(prompt), content_task
-            )
-            completion_tokens = await self.count_completion_tokens(content)
-
-            await consumer.set_usage(
-                TokenUsage(
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                )
-            )
-        else:
-            await content_task
 
     @override
     async def count_prompt_tokens(self, prompt: BisonPrompt) -> int:
-        return await self.model.count_tokens(self._create_instance(prompt))
+        chat_session = self.model.start_chat(
+            context=prompt.context, message_history=prompt.history
+        )
+
+        with Timer("count_tokens[prompt] timing: {time}", log.debug):
+            resp = chat_session.count_tokens(message=prompt.user_prompt)
+            log.debug(
+                f"count_tokens[prompt] response: {_display_token_count(resp)}"
+            )
+            return resp.total_tokens
 
     @override
     async def count_completion_tokens(self, string: str) -> int:
-        messages = [VertexAIMessage(author=VertexAIAuthor.USER, content=string)]
-        return await self.model.count_tokens(
-            self._create_instance(BisonPrompt(context=None, messages=messages))
-        )
+        with Timer("count_tokens[completion] timing: {time}", log.debug):
+            resp = self.model.start_chat().count_tokens(message=string)
+            log.debug(
+                f"count_tokens[completion] response: {_display_token_count(resp)}"
+            )
+            return resp.total_tokens
 
-    @classmethod
-    async def create(cls, model_id: str, project_id: str, location: str):
-        model = get_vertex_ai_chat(model_id, project_id, location)
-        return cls(model)
+
+def _display_token_count(response: CountTokensResponse) -> str:
+    return f"tokens: {response.total_tokens}, billable characters: {response.total_billable_characters}"

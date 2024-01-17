@@ -10,14 +10,12 @@ def _estimate_discarded_messages(
 ) -> int:
     context, messages = prompt.context, prompt.messages
 
-    text_size = len(context or "") + sum(len(m["content"]) for m in messages)
+    text_size = len(context or "") + sum(len(m.content) for m in messages)
     estimated_token_size: float = text_size / prompt_tokens
 
     discarded_messages = 0
     for index in range(0, len(messages) - 1, 2):
-        text_size -= len(
-            messages[index]["content"] + messages[index + 1]["content"]
-        )
+        text_size -= len(messages[index].content + messages[index + 1].content)
         discarded_messages += 2
 
         if text_size / estimated_token_size <= max_prompt_tokens:
