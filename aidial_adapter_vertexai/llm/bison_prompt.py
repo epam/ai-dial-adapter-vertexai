@@ -1,23 +1,40 @@
+from enum import Enum
 from typing import List, Optional, Tuple
 
 from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
+from vertexai.preview.language_models import ChatMessage, ChatSession
 
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai_chat import (
-    VertexAIAuthor,
-    VertexAIMessage,
-)
+
+
+class ChatAuthor(str, Enum):
+    USER = ChatSession.USER_AUTHOR
+    BOT = ChatSession.MODEL_AUTHOR
+
+    def __repr__(self) -> str:
+        return f"{self.value!r}"
 
 
 class BisonPrompt(BaseModel):
     context: Optional[str]
-    messages: List[VertexAIMessage]
+    messages: List[ChatMessage]
 
     @classmethod
-    def parse(cls, history: List[Message]) -> "BisonPrompt":
-        context, history = _validate_messages_and_split(history)
-        return cls(context=context, messages=list(map(_parse_message, history)))
+    def parse(cls, messages: List[Message]) -> "BisonPrompt":
+        context, messages = _validate_messages_and_split(messages)
+        return cls(
+            context=context,
+            messages=list(map(_parse_message, messages)),
+        )
+
+    @property
+    def user_prompt(self) -> str:
+        return self.messages[-1].content or ""
+
+    @property
+    def history(self) -> List[ChatMessage]:
+        return self.messages[:-1]
 
 
 _SUPPORTED_ROLES = {Role.SYSTEM, Role.USER, Role.ASSISTANT}
@@ -76,10 +93,9 @@ def _validate_messages_and_split(
     return context, messages
 
 
-def _parse_message(message: Message) -> VertexAIMessage:
+def _parse_message(message: Message) -> ChatMessage:
     author = (
-        VertexAIAuthor.BOT
-        if message.role == Role.ASSISTANT
-        else VertexAIAuthor.USER
+        ChatAuthor.BOT if message.role == Role.ASSISTANT else ChatAuthor.USER
     )
-    return VertexAIMessage(author=author, content=message.content)  # type: ignore
+    assert message.content is not None
+    return ChatMessage(author=author, content=message.content)

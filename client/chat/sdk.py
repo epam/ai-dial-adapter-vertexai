@@ -58,9 +58,7 @@ class SDKLangChat(Chat):
         parameters = {
             "max_output_tokens": params.max_tokens,
             "temperature": params.temperature,
-            "stop_sequences": [params.stop]
-            if isinstance(params.stop, str)
-            else params.stop,
+            "stop_sequences": params.stop,
             "top_p": params.top_p,
         }
 

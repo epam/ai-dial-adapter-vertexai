@@ -15,7 +15,7 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
 from aidial_adapter_vertexai.llm.consumer import Consumer
 from aidial_adapter_vertexai.llm.exceptions import ValidationError
 from aidial_adapter_vertexai.llm.vertex_ai import (
-    get_image_generation_model,
+    get_text_embedding_model,
     init_vertex_ai,
 )
 from aidial_adapter_vertexai.universal_api.request import ModelParameters
@@ -122,5 +122,5 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         location: str,
     ) -> "ImagenChatCompletionAdapter":
         await init_vertex_ai(project_id, location)
-        model = await get_image_generation_model(model_id)
+        model = await get_text_embedding_model(model_id)
         return cls(file_storage, model)

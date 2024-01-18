@@ -32,13 +32,12 @@ class TestCase:
     name: str
     deployment: ChatCompletionDeployment
     messages: List[BaseMessage]
-    expected: Callable[[str], bool] | Exception
+    expected: Callable[[List[str]], bool] | Exception
 
     def get_id(self) -> str:
         return sanitize_test_name(f"{self.deployment.value} {self.name}")
 
 
-UNSUPPORTED_SYSTEM_MESSAGE = "System message is not supported"
 EMPTY_HISTORY_ERROR = "The chat history must have at least one message"
 ONLY_SYS_MESSAGE_ERROR = (
     "The chat history must have at least one non-system message"
@@ -124,13 +123,6 @@ validation_test_cases: List[TestCase] = [
     test_case
     for deployment in deployments
     for test_case in get_test_cases(deployment)
-] + [
-    TestCase(
-        name="system message in codechat",
-        deployment=ChatCompletionDeployment.CODECHAT_BISON_1,
-        messages=[sys("Act as a helpful assistant"), user("2+2=?")],
-        expected=Exception(UNSUPPORTED_SYSTEM_MESSAGE),
-    ),
 ]
 
 

@@ -27,14 +27,27 @@ def sanitize_test_name(name: str) -> str:
     return re.sub("_+", "_", name2)
 
 
+def for_all(
+    predicate: Callable[[str], bool], n: int = 1
+) -> Callable[[List[str]], bool]:
+    def f(candidates: List[str]) -> bool:
+        assert (
+            len(candidates) == n
+        ), f"Expected {n} candidates, got {len(candidates)}"
+        return all(predicate(output) for output in candidates)
+
+    return f
+
+
 async def assert_dialog(
     model: BaseChatModel,
     messages: List[BaseMessage],
-    output_predicate: Callable[[str], bool],
+    output_predicate: Callable[[List[str]], bool],
     streaming: bool,
-    stop: Optional[List[str]],
+    stop: Optional[List[str]] = None,
+    n: Optional[int] = None,
 ):
-    llm_result = await model.agenerate([messages], stop=stop)
+    llm_result = await model.agenerate([messages], stop=stop, n=n)
 
     actual_usage = (
         llm_result.llm_output.get("token_usage", None)
@@ -45,7 +58,9 @@ async def assert_dialog(
     # Usage is missing when and only where streaming is enabled
     assert (actual_usage in [None, {}]) == streaming
 
-    actual_output = llm_result.generations[0][-1].text
+    print(llm_result)
+
+    actual_output = [candidate.text for candidate in llm_result.generations[-1]]
 
     assert output_predicate(
         actual_output

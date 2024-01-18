@@ -88,7 +88,7 @@ async def embeddings(
     deployment: EmbeddingsDeployment = Path(...),
     query: EmbeddingsQuery = Body(..., example=EmbeddingsQuery.example()),
 ):
-    log.debug(f"query:\n{json.dumps(query.dict(exclude_none=True))}")
+    log.debug(f"query: {json.dumps(query.dict(exclude_none=True))}")
 
     model = await get_embeddings_model(
         location=DEFAULT_REGION,

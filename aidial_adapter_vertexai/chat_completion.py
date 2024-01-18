@@ -6,7 +6,7 @@ from aidial_adapter_vertexai.llm.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.llm.consumer import ChoiceConsumer
-from aidial_adapter_vertexai.llm.exceptions import UserError
+from aidial_adapter_vertexai.llm.exceptions import UserError, ValidationError
 from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
     get_chat_completion_model,
 )
@@ -53,6 +53,13 @@ class VertexAIChatCompletion(ChatCompletion):
 
         params = ModelParameters.create(request)
 
+        # Currently n>1 is emulated by calling the model n times
+        n = params.n or 1
+        params.n = None
+
+        if n > 1 and params.stream:
+            raise ValidationError("n>1 is not supported in streaming mode")
+
         discarded_messages_count = 0
         if params.max_prompt_tokens is not None:
             prompt, discarded_messages_count = await model.truncate_prompt(
@@ -74,7 +81,7 @@ class VertexAIChatCompletion(ChatCompletion):
         usage = TokenUsage()
 
         await asyncio.gather(
-            *(generate_response(usage, idx) for idx in range(request.n or 1))
+            *(generate_response(usage, idx) for idx in range(n))
         )
 
         log.debug(f"usage: {usage}")

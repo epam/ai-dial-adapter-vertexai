@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Mapping, Optional, Union
+from typing import List, Mapping, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message, Request
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ class ModelParameters(BaseModel):
     temperature: Optional[float] = None
     top_p: Optional[float] = None
     n: Optional[int] = None
-    stop: Optional[Union[str, List[str]]] = None
+    stop: Optional[List[str]] = None
     max_tokens: Optional[int] = None
     presence_penalty: Optional[float] = None
     frequency_penalty: Optional[float] = None
@@ -19,11 +19,13 @@ class ModelParameters(BaseModel):
 
     @classmethod
     def create(cls, request: Request) -> "ModelParameters":
+        stop = [request.stop] if isinstance(request.stop, str) else request.stop
+
         return cls(
             temperature=request.temperature,
             top_p=request.top_p,
             n=request.n,
-            stop=request.stop,
+            stop=stop,
             max_tokens=request.max_tokens,
             presence_penalty=request.presence_penalty,
             frequency_penalty=request.frequency_penalty,
