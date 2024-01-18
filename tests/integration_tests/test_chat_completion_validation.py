@@ -32,7 +32,7 @@ class TestCase:
     name: str
     deployment: ChatCompletionDeployment
     messages: List[BaseMessage]
-    expected: Callable[[str], bool] | Exception
+    expected: Callable[[List[str]], bool] | Exception
 
     def get_id(self) -> str:
         return sanitize_test_name(f"{self.deployment.value} {self.name}")

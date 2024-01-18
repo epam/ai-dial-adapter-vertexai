@@ -13,6 +13,7 @@ from tests.conftest import TEST_SERVER_URL
 from tests.utils.llm import (
     assert_dialog,
     create_chat_model,
+    for_all,
     sanitize_test_name,
     sys,
     user,
@@ -32,11 +33,13 @@ class TestCase:
     name: str
     deployment: ChatCompletionDeployment
     streaming: bool
-    max_tokens: Optional[int]
-    stop: Optional[List[str]]
 
     messages: List[BaseMessage]
-    expected: Callable[[str], bool] | Exception
+    expected: Callable[[List[str]], bool] | Exception
+
+    max_tokens: Optional[int] = None
+    stop: Optional[List[str]] = None
+    n: Optional[int] = None
 
     def get_id(self):
         max_tokens_str = (
@@ -46,11 +49,13 @@ class TestCase:
         )
         stop_sequence_str = f"stop={self.stop}" if self.stop is not None else ""
         streaming_str = "streaming" if self.streaming else "non-streaming"
+        n_str = f"n={self.n}" if self.n is not None else ""
         segments = [
             self.deployment.value,
             streaming_str,
             max_tokens_str,
             stop_sequence_str,
+            n_str,
             self.name,
         ]
         return sanitize_test_name(" ".join(s for s in segments if s))
@@ -68,10 +73,8 @@ def get_test_cases(
             name="2+3=5",
             deployment=deployment,
             streaming=streaming,
-            max_tokens=None,
-            stop=None,
             messages=[user("2+3=?")],
-            expected=lambda s: "5" in s,
+            expected=for_all(lambda s: "5" in s),
         )
     )
 
@@ -80,10 +83,8 @@ def get_test_cases(
             name="hello",
             deployment=deployment,
             streaming=streaming,
-            max_tokens=None,
-            stop=None,
             messages=[user('Reply with "Hello"')],
-            expected=lambda s: "hello" in s.lower(),
+            expected=for_all(lambda s: "hello" in s.lower()),
         )
     )
 
@@ -92,10 +93,8 @@ def get_test_cases(
             name="empty sys message",
             deployment=deployment,
             streaming=streaming,
-            max_tokens=None,
-            stop=None,
             messages=[sys(""), user("2+4=?")],
-            expected=lambda s: "6" in s,
+            expected=for_all(lambda s: "6" in s),
         )
     )
 
@@ -104,10 +103,8 @@ def get_test_cases(
             name="non empty sys message",
             deployment=deployment,
             streaming=streaming,
-            max_tokens=None,
-            stop=None,
             messages=[sys("Act as helpful assistant"), user("2+5=?")],
-            expected=lambda s: "7" in s,
+            expected=for_all(lambda s: "7" in s),
         )
     )
 
@@ -117,12 +114,24 @@ def get_test_cases(
             deployment=deployment,
             streaming=streaming,
             max_tokens=1,
-            stop=None,
             messages=[user("tell me the full story of Pinocchio")],
-            expected=lambda s: len(s.split()) == 1,
+            expected=for_all(lambda s: len(s.split()) == 1),
         )
     )
 
+    ret.append(
+        TestCase(
+            name="multiple candidates",
+            deployment=deployment,
+            streaming=streaming,
+            max_tokens=10,
+            n=5,
+            messages=[user("heads or tails?")],
+            expected=Exception("n>1 is not supported in streaming mode")
+            if streaming
+            else for_all(lambda _: True, 5),
+        )
+    )
     ret.append(
         TestCase(
             name="stop sequence",
@@ -135,7 +144,7 @@ def get_test_cases(
                 "stop sequences are not supported for code chat model"
             )
             if is_codechat
-            else lambda s: "world" not in s.lower(),
+            else for_all(lambda s: "world" not in s.lower()),
         )
     )
 
@@ -169,6 +178,7 @@ async def test_chat_completion_langchain(server, test: TestCase):
                 output_predicate=lambda s: True,
                 streaming=test.streaming,
                 stop=test.stop,
+                n=test.n,
             )
 
         assert isinstance(exc_info.value, openai.error.OpenAIError)
@@ -181,4 +191,5 @@ async def test_chat_completion_langchain(server, test: TestCase):
             output_predicate=test.expected,
             streaming=test.streaming,
             stop=test.stop,
+            n=test.n,
         )

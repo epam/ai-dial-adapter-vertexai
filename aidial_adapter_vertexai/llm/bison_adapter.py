@@ -166,5 +166,7 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
 
 
 def generic_validate_parameters(params: ModelParameters) -> None:
-    if params.stream and params.n is not None and params.n > 1:
-        raise ValidationError("n>1 is not supported in streaming mode")
+    # Currently n>1 is emulated by calling the model n times.
+    # So the individual generation requests are expected to have n=1 or unset.
+    if params.n is not None and params.n > 1:
+        raise ValueError("n is expected to be 1 or unset")

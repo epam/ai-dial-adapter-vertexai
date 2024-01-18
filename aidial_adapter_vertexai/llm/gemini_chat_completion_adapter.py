@@ -50,13 +50,17 @@ BLOCK_NONE_SAFETY_SETTINGS: Dict[HarmCategory, HarmBlockThreshold] = {
 
 
 def create_generation_config(params: ModelParameters) -> GenerationConfig:
+    # Currently n>1 is emulated by calling the model n times.
+    # So the individual generation requests are expected to have n=1 or unset.
+    if params.n is not None and params.n > 1:
+        raise ValueError("n is expected to be 1 or unset")
+
     return GenerationConfig(
         max_output_tokens=params.max_tokens,
         temperature=params.temperature,
         stop_sequences=params.stop,
         top_p=params.top_p,
-        # NOTE: param.n is currently emulated via multiple requests
-        candidate_count=1,
+        candidate_count=params.n,
     )
 
 
