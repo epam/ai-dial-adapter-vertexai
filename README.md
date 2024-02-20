@@ -2,7 +2,7 @@
 
 The project implements [AI DIAL API](https://epam-rail.com/dial_api) for language models and embeddings from [Vertex AI](https://console.cloud.google.com/vertex-ai).
 
-Find the list of supported models in [the source code](./aidial_adapter_vertexai/llm/vertex_ai_deployments.py).
+Find the list of supported models in [the source code](./aidial_adapter_vertexai/deployments.py).
 
 ## Developer environment
 
