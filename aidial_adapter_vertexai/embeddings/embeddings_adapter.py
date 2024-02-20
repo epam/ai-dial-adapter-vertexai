@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
 
-from aidial_adapter_vertexai.llm.vertex_ai import (
+from aidial_adapter_vertexai.dial_api.request import EmbeddingsType
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.vertex_ai import (
     TextEmbeddingModel,
     get_embedding_model,
     init_vertex_ai,
 )
-from aidial_adapter_vertexai.universal_api.request import EmbeddingsType
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
 
 
 class EmbeddingsAdapter(ABC):

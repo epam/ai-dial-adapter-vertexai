@@ -2,11 +2,9 @@ import logging
 from abc import ABC, abstractmethod
 from typing import AsyncIterator
 
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 log = logging.getLogger(__name__)
 

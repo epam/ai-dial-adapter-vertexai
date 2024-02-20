@@ -4,10 +4,8 @@ from typing import Optional, Type
 
 from pydantic import BaseModel
 
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from client.utils.cli import select_enum, select_option
 
 

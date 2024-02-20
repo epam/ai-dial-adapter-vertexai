@@ -4,9 +4,7 @@ import openai
 import openai.error
 import requests
 
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from tests.conftest import DEFAULT_API_VERSION, TEST_SERVER_URL
 
 deployments = [

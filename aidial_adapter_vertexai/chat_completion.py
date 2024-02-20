@@ -2,20 +2,16 @@ import asyncio
 
 from aidial_sdk.chat_completion import ChatCompletion, Request, Response, Status
 
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+from aidial_adapter_vertexai.adapters import get_chat_completion_model
+from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.consumer import ChoiceConsumer
-from aidial_adapter_vertexai.llm.exceptions import UserError, ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
-    get_chat_completion_model,
-)
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
-from aidial_adapter_vertexai.server.exceptions import dial_exception_decorator
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 

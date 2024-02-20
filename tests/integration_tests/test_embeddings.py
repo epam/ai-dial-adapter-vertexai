@@ -6,13 +6,9 @@ from typing import Callable, Dict, List, cast
 import openai
 import pytest
 
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    EmbeddingsDeployment,
-)
-from aidial_adapter_vertexai.universal_api.request import EmbeddingsType
-from aidial_adapter_vertexai.universal_api.response import (
-    EmbeddingsResponseDict,
-)
+from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
+from aidial_adapter_vertexai.dial_api.request import EmbeddingsType
+from aidial_adapter_vertexai.dial_api.response import EmbeddingsResponseDict
 from tests.conftest import DEFAULT_API_VERSION, TEST_SERVER_URL
 from tests.utils.llm import sanitize_test_name
 

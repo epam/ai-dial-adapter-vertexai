@@ -2,7 +2,7 @@ from typing import List, Literal, Tuple, TypedDict
 
 from pydantic import BaseModel
 
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 
 class ModelObject(BaseModel):

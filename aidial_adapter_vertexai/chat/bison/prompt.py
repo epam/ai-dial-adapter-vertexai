@@ -5,7 +5,7 @@ from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
 from vertexai.preview.language_models import ChatMessage, ChatSession
 
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
+from aidial_adapter_vertexai.chat.errors import ValidationError
 
 
 class ChatAuthor(str, Enum):

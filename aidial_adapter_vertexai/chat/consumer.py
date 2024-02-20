@@ -3,7 +3,7 @@ from typing import Optional
 
 from aidial_sdk.chat_completion import Attachment, Choice, FinishReason
 
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 
 class Consumer(ABC):

@@ -3,9 +3,9 @@ from typing import Generic, List, Tuple, TypeVar
 
 from aidial_sdk.chat_completion import Message
 
-from aidial_adapter_vertexai.llm.consumer import Consumer
-from aidial_adapter_vertexai.llm.exceptions import UserError
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
+from aidial_adapter_vertexai.chat.consumer import Consumer
+from aidial_adapter_vertexai.chat.errors import UserError
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
 
 P = TypeVar("P")
 

@@ -2,8 +2,8 @@ import asyncio
 import logging.config
 from typing import Tuple, assert_never
 
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.env import get_env
 from aidial_adapter_vertexai.utils.log_config import LogConfig
 from aidial_adapter_vertexai.utils.timer import Timer

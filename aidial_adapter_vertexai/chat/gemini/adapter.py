@@ -20,22 +20,19 @@ from vertexai.preview.generative_models import (
     GenerativeModel,
 )
 
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.consumer import Consumer
-from aidial_adapter_vertexai.llm.exceptions import UserError
-from aidial_adapter_vertexai.llm.gemini_prompt import GeminiPrompt
-from aidial_adapter_vertexai.llm.vertex_ai import (
-    get_gemini_model,
-    init_vertex_ai,
-)
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
-from aidial_adapter_vertexai.universal_api.storage import FileStorage
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.chat.consumer import Consumer
+from aidial_adapter_vertexai.chat.errors import UserError
+from aidial_adapter_vertexai.chat.gemini.prompt import GeminiPrompt
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.dial_api.storage import FileStorage
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps_short, to_dict
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
+from aidial_adapter_vertexai.vertex_ai import get_gemini_model, init_vertex_ai
 
 HarmCategory = gapic_content_types.HarmCategory
 HarmBlockThreshold = gapic_content_types.SafetySetting.HarmBlockThreshold

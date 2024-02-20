@@ -9,18 +9,18 @@ from aidial_sdk.telemetry.types import TelemetryConfig, TracingConfig
 from fastapi import Body, Header, Path, Request
 from fastapi.responses import JSONResponse
 
+from aidial_adapter_vertexai.adapters import get_embeddings_model
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
-from aidial_adapter_vertexai.llm.vertex_ai_adapter import get_embeddings_model
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
+from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
-from aidial_adapter_vertexai.server.exceptions import dial_exception_decorator
-from aidial_adapter_vertexai.universal_api.request import (
+from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
+from aidial_adapter_vertexai.dial_api.request import (
     EmbeddingsQuery,
     EmbeddingsType,
 )
-from aidial_adapter_vertexai.universal_api.response import (
+from aidial_adapter_vertexai.dial_api.response import (
     ModelObject,
     ModelsResponse,
     make_embeddings_response,

@@ -6,9 +6,7 @@ import openai.error
 import pytest
 from langchain.schema import BaseMessage
 
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from tests.conftest import TEST_SERVER_URL
 from tests.utils.llm import (
     assert_dialog,
@@ -127,9 +125,11 @@ def get_test_cases(
             max_tokens=10,
             n=5,
             messages=[user("heads or tails?")],
-            expected=Exception("n>1 is not supported in streaming mode")
-            if streaming
-            else for_all(lambda _: True, 5),
+            expected=(
+                Exception("n>1 is not supported in streaming mode")
+                if streaming
+                else for_all(lambda _: True, 5)
+            ),
         )
     )
     ret.append(
@@ -140,11 +140,13 @@ def get_test_cases(
             max_tokens=None,
             stop=["world"],
             messages=[user('Reply with "hello world"')],
-            expected=Exception(
-                "stop sequences are not supported for code chat model"
-            )
-            if is_codechat
-            else for_all(lambda s: "world" not in s.lower()),
+            expected=(
+                Exception(
+                    "stop sequences are not supported for code chat model"
+                )
+                if is_codechat
+                else for_all(lambda s: "world" not in s.lower())
+            ),
         )
     )
 
