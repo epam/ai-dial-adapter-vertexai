@@ -2,8 +2,8 @@ from typing import Callable, Coroutine, List, Optional
 
 from aidial_sdk.chat_completion import Attachment, FinishReason
 
-from aidial_adapter_vertexai.llm.consumer import Consumer
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.chat.consumer import Consumer
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 ContentCallback = Callable[[str], Coroutine[None, str, None]]
 

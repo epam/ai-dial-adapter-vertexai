@@ -8,7 +8,7 @@ from google.api_core.exceptions import (
 )
 from google.auth.exceptions import GoogleAuthError
 
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
+from aidial_adapter_vertexai.chat.errors import ValidationError
 
 
 def to_dial_exception(e: Exception) -> DialException:

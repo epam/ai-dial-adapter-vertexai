@@ -6,18 +6,14 @@ from typing import AsyncGenerator, List, Optional
 
 from aidial_sdk.chat_completion import Message, Role
 
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+from aidial_adapter_vertexai.adapters import get_chat_completion_model
+from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.exceptions import UserError
-from aidial_adapter_vertexai.llm.vertex_ai_adapter import (
-    get_chat_completion_model,
-)
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.chat.errors import UserError
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from client.chat.base import Chat
 from client.chat.collect_consumer import CollectConsumer
 from client.utils.concurrency import str_callback_to_stream_generator

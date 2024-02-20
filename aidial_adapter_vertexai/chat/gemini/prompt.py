@@ -5,12 +5,12 @@ from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
-from aidial_adapter_vertexai.llm.exceptions import UserError, ValidationError
-from aidial_adapter_vertexai.llm.process_inputs import (
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.gemini.process_inputs import (
     MessageWithInputs,
     download_inputs,
 )
-from aidial_adapter_vertexai.universal_api.storage import FileStorage
+from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
 # Pricing info: https://cloud.google.com/vertex-ai/pricing
 # Supported image types:

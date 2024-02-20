@@ -1,8 +1,8 @@
-from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt
+from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
+from aidial_adapter_vertexai.chat.errors import ValidationError
 
 
 def _estimate_discarded_messages(

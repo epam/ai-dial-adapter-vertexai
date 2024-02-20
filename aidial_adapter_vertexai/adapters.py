@@ -1,27 +1,29 @@
 from typing import Mapping, assert_never
 
-from aidial_adapter_vertexai.llm.bison_adapter import (
+from aidial_adapter_vertexai.chat.bison.adapter import (
     BisonChatAdapter,
     BisonCodeChatAdapter,
 )
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.embeddings_adapter import EmbeddingsAdapter
-from aidial_adapter_vertexai.llm.gecko_embeddings import (
-    GeckoTextGenericEmbeddingsAdapter,
-)
-from aidial_adapter_vertexai.llm.gemini_chat_completion_adapter import (
+from aidial_adapter_vertexai.chat.gemini.adapter import (
     GeminiChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.imagen_chat_completion_adapter import (
+from aidial_adapter_vertexai.chat.imagen.adapter import (
     ImagenChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
+from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
-from aidial_adapter_vertexai.universal_api.storage import create_file_storage
+from aidial_adapter_vertexai.dial_api.storage import create_file_storage
+from aidial_adapter_vertexai.embeddings.embeddings_adapter import (
+    EmbeddingsAdapter,
+)
+from aidial_adapter_vertexai.embeddings.gecko import (
+    GeckoTextGenericEmbeddingsAdapter,
+)
 
 
 async def get_chat_completion_model(
@@ -33,9 +35,17 @@ async def get_chat_completion_model(
     model_id = deployment.get_model_id()
 
     match deployment:
-        case ChatCompletionDeployment.CHAT_BISON_1 | ChatCompletionDeployment.CHAT_BISON_2 | ChatCompletionDeployment.CHAT_BISON_2_32K:
+        case (
+            ChatCompletionDeployment.CHAT_BISON_1
+            | ChatCompletionDeployment.CHAT_BISON_2
+            | ChatCompletionDeployment.CHAT_BISON_2_32K
+        ):
             return await BisonChatAdapter.create(model_id, project_id, location)
-        case ChatCompletionDeployment.CODECHAT_BISON_1 | ChatCompletionDeployment.CODECHAT_BISON_2 | ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+        case (
+            ChatCompletionDeployment.CODECHAT_BISON_1
+            | ChatCompletionDeployment.CODECHAT_BISON_2
+            | ChatCompletionDeployment.CODECHAT_BISON_2_32K
+        ):
             return await BisonCodeChatAdapter.create(
                 model_id, project_id, location
             )

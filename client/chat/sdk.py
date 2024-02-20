@@ -1,6 +1,7 @@
 """
 Classes to test the various models directly through the VertexAI SDK
 """
+
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -20,14 +21,12 @@ from vertexai.preview.vision_models import (
     ImageGenerationResponse,
 )
 
-from aidial_adapter_vertexai.llm.gemini_chat_completion_adapter import (
+from aidial_adapter_vertexai.chat.gemini.adapter import (
     BLOCK_NONE_SAFETY_SETTINGS,
 )
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from client.chat.base import Chat
 from client.utils.files import get_project_root
 from client.utils.printing import print_info
@@ -79,9 +78,9 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
     return GenerationConfig(
         max_output_tokens=params.max_tokens,
         temperature=params.temperature,
-        stop_sequences=[params.stop]
-        if isinstance(params.stop, str)
-        else params.stop,
+        stop_sequences=(
+            [params.stop] if isinstance(params.stop, str) else params.stop
+        ),
         top_p=params.top_p,
         candidate_count=1 if params.stream else params.n,
     )
@@ -100,7 +99,10 @@ class SDKGenChat(Chat):
         vertexai.init(project=project, location=location)
 
         match deployment:
-            case ChatCompletionDeployment.GEMINI_PRO_1 | ChatCompletionDeployment.GEMINI_PRO_VISION_1:
+            case (
+                ChatCompletionDeployment.GEMINI_PRO_1
+                | ChatCompletionDeployment.GEMINI_PRO_VISION_1
+            ):
                 model = GenerativeModel(deployment)
             case _:
                 raise ValueError(f"Unsupported model: {deployment}")
@@ -181,9 +183,19 @@ async def create_sdk_chat(
     location: str, project: str, deployment: ChatCompletionDeployment
 ) -> Chat:
     match deployment:
-        case ChatCompletionDeployment.CHAT_BISON_1 | ChatCompletionDeployment.CHAT_BISON_2 | ChatCompletionDeployment.CHAT_BISON_2_32K | ChatCompletionDeployment.CODECHAT_BISON_1 | ChatCompletionDeployment.CODECHAT_BISON_2 | ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+        case (
+            ChatCompletionDeployment.CHAT_BISON_1
+            | ChatCompletionDeployment.CHAT_BISON_2
+            | ChatCompletionDeployment.CHAT_BISON_2_32K
+            | ChatCompletionDeployment.CODECHAT_BISON_1
+            | ChatCompletionDeployment.CODECHAT_BISON_2
+            | ChatCompletionDeployment.CODECHAT_BISON_2_32K
+        ):
             return await SDKLangChat.create(location, project, deployment)
-        case ChatCompletionDeployment.GEMINI_PRO_1 | ChatCompletionDeployment.GEMINI_PRO_VISION_1:
+        case (
+            ChatCompletionDeployment.GEMINI_PRO_1
+            | ChatCompletionDeployment.GEMINI_PRO_VISION_1
+        ):
             return await SDKGenChat.create(location, project, deployment)
         case ChatCompletionDeployment.IMAGEN_005:
             return await SDKImagenChat.create(location, project, deployment)
@@ -195,9 +207,17 @@ def get_language_model_by_deployment(
     deployment: ChatCompletionDeployment,
 ) -> ChatModel | CodeChatModel:
     match deployment:
-        case ChatCompletionDeployment.CHAT_BISON_1 | ChatCompletionDeployment.CHAT_BISON_2 | ChatCompletionDeployment.CHAT_BISON_2_32K:
+        case (
+            ChatCompletionDeployment.CHAT_BISON_1
+            | ChatCompletionDeployment.CHAT_BISON_2
+            | ChatCompletionDeployment.CHAT_BISON_2_32K
+        ):
             return ChatModel.from_pretrained(deployment)
-        case ChatCompletionDeployment.CODECHAT_BISON_1 | ChatCompletionDeployment.CODECHAT_BISON_2 | ChatCompletionDeployment.CODECHAT_BISON_2_32K:
+        case (
+            ChatCompletionDeployment.CODECHAT_BISON_1
+            | ChatCompletionDeployment.CODECHAT_BISON_2
+            | ChatCompletionDeployment.CODECHAT_BISON_2_32K
+        ):
             return CodeChatModel.from_pretrained(deployment)
         case _:
             raise ValueError(f"Unsupported model: {deployment}")

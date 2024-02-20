@@ -3,11 +3,13 @@ from typing import List, Optional, Tuple
 
 from vertexai.language_models import TextEmbeddingInput
 
-from aidial_adapter_vertexai.llm.embeddings_adapter import EmbeddingsAdapter
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai import TextEmbeddingModel
-from aidial_adapter_vertexai.universal_api.request import EmbeddingsType
-from aidial_adapter_vertexai.universal_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.dial_api.request import EmbeddingsType
+from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.embeddings.embeddings_adapter import (
+    EmbeddingsAdapter,
+)
+from aidial_adapter_vertexai.vertex_ai import TextEmbeddingModel
 
 
 class GeckoEmbeddingType(str, Enum):

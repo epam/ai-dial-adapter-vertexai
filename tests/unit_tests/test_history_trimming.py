@@ -3,18 +3,18 @@ from unittest.mock import Mock, call
 
 import pytest
 
-from aidial_adapter_vertexai.llm.bison_history_trimming import (
-    get_discarded_messages_count,
-)
-from aidial_adapter_vertexai.llm.bison_prompt import (
+from aidial_adapter_vertexai.chat.bison.prompt import (
     BisonPrompt,
     ChatAuthor,
     ChatMessage,
 )
-from aidial_adapter_vertexai.llm.chat_completion_adapter import (
+from aidial_adapter_vertexai.chat.bison.truncate_prompt import (
+    get_discarded_messages_count,
+)
+from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
+from aidial_adapter_vertexai.chat.errors import ValidationError
 
 
 @pytest.mark.asyncio

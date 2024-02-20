@@ -6,9 +6,7 @@ import openai.error
 import pytest
 from langchain.schema import BaseMessage
 
-from aidial_adapter_vertexai.llm.vertex_ai_deployments import (
-    ChatCompletionDeployment,
-)
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from tests.conftest import TEST_SERVER_URL
 from tests.utils.llm import (
     ai,

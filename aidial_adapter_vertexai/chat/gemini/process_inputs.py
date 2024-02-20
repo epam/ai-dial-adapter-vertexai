@@ -5,8 +5,8 @@ from typing import Dict, List, Optional, Tuple
 from aidial_sdk.chat_completion import Attachment, Message
 from pydantic import BaseModel
 
-from aidial_adapter_vertexai.universal_api.request import get_attachments
-from aidial_adapter_vertexai.universal_api.storage import (
+from aidial_adapter_vertexai.dial_api.request import get_attachments
+from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
     download_file_as_base64,
 )

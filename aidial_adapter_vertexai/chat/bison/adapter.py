@@ -3,17 +3,15 @@ from typing import AsyncIterator, List, Optional, TypedDict
 from typing_extensions import override
 from vertexai.preview.language_models import ChatModel, CodeChatModel
 
-from aidial_adapter_vertexai.llm.bison_chat_completion_adapter import (
-    BisonChatCompletionAdapter,
-)
-from aidial_adapter_vertexai.llm.bison_prompt import BisonPrompt
-from aidial_adapter_vertexai.llm.exceptions import ValidationError
-from aidial_adapter_vertexai.llm.vertex_ai import (
+from aidial_adapter_vertexai.chat.bison.base import BisonChatCompletionAdapter
+from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt
+from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.vertex_ai import (
     get_chat_model,
     get_code_chat_model,
     init_vertex_ai,
 )
-from aidial_adapter_vertexai.universal_api.request import ModelParameters
 
 
 class CodeChatParamsBase(TypedDict, total=False):
