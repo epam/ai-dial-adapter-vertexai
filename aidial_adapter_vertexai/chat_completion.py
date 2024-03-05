@@ -84,4 +84,4 @@ class VertexAIChatCompletion(ChatCompletion):
         response.set_usage(usage.prompt_tokens, usage.completion_tokens)
 
         if params.max_prompt_tokens is not None:
-            response.set_discarded_messages(discarded_messages_count)
+            response.set_discarded_messages([])
