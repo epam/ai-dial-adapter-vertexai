@@ -1,14 +1,14 @@
 import re
 from dataclasses import dataclass
 from itertools import product
-from typing import Callable, Dict, List, cast
+from typing import Callable, Dict, List
 
-import openai
 import pytest
+from openai import AsyncAzureOpenAI
+from openai.types import CreateEmbeddingResponse
 
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
 from aidial_adapter_vertexai.dial_api.request import EmbeddingsType
-from aidial_adapter_vertexai.dial_api.response import EmbeddingsResponseDict
 from tests.conftest import DEFAULT_API_VERSION, TEST_SERVER_URL
 from tests.utils.llm import sanitize_test_name
 
@@ -25,7 +25,7 @@ class TestCase:
     input: str | List[str]
     headers: dict
 
-    expected: Callable[[EmbeddingsResponseDict], None] | Exception
+    expected: Callable[[CreateEmbeddingResponse], None] | Exception
 
     def get_id(self):
         return sanitize_test_name(
@@ -38,11 +38,11 @@ def get_test_cases(
 ) -> List[TestCase]:
     input = ["fish", "cat"]
 
-    def test(resp: EmbeddingsResponseDict):
-        assert resp["usage"]["prompt_tokens"] == len(input)
-        assert resp["usage"]["total_tokens"] == len(input)
-        assert len(resp["data"]) == len(input)
-        assert len(resp["data"][0]["embedding"]) == 768
+    def test(resp: CreateEmbeddingResponse):
+        assert resp.usage.prompt_tokens == len(input)
+        assert resp.usage.total_tokens == len(input)
+        assert len(resp.data) == len(input)
+        assert len(resp.data[0].embedding) == 768
 
     ret: List[TestCase] = []
 
@@ -57,7 +57,7 @@ def get_test_cases(
         if ty:
             headers["X-DIAL-Type"] = ty
 
-        expected: Callable[[EmbeddingsResponseDict], None] | Exception = test
+        expected: Callable[[CreateEmbeddingResponse], None] | Exception = test
         if instr:
             expected = Exception("Instruction prompt is not supported")
         elif (ty or "symmetric") not in allowed_types:
@@ -99,15 +99,18 @@ def get_test_cases(
     ids=lambda test: test.get_id(),
 )
 async def test_embeddings_openai(server, test: TestCase):
-    async def run():
-        model_id = test.deployment.value
-        return await openai.Embedding.acreate(
-            model=model_id,
-            api_base=f"{TEST_SERVER_URL}/openai/deployments/{model_id}",
-            api_version=DEFAULT_API_VERSION,
-            api_key="dummy_key",
-            input=test.input,
-            headers=test.headers,
+    model_id = test.deployment.value
+
+    client = AsyncAzureOpenAI(
+        azure_endpoint=TEST_SERVER_URL,
+        azure_deployment=model_id,
+        api_version=DEFAULT_API_VERSION,
+        api_key="dummy_key",
+    )
+
+    async def run() -> CreateEmbeddingResponse:
+        return await client.embeddings.create(
+            model=model_id, input=test.input, extra_headers=test.headers
         )
 
     if isinstance(test.expected, Exception):
@@ -117,4 +120,4 @@ async def test_embeddings_openai(server, test: TestCase):
             await run()
     else:
         embeddings = await run()
-        test.expected(cast(EmbeddingsResponseDict, embeddings))
+        test.expected(embeddings)
