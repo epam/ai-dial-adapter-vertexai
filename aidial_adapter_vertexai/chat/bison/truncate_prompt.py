@@ -1,3 +1,5 @@
+from typing import List
+
 from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
@@ -22,6 +24,15 @@ def _estimate_discarded_messages(
             break
 
     return discarded_messages
+
+
+async def get_discarded_messages(
+    model: ChatCompletionAdapter[BisonPrompt],
+    prompt: BisonPrompt,
+    max_prompt_tokens: int,
+) -> List[int]:
+    count = await get_discarded_messages_count(model, prompt, max_prompt_tokens)
+    return list(range(count))
 
 
 async def get_discarded_messages_count(
