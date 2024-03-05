@@ -46,17 +46,7 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
         if max_prompt_tokens is None:
             return prompt, []
 
-        discarded = await get_discarded_messages(
-            self, prompt, max_prompt_tokens
-        )
-
-        return (
-            BisonPrompt(
-                context=prompt.context,
-                messages=prompt.messages[discarded:],
-            ),
-            discarded,
-        )
+        return await get_discarded_messages(self, prompt, max_prompt_tokens)
 
     @override
     async def chat(

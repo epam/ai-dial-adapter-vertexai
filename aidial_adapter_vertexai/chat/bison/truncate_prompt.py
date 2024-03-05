@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
@@ -24,15 +24,6 @@ def _estimate_discarded_messages(
             break
 
     return discarded_messages
-
-
-async def get_discarded_messages(
-    model: ChatCompletionAdapter[BisonPrompt],
-    prompt: BisonPrompt,
-    max_prompt_tokens: int,
-) -> List[int]:
-    count = await get_discarded_messages_count(model, prompt, max_prompt_tokens)
-    return list(range(count))
 
 
 async def get_discarded_messages_count(
@@ -88,3 +79,22 @@ async def get_discarded_messages_count(
             discarded_messages_count -= 2
 
         return discarded_messages_count
+
+
+async def get_discarded_messages(
+    model: ChatCompletionAdapter[BisonPrompt],
+    prompt: BisonPrompt,
+    max_prompt_tokens: int,
+) -> Tuple[BisonPrompt, List[int]]:
+    count = await get_discarded_messages_count(model, prompt, max_prompt_tokens)
+
+    truncated_prompt = BisonPrompt(
+        context=prompt.context,
+        messages=prompt.messages[count:],
+    )
+
+    discarded_indices = list(range(count))
+    if prompt.context is not None:
+        discarded_indices = list(map(lambda x: x + 1, discarded_indices))
+
+    return truncated_prompt, discarded_indices
