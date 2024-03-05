@@ -18,7 +18,7 @@ class ChatCompletionAdapter(ABC, Generic[P]):
     @abstractmethod
     async def truncate_prompt(
         self, prompt: P, max_prompt_tokens: int
-    ) -> Tuple[P, int]:
+    ) -> Tuple[P, List[int]]:
         pass
 
     @abstractmethod

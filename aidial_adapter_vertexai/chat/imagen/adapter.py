@@ -50,8 +50,8 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     @override
     async def truncate_prompt(
         self, prompt: ImagenPrompt, max_prompt_tokens: int
-    ) -> Tuple[ImagenPrompt, int]:
-        return prompt, 0
+    ) -> Tuple[ImagenPrompt, List[int]]:
+        return prompt, []
 
     @staticmethod
     def get_image_type(image: PIL_Image.Image) -> str:

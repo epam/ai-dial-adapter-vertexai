@@ -11,7 +11,7 @@ from vertexai.preview.language_models import (
 
 from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt
 from aidial_adapter_vertexai.chat.bison.truncate_prompt import (
-    get_discarded_messages_count,
+    get_discarded_messages,
 )
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
@@ -42,21 +42,11 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
     @override
     async def truncate_prompt(
         self, prompt: BisonPrompt, max_prompt_tokens: int
-    ) -> Tuple[BisonPrompt, int]:
+    ) -> Tuple[BisonPrompt, List[int]]:
         if max_prompt_tokens is None:
-            return prompt, 0
+            return prompt, []
 
-        discarded = await get_discarded_messages_count(
-            self, prompt, max_prompt_tokens
-        )
-
-        return (
-            BisonPrompt(
-                context=prompt.context,
-                messages=prompt.messages[discarded:],
-            ),
-            discarded,
-        )
+        return await get_discarded_messages(self, prompt, max_prompt_tokens)
 
     @override
     async def chat(
