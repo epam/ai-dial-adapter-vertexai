@@ -56,12 +56,6 @@ class VertexAIChatCompletion(ChatCompletion):
         if n > 1 and params.stream:
             raise ValidationError("n>1 is not supported in streaming mode")
 
-        discarded_messages_count = 0
-        if params.max_prompt_tokens is not None:
-            prompt, discarded_messages_count = await model.truncate_prompt(
-                prompt, params.max_prompt_tokens
-            )
-
         async def generate_response(usage: TokenUsage, choice_idx: int) -> None:
             choice = response.create_choice()
             choice.open()
@@ -84,4 +78,4 @@ class VertexAIChatCompletion(ChatCompletion):
         response.set_usage(usage.prompt_tokens, usage.completion_tokens)
 
         if params.max_prompt_tokens is not None:
-            response.set_discarded_messages(discarded_messages_count)
+            response.set_discarded_messages([])
