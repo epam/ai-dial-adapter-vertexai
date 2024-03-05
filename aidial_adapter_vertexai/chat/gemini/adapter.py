@@ -91,7 +91,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     @override
     async def truncate_prompt(
         self, prompt: GeminiPrompt, max_prompt_tokens: int
-    ) -> Tuple[GeminiPrompt, int]:
+    ) -> Tuple[GeminiPrompt, List[int]]:
         raise NotImplementedError(
             "Prompt truncation is not supported for Genimi model yet"
         )

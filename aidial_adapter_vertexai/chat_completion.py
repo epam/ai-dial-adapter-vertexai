@@ -1,4 +1,5 @@
 import asyncio
+from typing import List
 
 from aidial_sdk.chat_completion import ChatCompletion, Request, Response, Status
 
@@ -56,9 +57,9 @@ class VertexAIChatCompletion(ChatCompletion):
         if n > 1 and params.stream:
             raise ValidationError("n>1 is not supported in streaming mode")
 
-        discarded_messages_count = 0
+        discarded_messages: List[int] = []
         if params.max_prompt_tokens is not None:
-            prompt, discarded_messages_count = await model.truncate_prompt(
+            prompt, discarded_messages = await model.truncate_prompt(
                 prompt, params.max_prompt_tokens
             )
 
@@ -84,4 +85,4 @@ class VertexAIChatCompletion(ChatCompletion):
         response.set_usage(usage.prompt_tokens, usage.completion_tokens)
 
         if params.max_prompt_tokens is not None:
-            response.set_discarded_messages(discarded_messages_count)
+            response.set_discarded_messages(discarded_messages)
