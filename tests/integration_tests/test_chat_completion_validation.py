@@ -2,9 +2,9 @@ import re
 from dataclasses import dataclass
 from typing import Callable, List
 
-import openai.error
 import pytest
-from langchain.schema import BaseMessage
+from langchain_core.messages import BaseMessage
+from openai import APIStatusError
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from tests.conftest import TEST_SERVER_URL
@@ -144,8 +144,8 @@ async def test_input_validation(server, test: TestCase):
                 stop=None,
             )
 
-        assert isinstance(exc_info.value, openai.error.OpenAIError)
-        assert exc_info.value.http_status == 422
+        assert isinstance(exc_info.value, APIStatusError)
+        assert exc_info.value.status_code == 422
         assert re.search(str(test.expected), str(exc_info.value))
     else:
         await assert_dialog(

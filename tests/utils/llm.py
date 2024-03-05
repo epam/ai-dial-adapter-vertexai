@@ -1,10 +1,15 @@
 import re
 from typing import Callable, List, Optional
 
-from langchain.callbacks.base import Callbacks
-from langchain.chat_models import AzureChatOpenAI
-from langchain.chat_models.base import BaseChatModel
-from langchain.schema import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.callbacks import Callbacks
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+)
+from langchain_openai import AzureChatOpenAI
 
 from tests.conftest import DEFAULT_API_VERSION
 from tests.utils.callback import CallbackWithNewLines
@@ -75,16 +80,15 @@ def create_chat_model(
 ) -> BaseChatModel:
     callbacks: Callbacks = [CallbackWithNewLines()]
     return AzureChatOpenAI(
-        deployment_name=model_id,
+        azure_endpoint=base_url,
+        azure_deployment=model_id,
         callbacks=callbacks,
-        openai_api_base=base_url,
-        openai_api_version=DEFAULT_API_VERSION,
-        openai_api_key="dummy_key",
+        api_version=DEFAULT_API_VERSION,
+        api_key="dummy_key",
         verbose=True,
         streaming=streaming,
         temperature=0,
-        request_timeout=10,
         max_retries=0,
         max_tokens=max_tokens,
-        client=None,
+        request_timeout=10,  # type: ignore
     )
