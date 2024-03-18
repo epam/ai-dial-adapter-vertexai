@@ -155,3 +155,33 @@ async def test_input_validation(server, test: TestCase):
             streaming=streaming,
             stop=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_imagen_content_filtering(server):
+    streaming = False
+    model = create_chat_model(
+        TEST_SERVER_URL,
+        ChatCompletionDeployment.IMAGEN_005,
+        streaming,
+        max_tokens=None,
+    )
+
+    with pytest.raises(Exception) as exc_info:
+        await assert_dialog(
+            model=model,
+            messages=[user("generate something unsafe")],
+            output_predicate=lambda s: True,
+            streaming=streaming,
+            stop=None,
+        )
+
+    assert isinstance(exc_info.value, APIStatusError)
+    assert exc_info.value.status_code == 400
+
+    resp = exc_info.value.response.json()
+    assert (resp["error"]["code"]) == "content_filter"
+    assert (
+        resp["error"]["message"]
+        == "The response is blocked, as it may violate our policies."
+    )

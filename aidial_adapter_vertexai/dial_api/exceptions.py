@@ -31,6 +31,19 @@ def to_dial_exception(e: Exception) -> DialException:
         )
 
     if isinstance(e, InvalidArgument):
+        # Imagen content filtering message
+        content_filter_msg = (
+            "The response is blocked, as it may violate our policies."
+        )
+        if content_filter_msg in str(e):
+            return DialException(
+                status_code=400,
+                type="invalid_request_error",
+                message=content_filter_msg,
+                code="content_filter",
+                param="prompt",
+            )
+
         return DialException(
             status_code=400,
             type="invalid_request_error",
