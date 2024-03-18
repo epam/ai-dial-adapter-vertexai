@@ -41,5 +41,5 @@ async def get_embedding_model(model_id: str) -> TextEmbeddingModel:
 
 
 @cached()
-async def get_text_embedding_model(model_id: str) -> ImageGenerationModel:
+async def get_image_generation_model(model_id: str) -> ImageGenerationModel:
     return await make_async(ImageGenerationModel.from_pretrained, model_id)
