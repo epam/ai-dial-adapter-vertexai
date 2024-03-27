@@ -2,7 +2,30 @@
 
 The project implements [AI DIAL API](https://epam-rail.com/dial_api) for language models and embeddings from [Vertex AI](https://console.cloud.google.com/vertex-ai).
 
-Find the list of supported models in [the source code](./aidial_adapter_vertexai/deployments.py).
+## Supported models
+
+The following models support `SERVER_URL/openai/deployment/MODEL_NAME/chat/completions` endpoint along with optional support of `/tokenize` and `/truncate_prompt` endpoints:
+
+|Model|Modality|`/tokenize`|`/truncate_prompt`|
+|---|---|---|---|
+|chat-bison@001|text-to-text|✅|✅|
+|chat-bison@002|text-to-text|✅|✅|
+|chat-bison-32k@002|text-to-text|✅|✅|
+|codechat-bison@001|text-to-text|✅|✅|
+|codechat-bison@002|text-to-text|✅|✅|
+|codechat-bison-32k@002|text-to-text|✅|✅|
+|codechat-bison-32k@002|text-to-text|✅|✅|
+|gemini-pro|text-to-text|✅|❌|
+|gemini-pro-vision|text-to-text, image-to-text|✅|❌|
+|imagegeneration@005|text-to-image|❌|❌|
+
+The models that support `/truncate_prompt` do also support `max_prompt_tokens` request parameter.
+
+The following models support `SERVER_URL/openai/deployment/MODEL_NAME/embeddings` endpoint:
+
+|Model|Modality|
+|---|---|
+|textembedding-gecko@001|text-to-embedding|
 
 ## Developer environment
 
