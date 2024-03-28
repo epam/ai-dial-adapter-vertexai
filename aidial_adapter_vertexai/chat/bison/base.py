@@ -43,9 +43,6 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
     async def truncate_prompt(
         self, prompt: BisonPrompt, max_prompt_tokens: int
     ) -> Tuple[BisonPrompt, List[int]]:
-        if max_prompt_tokens is None:
-            return prompt, []
-
         return await get_discarded_messages(self, prompt, max_prompt_tokens)
 
     @override
