@@ -6,6 +6,7 @@ from aidial_sdk.chat_completion import Message
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.utils.not_implemented import not_implemented
 
 P = TypeVar("P")
 
@@ -16,21 +17,18 @@ class ChatCompletionAdapter(ABC, Generic[P]):
         pass
 
     @abstractmethod
-    async def truncate_prompt(
-        self, prompt: P, max_prompt_tokens: int
-    ) -> Tuple[P, List[int]]:
-        pass
-
-    @abstractmethod
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: P
     ) -> None:
         pass
 
-    @abstractmethod
-    async def count_prompt_tokens(self, prompt: P) -> int:
-        pass
+    @not_implemented
+    async def truncate_prompt(
+        self, prompt: P, max_prompt_tokens: int
+    ) -> Tuple[P, List[int]]: ...
 
-    @abstractmethod
-    async def count_completion_tokens(self, string: str) -> int:
-        pass
+    @not_implemented
+    async def count_prompt_tokens(self, prompt: P) -> int: ...
+
+    @not_implemented
+    async def count_completion_tokens(self, string: str) -> int: ...
