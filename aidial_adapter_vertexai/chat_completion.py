@@ -142,6 +142,9 @@ class VertexAIChatCompletion(ChatCompletion):
     ) -> TokenizeOutput:
         try:
             prompt = await model.parse_prompt(request.messages)
+            if isinstance(prompt, UserError):
+                raise prompt
+
             token_count = await model.count_prompt_tokens(prompt)
             return TokenizeSuccess(token_count=token_count)
         except Exception as e:

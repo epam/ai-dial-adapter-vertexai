@@ -53,8 +53,8 @@ class AdapterChat(Chat):
             prompt = await self.model.parse_prompt(self.history)
             if isinstance(prompt, UserError):
                 raise prompt
-            else:
-                await self.model.chat(params, consumer, prompt)
+
+            await self.model.chat(params, consumer, prompt)
 
         async def on_content(chunk: str):
             return
