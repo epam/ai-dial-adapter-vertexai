@@ -5,7 +5,6 @@ from typing import (
     Dict,
     List,
     Optional,
-    Tuple,
     TypeVar,
     assert_never,
 )
@@ -87,14 +86,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             return await GeminiPrompt.parse_vision(self.file_storage, messages)
         else:
             return GeminiPrompt.parse_non_vision(messages)
-
-    @override
-    async def truncate_prompt(
-        self, prompt: GeminiPrompt, max_prompt_tokens: int
-    ) -> Tuple[GeminiPrompt, List[int]]:
-        raise NotImplementedError(
-            "Prompt truncation is not supported for Genimi model yet"
-        )
 
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt

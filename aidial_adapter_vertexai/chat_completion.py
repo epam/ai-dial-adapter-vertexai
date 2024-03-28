@@ -1,6 +1,7 @@
 import asyncio
 from typing import List, assert_never
 
+from aidial_sdk import HTTPException as DialException
 from aidial_sdk.chat_completion import ChatCompletion, Request, Response, Status
 from aidial_sdk.chat_completion.request import ChatCompletionRequest
 from aidial_sdk.deployment.from_request_mixin import FromRequestDeploymentMixin
@@ -33,6 +34,7 @@ from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
+from aidial_adapter_vertexai.utils.not_implemented import is_implemented
 
 
 class VertexAIChatCompletion(ChatCompletion):
@@ -113,6 +115,11 @@ class VertexAIChatCompletion(ChatCompletion):
     async def tokenize(self, request: TokenizeRequest) -> TokenizeResponse:
         model = await self.get_model(request)
 
+        if not is_implemented(
+            model.count_completion_tokens
+        ) or not is_implemented(model.count_prompt_tokens):
+            raise DialException(status_code=404, message="Not found")
+
         outputs: List[TokenizeOutput] = []
         for input in request.inputs:
             match input:
@@ -155,6 +162,10 @@ class VertexAIChatCompletion(ChatCompletion):
         self, request: TruncatePromptRequest
     ) -> TruncatePromptResponse:
         model = await self.get_model(request)
+
+        if not is_implemented(model.truncate_prompt):
+            raise DialException(status_code=404, message="Not found")
+
         outputs: List[TruncatePromptResult] = []
         for input in request.inputs:
             outputs.append(await self.truncate_prompt_request(model, input))
