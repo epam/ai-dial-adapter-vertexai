@@ -1,11 +1,9 @@
 import json
-import logging.config
-import os
 from typing import Optional
 
 from aidial_sdk import DIALApp
 from aidial_sdk import HTTPException as DialException
-from aidial_sdk.telemetry.types import TelemetryConfig, TracingConfig
+from aidial_sdk.telemetry.types import TelemetryConfig
 from fastapi import Body, Header, Path, Request
 from fastapi.responses import JSONResponse
 
@@ -26,32 +24,21 @@ from aidial_adapter_vertexai.dial_api.response import (
     make_embeddings_response,
 )
 from aidial_adapter_vertexai.utils.env import get_env
-from aidial_adapter_vertexai.utils.log_config import LogConfig
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
-
-logging.config.dictConfig(LogConfig().dict())
+from aidial_adapter_vertexai.utils.log_config import configure_loggers
 
 DEFAULT_REGION = get_env("DEFAULT_REGION")
 GCP_PROJECT_ID = get_env("GCP_PROJECT_ID")
 
-OTLP_EXPORT_ENABLED: bool = (
-    os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") is not None
-)
-
 app = DIALApp(
     description="Google VertexAI adapter for DIAL API",
+    telemetry_config=TelemetryConfig(),
     add_healthcheck=True,
-    telemetry_config=(
-        TelemetryConfig(
-            tracing=TracingConfig(
-                otlp_export=OTLP_EXPORT_ENABLED,
-                logging=True,
-            ),
-        )
-        if OTLP_EXPORT_ENABLED
-        else None
-    ),
 )
+
+# NOTE: configuring logger after the DIAL telemetry is initialized,
+# because it may have configured the root logger on its own.
+configure_loggers()
 
 
 @app.get("/openai/models")

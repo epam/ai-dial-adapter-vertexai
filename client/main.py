@@ -1,11 +1,10 @@
 import asyncio
-import logging.config
 from typing import Tuple, assert_never
 
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.env import get_env
-from aidial_adapter_vertexai.utils.log_config import LogConfig
+from aidial_adapter_vertexai.utils.log_config import configure_loggers
 from aidial_adapter_vertexai.utils.timer import Timer
 from client.chat.adapter import AdapterChat
 from client.chat.base import Chat
@@ -15,7 +14,7 @@ from client.config import ClientMode, Config
 from client.utils.input import make_input
 from client.utils.printing import print_ai, print_info
 
-logging.config.dictConfig(LogConfig().dict())
+configure_loggers()
 
 
 async def init_chat(params: Config) -> Tuple[Chat, ModelParameters]:
