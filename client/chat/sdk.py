@@ -2,7 +2,6 @@
 Classes to test the various models directly through the VertexAI SDK
 """
 
-import logging
 from datetime import datetime
 from pathlib import Path
 from typing import AsyncIterator, assert_never
@@ -30,8 +29,6 @@ from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from client.chat.base import Chat
 from client.utils.files import get_project_root
 from client.utils.printing import print_info
-
-log = logging.getLogger(__name__)
 
 LangSession = LangChatSession | LangCodeChatSession
 
