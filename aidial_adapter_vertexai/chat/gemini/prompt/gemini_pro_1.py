@@ -3,7 +3,7 @@ from typing import List, Self
 from aidial_sdk.chat_completion import Message, Role
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.process_inputs import MessageWithInputs
+from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithInputs
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 
 
@@ -18,7 +18,7 @@ class GeminiProOnePrompt(GeminiPrompt):
         messages = accommodate_first_system_message(messages)
 
         history = [
-            MessageWithInputs(message=message, image_inputs=[]).to_content()
+            MessageWithInputs(message=message, inputs=[]).to_content()
             for message in messages
         ]
 

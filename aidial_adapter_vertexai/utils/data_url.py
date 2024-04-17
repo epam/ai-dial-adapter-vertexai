@@ -5,7 +5,7 @@ from typing import Optional, Self
 from pydantic import BaseModel
 
 
-class ImageDataURL(BaseModel):
+class DataURL(BaseModel):
     """
     Encoding of an image as a data URL.
     See https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs for reference.
@@ -16,10 +16,12 @@ class ImageDataURL(BaseModel):
 
     @classmethod
     def from_data_url(cls, data_uri: str) -> Optional[Self]:
-        pattern = r"^data:image\/([^;]+);base64,(.+)$"
+        pattern = r"^data:([^;]+);base64,(.+)$"
         match = re.match(pattern, data_uri)
         if match is None:
             return None
+
+        mime_type = match.group(1)
         data = match.group(2)
 
         try:
@@ -28,7 +30,7 @@ class ImageDataURL(BaseModel):
             raise ValueError("Invalid base64 data")
 
         return cls(
-            type=f"image/{match.group(1)}",
+            type=mime_type,
             data=data,
         )
 

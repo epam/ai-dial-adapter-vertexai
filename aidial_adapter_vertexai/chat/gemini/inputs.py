@@ -13,7 +13,7 @@ from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
     download_file_as_base64,
 )
-from aidial_adapter_vertexai.utils.image_data_url import ImageDataURL
+from aidial_adapter_vertexai.utils.data_url import DataURL
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.text import format_ordinal
@@ -21,7 +21,7 @@ from aidial_adapter_vertexai.utils.text import format_ordinal
 
 class MessageWithInputs(BaseModel):
     message: Message
-    image_inputs: List[ImageDataURL]
+    inputs: List[DataURL]
 
     def has_empty_content(self) -> bool:
         return (self.message.content or "").strip() == ""
@@ -34,11 +34,11 @@ class MessageWithInputs(BaseModel):
 
         parts: List[Part] = []
 
-        for image in self.image_inputs:
-            data = base64.b64decode(image.data, validate=True)
-            parts.append(Part.from_data(data=data, mime_type=image.type))
+        for input in self.inputs:
+            data = base64.b64decode(input.data, validate=True)
+            parts.append(Part.from_data(data=data, mime_type=input.type))
 
-        # Images before text as per:
+        # Placing Images/Video before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
         parts.append(Part.from_text(content))
 
@@ -69,32 +69,29 @@ def guess_attachment_type(attachment: Attachment) -> Optional[str]:
     return type
 
 
-async def download_image(
+async def download_file(
     file_storage: Optional[FileStorage],
-    image_types: List[str],
+    mime_types: List[str],
     attachment: Attachment,
-) -> ImageDataURL | str:
+) -> DataURL | str:
     try:
         type = guess_attachment_type(attachment)
         if type is None:
             return "Can't derive media type of the attachment"
-        elif type not in image_types:
+        elif type not in mime_types:
             return f"The attachment isn't one of the supported types: {type}"
 
         if attachment.data is not None:
-            return ImageDataURL(type=type, data=attachment.data)
+            return DataURL(type=type, data=attachment.data)
 
         if attachment.url is not None:
             attachment_link: str = attachment.url
 
-            image_url = ImageDataURL.from_data_url(attachment_link)
-            if image_url is not None:
-                if image_url.type in image_types:
-                    return image_url
-                else:
-                    return (
-                        "The image attachment isn't one of the supported types"
-                    )
+            data_url = DataURL.from_data_url(attachment_link)
+            if data_url is not None:
+                if data_url.type not in mime_types:
+                    return f"The attachment data isn't one of the supported types: {data_url.type}"
+                return data_url
 
             if file_storage is not None:
                 url = file_storage.attachment_link_to_url(attachment_link)
@@ -102,36 +99,36 @@ async def download_image(
             else:
                 data = await download_file_as_base64(attachment_link)
 
-            return ImageDataURL(type=type, data=data)
+            return DataURL(type=type, data=data)
 
         return "Invalid attachment"
 
     except Exception as e:
-        log.debug(f"Failed to download image: {e}")
-        return "Failed to download image"
+        log.debug(f"Failed to download file: {e}")
+        return "Failed to download file"
 
 
-async def download_images(
+async def download_files(
     file_storage: Optional[FileStorage],
-    image_types: List[str],
+    file_types: List[str],
     attachments: List[Attachment],
-) -> List[ImageDataURL] | DownloadErrors:
+) -> List[DataURL] | DownloadErrors:
     if log.isEnabledFor(DEBUG):
         log.debug(f"original attachments: {json_dumps_short(attachments)}")
 
-    download_results: List[ImageDataURL | str] = [
-        await download_image(file_storage, image_types, attachment)
+    download_results: List[DataURL | str] = [
+        await download_file(file_storage, file_types, attachment)
         for attachment in attachments
     ]
 
     if log.isEnabledFor(DEBUG):
         log.debug(f"download results: {json_dumps_short(download_results)}")
 
-    ret: List[ImageDataURL] = []
+    ret: List[DataURL] = []
     errors: List[Tuple[int, str]] = []
 
     for idx, result in enumerate(download_results):
-        if isinstance(result, ImageDataURL):
+        if isinstance(result, DataURL):
             ret.append(result)
         else:
             errors.append((idx, result))
@@ -145,23 +142,23 @@ async def download_images(
 
 async def download_inputs_from_message(
     file_storage: Optional[FileStorage],
-    image_types: Optional[List[str]],
+    file_types: Optional[List[str]],
     message: Message,
 ) -> MessageWithInputs | DownloadErrors:
-    inputs: List[ImageDataURL] = []
-    if image_types is not None:
+    inputs: List[DataURL] = []
+    if file_types is not None:
         attachments = get_attachments(message)
-        res = await download_images(file_storage, image_types, attachments)
+        res = await download_files(file_storage, file_types, attachments)
         if isinstance(res, DownloadErrors):
             return res
         inputs = res
 
-    return MessageWithInputs(message=message, image_inputs=inputs)
+    return MessageWithInputs(message=message, inputs=inputs)
 
 
 async def download_inputs(
     file_storage: Optional[FileStorage],
-    image_types: Optional[List[str]],
+    file_types: Optional[List[str]],
     messages: List[Message],
 ) -> List[MessageWithInputs] | str:
     ret: List[MessageWithInputs] = []
@@ -169,7 +166,7 @@ async def download_inputs(
 
     for idx, message in enumerate(messages):
         result = await download_inputs_from_message(
-            file_storage, image_types, message
+            file_storage, file_types, message
         )
         if isinstance(result, DownloadErrors):
             errors[idx] = result
@@ -183,7 +180,7 @@ async def download_inputs(
 
 
 def format_error_message(errors: Dict[int, DownloadErrors], n: int) -> str:
-    msg = "Some of the image attachments failed to download:"
+    msg = "Some of the attachments has failed to download:"
     for i, error in errors.items():
         msg += f"\n- {format_ordinal(n - i)} message from end:"
         for j, err in error.errors:

@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Self, Union
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
-from aidial_adapter_vertexai.chat.gemini.process_inputs import download_inputs
+from aidial_adapter_vertexai.chat.gemini.inputs import download_inputs
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
@@ -64,6 +64,8 @@ class GeminiProOneVisionPrompt(GeminiPrompt):
 
         # NOTE: The model can't handle multiple messages with images.
         # It throws "Invalid request 500" error.
+        # So we feed to the model only the last message,
+        # which essentially turns it into a text completion model.
         messages = messages[-1:]
 
         download_result = await download_inputs(
@@ -75,7 +77,7 @@ class GeminiProOneVisionPrompt(GeminiPrompt):
         if isinstance(download_result, str):
             return UserError(download_result, usage_message)
 
-        image_count = sum(len(msg.image_inputs) for msg in download_result)
+        image_count = sum(len(msg.inputs) for msg in download_result)
         if image_count == 0:
             return UserError("No image inputs were found", usage_message)
 
