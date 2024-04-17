@@ -24,7 +24,13 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
-from aidial_adapter_vertexai.chat.gemini.prompt import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_pro_1 import (
+    GeminiProOnePrompt,
+)
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_pro_vision_1 import (
+    GeminiProOneVisionPrompt,
+)
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
@@ -83,9 +89,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         self, messages: List[Message]
     ) -> GeminiPrompt | UserError:
         if self.is_vision_model:
-            return await GeminiPrompt.parse_vision(self.file_storage, messages)
+            return await GeminiProOneVisionPrompt.parse(
+                self.file_storage, messages
+            )
         else:
-            return GeminiPrompt.parse_non_vision(messages)
+            return GeminiProOnePrompt.parse(messages)
 
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt

@@ -1,10 +1,13 @@
+import base64
 import mimetypes
 from logging import DEBUG
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, assert_never
 
-from aidial_sdk.chat_completion import Attachment, Message
+from aidial_sdk.chat_completion import Attachment, Message, Role
 from pydantic import BaseModel
+from vertexai.preview.generative_models import ChatSession, Content, Part
 
+from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
@@ -22,6 +25,22 @@ class MessageWithInputs(BaseModel):
 
     def has_empty_content(self) -> bool:
         return (self.message.content or "").strip() == ""
+
+    def to_content(self) -> Content:
+        message = self.message
+        content = message.content
+        if content is None:
+            raise ValidationError("Message content must be present")
+
+        parts: List[Part] = []
+
+        for image in self.image_inputs:
+            data = base64.b64decode(image.data, validate=True)
+            parts.append(Part.from_data(data=data, mime_type=image.type))
+
+        parts.append(Part.from_text(content))
+
+        return Content(role=get_part_role(message.role), parts=parts)
 
 
 class DownloadErrors(BaseModel):
@@ -168,3 +187,21 @@ def format_error_message(errors: Dict[int, DownloadErrors], n: int) -> str:
         for j, err in error.errors:
             msg += f"\n  - {format_ordinal(j + 1)} attachment: {err}"
     return msg
+
+
+def get_part_role(role: Role) -> str:
+    match role:
+        case Role.SYSTEM:
+            raise ValidationError(
+                "System messages other than the first system message are not allowed"
+            )
+        case Role.USER:
+            return ChatSession._USER_ROLE
+        case Role.ASSISTANT:
+            return ChatSession._MODEL_ROLE
+        case Role.FUNCTION:
+            raise ValidationError("Function messages are not supported")
+        case Role.TOOL:
+            raise ValidationError("Tool messages are not supported")
+        case _:
+            assert_never(role)
