@@ -51,9 +51,7 @@ class GeminiPrompt(BaseModel):
 
     @classmethod
     async def parse_vision(
-        cls,
-        file_storage: Optional[FileStorage],
-        messages: List[Message],
+        cls, file_storage: Optional[FileStorage], messages: List[Message]
     ) -> Union["GeminiPrompt", UserError]:
         if len(messages) == 0:
             raise ValidationError(

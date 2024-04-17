@@ -99,6 +99,7 @@ class SDKGenChat(Chat):
             case (
                 ChatCompletionDeployment.GEMINI_PRO_1
                 | ChatCompletionDeployment.GEMINI_PRO_VISION_1
+                | ChatCompletionDeployment.GEMINI_PRO_VISION_1_5
             ):
                 model = GenerativeModel(deployment)
             case _:
@@ -192,6 +193,7 @@ async def create_sdk_chat(
         case (
             ChatCompletionDeployment.GEMINI_PRO_1
             | ChatCompletionDeployment.GEMINI_PRO_VISION_1
+            | ChatCompletionDeployment.GEMINI_PRO_VISION_1_5
         ):
             return await SDKGenChat.create(location, project, deployment)
         case ChatCompletionDeployment.IMAGEN_005:

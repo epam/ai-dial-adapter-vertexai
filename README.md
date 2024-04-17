@@ -17,6 +17,7 @@ The following models support `POST SERVER_URL/openai/deployments/MODEL_NAME/chat
 |codechat-bison-32k@002|text-to-text|✅|✅|
 |gemini-pro|text-to-text|✅|❌|
 |gemini-pro-vision|text-to-text, image-to-text|✅|❌|
+|gemini-1.5-pro-preview-0409|text-to-text, image-to-text|✅|❌|
 |imagegeneration@005|text-to-image|✅|✅|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` request parameter.

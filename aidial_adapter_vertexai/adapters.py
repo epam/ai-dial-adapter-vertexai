@@ -53,7 +53,10 @@ async def get_chat_completion_model(
             return await GeminiChatCompletionAdapter.create(
                 None, model_id, False, project_id, location
             )
-        case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
+        case (
+            ChatCompletionDeployment.GEMINI_PRO_VISION_1
+            | ChatCompletionDeployment.GEMINI_PRO_VISION_1_5
+        ):
             storage = create_file_storage("images", headers)
             return await GeminiChatCompletionAdapter.create(
                 storage, model_id, True, project_id, location
