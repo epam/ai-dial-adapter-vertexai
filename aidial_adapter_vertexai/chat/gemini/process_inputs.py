@@ -38,6 +38,8 @@ class MessageWithInputs(BaseModel):
             data = base64.b64decode(image.data, validate=True)
             parts.append(Part.from_data(data=data, mime_type=image.type))
 
+        # Images before text as per:
+        # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
         parts.append(Part.from_text(content))
 
         return Content(role=get_part_role(message.role), parts=parts)
@@ -137,8 +139,8 @@ async def download_images(
     if len(errors) > 0:
         log.debug(f"download errors: {errors}")
         return DownloadErrors(errors=errors)
-    else:
-        return ret
+
+    return ret
 
 
 async def download_inputs_from_message(

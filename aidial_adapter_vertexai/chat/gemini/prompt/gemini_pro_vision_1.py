@@ -1,4 +1,4 @@
-from typing import List, Optional, Self, Union
+from typing import Dict, List, Optional, Self, Union
 
 from aidial_sdk.chat_completion import Message
 
@@ -7,17 +7,49 @@ from aidial_adapter_vertexai.chat.gemini.process_inputs import download_inputs
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
-# Pricing info: https://cloud.google.com/vertex-ai/pricing
-# Supported image types:
-# https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#image-requirements
-SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png"]
-SUPPORTED_FILE_EXTS = ["jpg", "jpeg", "png"]
-# NOTE: Tokens per image: 258. count_tokens API call takes this into account.
-# Up to 16 images. Total max size 4MB.
+# Gemini capabilities: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts
+# Prompt design: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/design-multimodal-prompts
+# Pricing: https://cloud.google.com/vertex-ai/generative-ai/pricing
 
-# NOTE: See also supported video formats:
-# https://cloud.google.com/vertex-ai/docs/generative-ai/multimodal/send-multimodal-prompts?authuser=1#video-requirements
-# Tokens per video: 1032
+FileTypes = Dict[str, Union[str, List[str]]]
+
+# Tokens per image: 258. count_tokens API call takes this into account.
+IMAGE_TYPES: FileTypes = {
+    "image/jpeg": ["jpg", "jpeg"],
+    "image/png": "png",
+}
+IMAGE_MAX_NUMBER = 16
+
+# PDFs are treated as images, so a single page of a PDF is treated as one image.
+PDF_TYPES: FileTypes = {"application/pdf": "pdf"}
+PDF_MAX_TOTAL_PAGES = 16  # same as IMAGE_MAX_NUMBER
+PDF_MAX_FILE_SIZE_MB = 50
+
+# Audio in the video is ignored.
+# Videos are sampled at 1fps. Each video frame accounts for 258 tokens.
+# The video is automatically truncated to the first two minutes.
+VIDEO_TYPES: FileTypes = {
+    "video/mp4": "mp4",
+    "video/mov": "mov",
+    "video/mpeg": "mpeg",
+    "video/mpg": "mpg",
+    "video/avi": "avi",
+    "video/wmv": "wmv",
+    "video/mpegps": "mpegps",
+    "video/flv": "flv",
+}
+VIDEO_MAX_NUMBER = 1
+
+
+def get_mime_types(types: FileTypes) -> List[str]:
+    return list(types.keys())
+
+
+def get_file_exts(types: FileTypes) -> List[str]:
+    def flatten(value: Union[str, List[str]]):
+        return value if isinstance(value, list) else [value]
+
+    return [ext for exts in types.values() for ext in flatten(exts)]
 
 
 class GeminiProOneVisionPrompt(GeminiPrompt):
@@ -30,15 +62,15 @@ class GeminiProOneVisionPrompt(GeminiPrompt):
                 "The chat history must have at least one message"
             )
 
-        # NOTE: Vision model can't handle multiple messages with images.
+        # NOTE: The model can't handle multiple messages with images.
         # It throws "Invalid request 500" error.
         messages = messages[-1:]
 
         download_result = await download_inputs(
-            file_storage, SUPPORTED_IMAGE_TYPES, messages
+            file_storage, get_mime_types(IMAGE_TYPES), messages
         )
 
-        usage_message = get_usage_message(SUPPORTED_FILE_EXTS)
+        usage_message = get_usage_message(get_file_exts(IMAGE_TYPES))
 
         if isinstance(download_result, str):
             return UserError(download_result, usage_message)

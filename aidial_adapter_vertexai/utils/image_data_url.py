@@ -1,6 +1,6 @@
 import base64
 import re
-from typing import Optional
+from typing import Optional, Self
 
 from pydantic import BaseModel
 
@@ -15,7 +15,7 @@ class ImageDataURL(BaseModel):
     data: str
 
     @classmethod
-    def from_data_url(cls, data_uri: str) -> Optional["ImageDataURL"]:
+    def from_data_url(cls, data_uri: str) -> Optional[Self]:
         pattern = r"^data:image\/([^;]+);base64,(.+)$"
         match = re.match(pattern, data_uri)
         if match is None:
