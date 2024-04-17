@@ -17,7 +17,7 @@ repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
 python = "~3.11"
 aidial-sdk = {version = "0.8.0", extras = ["telemetry"]}
 fastapi = "0.109.2"
-google-cloud-aiplatform = "1.38.1"
+google-cloud-aiplatform = "^1.47.0"
 google-auth = "2.21.0"
 openai = "1.13.3"
 pydantic = "1.10.12"

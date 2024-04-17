@@ -91,6 +91,15 @@ class GeminiPrompt(BaseModel):
 
 
 def accommodate_first_system_message(messages: List[Message]) -> List[Message]:
+    """
+    Attach the first system message to a subsequent user message.
+
+    NOTE: it's possible to pass `system_instruction` to `GenerativeModel` constructor,
+    however `system_instruction` field isn't yet fully integrated into the VertexAI SDK.
+    In particular, it's not exposed in `GenerativeModel.count_tokens_async` method:
+    https://github.com/googleapis/python-aiplatform/issues/3631
+    """
+
     if len(messages) == 0:
         return messages
 

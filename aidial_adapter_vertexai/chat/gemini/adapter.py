@@ -220,7 +220,13 @@ def to_openai_finish_reason(
             return FinishReason.LENGTH
         case Candidate.FinishReason.STOP:
             return FinishReason.STOP
-        case Candidate.FinishReason.SAFETY | Candidate.FinishReason.RECITATION:
+        case (
+            Candidate.FinishReason.SAFETY
+            | Candidate.FinishReason.RECITATION
+            | Candidate.FinishReason.BLOCKLIST
+            | Candidate.FinishReason.PROHIBITED_CONTENT
+            | Candidate.FinishReason.SPII
+        ):
             return FinishReason.CONTENT_FILTER
         case Candidate.FinishReason.OTHER:
             # OTHER finish reason could be usually fixed with a retry
