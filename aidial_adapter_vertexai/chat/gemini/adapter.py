@@ -41,7 +41,7 @@ from aidial_adapter_vertexai.deployments import (
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
-from aidial_adapter_vertexai.utils.json import json_dumps_short, to_dict
+from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
 from aidial_adapter_vertexai.vertex_ai import get_gemini_model, init_vertex_ai
@@ -146,7 +146,9 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
         async for chunk in generator():
             if log.isEnabledFor(DEBUG):
-                log.debug(f"response chunk: {to_dict(chunk)}")
+                log.debug(
+                    f"response chunk: {json_dumps(chunk, excluded_keys=['safetyRatings'])}"
+                )
 
             finish_reason = chunk.candidates[0].finish_reason
 

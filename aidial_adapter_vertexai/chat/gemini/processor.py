@@ -115,8 +115,11 @@ async def process_attachments(
     file_storage: Optional[FileStorage],
     attachments: List[Attachment],
 ) -> List[Resource] | ProcessingErrors:
+    if len(attachments) == 0:
+        return []
+
     if log.isEnabledFor(DEBUG):
-        log.debug(f"original attachments: {json_dumps_short(attachments)}")
+        log.debug(f"attachments: {json_dumps_short(attachments)}")
 
     download_results: List[Resource | str] = [
         await process_attachment(processors, file_storage, attachment)
