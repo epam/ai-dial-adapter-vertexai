@@ -114,9 +114,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt
     ) -> AsyncIterator[GenerationResponse]:
-        session = ChatSession(
-            model=self.model, history=prompt.history, raise_on_blocked=False
-        )
+        session = ChatSession(model=self.model, history=prompt.history)
         parameters = create_generation_config(params)
 
         if params.stream:

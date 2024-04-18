@@ -6,6 +6,7 @@ from typing import Mapping, Optional, TypedDict
 from urllib.parse import urljoin
 
 import aiohttp
+from pydantic import BaseModel
 
 from aidial_adapter_vertexai.utils.auth import Auth
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -23,15 +24,10 @@ class Bucket(TypedDict):
     appdata: str
 
 
-class FileStorage:
+class FileStorage(BaseModel):
     dial_url: str
     auth: Auth
-    bucket: Optional[Bucket]
-
-    def __init__(self, dial_url: str, auth: Auth):
-        self.dial_url = dial_url
-        self.auth = auth
-        self.bucket = None
+    bucket: Optional[Bucket] = None
 
     async def _get_bucket(self, session: aiohttp.ClientSession) -> Bucket:
         if self.bucket is None:

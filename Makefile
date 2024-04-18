@@ -26,7 +26,7 @@ clean:
 	poetry env remove --all
 
 client: install
-	poetry run python -m client.main
+	poetry run python -m client.main $(ARGS)
 
 lint: install
 	poetry run nox -s lint

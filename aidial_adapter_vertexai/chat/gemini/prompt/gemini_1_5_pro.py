@@ -25,17 +25,11 @@ class Gemini_1_5_Pro_Prompt(GeminiPrompt):
                 "The chat history must have at least one message"
             )
 
-        # NOTE: The model can't handle multiple messages with documents.
-        # It throws "Invalid request 500" error.
-        # So we feed to the model only the last message,
-        # which essentially turns it into a text completion model.
-        messages = messages[-1:]
-
         processors = [
             get_image_processor(3000),
-            get_audio_processor(),
             get_pdf_processor(3000),
             get_video_processor(10),
+            get_audio_processor(),
         ]
 
         download_result = await process_messages(
@@ -46,10 +40,6 @@ class Gemini_1_5_Pro_Prompt(GeminiPrompt):
 
         if isinstance(download_result, str):
             return UserError(download_result, usage_message)
-
-        input_count = sum(len(msg.inputs) for msg in download_result)
-        if input_count == 0:
-            return UserError("No inputs were found", usage_message)
 
         if any(msg.has_empty_content() for msg in download_result):
             return UserError(
@@ -66,8 +56,6 @@ def get_usage_message(exts: List[str]) -> str:
 
 The application answers queries about attached documents.
 Attach documents and ask questions about them in the same message.
-
-Only the last message will be taken into account.
 
 Supported document types: {', '.join(exts)}.
 
