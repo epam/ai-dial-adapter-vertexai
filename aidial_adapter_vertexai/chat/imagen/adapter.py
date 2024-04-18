@@ -15,7 +15,10 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
-from aidial_adapter_vertexai.dial_api.storage import FileStorage
+from aidial_adapter_vertexai.dial_api.storage import (
+    FileStorage,
+    compute_hash_digest,
+)
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
@@ -80,13 +83,19 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         image: GeneratedImage = response[0]
 
         type: str = self.get_image_type(image._pil_image)
-        data: str = image._as_base64_string()
+        data: bytes = image._image_bytes
+        base64_data: str = image._as_base64_string()
 
-        attachment: Attachment = Attachment(title="Image", type=type, data=data)
+        attachment: Attachment = Attachment(
+            title="Image", type=type, data=base64_data
+        )
 
         if self.file_storage is not None:
             with Timer("upload to file storage: {time}", log.debug):
-                meta = await self.file_storage.upload_file_as_base64(data, type)
+                filename = compute_hash_digest(base64_data)
+                meta = await self.file_storage.upload(
+                    filename=filename, content_type=type, content=data
+                )
 
             attachment.data = None
             attachment.url = meta["url"]

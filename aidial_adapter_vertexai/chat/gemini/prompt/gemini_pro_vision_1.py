@@ -1,9 +1,14 @@
-from typing import Dict, List, Optional, Self, Union
+from typing import List, Optional, Self, Union
 
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
-from aidial_adapter_vertexai.chat.gemini.inputs import download_inputs
+from aidial_adapter_vertexai.chat.gemini.downloader import (
+    Downloader,
+    max_count,
+    max_pdf_page_count,
+    process_messages,
+)
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
@@ -11,45 +16,42 @@ from aidial_adapter_vertexai.dial_api.storage import FileStorage
 # Prompt design: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/design-multimodal-prompts
 # Pricing: https://cloud.google.com/vertex-ai/generative-ai/pricing
 
-FileTypes = Dict[str, Union[str, List[str]]]
-
 # Tokens per image: 258. count_tokens API call takes this into account.
-IMAGE_TYPES: FileTypes = {
-    "image/jpeg": ["jpg", "jpeg"],
-    "image/png": "png",
-}
-IMAGE_MAX_NUMBER = 16
+image_downloader = Downloader(
+    file_types={
+        "image/jpeg": ["jpg", "jpeg"],
+        "image/png": "png",
+    },
+    file_pre_validator=max_count(16),
+)
 
+# The maximum file size for a PDF is 50MB. Currently not checked.
 # PDFs are treated as images, so a single page of a PDF is treated as one image.
-PDF_TYPES: FileTypes = {"application/pdf": "pdf"}
-PDF_MAX_TOTAL_PAGES = 16  # same as IMAGE_MAX_NUMBER
-PDF_MAX_FILE_SIZE_MB = 50
+pdf_downloader = Downloader(
+    file_types={"application/pdf": "pdf"},
+    file_post_validator=max_pdf_page_count(16),
+)
 
 # Audio in the video is ignored.
 # Videos are sampled at 1fps. Each video frame accounts for 258 tokens.
 # The video is automatically truncated to the first two minutes.
-VIDEO_TYPES: FileTypes = {
-    "video/mp4": "mp4",
-    "video/mov": "mov",
-    "video/mpeg": "mpeg",
-    "video/mpg": "mpg",
-    "video/avi": "avi",
-    "video/wmv": "wmv",
-    "video/mpegps": "mpegps",
-    "video/flv": "flv",
-}
-VIDEO_MAX_NUMBER = 1
+video_downloader = Downloader(
+    file_types={
+        "video/mp4": "mp4",
+        "video/mov": "mov",
+        "video/mpeg": "mpeg",
+        "video/mpg": "mpg",
+        "video/avi": "avi",
+        "video/wmv": "wmv",
+        "video/mpegps": "mpegps",
+        "video/flv": "flv",
+    },
+    file_pre_validator=max_count(1),
+)
 
 
-def get_mime_types(types: FileTypes) -> List[str]:
-    return list(types.keys())
-
-
-def get_file_exts(types: FileTypes) -> List[str]:
-    def flatten(value: Union[str, List[str]]):
-        return value if isinstance(value, list) else [value]
-
-    return [ext for exts in types.values() for ext in flatten(exts)]
+def get_file_exts(types: List[Downloader]) -> List[str]:
+    return [ext for downloader in types for ext in downloader.file_exts]
 
 
 class GeminiProOneVisionPrompt(GeminiPrompt):
@@ -68,11 +70,13 @@ class GeminiProOneVisionPrompt(GeminiPrompt):
         # which essentially turns it into a text completion model.
         messages = messages[-1:]
 
-        download_result = await download_inputs(
-            file_storage, get_mime_types(IMAGE_TYPES), messages
+        downloaders = [image_downloader, pdf_downloader, video_downloader]
+
+        download_result = await process_messages(
+            downloaders, file_storage, messages
         )
 
-        usage_message = get_usage_message(get_file_exts(IMAGE_TYPES))
+        usage_message = get_usage_message(get_file_exts(downloaders))
 
         if isinstance(download_result, str):
             return UserError(download_result, usage_message)
@@ -94,12 +98,14 @@ def get_usage_message(supported_exts: List[str]) -> str:
     return f"""
 ### Usage
 
-The application answers queries about attached images.
-Attach images and ask questions about them in the same message.
+The application answers queries about attached documents.
+Attach documents and ask questions about them in the same message.
 
 Only the last message will be taken into account.
 
-Supported image types: {', '.join(supported_exts)}.
+Supported document types: {', '.join(supported_exts)}.
+
+The images, PDFs and videos must not be mixed in the same message.
 
 Examples of queries:
 - "Describe this picture" for one image,

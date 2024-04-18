@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import io
 import mimetypes
@@ -83,40 +82,26 @@ class FileStorage:
                 log.debug(f"Uploaded file: url={url}, metadata={meta}")
                 return meta
 
-    async def upload_file_as_base64(
-        self, data: str, content_type: str
-    ) -> FileMetadata:
-        filename = _compute_hash_digest(data)
-        content: bytes = base64.b64decode(data)
-        return await self.upload(filename, content_type, content)
-
     def attachment_link_to_url(self, link: str) -> str:
         base_url = f"{self.dial_url}/v1/"
         return urljoin(base_url, link)
 
-    async def download_file_as_base64(self, url: str) -> str:
+    async def download_file(self, url: str) -> bytes:
         headers: Mapping[str, str] = {}
         if url.startswith(self.dial_url):
             headers = self.auth.headers
 
-        return await download_file_as_base64(url, headers)
+        return await download_file(url, headers)
 
 
-async def _download_file(url: str, headers: Mapping[str, str] = {}) -> bytes:
+async def download_file(url: str, headers: Mapping[str, str] = {}) -> bytes:
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers) as response:
             response.raise_for_status()
             return await response.read()
 
 
-async def download_file_as_base64(
-    url: str, headers: Mapping[str, str] = {}
-) -> str:
-    bytes = await _download_file(url, headers)
-    return base64.b64encode(bytes).decode("ascii")
-
-
-def _compute_hash_digest(file_content: str) -> str:
+def compute_hash_digest(file_content: str) -> str:
     return hashlib.sha256(file_content.encode()).hexdigest()
 
 
