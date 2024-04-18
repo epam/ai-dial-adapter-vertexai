@@ -9,7 +9,7 @@ from aidial_adapter_vertexai.chat.gemini.processor import (
 )
 
 # Gemini capabilities: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts
-# More on it: https://ai.google.dev/gemini-api/docs/prompting_with_media
+# Using File API from google-generativeai lib: https://ai.google.dev/gemini-api/docs/prompting_with_media (not useful for us, because it requires Google API key)
 # Prompt design: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/design-multimodal-prompts
 # Pricing: https://cloud.google.com/vertex-ai/generative-ai/pricing
 
@@ -24,8 +24,7 @@ from aidial_adapter_vertexai.chat.gemini.processor import (
 #  * Tokens per image: 258. count_tokens API call takes this into account.
 # 1.5: max number of images: 3000
 def get_image_processor(
-    max_count: int,
-    init_validator: InitValidator | None = None,
+    max_count: int, init_validator: InitValidator | None = None
 ) -> AttachmentProcessor:
     # NOTE: the validator maintains a state, so we need to create a new instance each time
     return AttachmentProcessor(
@@ -70,8 +69,7 @@ def get_audio_processor(
 # The maximum file size for a PDF is 50MB (not checked).
 # PDF pages are treated as individual images.
 def get_pdf_processor(
-    max_page_count: int,
-    init_validator: InitValidator | None = None,
+    max_page_count: int, init_validator: InitValidator | None = None
 ) -> AttachmentProcessor:
     return AttachmentProcessor(
         file_types={"application/pdf": "pdf"},
@@ -93,8 +91,7 @@ def get_pdf_processor(
 #   * Maximum video length when it includes audio is approximately 50 minutes (not checked)
 #   * The maximum video length for video without audio is 1 hour (not checked)
 def get_video_processor(
-    max_count: int,
-    init_validator: InitValidator | None = None,
+    max_count: int, init_validator: InitValidator | None = None
 ) -> AttachmentProcessor:
     return AttachmentProcessor(
         file_types={
