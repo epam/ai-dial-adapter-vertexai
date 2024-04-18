@@ -9,8 +9,9 @@ from typing import AsyncIterator, assert_never
 import vertexai
 from vertexai.preview.generative_models import ChatSession as GenChatSession
 from vertexai.preview.generative_models import GenerationConfig, GenerativeModel
-from vertexai.preview.language_models import ChatModel, CodeChatModel
+from vertexai.preview.language_models import ChatModel
 from vertexai.preview.language_models import ChatSession as LangChatSession
+from vertexai.preview.language_models import CodeChatModel
 from vertexai.preview.language_models import (
     CodeChatSession as LangCodeChatSession,
 )

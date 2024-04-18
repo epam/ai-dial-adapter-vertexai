@@ -15,14 +15,14 @@ class MessageWithInputs(BaseModel):
     message: Message
     inputs: List[Resource]
 
-    def has_empty_content(self) -> bool:
-        return (self.message.content or "").strip() == ""
-
     def to_content(self) -> Content:
         message = self.message
         content = message.content
         if content is None:
             raise ValidationError("Message content must be present")
+
+        if content.strip() == "":
+            raise ValidationError("Messages with empty content are not allowed")
 
         parts: List[Part] = []
 

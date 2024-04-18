@@ -43,11 +43,6 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         if isinstance(download_result, str):
             return UserError(download_result, usage_message)
 
-        if any(msg.has_empty_content() for msg in download_result):
-            return UserError(
-                "Messages with empty prompts are not allowed", usage_message
-            )
-
         history = [res.to_content() for res in download_result]
         return cls(history=history[:-1], prompt=history[-1].parts)
 
