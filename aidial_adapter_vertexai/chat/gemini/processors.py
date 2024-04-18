@@ -9,6 +9,7 @@ from aidial_adapter_vertexai.chat.gemini.processor import (
 )
 
 # Gemini capabilities: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts
+# More on it: https://ai.google.dev/gemini-api/docs/prompting_with_media
 # Prompt design: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/design-multimodal-prompts
 # Pricing: https://cloud.google.com/vertex-ai/generative-ai/pricing
 
@@ -31,6 +32,9 @@ def get_image_processor(
         file_types={
             "image/jpeg": ["jpg", "jpeg"],
             "image/png": "png",
+            "image/webp": "webp",
+            "image/heic": "heic",
+            "image/heif": "heif",
         },
         init_validator=seq_validators(
             init_validator, max_count_validator(max_count)
@@ -46,7 +50,16 @@ def get_audio_processor(
     init_validator: InitValidator | None = None,
 ) -> AttachmentProcessor:
     return AttachmentProcessor(
-        file_types={"audio/mp3": "mp3", "audio/wav": "wav"},
+        file_types={
+            "audio/mpeg": "mp3",
+            "audio/mp3": "mp3",
+            "audio/wav": "wav",
+            "audio/x-wav": "wav",
+            "audio/aiff": "aiff",
+            "audio/acc": "acc",
+            "audio/ogg": "ogg",
+            "audio/flac": "flac",
+        },
         init_validator=init_validator,
     )
 
