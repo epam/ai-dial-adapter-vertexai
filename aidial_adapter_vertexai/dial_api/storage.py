@@ -25,13 +25,11 @@ class Bucket(TypedDict):
 
 class FileStorage:
     dial_url: str
-    upload_dir: str
     auth: Auth
     bucket: Optional[Bucket]
 
-    def __init__(self, dial_url: str, upload_dir: str, auth: Auth):
+    def __init__(self, dial_url: str, auth: Auth):
         self.dial_url = dial_url
-        self.upload_dir = upload_dir
         self.auth = auth
         self.bucket = None
 
@@ -68,7 +66,7 @@ class FileStorage:
 
             appdata = bucket["appdata"]
             ext = mimetypes.guess_extension(content_type) or ""
-            url = f"{self.dial_url}/v1/files/{appdata}/{self.upload_dir}/{filename}{ext}"
+            url = f"{self.dial_url}/v1/files/{appdata}/{filename}{ext}"
 
             data = FileStorage._to_form_data(filename, content_type, content)
 
@@ -108,9 +106,7 @@ def compute_hash_digest(file_content: str) -> str:
 DIAL_URL = os.getenv("DIAL_URL")
 
 
-def create_file_storage(
-    base_dir: str, headers: Mapping[str, str]
-) -> Optional[FileStorage]:
+def create_file_storage(headers: Mapping[str, str]) -> Optional[FileStorage]:
     if DIAL_URL is None:
         return None
 
@@ -122,4 +118,4 @@ def create_file_storage(
         )
         return None
 
-    return FileStorage(dial_url=DIAL_URL, upload_dir=base_dir, auth=auth)
+    return FileStorage(dial_url=DIAL_URL, auth=auth)

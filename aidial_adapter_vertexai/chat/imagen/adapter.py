@@ -92,7 +92,7 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
 
         if self.file_storage is not None:
             with Timer("upload to file storage: {time}", log.debug):
-                filename = compute_hash_digest(base64_data)
+                filename = "images/" + compute_hash_digest(base64_data)
                 meta = await self.file_storage.upload(
                     filename=filename, content_type=type, content=data
                 )
