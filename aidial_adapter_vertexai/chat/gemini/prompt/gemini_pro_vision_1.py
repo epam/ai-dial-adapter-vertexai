@@ -104,9 +104,9 @@ class GeminiProOneVisionPrompt(GeminiPrompt):
         if isinstance(download_result, str):
             return UserError(download_result, usage_message)
 
-        image_count = sum(len(msg.inputs) for msg in download_result)
-        if image_count == 0:
-            return UserError("No image inputs were found", usage_message)
+        input_count = sum(len(msg.inputs) for msg in download_result)
+        if input_count == 0:
+            return UserError("No inputs were found", usage_message)
 
         if any(msg.has_empty_content() for msg in download_result):
             return UserError(
