@@ -13,6 +13,7 @@ from typing import (
 from aidial_sdk.chat_completion import Attachment, Message
 from pydantic import BaseModel
 
+from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.inputs import (
     MessageWithInputs,
     derive_attachment_mime_type,
@@ -73,6 +74,10 @@ class AttachmentProcessor(BaseModel):
                 await self.post_validator(resource)
 
             return resource
+
+        except ValidationError as e:
+            log.error(f"Validation error: {e.message}")
+            return e.message
 
         except Exception as e:
             log.error(f"Failed to download file: {str(e)}")
@@ -188,7 +193,9 @@ def max_count_validator(limit: int) -> InitValidator:
         nonlocal count
         count += 1
         if count > limit:
-            raise ValueError(f"The number of files exceeds the limit ({limit})")
+            raise ValidationError(
+                f"The number of files exceeds the limit ({limit})"
+            )
 
     return validator
 
@@ -199,13 +206,15 @@ def max_pdf_page_count_validator(limit: int) -> PostValidator:
     async def validator(resource: Resource):
         nonlocal count
         try:
-            count += await get_pdf_page_count(resource.data)
+            pages = await get_pdf_page_count(resource.data)
+            log.debug(f"PDF page count: {pages}")
+            count += pages
         except Exception as e:
             log.debug(f"Failed to get PDF page count: {e}")
-            raise ValueError("Failed to get PDF page count")
+            raise ValidationError("Failed to get PDF page count")
 
         if count > limit:
-            raise ValueError(
+            raise ValidationError(
                 f"The total number of PDF pages exceeds the limit ({limit})"
             )
 
@@ -233,7 +242,7 @@ def exclusive_validator() -> Callable[[str], InitValidator]:
             if first is None:
                 first = name
             elif first != name:
-                raise ValueError(
+                raise ValidationError(
                     f"Found attachments of different types: {first!r} and {name!r}. Only one type is allowed."
                 )
 
