@@ -5,9 +5,12 @@ from aidial_sdk.chat_completion import Message
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessor,
+    InitValidator,
+    exclusive_validator,
     max_count_validator,
     max_pdf_page_count_validator,
     process_messages,
+    seq_validators,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
@@ -18,30 +21,37 @@ from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
 
 # Tokens per image: 258. count_tokens API call takes this into account.
-def get_image_processor() -> AttachmentProcessor:
+def get_image_processor(
+    init_validator: InitValidator | None,
+) -> AttachmentProcessor:
     # Validators maintain state, so we need to create a new instance each time.
     return AttachmentProcessor(
         file_types={
             "image/jpeg": ["jpg", "jpeg"],
             "image/png": "png",
         },
-        file_init_validator=max_count_validator(16),
+        init_validator=seq_validators(init_validator, max_count_validator(16)),
     )
 
 
 # The maximum file size for a PDF is 50MB. Currently not checked.
 # PDFs are treated as images, so a single page of a PDF is treated as one image.
-def get_pdf_processor() -> AttachmentProcessor:
+def get_pdf_processor(
+    init_validator: InitValidator | None,
+) -> AttachmentProcessor:
     return AttachmentProcessor(
         file_types={"application/pdf": "pdf"},
-        file_post_validator=max_pdf_page_count_validator(16),
+        init_validator=init_validator,
+        post_validator=max_pdf_page_count_validator(16),
     )
 
 
 # Audio in the video is ignored.
 # Videos are sampled at 1fps. Each video frame accounts for 258 tokens.
 # The video is automatically truncated to the first two minutes.
-def get_video_processor() -> AttachmentProcessor:
+def get_video_processor(
+    init_validator: InitValidator | None,
+) -> AttachmentProcessor:
     return AttachmentProcessor(
         file_types={
             "video/mp4": "mp4",
@@ -53,7 +63,7 @@ def get_video_processor() -> AttachmentProcessor:
             "video/mpegps": "mpegps",
             "video/flv": "flv",
         },
-        file_init_validator=max_count_validator(1),
+        init_validator=seq_validators(init_validator, max_count_validator(1)),
     )
 
 
@@ -77,10 +87,12 @@ class GeminiProOneVisionPrompt(GeminiPrompt):
         # which essentially turns it into a text completion model.
         messages = messages[-1:]
 
+        exclusive = exclusive_validator()
+
         processors = [
-            get_image_processor(),
-            get_pdf_processor(),
-            get_video_processor(),
+            get_image_processor(exclusive("image")),
+            get_pdf_processor(exclusive("pdf")),
+            get_video_processor(exclusive("video")),
         ]
 
         download_result = await process_messages(

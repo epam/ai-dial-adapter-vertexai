@@ -1,5 +1,14 @@
 from logging import DEBUG
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Union
+from typing import (
+    Callable,
+    Coroutine,
+    Dict,
+    List,
+    Optional,
+    ParamSpec,
+    Tuple,
+    Union,
+)
 
 from aidial_sdk.chat_completion import Attachment, Message
 from pydantic import BaseModel
@@ -19,16 +28,16 @@ from aidial_adapter_vertexai.utils.text import format_ordinal
 
 FileTypes = Dict[str, Union[str, List[str]]]
 
-AnyCoro = Coroutine[None, None, Any]
-InitValidator = Callable[[], AnyCoro]
-PostValidator = Callable[[Resource], AnyCoro]
+Coro = Coroutine[None, None, None]
+InitValidator = Callable[[], Coro]
+PostValidator = Callable[[Resource], Coro]
 
 
 class AttachmentProcessor(BaseModel):
     file_types: FileTypes
 
-    file_init_validator: InitValidator | None = None
-    file_post_validator: PostValidator | None = None
+    init_validator: InitValidator | None = None
+    post_validator: PostValidator | None = None
 
     @property
     def mime_types(self) -> List[str]:
@@ -54,14 +63,14 @@ class AttachmentProcessor(BaseModel):
             if mime_type not in self.mime_types:
                 return None
 
-            if self.file_init_validator is not None:
-                await self.file_init_validator()
+            if self.init_validator is not None:
+                await self.init_validator()
 
             data = await download_attachment(file_storage, attachment)
             resource = Resource(mime_type=mime_type, data=data)
 
-            if self.file_post_validator is not None:
-                await self.file_post_validator(resource)
+            if self.post_validator is not None:
+                await self.post_validator(resource)
 
             return resource
 
@@ -198,3 +207,33 @@ def max_pdf_page_count_validator(limit: int) -> PostValidator:
             )
 
     return validator
+
+
+P = ParamSpec("P")
+
+
+def seq_validators(*validators: Callable[P, Coro] | None) -> Callable[P, Coro]:
+    async def validator(*args: P.args, **kwargs: P.kwargs) -> None:
+        for v in validators:
+            if v is not None:
+                await v(*args, **kwargs)
+
+    return validator
+
+
+def exclusive_validator() -> Callable[[str], InitValidator]:
+    first: str | None = None
+
+    def get_validator(name: str) -> InitValidator:
+        async def validator():
+            nonlocal first
+            if first is None:
+                first = name
+            elif first != name:
+                raise ValueError(
+                    f"Found attachments of different types: {first!r} and {name!r}. Only one type is allowed."
+                )
+
+        return validator
+
+    return get_validator
