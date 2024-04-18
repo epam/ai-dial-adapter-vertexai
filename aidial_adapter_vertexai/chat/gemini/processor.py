@@ -210,7 +210,7 @@ def max_pdf_page_count_validator(limit: int) -> PostValidator:
             log.debug(f"PDF page count: {pages}")
             count += pages
         except Exception as e:
-            log.debug(f"Failed to get PDF page count: {e}")
+            log.error(f"Failed to get PDF page count: {e}")
             raise ValidationError("Failed to get PDF page count")
 
         if count > limit:
