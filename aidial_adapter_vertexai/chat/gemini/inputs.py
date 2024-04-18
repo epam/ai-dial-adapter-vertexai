@@ -1,4 +1,3 @@
-import base64
 import mimetypes
 from typing import List, Optional, assert_never
 
@@ -27,8 +26,9 @@ class MessageWithInputs(BaseModel):
         parts: List[Part] = []
 
         for input in self.inputs:
-            data = base64.b64decode(input.base64_data, validate=True)
-            parts.append(Part.from_data(data=data, mime_type=input.mime_type))
+            parts.append(
+                Part.from_data(data=input.data, mime_type=input.mime_type)
+            )
 
         # Placing Images/Video before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices

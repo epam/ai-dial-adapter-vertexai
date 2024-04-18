@@ -33,10 +33,3 @@ class Resource(BaseModel):
             raise ValueError("Invalid base64 data")
 
         return cls(mime_type=mime_type, data=data)
-
-    def to_data_url(self) -> str:
-        return f"data:{self.mime_type};base64,{self.base64_data}"
-
-    @property
-    def base64_data(self) -> str:
-        return base64.b64encode(self.data).decode("utf-8")
