@@ -3,8 +3,8 @@ from typing import List, Optional, Self, Union
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
-from aidial_adapter_vertexai.chat.gemini.downloader import (
-    Downloader,
+from aidial_adapter_vertexai.chat.gemini.processor import (
+    AttachmentProcessor,
     max_count_validator,
     max_pdf_page_count_validator,
     process_messages,
@@ -18,9 +18,9 @@ from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
 
 # Tokens per image: 258. count_tokens API call takes this into account.
-def get_image_downloader() -> Downloader:
+def get_image_processor() -> AttachmentProcessor:
     # Validators maintain state, so we need to create a new instance each time.
-    return Downloader(
+    return AttachmentProcessor(
         file_types={
             "image/jpeg": ["jpg", "jpeg"],
             "image/png": "png",
@@ -31,8 +31,8 @@ def get_image_downloader() -> Downloader:
 
 # The maximum file size for a PDF is 50MB. Currently not checked.
 # PDFs are treated as images, so a single page of a PDF is treated as one image.
-def get_pdf_downloader() -> Downloader:
-    return Downloader(
+def get_pdf_processor() -> AttachmentProcessor:
+    return AttachmentProcessor(
         file_types={"application/pdf": "pdf"},
         file_post_validator=max_pdf_page_count_validator(16),
     )
@@ -41,8 +41,8 @@ def get_pdf_downloader() -> Downloader:
 # Audio in the video is ignored.
 # Videos are sampled at 1fps. Each video frame accounts for 258 tokens.
 # The video is automatically truncated to the first two minutes.
-def get_video_downloader() -> Downloader:
-    return Downloader(
+def get_video_processor() -> AttachmentProcessor:
+    return AttachmentProcessor(
         file_types={
             "video/mp4": "mp4",
             "video/mov": "mov",
@@ -57,8 +57,8 @@ def get_video_downloader() -> Downloader:
     )
 
 
-def get_file_exts(types: List[Downloader]) -> List[str]:
-    return [ext for downloader in types for ext in downloader.file_exts]
+def get_file_exts(processors: List[AttachmentProcessor]) -> List[str]:
+    return [ext for proc in processors for ext in proc.file_exts]
 
 
 class GeminiProOneVisionPrompt(GeminiPrompt):
@@ -77,17 +77,17 @@ class GeminiProOneVisionPrompt(GeminiPrompt):
         # which essentially turns it into a text completion model.
         messages = messages[-1:]
 
-        downloaders = [
-            get_image_downloader(),
-            get_pdf_downloader(),
-            get_video_downloader(),
+        processors = [
+            get_image_processor(),
+            get_pdf_processor(),
+            get_video_processor(),
         ]
 
         download_result = await process_messages(
-            downloaders, file_storage, messages
+            processors, file_storage, messages
         )
 
-        usage_message = get_usage_message(get_file_exts(downloaders))
+        usage_message = get_usage_message(get_file_exts(processors))
 
         if isinstance(download_result, str):
             return UserError(download_result, usage_message)

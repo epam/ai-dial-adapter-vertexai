@@ -24,7 +24,7 @@ InitValidator = Callable[[], AnyCoro]
 PostValidator = Callable[[Resource], AnyCoro]
 
 
-class Downloader(BaseModel):
+class AttachmentProcessor(BaseModel):
     file_types: FileTypes
 
     file_init_validator: InitValidator | None = None
@@ -43,7 +43,7 @@ class Downloader(BaseModel):
             ext for exts in self.file_types.values() for ext in flatten(exts)
         ]
 
-    async def process_attachment(
+    async def process(
         self, file_storage: Optional[FileStorage], attachment: Attachment
     ) -> Optional[Resource | str]:
         try:
@@ -71,12 +71,12 @@ class Downloader(BaseModel):
 
 
 async def process_attachment(
-    downloaders: List[Downloader],
+    processors: List[AttachmentProcessor],
     file_storage: Optional[FileStorage],
     attachment: Attachment,
 ) -> Resource | str:
-    for downloader in downloaders:
-        resource = await downloader.process_attachment(file_storage, attachment)
+    for processor in processors:
+        resource = await processor.process(file_storage, attachment)
         if resource is not None:
             return resource
 
@@ -102,7 +102,7 @@ class ProcessingErrors(BaseModel):
 
 
 async def process_attachments(
-    downloaders: List[Downloader],
+    processors: List[AttachmentProcessor],
     file_storage: Optional[FileStorage],
     attachments: List[Attachment],
 ) -> List[Resource] | ProcessingErrors:
@@ -110,12 +110,12 @@ async def process_attachments(
         log.debug(f"original attachments: {json_dumps_short(attachments)}")
 
     download_results: List[Resource | str] = [
-        await process_attachment(downloaders, file_storage, attachment)
+        await process_attachment(processors, file_storage, attachment)
         for attachment in attachments
     ]
 
     if log.isEnabledFor(DEBUG):
-        log.debug(f"download results: {json_dumps_short(download_results)}")
+        log.debug(f"processing results: {json_dumps_short(download_results)}")
 
     ret: List[Resource] = []
     errors: List[Tuple[int, str]] = []
@@ -127,20 +127,20 @@ async def process_attachments(
             errors.append((idx, result))
 
     if len(errors) > 0:
-        log.error(f"download errors: {errors}")
+        log.error(f"processing errors: {errors}")
         return ProcessingErrors(errors=errors)
 
     return ret
 
 
 async def process_message(
-    downloaders: List[Downloader],
+    processors: List[AttachmentProcessor],
     file_storage: Optional[FileStorage],
     message: Message,
 ) -> MessageWithInputs | ProcessingErrors:
 
     attachments = get_attachments(message)
-    inputs = await process_attachments(downloaders, file_storage, attachments)
+    inputs = await process_attachments(processors, file_storage, attachments)
 
     if isinstance(inputs, ProcessingErrors):
         return inputs
@@ -149,7 +149,7 @@ async def process_message(
 
 
 async def process_messages(
-    downloaders: List[Downloader],
+    processors: List[AttachmentProcessor],
     file_storage: Optional[FileStorage],
     messages: List[Message],
 ) -> List[MessageWithInputs] | str:
@@ -157,7 +157,7 @@ async def process_messages(
     errors: Dict[int, ProcessingErrors] = {}
 
     for idx, message in enumerate(messages):
-        result = await process_message(downloaders, file_storage, message)
+        result = await process_message(processors, file_storage, message)
         if isinstance(result, ProcessingErrors):
             errors[idx] = result
         else:
