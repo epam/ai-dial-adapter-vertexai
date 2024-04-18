@@ -16,38 +16,45 @@ from aidial_adapter_vertexai.dial_api.storage import FileStorage
 # Prompt design: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/design-multimodal-prompts
 # Pricing: https://cloud.google.com/vertex-ai/generative-ai/pricing
 
+
 # Tokens per image: 258. count_tokens API call takes this into account.
-image_downloader = Downloader(
-    file_types={
-        "image/jpeg": ["jpg", "jpeg"],
-        "image/png": "png",
-    },
-    file_init_validator=max_count_validator(16),
-)
+def get_image_downloader() -> Downloader:
+    # Validators maintain state, so we need to create a new instance each time.
+    return Downloader(
+        file_types={
+            "image/jpeg": ["jpg", "jpeg"],
+            "image/png": "png",
+        },
+        file_init_validator=max_count_validator(16),
+    )
+
 
 # The maximum file size for a PDF is 50MB. Currently not checked.
 # PDFs are treated as images, so a single page of a PDF is treated as one image.
-pdf_downloader = Downloader(
-    file_types={"application/pdf": "pdf"},
-    file_post_validator=max_pdf_page_count_validator(16),
-)
+def get_pdf_downloader() -> Downloader:
+    return Downloader(
+        file_types={"application/pdf": "pdf"},
+        file_post_validator=max_pdf_page_count_validator(16),
+    )
+
 
 # Audio in the video is ignored.
 # Videos are sampled at 1fps. Each video frame accounts for 258 tokens.
 # The video is automatically truncated to the first two minutes.
-video_downloader = Downloader(
-    file_types={
-        "video/mp4": "mp4",
-        "video/mov": "mov",
-        "video/mpeg": "mpeg",
-        "video/mpg": "mpg",
-        "video/avi": "avi",
-        "video/wmv": "wmv",
-        "video/mpegps": "mpegps",
-        "video/flv": "flv",
-    },
-    file_init_validator=max_count_validator(1),
-)
+def get_video_downloader() -> Downloader:
+    return Downloader(
+        file_types={
+            "video/mp4": "mp4",
+            "video/mov": "mov",
+            "video/mpeg": "mpeg",
+            "video/mpg": "mpg",
+            "video/avi": "avi",
+            "video/wmv": "wmv",
+            "video/mpegps": "mpegps",
+            "video/flv": "flv",
+        },
+        file_init_validator=max_count_validator(1),
+    )
 
 
 def get_file_exts(types: List[Downloader]) -> List[str]:
@@ -70,7 +77,11 @@ class GeminiProOneVisionPrompt(GeminiPrompt):
         # which essentially turns it into a text completion model.
         messages = messages[-1:]
 
-        downloaders = [image_downloader, pdf_downloader, video_downloader]
+        downloaders = [
+            get_image_downloader(),
+            get_pdf_downloader(),
+            get_video_downloader(),
+        ]
 
         download_result = await process_messages(
             downloaders, file_storage, messages
