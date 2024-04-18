@@ -31,6 +31,13 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro_vision import (
     Gemini_1_0_Pro_Vision_Prompt,
 )
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5_pro import (
+    Gemini_1_5_Pro_Prompt,
+)
+from aidial_adapter_vertexai.deployments import (
+    ChatCompletionDeployment,
+    GeminiDeployment,
+)
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
@@ -74,26 +81,35 @@ class FinishReasonOtherError(Exception):
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
+    deployment: GeminiDeployment
+
     def __init__(
         self,
         file_storage: Optional[FileStorage],
         model: GenerativeModel,
-        is_vision_model: bool,
+        deployment: GeminiDeployment,
     ):
         self.file_storage = file_storage
         self.model = model
-        self.is_vision_model = is_vision_model
+        self.deployment = deployment
 
     @override
     async def parse_prompt(
         self, messages: List[Message]
     ) -> GeminiPrompt | UserError:
-        if self.is_vision_model:
-            return await Gemini_1_0_Pro_Vision_Prompt.parse(
-                self.file_storage, messages
-            )
-        else:
-            return Gemini_1_0_Pro_Prompt.parse(messages)
+        match self.deployment:
+            case ChatCompletionDeployment.GEMINI_PRO_1:
+                return Gemini_1_0_Pro_Prompt.parse(messages)
+            case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
+                return await Gemini_1_0_Pro_Vision_Prompt.parse(
+                    self.file_storage, messages
+                )
+            case ChatCompletionDeployment.GEMINI_PRO_VISION_1_5:
+                return await Gemini_1_5_Pro_Prompt.parse(
+                    self.file_storage, messages
+                )
+            case _:
+                assert_never(self.deployment)
 
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt
@@ -202,13 +218,13 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         cls,
         file_storage: Optional[FileStorage],
         model_id: str,
-        is_vision_model: bool,
+        deployment: GeminiDeployment,
         project_id: str,
         location: str,
     ) -> "GeminiChatCompletionAdapter":
         await init_vertex_ai(project_id, location)
         model = await get_gemini_model(model_id)
-        return cls(file_storage, model, is_vision_model)
+        return cls(file_storage, model, deployment)
 
 
 def get_content(response: GenerationResponse) -> Optional[str]:
