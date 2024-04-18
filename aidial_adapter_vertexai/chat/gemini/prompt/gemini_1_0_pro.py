@@ -7,7 +7,7 @@ from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithInputs
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 
 
-class GeminiProOnePrompt(GeminiPrompt):
+class Gemini_1_0_Pro_Prompt(GeminiPrompt):
     @classmethod
     def parse(cls, messages: List[Message]) -> Self:
         if len(messages) == 0:
