@@ -16,6 +16,9 @@ def json_dumps_short(obj: Any, string_limit: int = 100, **kwargs) -> str:
 
 
 def to_dict(obj: Any) -> Any:
+    if isinstance(obj, bytes):
+        return f"<bytes>({len(obj)}B)"
+
     if isinstance(obj, dict):
         return {key: to_dict(value) for key, value in obj.items()}
 

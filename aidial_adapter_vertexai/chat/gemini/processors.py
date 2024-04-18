@@ -102,3 +102,7 @@ def get_video_processor(
 
 def get_file_exts(processors: List[AttachmentProcessor]) -> List[str]:
     return [ext for proc in processors for ext in proc.file_exts]
+
+
+def get_mime_types(processors: List[AttachmentProcessor]) -> List[str]:
+    return [mime for proc in processors for mime in proc.mime_types]
