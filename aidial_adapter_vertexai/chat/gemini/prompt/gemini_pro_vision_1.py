@@ -5,8 +5,8 @@ from aidial_sdk.chat_completion import Message
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.downloader import (
     Downloader,
-    max_count,
-    max_pdf_page_count,
+    max_count_validator,
+    max_pdf_page_count_validator,
     process_messages,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
@@ -22,14 +22,14 @@ image_downloader = Downloader(
         "image/jpeg": ["jpg", "jpeg"],
         "image/png": "png",
     },
-    file_pre_validator=max_count(16),
+    file_init_validator=max_count_validator(16),
 )
 
 # The maximum file size for a PDF is 50MB. Currently not checked.
 # PDFs are treated as images, so a single page of a PDF is treated as one image.
 pdf_downloader = Downloader(
     file_types={"application/pdf": "pdf"},
-    file_post_validator=max_pdf_page_count(16),
+    file_post_validator=max_pdf_page_count_validator(16),
 )
 
 # Audio in the video is ignored.
@@ -46,7 +46,7 @@ video_downloader = Downloader(
         "video/mpegps": "mpegps",
         "video/flv": "flv",
     },
-    file_pre_validator=max_count(1),
+    file_init_validator=max_count_validator(1),
 )
 
 

@@ -11,22 +11,24 @@ from aidial_adapter_vertexai.chat.gemini.inputs import (
 )
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
-from aidial_adapter_vertexai.utils.data_url import DataURL
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.pdf import get_pdf_page_count
+from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.text import format_ordinal
 
 FileTypes = Dict[str, Union[str, List[str]]]
 
 AnyCoro = Coroutine[None, None, Any]
+InitValidator = Callable[[], AnyCoro]
+PostValidator = Callable[[Resource], AnyCoro]
 
 
 class Downloader(BaseModel):
     file_types: FileTypes
 
-    file_pre_validator: Callable[[], AnyCoro] | None = None
-    file_post_validator: Callable[[DataURL], AnyCoro] | None = None
+    file_init_validator: InitValidator | None = None
+    file_post_validator: PostValidator | None = None
 
     @property
     def mime_types(self) -> List[str]:
@@ -43,7 +45,7 @@ class Downloader(BaseModel):
 
     async def process_attachment(
         self, file_storage: Optional[FileStorage], attachment: Attachment
-    ) -> Optional[DataURL | str]:
+    ) -> Optional[Resource | str]:
         try:
             mime_type = derive_attachment_mime_type(attachment)
             if mime_type is None:
@@ -52,16 +54,16 @@ class Downloader(BaseModel):
             if mime_type not in self.mime_types:
                 return None
 
-            if self.file_pre_validator is not None:
-                await self.file_pre_validator()
+            if self.file_init_validator is not None:
+                await self.file_init_validator()
 
             data = await download_attachment(file_storage, attachment)
-            data_url = DataURL(mime_type=mime_type, data=data)
+            resource = Resource(mime_type=mime_type, data=data)
 
             if self.file_post_validator is not None:
-                await self.file_post_validator(data_url)
+                await self.file_post_validator(resource)
 
-            return data_url
+            return resource
 
         except Exception as e:
             log.error(f"Failed to download file: {str(e)}")
@@ -72,11 +74,11 @@ async def process_attachment(
     downloaders: List[Downloader],
     file_storage: Optional[FileStorage],
     attachment: Attachment,
-) -> DataURL | str:
+) -> Resource | str:
     for downloader in downloaders:
-        data_url = await downloader.process_attachment(file_storage, attachment)
-        if data_url is not None:
-            return data_url
+        resource = await downloader.process_attachment(file_storage, attachment)
+        if resource is not None:
+            return resource
 
     return "The attachment isn't one of the supported types"
 
@@ -103,11 +105,11 @@ async def process_attachments(
     downloaders: List[Downloader],
     file_storage: Optional[FileStorage],
     attachments: List[Attachment],
-) -> List[DataURL] | ProcessingErrors:
+) -> List[Resource] | ProcessingErrors:
     if log.isEnabledFor(DEBUG):
         log.debug(f"original attachments: {json_dumps_short(attachments)}")
 
-    download_results: List[DataURL | str] = [
+    download_results: List[Resource | str] = [
         await process_attachment(downloaders, file_storage, attachment)
         for attachment in attachments
     ]
@@ -115,11 +117,11 @@ async def process_attachments(
     if log.isEnabledFor(DEBUG):
         log.debug(f"download results: {json_dumps_short(download_results)}")
 
-    ret: List[DataURL] = []
+    ret: List[Resource] = []
     errors: List[Tuple[int, str]] = []
 
     for idx, result in enumerate(download_results):
-        if isinstance(result, DataURL):
+        if isinstance(result, Resource):
             ret.append(result)
         else:
             errors.append((idx, result))
@@ -167,7 +169,7 @@ async def process_messages(
     return ret
 
 
-def max_count(limit: int) -> Callable[[], AnyCoro]:
+def max_count_validator(limit: int) -> InitValidator:
     count = 0
 
     async def validator():
@@ -179,13 +181,13 @@ def max_count(limit: int) -> Callable[[], AnyCoro]:
     return validator
 
 
-def max_pdf_page_count(limit: int) -> Callable[[DataURL], AnyCoro]:
+def max_pdf_page_count_validator(limit: int) -> PostValidator:
     count = 0
 
-    async def validator(data_url: DataURL):
+    async def validator(resource: Resource):
         nonlocal count
         try:
-            count += await get_pdf_page_count(data_url.data)
+            count += await get_pdf_page_count(resource.data)
         except Exception as e:
             log.debug(f"Failed to get PDF page count: {e}")
             raise ValueError("Failed to get PDF page count")

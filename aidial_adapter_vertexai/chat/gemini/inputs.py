@@ -8,12 +8,12 @@ from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.dial_api.storage import FileStorage, download_file
-from aidial_adapter_vertexai.utils.data_url import DataURL
+from aidial_adapter_vertexai.utils.resource import Resource
 
 
 class MessageWithInputs(BaseModel):
     message: Message
-    inputs: List[DataURL]
+    inputs: List[Resource]
 
     def has_empty_content(self) -> bool:
         return (self.message.content or "").strip() == ""
@@ -43,9 +43,9 @@ def derive_attachment_mime_type(attachment: Attachment) -> Optional[str]:
     if type is None:
         # No type is provided. Trying to guess the type from the Data URL.
         if attachment.url is not None:
-            data_url = DataURL.from_data_url(attachment.url)
-            if data_url is not None:
-                return data_url.mime_type
+            resource = Resource.from_data_url(attachment.url)
+            if resource is not None:
+                return resource.mime_type
         return None
 
     if "octet-stream" in type:
@@ -69,9 +69,9 @@ async def download_attachment(
     if attachment.url is not None:
         attachment_link: str = attachment.url
 
-        data_url = DataURL.from_data_url(attachment_link)
-        if data_url is not None:
-            return data_url.data
+        resource = Resource.from_data_url(attachment_link)
+        if resource is not None:
+            return resource.data
 
         if file_storage is not None:
             url = file_storage.attachment_link_to_url(attachment_link)

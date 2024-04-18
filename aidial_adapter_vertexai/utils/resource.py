@@ -5,10 +5,9 @@ from typing import Optional, Self
 from pydantic import BaseModel
 
 
-class DataURL(BaseModel):
+class Resource(BaseModel):
     """
-    Encoding of an image as a data URL.
-    See https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs for reference.
+    Resource: byte value + MIME type
     """
 
     mime_type: str
@@ -16,6 +15,10 @@ class DataURL(BaseModel):
 
     @classmethod
     def from_data_url(cls, url: str) -> Optional[Self]:
+        """
+        See https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs for reference.
+        """
+
         pattern = r"^data:([^;]+);base64,(.+)$"
         match = re.match(pattern, url)
         if match is None:
