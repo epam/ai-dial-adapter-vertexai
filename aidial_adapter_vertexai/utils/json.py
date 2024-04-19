@@ -3,7 +3,12 @@ from typing import Any
 
 import proto
 from pydantic import BaseModel
-from vertexai.preview.generative_models import Content, GenerationResponse, Part
+from vertexai.preview.generative_models import (
+    Content,
+    GenerationConfig,
+    GenerationResponse,
+    Part,
+)
 
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
@@ -28,7 +33,7 @@ def to_dict(obj: Any, **kwargs) -> Any:
         return val
 
     if isinstance(obj, bytes):
-        return f"<bytes>({len(obj)}B)"
+        return f"<bytes>({len(obj):_} B)"
 
     if isinstance(obj, dict):
         return {key: rec(dict_field(key, value)) for key, value in obj.items()}
@@ -44,6 +49,9 @@ def to_dict(obj: Any, **kwargs) -> Any:
 
     if isinstance(obj, GenerationResponse):
         return rec(obj._raw_response)
+
+    if isinstance(obj, GenerationConfig):
+        return rec(obj._raw_generation_config)
 
     if isinstance(obj, Content):
         return rec(obj._raw_content)
@@ -68,7 +76,7 @@ def _truncate_strings(obj: Any, string_limit: int) -> Any:
         skip = len(obj) - string_limit
         return (
             obj[: string_limit // 2]
-            + f"...({skip} skipped)..."
+            + f"...({skip:_} skipped)..."
             + obj[-string_limit // 2 :]
         )
 

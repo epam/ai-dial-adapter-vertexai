@@ -20,12 +20,13 @@ from vertexai.preview.vision_models import (
     ImageGenerationResponse,
 )
 
-from aidial_adapter_vertexai.chat.gemini.adapter import (
-    BLOCK_NONE_SAFETY_SETTINGS,
-)
+from aidial_adapter_vertexai.chat.gemini.adapter import default_safety_settings
+from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
+from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from client.chat.base import Chat
 from client.utils.files import get_project_root
 from client.utils.printing import print_info
@@ -49,7 +50,10 @@ class SDKLangChat(Chat):
         return cls(chat)
 
     async def send_message(
-        self, prompt: str, params: ModelParameters, usage: TokenUsage
+        self,
+        prompt: MessageWithResources,
+        params: ModelParameters,
+        usage: TokenUsage,
     ) -> AsyncIterator[str]:
         parameters = {
             "max_output_tokens": params.max_tokens,
@@ -61,14 +65,16 @@ class SDKLangChat(Chat):
         if not params.stream:
             parameters["candidate_count"] = params.n
 
+        message = prompt.to_text()
+
         if params.stream:
             responses = self.chat.send_message_streaming(
-                message=prompt, **parameters
+                message=message, **parameters
             )
             for response in responses:
                 yield response.text
         else:
-            yield self.chat.send_message(message=prompt, **parameters).text
+            yield self.chat.send_message(message=message, **parameters).text
 
 
 def create_generation_config(params: ModelParameters) -> GenerationConfig:
@@ -110,28 +116,37 @@ class SDKGenChat(Chat):
         return cls(chat)
 
     async def send_message(
-        self, prompt: str, params: ModelParameters, usage: TokenUsage
+        self,
+        prompt: MessageWithResources,
+        params: ModelParameters,
+        usage: TokenUsage,
     ) -> AsyncIterator[str]:
-        parameters = create_generation_config(params)
+        config = create_generation_config(params)
+        content = prompt.to_parts()
+
+        log.debug(f"request config: {json_dumps(config)}")
+        log.debug(f"request content: {json_dumps_short(content)}")
 
         if params.stream:
             response = await self.chat._send_message_streaming_async(
-                content=prompt,
-                generation_config=parameters,
-                safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
+                content=content,  # type: ignore
+                generation_config=config,
+                safety_settings=default_safety_settings,
                 tools=None,
             )
 
             async for chunk in response:
+                log.debug(f"response chunk: {json_dumps(chunk)}")
                 yield chunk.text
         else:
             response = await self.chat._send_message_async(
-                content=prompt,
-                generation_config=parameters,
-                safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
+                content=content,  # type: ignore
+                generation_config=config,
+                safety_settings=default_safety_settings,
                 tools=None,
             )
 
+            log.debug(f"response: {json_dumps(response)}")
             yield response.text
 
 
@@ -161,10 +176,13 @@ class SDKImagenChat(Chat):
         return dir / filename
 
     async def send_message(
-        self, prompt: str, params: ModelParameters, usage: TokenUsage
+        self,
+        prompt: MessageWithResources,
+        params: ModelParameters,
+        usage: TokenUsage,
     ) -> AsyncIterator[str]:
         response: ImageGenerationResponse = self.model.generate_images(
-            prompt, number_of_images=1, seed=None
+            prompt.to_text(), number_of_images=1, seed=None
         )
 
         print_info(f"Response: {response}")

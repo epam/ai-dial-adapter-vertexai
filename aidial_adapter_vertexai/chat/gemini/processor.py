@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.inputs import (
-    MessageWithInputs,
+    MessageWithResources,
     derive_attachment_mime_type,
     download_attachment,
 )
@@ -154,23 +154,23 @@ async def process_message(
     processors: List[AttachmentProcessor],
     file_storage: Optional[FileStorage],
     message: Message,
-) -> MessageWithInputs | ProcessingErrors:
+) -> MessageWithResources | ProcessingErrors:
 
     attachments = get_attachments(message)
-    inputs = await process_attachments(processors, file_storage, attachments)
+    resources = await process_attachments(processors, file_storage, attachments)
 
-    if isinstance(inputs, ProcessingErrors):
-        return inputs
+    if isinstance(resources, ProcessingErrors):
+        return resources
 
-    return MessageWithInputs(message=message, inputs=inputs)
+    return MessageWithResources(message=message, resources=resources)
 
 
 async def process_messages(
     processors: List[AttachmentProcessor],
     file_storage: Optional[FileStorage],
     messages: List[Message],
-) -> List[MessageWithInputs] | str:
-    ret: List[MessageWithInputs] = []
+) -> List[MessageWithResources] | str:
+    ret: List[MessageWithResources] = []
     errors: Dict[int, ProcessingErrors] = {}
 
     for idx, message in enumerate(messages):

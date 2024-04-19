@@ -9,8 +9,8 @@ from typing import (
     assert_never,
 )
 
+import vertexai.preview.generative_models as generative_models
 from aidial_sdk.chat_completion import FinishReason, Message
-from google.cloud.aiplatform_v1beta1.types import content as gapic_content_types
 from typing_extensions import override
 from vertexai.preview.generative_models import (
     ChatSession,
@@ -46,15 +46,16 @@ from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
 from aidial_adapter_vertexai.vertex_ai import get_gemini_model, init_vertex_ai
 
-HarmCategory = gapic_content_types.HarmCategory
-HarmBlockThreshold = gapic_content_types.SafetySetting.HarmBlockThreshold
-Candidate = gapic_content_types.Candidate
+HarmCategory = generative_models.HarmCategory
+HarmBlockThreshold = generative_models.HarmBlockThreshold
+GenFinishReason = generative_models.FinishReason
 
-BLOCK_NONE_SAFETY_SETTINGS: Dict[HarmCategory, HarmBlockThreshold] = {
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+default_safety_settings: Dict[HarmCategory, HarmBlockThreshold] = {
+    HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
 }
 
 
@@ -121,7 +122,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             response = await session._send_message_streaming_async(
                 content=prompt.prompt,  # type: ignore
                 generation_config=parameters,
-                safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
+                safety_settings=default_safety_settings,
                 tools=None,
             )
 
@@ -131,7 +132,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             response = await session._send_message_async(
                 content=prompt.prompt,  # type: ignore
                 generation_config=parameters,
-                safety_settings=BLOCK_NONE_SAFETY_SETTINGS,
+                safety_settings=default_safety_settings,
                 tools=None,
             )
 
@@ -205,12 +206,14 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self.model.count_tokens_async(prompt.contents)
+            log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             return resp.total_tokens
 
     @override
     async def count_completion_tokens(self, string: str) -> int:
         with Timer("count_tokens[completion] timing: {time}", log.debug):
             resp = await self.model.count_tokens_async(string)
+            log.debug(f"count_tokens[completion] response: {json_dumps(resp)}")
             return resp.total_tokens
 
     @classmethod
@@ -235,24 +238,24 @@ def get_content(response: GenerationResponse) -> Optional[str]:
 
 
 def to_openai_finish_reason(
-    finish_reason: Candidate.FinishReason, retriable: bool
+    finish_reason: GenFinishReason, retriable: bool
 ) -> FinishReason | None:
     match finish_reason:
-        case Candidate.FinishReason.FINISH_REASON_UNSPECIFIED:
+        case GenFinishReason.FINISH_REASON_UNSPECIFIED:
             return None
-        case Candidate.FinishReason.MAX_TOKENS:
+        case GenFinishReason.MAX_TOKENS:
             return FinishReason.LENGTH
-        case Candidate.FinishReason.STOP:
+        case GenFinishReason.STOP:
             return FinishReason.STOP
         case (
-            Candidate.FinishReason.SAFETY
-            | Candidate.FinishReason.RECITATION
-            | Candidate.FinishReason.BLOCKLIST
-            | Candidate.FinishReason.PROHIBITED_CONTENT
-            | Candidate.FinishReason.SPII
+            GenFinishReason.SAFETY
+            | GenFinishReason.RECITATION
+            | GenFinishReason.BLOCKLIST
+            | GenFinishReason.PROHIBITED_CONTENT
+            | GenFinishReason.SPII
         ):
             return FinishReason.CONTENT_FILTER
-        case Candidate.FinishReason.OTHER:
+        case GenFinishReason.OTHER:
             # OTHER finish reason could be usually fixed with a retry
             raise FinishReasonOtherError(
                 msg="The model terminated generation unexpectedly",
@@ -266,8 +269,7 @@ T = TypeVar("T")
 
 
 async def generate_with_retries(
-    generator: Callable[[], AsyncIterator[T]],
-    max_retries: int,
+    generator: Callable[[], AsyncIterator[T]], max_retries: int
 ) -> AsyncIterator[T]:
     retries = 0
     while True:
