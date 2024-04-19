@@ -32,16 +32,14 @@ class Gemini_1_5_Pro_Prompt(GeminiPrompt):
             get_audio_processor(),
         ]
 
-        download_result = await process_messages(
-            processors, file_storage, messages
-        )
+        result = await process_messages(processors, file_storage, messages)
 
         usage_message = get_usage_message(get_file_exts(processors))
 
-        if isinstance(download_result, str):
-            return UserError(download_result, usage_message)
+        if isinstance(result, str):
+            return UserError(result, usage_message)
 
-        history = [res.to_content() for res in download_result]
+        history = [res.to_content() for res in result]
         return cls(history=history[:-1], prompt=history[-1].parts)
 
 
@@ -52,9 +50,12 @@ def get_usage_message(exts: List[str]) -> str:
 The application answers queries about attached documents.
 Attach documents and ask questions about them in the same message.
 
-Supported document types: {', '.join(exts)}.
+Supported document extensions: {', '.join(exts)}.
 
 Examples of queries:
-- "Describe this picture" for one image,
-- "What are in these images? Is there any difference between them?" for multiple images.
+- "Describe the picture" for one image,
+- "What is depicted in these images?", "Compare the images" for multiple images,
+- "Summarize the document" for a PDF,
+- "Transcribe the audio" for an audio file,
+- "What is happening in the video?" for a video.
 """.strip()

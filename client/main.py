@@ -57,7 +57,7 @@ async def main():
             chat, model_parameters = await init_chat(Config.get_interactive())
             continue
         elif any(query.startswith(cmd) for cmd in [":a ", ":attach "]):
-            path = Path(query.split(" ")[1])
+            path = Path(query.split(" ", 1)[1])
             resources.append(Resource.from_path(path))
             continue
         elif query == "":

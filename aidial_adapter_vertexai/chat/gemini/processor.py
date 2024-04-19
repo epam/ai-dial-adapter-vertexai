@@ -243,7 +243,9 @@ def exclusive_validator() -> Callable[[str], InitValidator]:
                 first = name
             elif first != name:
                 raise ValidationError(
-                    f"Found attachments of different types: {first!r} and {name!r}. Only one type is allowed."
+                    f"The document type is {name!r}. "
+                    f"However, one of the documents processed earlier was of {first!r} type. "
+                    "Only one type of document is supported at a time."
                 )
 
         return validator

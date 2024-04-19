@@ -10,6 +10,7 @@ from aidial_adapter_vertexai.chat.gemini.processor import (
 
 # Gemini capabilities: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts
 # Using File API from google-generativeai lib: https://ai.google.dev/gemini-api/docs/prompting_with_media (not useful for us, because it requires Google API key)
+# Which combinations of parts are supported: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini#request_body
 # Prompt design: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/design-multimodal-prompts
 # Pricing: https://cloud.google.com/vertex-ai/generative-ai/pricing
 
@@ -111,8 +112,8 @@ def get_video_processor(
 
 
 def get_file_exts(processors: List[AttachmentProcessor]) -> List[str]:
-    return [ext for proc in processors for ext in proc.file_exts]
+    return sorted(set([ext for p in processors for ext in p.file_exts]))
 
 
 def get_mime_types(processors: List[AttachmentProcessor]) -> List[str]:
-    return [mime for proc in processors for mime in proc.mime_types]
+    return sorted(set([ty for p in processors for ty in p.mime_types]))
