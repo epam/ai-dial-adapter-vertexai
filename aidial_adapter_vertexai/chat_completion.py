@@ -45,7 +45,7 @@ class VertexAIChatCompletion(ChatCompletion):
         self.region = region
         self.project_id = project_id
 
-    async def get_model(
+    async def _get_model(
         self, request: FromRequestDeploymentMixin
     ) -> ChatCompletionAdapter:
         return await get_chat_completion_model(
@@ -57,20 +57,24 @@ class VertexAIChatCompletion(ChatCompletion):
 
     @dial_exception_decorator
     async def chat_completion(self, request: Request, response: Response):
-        model = await self.get_model(request)
+        model = await self._get_model(request)
         prompt = await model.parse_prompt(request.messages)
 
         if isinstance(prompt, UserError):
-            # Show the error message in a stage for a web UI user
+            # Show a usage in a stage to educate a chat user
             with response.create_choice() as choice:
-                stage = choice.create_stage("Error")
+                stage = choice.create_stage("Usage")
                 stage.open()
-                stage.append_content(prompt.to_message_for_chat_user())
+                stage.append_content(prompt.usage)
                 stage.close(Status.FAILED)
             await response.aflush()
 
-            # Raise exception for a DIAL API client
-            raise Exception(prompt.message)
+            # Raise an exception for an API client
+            raise DialException(
+                status_code=500,
+                message=prompt.message,
+                display_message=prompt.message,
+            )
 
         params = ModelParameters.create(request)
 
@@ -112,8 +116,9 @@ class VertexAIChatCompletion(ChatCompletion):
             response.set_discarded_messages(discarded_messages)
 
     @override
+    @dial_exception_decorator
     async def tokenize(self, request: TokenizeRequest) -> TokenizeResponse:
-        model = await self.get_model(request)
+        model = await self._get_model(request)
 
         if not is_implemented(
             model.count_completion_tokens
@@ -125,17 +130,17 @@ class VertexAIChatCompletion(ChatCompletion):
             match input:
                 case TokenizeInputRequest():
                     outputs.append(
-                        await self.tokenize_request(model, input.value)
+                        await self._tokenize_request(model, input.value)
                     )
                 case TokenizeInputString():
                     outputs.append(
-                        await self.tokenize_string(model, input.value)
+                        await self._tokenize_string(model, input.value)
                     )
                 case _:
                     assert_never(input.type)
         return TokenizeResponse(outputs=outputs)
 
-    async def tokenize_string(
+    async def _tokenize_string(
         self, model: ChatCompletionAdapter, value: str
     ) -> TokenizeOutput:
         try:
@@ -144,7 +149,7 @@ class VertexAIChatCompletion(ChatCompletion):
         except Exception as e:
             return TokenizeError(error=str(e))
 
-    async def tokenize_request(
+    async def _tokenize_request(
         self, model: ChatCompletionAdapter, request: ChatCompletionRequest
     ) -> TokenizeOutput:
         try:
@@ -158,25 +163,26 @@ class VertexAIChatCompletion(ChatCompletion):
             return TokenizeError(error=str(e))
 
     @override
+    @dial_exception_decorator
     async def truncate_prompt(
         self, request: TruncatePromptRequest
     ) -> TruncatePromptResponse:
-        model = await self.get_model(request)
+        model = await self._get_model(request)
 
         if not is_implemented(model.truncate_prompt):
             raise DialException(status_code=404, message="Not found")
 
         outputs: List[TruncatePromptResult] = []
         for input in request.inputs:
-            outputs.append(await self.truncate_prompt_request(model, input))
+            outputs.append(await self._truncate_prompt_request(model, input))
         return TruncatePromptResponse(outputs=outputs)
 
-    async def truncate_prompt_request(
+    async def _truncate_prompt_request(
         self, model: ChatCompletionAdapter, request: ChatCompletionRequest
     ) -> TruncatePromptResult:
         try:
             if request.max_prompt_tokens is None:
-                raise ValueError("max_prompt_tokens is required")
+                raise ValidationError("max_prompt_tokens is required")
 
             _prompt, discarded_messages = await model.truncate_prompt(
                 request.messages, request.max_prompt_tokens
