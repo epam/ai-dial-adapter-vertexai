@@ -21,8 +21,12 @@ class MessageWithResources(BaseModel):
         if content is None:
             raise ValidationError("Message content must be present")
 
-        if content.strip() == "":
-            raise ValidationError("Message with empty content isn't allowed")
+        # Gemini doesn't support empty messages: neither user's nor assistant's.
+        # It throws an error:
+        #   400 Unable to submit request because it has an empty text parameter.
+        #   Add a value to the parameter and try again.
+        if content == "":
+            content = " "
 
         return content
 

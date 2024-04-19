@@ -1,4 +1,5 @@
 import json
+from enum import Enum
 from typing import Any
 
 import proto
@@ -34,6 +35,9 @@ def to_dict(obj: Any, **kwargs) -> Any:
 
     if isinstance(obj, bytes):
         return f"<bytes>({len(obj):_} B)"
+
+    if isinstance(obj, Enum):
+        return obj.value
 
     if isinstance(obj, dict):
         return {key: rec(dict_field(key, value)) for key, value in obj.items()}
