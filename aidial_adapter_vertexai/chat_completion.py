@@ -70,11 +70,7 @@ class VertexAIChatCompletion(ChatCompletion):
             await response.aflush()
 
             # Raise an exception for an API client
-            raise DialException(
-                status_code=500,
-                message=prompt.message,
-                display_message=prompt.message,
-            )
+            raise prompt
 
         params = ModelParameters.create(request)
 
