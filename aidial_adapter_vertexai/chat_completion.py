@@ -2,7 +2,7 @@ import asyncio
 from typing import List, assert_never
 
 from aidial_sdk import HTTPException as DialException
-from aidial_sdk.chat_completion import ChatCompletion, Request, Response, Status
+from aidial_sdk.chat_completion import ChatCompletion, Request, Response
 from aidial_sdk.chat_completion.request import ChatCompletionRequest
 from aidial_sdk.deployment.from_request_mixin import FromRequestDeploymentMixin
 from aidial_sdk.deployment.tokenize import (
@@ -62,12 +62,7 @@ class VertexAIChatCompletion(ChatCompletion):
 
         if isinstance(prompt, UserError):
             # Show a usage in a stage to educate a chat user
-            with response.create_choice() as choice:
-                stage = choice.create_stage("Usage")
-                stage.open()
-                stage.append_content(prompt.usage)
-                stage.close(Status.FAILED)
-            await response.aflush()
+            await prompt.report_usage(response)
 
             # Raise an exception for an API client
             raise prompt

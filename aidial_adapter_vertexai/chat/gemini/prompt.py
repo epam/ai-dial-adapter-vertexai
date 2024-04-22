@@ -153,8 +153,6 @@ def get_part_role(role: Role) -> str:
 
 def get_usage_message(supported_exts: List[str]) -> str:
     return f"""
-### Usage
-
 The application answers queries about attached images.
 Attach images and ask questions about them in the same message.
 

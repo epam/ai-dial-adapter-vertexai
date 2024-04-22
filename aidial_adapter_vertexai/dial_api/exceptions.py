@@ -63,23 +63,10 @@ def to_dial_exception(e: Exception) -> DialException:
         )
 
     if isinstance(e, ValidationError):
-        return DialException(
-            status_code=422,
-            type="invalid_request_error",
-            message=e.message,
-            code="invalid_argument",
-            param=None,
-        )
+        return e.to_dial_exception()
 
     if isinstance(e, UserError):
-        return DialException(
-            status_code=422,
-            type="invalid_request_error",
-            message=e.display_message,
-            display_message=e.display_message,
-            code="invalid_argument",
-            param=None,
-        )
+        return e.to_dial_exception()
 
     if isinstance(e, DialException):
         return e
