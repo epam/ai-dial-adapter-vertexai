@@ -12,6 +12,9 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
     get_video_processor,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
+    accommodate_first_system_message,
+)
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
 
@@ -24,6 +27,8 @@ class Gemini_1_5_Pro_Prompt(GeminiPrompt):
             raise ValidationError(
                 "The chat history must have at least one message"
             )
+
+        messages = accommodate_first_system_message(messages)
 
         processors = [
             get_image_processor(3000),

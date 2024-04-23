@@ -47,7 +47,7 @@ class AdapterChat(Chat):
         params: ModelParameters,
         usage: TokenUsage,
     ) -> AsyncGenerator[str, None]:
-        self.history.append(prompt.to_message())
+        self.history.append(prompt.message)
 
         consumer: Optional[CollectConsumer] = None
 

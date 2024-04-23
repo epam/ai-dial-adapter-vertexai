@@ -2,7 +2,7 @@ import base64
 import mimetypes
 from typing import List, Optional, assert_never
 
-from aidial_sdk.chat_completion import Attachment, CustomContent, Message, Role
+from aidial_sdk.chat_completion import Attachment, Message, Role
 from pydantic import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
@@ -49,14 +49,6 @@ class MessageWithResources(BaseModel):
         return Content(
             role=get_part_role(self.message.role),
             parts=self.to_parts(),
-        )
-
-    def to_message(self) -> Message:
-        attachments = [input.to_attachment() for input in self.resources]
-        return Message(
-            role=self.message.role,
-            content=self.message.content,
-            custom_content=CustomContent(attachments=attachments),
         )
 
 
