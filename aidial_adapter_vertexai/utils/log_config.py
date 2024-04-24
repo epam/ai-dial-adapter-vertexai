@@ -24,7 +24,6 @@ def configure_loggers():
     # Making the uvicorn logger delegate logging to the root logger
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.handlers = []
-    uvicorn_logger.setLevel(LOG_LEVEL)
     uvicorn_logger.propagate = True
 
     # Filter out health check requests from uvicorn logs

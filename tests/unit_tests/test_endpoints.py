@@ -15,6 +15,7 @@ test_cases: List[Tuple[ChatCompletionDeployment, bool, bool]] = [
     (ChatCompletionDeployment.CODECHAT_BISON_2_32K, True, True),
     (ChatCompletionDeployment.GEMINI_PRO_1, True, False),
     (ChatCompletionDeployment.GEMINI_PRO_VISION_1, True, False),
+    (ChatCompletionDeployment.GEMINI_PRO_VISION_1_5, True, False),
     (ChatCompletionDeployment.IMAGEN_005, True, True),
 ]
 
