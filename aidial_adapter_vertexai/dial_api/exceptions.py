@@ -9,6 +9,7 @@ from google.api_core.exceptions import (
 from google.auth.exceptions import GoogleAuthError
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
 def to_dial_exception(e: Exception) -> DialException:
@@ -88,6 +89,7 @@ def dial_exception_decorator(func):
         try:
             return await func(*args, **kwargs)
         except Exception as e:
-            raise to_dial_exception(e)
+            log.exception(e)
+            raise to_dial_exception(e) from e
 
     return wrapper

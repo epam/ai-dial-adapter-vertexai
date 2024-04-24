@@ -11,6 +11,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.errors import UserError
+from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
@@ -41,9 +42,12 @@ class AdapterChat(Chat):
         return cls(model)
 
     async def send_message(
-        self, prompt: str, params: ModelParameters, usage: TokenUsage
+        self,
+        prompt: MessageWithResources,
+        params: ModelParameters,
+        usage: TokenUsage,
     ) -> AsyncGenerator[str, None]:
-        self.history.append(Message(role=Role.USER, content=prompt))
+        self.history.append(prompt.message)
 
         consumer: Optional[CollectConsumer] = None
 

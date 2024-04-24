@@ -5,7 +5,7 @@ DEV_PYTHON ?= 3.11
 DOCKER ?= docker
 ARGS=
 
-.PHONY: all install build serve clean lint format test integration_tests docker_build docker_run
+.PHONY: all install build serve clean client lint format test integration_tests docker_build docker_run
 
 all: build
 
@@ -24,6 +24,9 @@ serve: install
 clean:
 	poetry run python -m scripts.clean
 	poetry env remove --all
+
+client: install
+	poetry run python -m client.main $(ARGS)
 
 lint: install
 	poetry run nox -s lint

@@ -1,10 +1,15 @@
 import asyncio
-from typing import Tuple, assert_never
+from pathlib import Path
+from typing import List, Tuple, assert_never
 
+from aidial_sdk.chat_completion import CustomContent, Message, Role
+
+from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.env import get_env
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
+from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.timer import Timer
 from client.chat.adapter import AdapterChat
 from client.chat.base import Chat
@@ -12,7 +17,7 @@ from client.chat.sdk import create_sdk_chat
 from client.conf import MAX_CHAT_TURNS, MAX_INPUT_CHARS
 from client.config import ClientMode, Config
 from client.utils.input import make_input
-from client.utils.printing import print_ai, print_info
+from client.utils.printing import print_ai, print_error, print_info
 
 configure_loggers()
 
@@ -38,28 +43,49 @@ async def main():
 
     input = make_input()
 
+    resources: List[Resource] = []
+
     turn = 0
     while turn < MAX_CHAT_TURNS:
         turn += 1
 
-        content = input()[:MAX_INPUT_CHARS]
+        query = input()[:MAX_INPUT_CHARS]
 
-        if content in [":q", ":quit"]:
+        if query in [":q", ":quit"]:
             break
-        elif content in [":r", ":restart"]:
+        elif query in [":r", ":restart"]:
             chat, model_parameters = await init_chat(Config.get_interactive())
             continue
-        elif content == "":
+        elif any(query.startswith(cmd) for cmd in [":a ", ":attach "]):
+            path = Path(query.split(" ", 1)[1])
+            resources.append(Resource.from_path(path))
+            continue
+        elif query == "":
             continue
 
         usage = TokenUsage()
-
         timer = Timer()
 
-        async for chunk in chat.send_message(content, model_parameters, usage):
-            print_ai(chunk, end="")
+        attachments = [res.to_attachment() for res in resources]
+        message = Message(
+            role=Role.USER,
+            content=query,
+            custom_content=CustomContent(attachments=attachments),
+        )
 
-        print_ai("")
+        try:
+            async for chunk in chat.send_message(
+                MessageWithResources(message=message, resources=resources),
+                model_parameters,
+                usage,
+            ):
+                print_ai(chunk, end="")
+
+            print_ai("")
+        except Exception as e:
+            print_error(f"Error: {str(e)}")
+
+        resources = []
 
         print_info(f"Timing: {timer}")
         print_info(f"Usage: {usage}")

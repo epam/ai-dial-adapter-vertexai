@@ -77,17 +77,8 @@ class Config(BaseModel):
         else:
             streaming = select_option("Streaming", [False, True])
 
-        if args.max_tokens is not None:
-            max_tokens = args.max_tokens
-        else:
-            max_tokens_str = input("Max tokens [int|no limit]: ")
-            max_tokens = int(max_tokens_str) if max_tokens_str else None
-
-        if args.t is not None:
-            temperature = args.t
-        else:
-            temperature_str = input("Temperature [float|0.0]: ")
-            temperature = float(temperature_str) if temperature_str else 0.0
+        max_tokens = args.max_tokens
+        temperature = args.t or 0.0
 
         return cls(
             mode=mode,

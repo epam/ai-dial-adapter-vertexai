@@ -25,3 +25,6 @@ resolutions:
     - message: ".*PyPI::httpx:0\\.26\\.0.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/encode/httpx/blob/0.26.0/LICENSE.md'
+    - message: ".*PyPI::pypdf:4\\.2\\.0.*"
+      reason: 'CANT_FIX_EXCEPTION'
+      comment: 'BSD-3-Clause License: https://github.com/py-pdf/pypdf/issues/496'
