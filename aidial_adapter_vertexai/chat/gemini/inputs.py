@@ -47,30 +47,27 @@ class MessageWithResources(BaseModel):
 
     def to_content(self) -> Content:
         return Content(
-            role=get_part_role(self.message.role),
+            role=from_dial_role(self.message.role),
             parts=self.to_parts(),
         )
 
 
 def derive_attachment_mime_type(attachment: Attachment) -> Optional[str]:
     type = attachment.type
+    url = attachment.url
 
-    if type is None:
-        # No type is provided. Trying to guess the type from the Data URL
-        if attachment.url is not None:
-            resource = Resource.from_data_url(attachment.url)
+    if url is not None:
+        if type is None:
+            # No type is provided. Trying to guess the type from the Data URL
+            resource = Resource.from_data_url(url)
             if resource is not None:
                 return resource.mime_type
-        return None
 
-    if "octet-stream" in type:
-        # It's an arbitrary binary file. Trying to guess the type from the URL
-        url = attachment.url
-        if url is not None:
+        if type is None or "octet-stream" in type:
+            # It's an arbitrary binary file. Trying to guess the type from the URL
             mime_type = mimetypes.guess_type(url)[0]
             if mime_type is not None:
                 return mime_type
-        return None
 
     return type
 
@@ -97,7 +94,7 @@ async def download_attachment(
     raise ValueError("Invalid attachment: neither url nor data is provided")
 
 
-def get_part_role(role: Role) -> str:
+def from_dial_role(role: Role) -> str:
     match role:
         case Role.SYSTEM:
             raise ValidationError(

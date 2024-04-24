@@ -46,11 +46,11 @@ class AttachmentProcessor(BaseModel):
 
     @property
     def file_exts(self) -> List[str]:
-        def flatten(value: Union[str, List[str]]):
+        def to_list(value: Union[str, List[str]]) -> List[str]:
             return value if isinstance(value, list) else [value]
 
         return [
-            ext for exts in self.file_types.values() for ext in flatten(exts)
+            ext for exts in self.file_types.values() for ext in to_list(exts)
         ]
 
     async def process(

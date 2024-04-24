@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 from typing import List, Tuple, assert_never
 
-from aidial_sdk.chat_completion import Message, Role
+from aidial_sdk.chat_completion import CustomContent, Message, Role
 
 from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
@@ -66,7 +66,12 @@ async def main():
         usage = TokenUsage()
         timer = Timer()
 
-        message = Message(role=Role.USER, content=query)
+        attachments = [res.to_attachment() for res in resources]
+        message = Message(
+            role=Role.USER,
+            content=query,
+            custom_content=CustomContent(attachments=attachments),
+        )
 
         try:
             async for chunk in chat.send_message(
