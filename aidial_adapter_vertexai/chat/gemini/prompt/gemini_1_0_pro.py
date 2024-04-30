@@ -19,7 +19,9 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
         messages = accommodate_first_system_message(messages)
 
         history = [
-            MessageWithResources(message=message, resources=[]).to_content()
+            MessageWithResources(message=message, resources=[]).to_content(
+                tools
+            )
             for message in messages
         ]
 

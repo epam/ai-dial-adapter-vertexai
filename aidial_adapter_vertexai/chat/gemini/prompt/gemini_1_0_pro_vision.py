@@ -51,7 +51,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         if all(len(res.resources) == 0 for res in result):
             return UserError("No documents were found", usage_message)
 
-        history = [res.to_content() for res in result]
+        history = [res.to_content(tools) for res in result]
         return cls(
             history=history[:-1],
             prompt=history[-1].parts,

@@ -47,7 +47,7 @@ class Gemini_1_5_Pro_Prompt(GeminiPrompt):
             usage_message = get_usage_message(get_file_exts(processors))
             return UserError(result, usage_message)
 
-        history = [res.to_content() for res in result]
+        history = [res.to_content(tools) for res in result]
         return cls(
             history=history[:-1],
             prompt=history[-1].parts,

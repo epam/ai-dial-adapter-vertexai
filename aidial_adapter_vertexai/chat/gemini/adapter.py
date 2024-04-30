@@ -226,15 +226,15 @@ def get_content(response: GenerationResponse) -> Optional[str]:
 async def set_finish_reason(
     response: GenerationResponse, consumer: Consumer
 ) -> None:
-    finish_reason = response.candidates[0].finish_reason
+    reason = response.candidates[0].finish_reason
 
-    openai_finish_reason = to_openai_finish_reason(
-        finish_reason=finish_reason,
+    openai_reason = to_openai_finish_reason(
+        finish_reason=reason,
         retriable=consumer.is_empty(),
     )
 
-    if openai_finish_reason is not None:
-        await consumer.set_finish_reason(openai_finish_reason)
+    if openai_reason is not None:
+        await consumer.set_finish_reason(openai_reason)
 
 
 async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
@@ -253,22 +253,21 @@ async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
 async def create_function_calls(
     response: GenerationResponse, consumer: Consumer, tools: ToolsConfig
 ) -> None:
-    for function_call in response.candidates[0].function_calls:
-        arguments = json.dumps(
-            recurse_proto_marshal_to_dict(function_call.args)
-        )
+    for call in response.candidates[0].function_calls:
+        arguments = json.dumps(recurse_proto_marshal_to_dict(call.args))
 
         if tools.is_tool:
-            log.debug(f"tool call: {json_dumps(function_call)}")
+            id = tools.create_fresh_tool_call_id(call.name)
+            log.debug(f"tool call: id={id}, {json_dumps(call)}")
             await consumer.create_tool_call(
-                id="dummy",  # FIXME: get the right id
-                name=function_call.name,
+                id=id,
+                name=call.name,
                 arguments=arguments,
             )
         else:
-            log.debug(f"function call: {json_dumps(function_call)}")
+            log.debug(f"function call: {json_dumps(call)}")
             await consumer.create_function_call(
-                name=function_call.name,
+                name=call.name,
                 arguments=arguments,
             )
 

@@ -127,7 +127,7 @@ class SDKGenChat(Chat):
         usage: TokenUsage,
     ) -> AsyncIterator[str]:
         config = create_generation_config(params)
-        content = prompt.to_parts()
+        content = prompt.to_parts(tools)
 
         log.debug(f"request config: {json_dumps(config)}")
         log.debug(f"request content: {json_dumps_short(content)}")

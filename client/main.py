@@ -46,7 +46,7 @@ async def main():
     input = make_input()
 
     resources: List[Resource] = []
-    functions: List[Function] = []
+    tools: ToolsConfig = ToolsConfig(functions=[], tool_ids={})
 
     turn = 0
     while turn < MAX_CHAT_TURNS:
@@ -75,7 +75,8 @@ async def main():
         if any(query.startswith(cmd) for cmd in [":f ", ":func "]):
             decl = query.split(" ", 1)[1]
             try:
-                functions.append(Function.parse_raw(decl))
+                if tools.functions is not None:
+                    tools.functions.append(Function.parse_raw(decl))
             except Exception as e:
                 log.error(f"Can't parse Function: {str(e)}")
             continue
@@ -98,7 +99,7 @@ async def main():
 
         try:
             async for chunk in chat.send_message(
-                ToolsConfig(functions=functions, is_tool=True),
+                tools,
                 MessageWithResources(message=message, resources=resources),
                 model_parameters,
                 usage,

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage, download_file
 from aidial_adapter_vertexai.utils.resource import Resource
 
@@ -43,18 +44,18 @@ class MessageWithResources(BaseModel):
 
         return self.content
 
-    def to_parts(self) -> List[Part]:
+    def to_parts(self, tools: ToolsConfig) -> List[Part]:
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
         parts = [resource.to_part() for resource in self.resources]
-        parts.extend(message_to_gemini(self.message))
+        parts.extend(message_to_gemini(tools, self.message))
 
         return parts
 
-    def to_content(self) -> Content:
+    def to_content(self, tools: ToolsConfig) -> Content:
         return Content(
             role=from_dial_role(self.message.role),
-            parts=self.to_parts(),
+            parts=self.to_parts(tools),
         )
 
 
@@ -126,7 +127,7 @@ def tool_call_to_part(call: ToolCall) -> Part:
     return function_call_to_part(call.function)
 
 
-def message_to_gemini(message: Message) -> List[Part]:
+def message_to_gemini(tools: ToolsConfig, message: Message) -> List[Part]:
     content = message.content
 
     if content is None:
@@ -164,8 +165,8 @@ def message_to_gemini(message: Message) -> List[Part]:
                 raise ValidationError(
                     "Tool message tool_call_id must be present"
                 )
-            # FIXME: match tool_ids with function names
-            return [Part.from_function_response(tool_call_id, args)]
+            name = tools.get_tool_name(tool_call_id)
+            return [Part.from_function_response(name, args)]
 
         case _:
             assert_never(message.role)
