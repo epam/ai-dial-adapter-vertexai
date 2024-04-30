@@ -55,7 +55,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         return cls(
             history=history[:-1],
             prompt=history[-1].parts,
-            tools=tools.to_gemini_tools(),
+            tools=tools,
         )
 
 

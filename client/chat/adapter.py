@@ -4,7 +4,7 @@ Classes to test the various models supported by the DIAL adapter.
 
 from typing import AsyncGenerator, List, Optional
 
-from aidial_sdk.chat_completion import Message, Role
+from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.adapters import get_chat_completion_model
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
@@ -70,8 +70,5 @@ class AdapterChat(Chat):
 
         assert consumer is not None
 
-        self.history.append(
-            Message(role=Role.ASSISTANT, content=consumer.content)
-        )
-
+        self.history.append(consumer.to_message())
         usage.accumulate(consumer.usage)

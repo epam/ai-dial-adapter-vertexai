@@ -54,6 +54,9 @@ async def main():
 
         query = input()[:MAX_INPUT_CHARS]
 
+        if query == "":
+            continue
+
         if query in [":q", ":quit"]:
             break
 
@@ -77,22 +80,25 @@ async def main():
                 log.error(f"Can't parse Function: {str(e)}")
             continue
 
-        if query == "":
-            continue
+        if any(query.startswith(cmd) for cmd in [":message "]):
+            resp = query.split(" ", 1)[1]
+            try:
+                message = Message.parse_raw(resp)
+            except Exception as e:
+                log.error(f"Can't parse Message: {str(e)}")
+                continue
+        else:
+            message = Message(role=Role.USER, content=query)
+
+        attachments = [res.to_attachment() for res in resources]
+        message.custom_content = CustomContent(attachments=attachments)
 
         usage = TokenUsage()
         timer = Timer()
 
-        attachments = [res.to_attachment() for res in resources]
-        message = Message(
-            role=Role.USER,
-            content=query,
-            custom_content=CustomContent(attachments=attachments),
-        )
-
         try:
             async for chunk in chat.send_message(
-                ToolsConfig(functions=functions, is_tool=False),
+                ToolsConfig(functions=functions, is_tool=True),
                 MessageWithResources(message=message, resources=resources),
                 model_parameters,
                 usage,

@@ -38,8 +38,8 @@ class ToolsConfig(BaseModel):
             case "auto":
                 return functions
             case FunctionChoice(name=name):
-                # NOTE: no way to enforce choice of a particular function/tool in Gemini,
-                # so simply filter out the list of available functions/tools
+                # NOTE: there is way to configure ToolsConfig, but it's not
+                # possible to pass to ChatSession.
                 new_functions = [
                     func for func in functions if func.name == name
                 ]
