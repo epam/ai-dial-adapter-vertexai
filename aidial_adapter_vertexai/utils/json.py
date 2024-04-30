@@ -4,12 +4,6 @@ from typing import Any
 
 import proto
 from pydantic import BaseModel
-from vertexai.preview.generative_models import (
-    Content,
-    GenerationConfig,
-    GenerationResponse,
-    Part,
-)
 
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
@@ -51,17 +45,8 @@ def to_dict(obj: Any, **kwargs) -> Any:
     if isinstance(obj, proto.Message):
         return rec(message_to_dict(obj))
 
-    if isinstance(obj, GenerationResponse):
-        return rec(obj._raw_response)
-
-    if isinstance(obj, GenerationConfig):
-        return rec(obj._raw_generation_config)
-
-    if isinstance(obj, Content):
-        return rec(obj._raw_content)
-
-    if isinstance(obj, Part):
-        return rec(obj._raw_part)
+    if hasattr(obj, "to_dict"):
+        return rec(obj.to_dict())
 
     return obj
 

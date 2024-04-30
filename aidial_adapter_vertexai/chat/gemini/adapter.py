@@ -148,19 +148,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
         async for chunk in generator():
             if log.isEnabledFor(DEBUG):
-                log.debug(
-                    f"response chunk: {json_dumps(chunk, excluded_keys=['safetyRatings'])}"
-                )
+                chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
+                log.debug(f"response chunk: {chunk_str}")
 
-            finish_reason = chunk.candidates[0].finish_reason
-
-            openai_finish_reason = to_openai_finish_reason(
-                finish_reason=finish_reason,
-                retriable=no_content_generated,
-            )
-
-            if openai_finish_reason is not None:
-                await consumer.set_finish_reason(openai_finish_reason)
+            await set_finish_reason(chunk, consumer, no_content_generated)
+            await set_usage(chunk, consumer)
 
             content = get_content(chunk)
             if content is not None:
@@ -171,8 +163,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: GeminiPrompt
     ) -> None:
-        prompt_tokens = await self.count_prompt_tokens(prompt)
-
         with Timer("predict timing: {time}", log.debug):
             if log.isEnabledFor(DEBUG):
                 log.debug(
@@ -193,15 +183,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 await consumer.append_content(content)
 
             log.debug(f"predict response: {completion!r}")
-
-        completion_tokens = await self.count_completion_tokens(completion)
-
-        await consumer.set_usage(
-            TokenUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-            )
-        )
 
     @override
     async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
@@ -236,6 +217,33 @@ def get_content(response: GenerationResponse) -> Optional[str]:
         return response.text
     except Exception:
         return None
+
+
+async def set_finish_reason(
+    response: GenerationResponse, consumer: Consumer, no_content_generated: bool
+) -> None:
+    finish_reason = response.candidates[0].finish_reason
+
+    openai_finish_reason = to_openai_finish_reason(
+        finish_reason=finish_reason,
+        retriable=no_content_generated,
+    )
+
+    if openai_finish_reason is not None:
+        await consumer.set_finish_reason(openai_finish_reason)
+
+
+async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
+    if "usage_metadata" in response._raw_response:
+        usage = response._raw_response.usage_metadata
+        log.debug(f"usage: {json_dumps(usage)}")
+
+        await consumer.set_usage(
+            TokenUsage(
+                prompt_tokens=usage.prompt_token_count,
+                completion_tokens=usage.candidates_token_count,
+            )
+        )
 
 
 def to_openai_finish_reason(

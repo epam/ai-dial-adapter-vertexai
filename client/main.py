@@ -9,6 +9,7 @@ from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.env import get_env
+from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
 from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.timer import Timer
@@ -18,7 +19,7 @@ from client.chat.sdk import create_sdk_chat
 from client.conf import MAX_CHAT_TURNS, MAX_INPUT_CHARS
 from client.config import ClientMode, Config
 from client.utils.input import make_input
-from client.utils.printing import print_ai, print_error, print_info
+from client.utils.printing import print_ai
 
 configure_loggers()
 
@@ -65,7 +66,7 @@ async def main():
             try:
                 resources.append(Resource.from_path(path))
             except Exception as e:
-                print_error(f"Can't load Resource: {str(e)}")
+                log.error(f"Can't load Resource: {str(e)}")
             continue
 
         if any(query.startswith(cmd) for cmd in [":f ", ":func "]):
@@ -73,7 +74,7 @@ async def main():
             try:
                 functions.append(Function.parse_raw(decl))
             except Exception as e:
-                print_error(f"Can't parse Function: {str(e)}")
+                log.error(f"Can't parse Function: {str(e)}")
             continue
 
         if query == "":
@@ -100,16 +101,16 @@ async def main():
 
             print_ai("")
         except Exception as e:
-            print_error(f"Error: {str(e)}")
+            log.exception(e)
 
         resources = []
 
-        print_info(f"Timing: {timer}")
-        print_info(f"Usage: {usage}")
+        log.info(f"Timing: {timer}")
+        log.info(f"Usage: {usage}")
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print_info("Shutting down...")
+        log.info("Shutting down...")
