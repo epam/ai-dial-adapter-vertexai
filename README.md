@@ -6,19 +6,19 @@ The project implements [AI DIAL API](https://epam-rail.com/dial_api) for languag
 
 The following models support `POST SERVER_URL/openai/deployments/MODEL_NAME/chat/completions` endpoint along with optional support of `/tokenize` and `/truncate_prompt` endpoints:
 
-|Model|Modality|`/tokenize`|`/truncate_prompt`|
-|---|---|---|---|
-|chat-bison@001|text-to-text|✅|✅|
-|chat-bison@002|text-to-text|✅|✅|
-|chat-bison-32k@002|text-to-text|✅|✅|
-|codechat-bison@001|text-to-text|✅|✅|
-|codechat-bison@002|text-to-text|✅|✅|
-|codechat-bison-32k@002|text-to-text|✅|✅|
-|codechat-bison-32k@002|text-to-text|✅|✅|
-|gemini-pro|text-to-text|✅|❌|
-|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|❌|
-|gemini-1.5-pro-preview-0409|(text/pdf/image/audio/video)-to-text|✅|❌|
-|imagegeneration@005|text-to-image|✅|✅|
+|Model|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
+|---|---|---|---|---|
+|chat-bison@001|text-to-text|✅|✅|❌|
+|chat-bison@002|text-to-text|✅|✅|❌|
+|chat-bison-32k@002|text-to-text|✅|✅|❌|
+|codechat-bison@001|text-to-text|✅|✅|❌|
+|codechat-bison@002|text-to-text|✅|✅|❌|
+|codechat-bison-32k@002|text-to-text|✅|✅|❌|
+|codechat-bison-32k@002|text-to-text|✅|✅|❌|
+|gemini-pro|text-to-text|✅|❌|✅|
+|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|❌|❌|
+|gemini-1.5-pro-preview-0409|(text/pdf/image/audio/video)-to-text|✅|❌|✅|
+|imagegeneration@005|text-to-image|✅|✅|❌|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` request parameter.
 
