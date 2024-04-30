@@ -14,6 +14,7 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
     get_video_processor,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
@@ -21,7 +22,10 @@ from aidial_adapter_vertexai.dial_api.storage import FileStorage
 class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
     @classmethod
     async def parse(
-        cls, file_storage: Optional[FileStorage], messages: List[Message]
+        cls,
+        file_storage: Optional[FileStorage],
+        tools: ToolsConfig,
+        messages: List[Message],
     ) -> Union[Self, UserError]:
         if len(messages) == 0:
             raise ValidationError(
@@ -48,7 +52,11 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
             return UserError("No documents were found", usage_message)
 
         history = [res.to_content() for res in result]
-        return cls(history=history[:-1], prompt=history[-1].parts)
+        return cls(
+            history=history[:-1],
+            prompt=history[-1].parts,
+            tools=tools.to_gemini_tools(),
+        )
 
 
 def truncate_messages(messages: List[Message]) -> List[Message]:

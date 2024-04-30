@@ -2,12 +2,13 @@ from abc import ABC
 from typing import List
 
 from pydantic import BaseModel
-from vertexai.preview.generative_models import ChatSession, Content, Part
+from vertexai.preview.generative_models import ChatSession, Content, Part, Tool
 
 
 class GeminiPrompt(BaseModel, ABC):
     history: List[Content]
     prompt: List[Part]
+    tools: List[Tool] | None
 
     class Config:
         arbitrary_types_allowed = True

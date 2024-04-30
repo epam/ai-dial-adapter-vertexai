@@ -12,6 +12,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
@@ -43,6 +44,7 @@ class AdapterChat(Chat):
 
     async def send_message(
         self,
+        tools: ToolsConfig,
         prompt: MessageWithResources,
         params: ModelParameters,
         usage: TokenUsage,
@@ -54,7 +56,7 @@ class AdapterChat(Chat):
         async def task(on_content):
             nonlocal consumer
             consumer = CollectConsumer(on_content=on_content)
-            prompt = await self.model.parse_prompt(self.history)
+            prompt = await self.model.parse_prompt(tools, self.history)
             if isinstance(prompt, UserError):
                 raise prompt
 

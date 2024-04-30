@@ -2,9 +2,10 @@ import asyncio
 from pathlib import Path
 from typing import List, Tuple, assert_never
 
-from aidial_sdk.chat_completion import CustomContent, Message, Role
+from aidial_sdk.chat_completion import CustomContent, Function, Message, Role
 
 from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.env import get_env
@@ -44,6 +45,7 @@ async def main():
     input = make_input()
 
     resources: List[Resource] = []
+    functions: List[Function] = []
 
     turn = 0
     while turn < MAX_CHAT_TURNS:
@@ -53,14 +55,28 @@ async def main():
 
         if query in [":q", ":quit"]:
             break
-        elif query in [":r", ":restart"]:
+
+        if query in [":r", ":restart"]:
             chat, model_parameters = await init_chat(Config.get_interactive())
             continue
-        elif any(query.startswith(cmd) for cmd in [":a ", ":attach "]):
+
+        if any(query.startswith(cmd) for cmd in [":a ", ":attach "]):
             path = Path(query.split(" ", 1)[1])
-            resources.append(Resource.from_path(path))
+            try:
+                resources.append(Resource.from_path(path))
+            except Exception as e:
+                print_error(f"Can't load Resource: {str(e)}")
             continue
-        elif query == "":
+
+        if any(query.startswith(cmd) for cmd in [":f ", ":func "]):
+            decl = query.split(" ", 1)[1]
+            try:
+                functions.append(Function.parse_raw(decl))
+            except Exception as e:
+                print_error(f"Can't parse Function: {str(e)}")
+            continue
+
+        if query == "":
             continue
 
         usage = TokenUsage()
@@ -75,6 +91,7 @@ async def main():
 
         try:
             async for chunk in chat.send_message(
+                ToolsConfig(functions=functions, is_tool=False),
                 MessageWithResources(message=message, resources=resources),
                 model_parameters,
                 usage,

@@ -34,6 +34,7 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro_vision import (
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5_pro import (
     Gemini_1_5_Pro_Prompt,
 )
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     GeminiDeployment,
@@ -96,18 +97,18 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     @override
     async def parse_prompt(
-        self, messages: List[Message]
+        self, tools: ToolsConfig, messages: List[Message]
     ) -> GeminiPrompt | UserError:
         match self.deployment:
             case ChatCompletionDeployment.GEMINI_PRO_1:
-                return Gemini_1_0_Pro_Prompt.parse(messages)
+                return Gemini_1_0_Pro_Prompt.parse(tools, messages)
             case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
                 return await Gemini_1_0_Pro_Vision_Prompt.parse(
-                    self.file_storage, messages
+                    self.file_storage, tools, messages
                 )
             case ChatCompletionDeployment.GEMINI_PRO_VISION_1_5:
                 return await Gemini_1_5_Pro_Prompt.parse(
-                    self.file_storage, messages
+                    self.file_storage, tools, messages
                 )
             case _:
                 assert_never(self.deployment)
@@ -123,7 +124,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 content=prompt.prompt,  # type: ignore
                 generation_config=parameters,
                 safety_settings=default_safety_settings,
-                tools=None,
+                tools=prompt.tools,
             )
 
             async for chunk in response:
@@ -133,7 +134,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 content=prompt.prompt,  # type: ignore
                 generation_config=parameters,
                 safety_settings=default_safety_settings,
-                tools=None,
+                tools=prompt.tools,
             )
 
             yield response

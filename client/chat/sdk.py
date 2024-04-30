@@ -22,6 +22,7 @@ from vertexai.preview.vision_models import (
 
 from aidial_adapter_vertexai.chat.gemini.adapter import default_safety_settings
 from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
@@ -51,10 +52,13 @@ class SDKLangChat(Chat):
 
     async def send_message(
         self,
+        tools: ToolsConfig,
         prompt: MessageWithResources,
         params: ModelParameters,
         usage: TokenUsage,
     ) -> AsyncIterator[str]:
+        tools.not_supported()
+
         parameters = {
             "max_output_tokens": params.max_tokens,
             "temperature": params.temperature,
@@ -117,6 +121,7 @@ class SDKGenChat(Chat):
 
     async def send_message(
         self,
+        tools: ToolsConfig,
         prompt: MessageWithResources,
         params: ModelParameters,
         usage: TokenUsage,
@@ -132,7 +137,7 @@ class SDKGenChat(Chat):
                 content=content,  # type: ignore
                 generation_config=config,
                 safety_settings=default_safety_settings,
-                tools=None,
+                tools=tools.to_gemini_tools(),
             )
 
             async for chunk in response:
@@ -143,7 +148,7 @@ class SDKGenChat(Chat):
                 content=content,  # type: ignore
                 generation_config=config,
                 safety_settings=default_safety_settings,
-                tools=None,
+                tools=tools.to_gemini_tools(),
             )
 
             log.debug(f"response: {json_dumps(response)}")
@@ -177,10 +182,13 @@ class SDKImagenChat(Chat):
 
     async def send_message(
         self,
+        tools: ToolsConfig,
         prompt: MessageWithResources,
         params: ModelParameters,
         usage: TokenUsage,
     ) -> AsyncIterator[str]:
+        tools.not_supported()
+
         response: ImageGenerationResponse = self.model.generate_images(
             prompt.to_text(), number_of_images=1, seed=None
         )
