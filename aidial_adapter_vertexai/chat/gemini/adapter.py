@@ -190,6 +190,10 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     @override
     async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
+        # NOTE: Currently tools/functions couldn't be passed to the count_tokens method:
+        # https://github.com/googleapis/python-aiplatform/issues/3631
+        prompt.tools.not_supported()
+
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self.model.count_tokens_async(prompt.contents)
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
