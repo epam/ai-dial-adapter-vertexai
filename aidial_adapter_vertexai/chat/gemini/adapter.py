@@ -243,10 +243,9 @@ async def set_finish_reason(
 
 
 async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
-    if "usage_metadata" in response._raw_response:
-        usage = response._raw_response.usage_metadata
+    usage = response.usage_metadata
+    if usage:
         log.debug(f"usage: {json_dumps(usage)}")
-
         await consumer.set_usage(
             TokenUsage(
                 prompt_tokens=usage.prompt_token_count,
