@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Self, assert_never
+from typing import Dict, List, Literal, Self, Tuple, assert_never
 
 from aidial_sdk.chat_completion import (
     Function,
@@ -13,20 +13,30 @@ from vertexai.preview.generative_models import (
     FunctionDeclaration as GeminiFunction,
 )
 from vertexai.preview.generative_models import Tool as GeminiTool
+from vertexai.preview.generative_models import ToolConfig as GeminiToolConfig
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 
+FunctionCallingConfig = GeminiToolConfig.FunctionCallingConfig
+
 
 class ToolsConfig(BaseModel):
-    functions: List[Function] | None
+    functions: List[Function]
     """
-    List of functions/tools
+    List of functions/tools.
+    """
+
+    required: bool
+    """
+    True forces the model to call one of the available functions.
+    False allows the model to pick between generating a message or
+    calling one or more tools/functions.
     """
 
     tool_ids: Dict[str, str] | None
     """
     Mapping from tool call IDs to corresponding tool names.
-    If None, then function are used, not tools.
+    None means that functions are used, not tools.
     """
 
     @property
@@ -34,7 +44,7 @@ class ToolsConfig(BaseModel):
         return self.tool_ids is not None
 
     def not_supported(self) -> None:
-        if self.functions is not None:
+        if self.functions:
             if self.is_tool:
                 raise ValidationError("The tools aren't supported")
             else:
@@ -62,45 +72,40 @@ class ToolsConfig(BaseModel):
         return tool_name
 
     @staticmethod
-    def select_function(
-        function_call: Literal["auto", "none"] | FunctionChoice | None,
-        functions: List[Function] | None,
-    ) -> List[Function] | None:
-        if functions is None:
-            return None
-
+    def filter_functions(
+        function_call: Literal["auto", "none", "required"] | FunctionChoice,
+        functions: List[Function],
+    ) -> Tuple[bool, List[Function]]:
         match function_call:
-            case None:
-                return None
             case "none":
-                return None
+                return False, []
             case "auto":
-                return functions
+                return False, functions
+            case "required":
+                if not functions:
+                    raise ValidationError("No functions are available")
+                return True, functions
             case FunctionChoice(name=name):
-                # NOTE: there is a way to configure ToolsConfig, but it's not
-                # possible to pass to Gemini's ChatSession.
                 new_functions = [
                     func for func in functions if func.name == name
                 ]
-                return None if len(new_functions) == 0 else new_functions
+                if not new_functions:
+                    raise ValidationError(
+                        f"Function {name!r} is not on the list of available functions"
+                    )
+                return True, new_functions
             case _:
                 assert_never(function_call)
 
     @staticmethod
-    def tool_choice_to_function_all(
-        tool_choice: Literal["auto", "none"] | ToolChoice | None,
-    ) -> Literal["auto", "none"] | FunctionChoice | None:
+    def tool_choice_to_function_call(
+        tool_choice: Literal["auto", "none", "required"] | ToolChoice | None,
+    ) -> Literal["auto", "none", "required"] | FunctionChoice | None:
         match tool_choice:
-            case None:
-                return None
-            case "none":
-                return "none"
-            case "auto":
-                return "auto"
             case ToolChoice(function=FunctionChoice(name=name)):
                 return FunctionChoice(name=name)
             case _:
-                assert_never(tool_choice)
+                return tool_choice
 
     @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
@@ -113,21 +118,27 @@ class ToolsConfig(BaseModel):
 
         elif request.tools is not None:
             functions = [tool.function for tool in request.tools]
-            function_call = ToolsConfig.tool_choice_to_function_all(
+            function_call = ToolsConfig.tool_choice_to_function_call(
                 request.tool_choice
             )
             tool_ids = collect_tool_ids(request.messages)
 
         else:
-            functions = None
+            functions = []
             function_call = None
             tool_ids = None
 
-        selected = ToolsConfig.select_function(function_call, functions)
-        return cls(functions=selected, tool_ids=tool_ids)
+        if function_call is None:
+            function_call = "auto" if functions else "none"
+
+        required, selected = ToolsConfig.filter_functions(
+            function_call, functions
+        )
+
+        return cls(functions=selected, required=required, tool_ids=tool_ids)
 
     def to_gemini_tools(self) -> List[GeminiTool] | None:
-        if self.functions is None:
+        if not self.functions:
             return None
 
         return [
@@ -142,6 +153,17 @@ class ToolsConfig(BaseModel):
                 ]
             )
         ]
+
+    def to_gemini_tool_config(self) -> GeminiToolConfig | None:
+        if not self.functions or not self.required:
+            return None
+
+        return GeminiToolConfig(
+            function_calling_config=FunctionCallingConfig(
+                mode=FunctionCallingConfig.Mode.ANY,
+                allowed_function_names=[func.name for func in self.functions],
+            )
+        )
 
 
 def validate_messages(request: AzureChatCompletionRequest) -> None:

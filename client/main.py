@@ -46,7 +46,7 @@ async def main():
     input = make_input()
 
     resources: List[Resource] = []
-    tools: ToolsConfig = ToolsConfig(functions=[], tool_ids={})
+    tools: ToolsConfig = ToolsConfig(functions=[], tool_ids={}, required=False)
 
     turn = 0
     while turn < MAX_CHAT_TURNS:

@@ -119,6 +119,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     ) -> AsyncIterator[GenerationResponse]:
         parameters = create_generation_config(params)
         tools = prompt.tools.to_gemini_tools()
+        tool_config = prompt.tools.to_gemini_tool_config()
 
         if params.stream:
             response = await self.model._generate_content_streaming_async(
@@ -126,7 +127,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 generation_config=parameters,
                 safety_settings=default_safety_settings,
                 tools=tools,
-                tool_config=None,
+                tool_config=tool_config,
             )
 
             async for chunk in response:
@@ -137,7 +138,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 generation_config=parameters,
                 safety_settings=default_safety_settings,
                 tools=tools,
-                tool_config=None,
+                tool_config=tool_config,
             )
 
             yield response
