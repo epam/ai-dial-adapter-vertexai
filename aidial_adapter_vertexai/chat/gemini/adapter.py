@@ -14,7 +14,6 @@ import vertexai.preview.generative_models as generative_models
 from aidial_sdk.chat_completion import FinishReason, Message
 from typing_extensions import override
 from vertexai.preview.generative_models import (
-    ChatSession,
     GenerationConfig,
     GenerationResponse,
     GenerativeModel,
@@ -118,26 +117,27 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt
     ) -> AsyncIterator[GenerationResponse]:
-        session = ChatSession(model=self.model, history=prompt.history)
         parameters = create_generation_config(params)
         tools = prompt.tools.to_gemini_tools()
 
         if params.stream:
-            response = await session._send_message_streaming_async(
-                content=prompt.prompt,  # type: ignore
+            response = await self.model._generate_content_streaming_async(
+                contents=prompt.contents,
                 generation_config=parameters,
                 safety_settings=default_safety_settings,
                 tools=tools,
+                tool_config=None,
             )
 
             async for chunk in response:
                 yield chunk
         else:
-            response = await session._send_message_async(
-                content=prompt.prompt,  # type: ignore
+            response = await self.model._generate_content_async(
+                contents=prompt.contents,
                 generation_config=parameters,
                 safety_settings=default_safety_settings,
                 tools=tools,
+                tool_config=None,
             )
 
             yield response
