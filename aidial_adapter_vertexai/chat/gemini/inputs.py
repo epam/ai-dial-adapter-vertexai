@@ -127,20 +127,31 @@ def tool_call_to_part(call: ToolCall) -> Part:
     return function_call_to_part(call.function)
 
 
+def content_to_function_args(content: str) -> Dict[str, Any]:
+    try:
+        args = json.loads(content)
+    except Exception:
+        args = content
+
+    if isinstance(args, dict):
+        return args
+
+    return {"content": args}
+
+
 def message_to_gemini(tools: ToolsConfig, message: Message) -> List[Part]:
+
     content = message.content
 
-    if content is None:
-        raise ValidationError("Message content must be present")
-
-    def content_to_json(content: str) -> Dict[str, Any]:
-        try:
-            return json.loads(content)
-        except Exception:
-            return {"content": content}
-
     match message.role:
-        case Role.SYSTEM | Role.USER:
+        case Role.SYSTEM:
+            if content is None:
+                raise ValidationError("System message content must be present")
+            return [Part.from_text(content)]
+
+        case Role.USER:
+            if content is None:
+                raise ValidationError("User message content must be present")
             return [Part.from_text(content)]
 
         case Role.ASSISTANT:
@@ -149,17 +160,27 @@ def message_to_gemini(tools: ToolsConfig, message: Message) -> List[Part]:
             elif message.tool_calls is not None:
                 return [tool_call_to_part(call) for call in message.tool_calls]
             else:
+                if content is None:
+                    raise ValidationError(
+                        "Assistant message content must be present"
+                    )
                 return [Part.from_text(content)]
 
         case Role.FUNCTION:
-            args = content_to_json(content)
+            if content is None:
+                raise ValidationError(
+                    "Function message content must be present"
+                )
+            args = content_to_function_args(content)
             name = message.name
             if name is None:
                 raise ValidationError("Function message name must be present")
             return [Part.from_function_response(name, args)]
 
         case Role.TOOL:
-            args = content_to_json(content)
+            if content is None:
+                raise ValidationError("Tool message content must be present")
+            args = content_to_function_args(content)
             tool_call_id = message.tool_call_id
             if tool_call_id is None:
                 raise ValidationError(

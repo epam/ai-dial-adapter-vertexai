@@ -77,8 +77,8 @@ class ToolsConfig(BaseModel):
             case "auto":
                 return functions
             case FunctionChoice(name=name):
-                # NOTE: there is way to configure ToolsConfig, but it's not
-                # possible to pass to ChatSession.
+                # NOTE: there is a way to configure ToolsConfig, but it's not
+                # possible to pass to Gemini's ChatSession.
                 new_functions = [
                     func for func in functions if func.name == name
                 ]
@@ -138,9 +138,9 @@ class ToolsConfig(BaseModel):
                         parameters=func.parameters,
                         description=func.description,
                     )
+                    for func in self.functions
                 ]
             )
-            for func in self.functions
         ]
 
 

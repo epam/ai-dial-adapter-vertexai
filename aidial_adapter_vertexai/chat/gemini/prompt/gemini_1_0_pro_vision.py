@@ -27,6 +27,8 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         tools: ToolsConfig,
         messages: List[Message],
     ) -> Union[Self, UserError]:
+        tools.not_supported()
+
         if len(messages) == 0:
             raise ValidationError(
                 "The chat history must have at least one message"
