@@ -2,10 +2,8 @@ import json
 from typing import Optional
 
 from aidial_sdk import DIALApp
-from aidial_sdk import HTTPException as DialException
 from aidial_sdk.telemetry.types import TelemetryConfig
-from fastapi import Body, Header, Path, Request
-from fastapi.responses import JSONResponse
+from fastapi import Body, Header, Path
 
 from aidial_adapter_vertexai.adapters import get_embeddings_model
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
@@ -87,19 +85,3 @@ async def embeddings(
     )
 
     return make_embeddings_response(deployment, response)
-
-
-@app.exception_handler(DialException)
-async def exception_handler(request: Request, exc: DialException):
-    log.exception(f"Exception: {str(exc)}")
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": {
-                "message": exc.message,
-                "type": exc.type,
-                "code": exc.code,
-                "param": exc.param,
-            }
-        },
-    )

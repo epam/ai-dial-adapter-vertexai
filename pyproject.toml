@@ -58,7 +58,8 @@ exclude = [
     ".git",
     ".venv",
     ".nox",
-    "**/__pycache__"
+    "**/__pycache__",
+    "~*"
 ]
 
 [tool.black]
