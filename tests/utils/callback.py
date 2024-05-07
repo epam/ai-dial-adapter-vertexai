@@ -4,8 +4,6 @@ from langchain_core.callbacks import StreamingStdOutCallbackHandler
 from langchain_core.outputs import LLMResult
 from typing_extensions import override
 
-from client.utils.printing import print_ai
-
 
 class CallbackWithNewLines(StreamingStdOutCallbackHandler):
     prev: str
@@ -31,8 +29,8 @@ class CallbackWithNewLines(StreamingStdOutCallbackHandler):
             token = token[:-1]
 
         s = token.replace("\\n", "\n").replace('\\"', '"')
-        print_ai(s, end="")
+        print(s, end="")
 
     @override
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        print_ai("")
+        print("")

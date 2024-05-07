@@ -8,7 +8,7 @@ from google.api_core.exceptions import (
 )
 from google.auth.exceptions import GoogleAuthError
 
-from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
@@ -63,13 +63,10 @@ def to_dial_exception(e: Exception) -> DialException:
         )
 
     if isinstance(e, ValidationError):
-        return DialException(
-            status_code=422,
-            type="invalid_request_error",
-            message=e.message,
-            code="invalid_argument",
-            param=None,
-        )
+        return e.to_dial_exception()
+
+    if isinstance(e, UserError):
+        return e.to_dial_exception()
 
     if isinstance(e, DialException):
         return e

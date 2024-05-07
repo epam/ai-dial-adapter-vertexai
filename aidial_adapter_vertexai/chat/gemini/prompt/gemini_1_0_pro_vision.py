@@ -97,8 +97,6 @@ def truncate_messages(messages: List[Message]) -> List[Message]:
 
 def get_usage_message(exts: List[str]) -> str:
     return f"""
-### Usage
-
 The application answers queries about attached documents.
 Attach documents and ask questions about them in the same message.
 
