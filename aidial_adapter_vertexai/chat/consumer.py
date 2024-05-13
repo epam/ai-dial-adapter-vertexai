@@ -7,10 +7,6 @@ from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 
 class Consumer(ABC):
-    """
-    Whether the consumer has sent something to the choice or not.
-    """
-
     @abstractmethod
     async def append_content(self, content: str):
         pass
@@ -44,7 +40,11 @@ class ChoiceConsumer(Consumer):
     choice: Choice
     usage: TokenUsage
     finish_reason: Optional[FinishReason]
+
     empty: bool
+    """
+    Whether the consumer has sent something to the choice or not.
+    """
 
     def __init__(self, choice: Choice):
         self.empty = True
