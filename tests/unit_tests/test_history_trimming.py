@@ -2,12 +2,9 @@ from typing import List
 from unittest.mock import Mock, call
 
 import pytest
+from vertexai.preview.language_models import ChatMessage
 
-from aidial_adapter_vertexai.chat.bison.prompt import (
-    BisonPrompt,
-    ChatAuthor,
-    ChatMessage,
-)
+from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt, ChatAuthor
 from aidial_adapter_vertexai.chat.bison.truncate_prompt import (
     get_discarded_messages_count,
 )

@@ -8,7 +8,7 @@ import uvicorn
 
 def ping_server(url: str) -> bool:
     try:
-        requests.get(url, timeout=1)
+        requests.get(f"{url}/health", timeout=1)
         return True
     except requests.ConnectionError:
         return False
