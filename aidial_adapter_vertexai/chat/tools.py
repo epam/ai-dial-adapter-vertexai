@@ -73,7 +73,7 @@ class ToolsConfig(BaseModel):
 
     @staticmethod
     def filter_functions(
-        function_call: Literal["auto", "none", "required"] | FunctionChoice,
+        function_call: Literal["auto", "none"] | FunctionChoice,
         functions: List[Function],
     ) -> Tuple[bool, List[Function]]:
         match function_call:
@@ -81,10 +81,6 @@ class ToolsConfig(BaseModel):
                 return False, []
             case "auto":
                 return False, functions
-            case "required":
-                if not functions:
-                    raise ValidationError("No functions are available")
-                return True, functions
             case FunctionChoice(name=name):
                 new_functions = [
                     func for func in functions if func.name == name
@@ -99,8 +95,8 @@ class ToolsConfig(BaseModel):
 
     @staticmethod
     def tool_choice_to_function_call(
-        tool_choice: Literal["auto", "none", "required"] | ToolChoice | None,
-    ) -> Literal["auto", "none", "required"] | FunctionChoice | None:
+        tool_choice: Literal["auto", "none"] | ToolChoice | None,
+    ) -> Literal["auto", "none"] | FunctionChoice | None:
         match tool_choice:
             case ToolChoice(function=FunctionChoice(name=name)):
                 return FunctionChoice(name=name)
@@ -155,15 +151,24 @@ class ToolsConfig(BaseModel):
         ]
 
     def to_gemini_tool_config(self) -> GeminiToolConfig | None:
-        if not self.functions or not self.required:
+        if not self.functions:
             return None
 
-        return GeminiToolConfig(
-            function_calling_config=FunctionCallingConfig(
-                mode=FunctionCallingConfig.Mode.ANY,
-                allowed_function_names=[func.name for func in self.functions],
+        if self.required:
+            return GeminiToolConfig(
+                function_calling_config=FunctionCallingConfig(
+                    mode=FunctionCallingConfig.Mode.ANY,
+                    allowed_function_names=[
+                        func.name for func in self.functions
+                    ],
+                )
             )
-        )
+        else:
+            return GeminiToolConfig(
+                function_calling_config=FunctionCallingConfig(
+                    mode=FunctionCallingConfig.Mode.AUTO
+                )
+            )
 
 
 def validate_messages(request: AzureChatCompletionRequest) -> None:

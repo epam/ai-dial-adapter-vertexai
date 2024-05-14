@@ -4,29 +4,28 @@ The project implements [AI DIAL API](https://epam-rail.com/dial_api) for languag
 
 ## Supported models
 
-The following models support `POST SERVER_URL/openai/deployments/MODEL_NAME/chat/completions` endpoint along with optional support of `/tokenize` and `/truncate_prompt` endpoints:
+The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME/chat/completions` endpoint along with optional support of `/tokenize` and `/truncate_prompt` endpoints:
 
-|Model|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
-|---|---|---|---|---|
-|chat-bison@001|text-to-text|✅|✅|❌|
-|chat-bison@002|text-to-text|✅|✅|❌|
-|chat-bison-32k@002|text-to-text|✅|✅|❌|
-|codechat-bison@001|text-to-text|✅|✅|❌|
-|codechat-bison@002|text-to-text|✅|✅|❌|
-|codechat-bison-32k@002|text-to-text|✅|✅|❌|
-|codechat-bison-32k@002|text-to-text|✅|✅|❌|
-|gemini-pro|text-to-text|✅|❌|✅|
-|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|❌|❌|
-|gemini-1.5-pro-preview-0409|(text/pdf/image/audio/video)-to-text|✅|❌|✅|
-|imagegeneration@005|text-to-image|✅|✅|❌|
+|Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
+|---|---|---|---|---|---|
+|Gemini 1.5 Pro|gemini-1.5-pro-preview-0409|(text/pdf/image/audio/video)-to-text|✅|❌|✅|
+|Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|❌|❌|
+|Gemini 1.0 Pro|gemini-pro|text-to-text|✅|❌|✅|
+|Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|
+|PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|
+|PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|
+|PaLM 2 Chat Bison|chat-bison-32k@002|text-to-text|✅|✅|❌|
+|Codey for Code Chat|codechat-bison@001|text-to-text|✅|✅|❌|
+|Codey for Code Chat|codechat-bison@002|text-to-text|✅|✅|❌|
+|Codey for Code Chat|codechat-bison-32k@002|text-to-text|✅|✅|❌|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` request parameter.
 
-The following models support `SERVER_URL/openai/deployments/MODEL_NAME/embeddings` endpoint:
+The following models support `SERVER_URL/openai/deployments/DEPLOYMENT_NAME/embeddings` endpoint:
 
-|Model|Modality|
-|---|---|
-|textembedding-gecko@001|text-to-embedding|
+|Model|Deployment name|Modality|
+|---|---|---|
+|Embeddings for Text|textembedding-gecko@001|text-to-embedding|
 
 ## Developer environment
 

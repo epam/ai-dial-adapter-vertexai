@@ -44,7 +44,11 @@ class ChoiceConsumer(Consumer):
     choice: Choice
     usage: TokenUsage
     finish_reason: Optional[FinishReason]
+
     empty: bool
+    """
+    Whether the consumer has sent something to the choice or not.
+    """
 
     def __init__(self, choice: Choice):
         self.empty = True
