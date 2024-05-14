@@ -107,7 +107,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 return await Gemini_1_0_Pro_Vision_Prompt.parse(
                     self.file_storage, tools, messages
                 )
-            case ChatCompletionDeployment.GEMINI_PRO_VISION_1_5:
+            case ChatCompletionDeployment.GEMINI_PRO_1_5:
                 return await Gemini_1_5_Pro_Prompt.parse(
                     self.file_storage, tools, messages
                 )

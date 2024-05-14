@@ -10,7 +10,7 @@ from openai.types import CreateEmbeddingResponse
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
 from aidial_adapter_vertexai.dial_api.request import EmbeddingsType
 from tests.conftest import DEFAULT_API_VERSION, TEST_SERVER_URL
-from tests.utils.llm import sanitize_test_name
+from tests.utils.openai import sanitize_test_name
 
 deployments: Dict[EmbeddingsDeployment, List[EmbeddingsType]] = {
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1: [EmbeddingsType.SYMMETRIC],
