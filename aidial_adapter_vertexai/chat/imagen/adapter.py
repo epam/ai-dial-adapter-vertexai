@@ -14,6 +14,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
@@ -40,7 +41,11 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         self.model = model
 
     @override
-    async def parse_prompt(self, messages: List[Message]) -> ImagenPrompt:
+    async def parse_prompt(
+        self, tools: ToolsConfig, messages: List[Message]
+    ) -> ImagenPrompt:
+        tools.not_supported()
+
         if len(messages) == 0:
             raise ValidationError("The list of messages must not be empty")
 

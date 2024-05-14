@@ -29,6 +29,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
@@ -58,7 +59,8 @@ class VertexAIChatCompletion(ChatCompletion):
     @dial_exception_decorator
     async def chat_completion(self, request: Request, response: Response):
         model = await self._get_model(request)
-        prompt = await model.parse_prompt(request.messages)
+        tools = ToolsConfig.from_request(request)
+        prompt = await model.parse_prompt(tools, request.messages)
 
         if isinstance(prompt, UserError):
             # Show a usage in a stage to educate a chat user
@@ -144,7 +146,8 @@ class VertexAIChatCompletion(ChatCompletion):
         self, model: ChatCompletionAdapter, request: ChatCompletionRequest
     ) -> TokenizeOutput:
         try:
-            prompt = await model.parse_prompt(request.messages)
+            tools = ToolsConfig.from_request(request)
+            prompt = await model.parse_prompt(tools, request.messages)
             if isinstance(prompt, UserError):
                 raise prompt
 

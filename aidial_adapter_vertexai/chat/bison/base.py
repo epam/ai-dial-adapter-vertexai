@@ -17,6 +17,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
@@ -36,7 +37,10 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
         pass
 
     @override
-    async def parse_prompt(self, messages: List[Message]) -> BisonPrompt:
+    async def parse_prompt(
+        self, tools: ToolsConfig, messages: List[Message]
+    ) -> BisonPrompt:
+        tools.not_supported()
         return BisonPrompt.parse(messages)
 
     @override

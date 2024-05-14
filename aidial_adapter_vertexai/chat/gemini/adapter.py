@@ -1,3 +1,4 @@
+import json
 from logging import DEBUG
 from typing import (
     AsyncIterator,
@@ -13,7 +14,6 @@ import vertexai.preview.generative_models as generative_models
 from aidial_sdk.chat_completion import FinishReason, Message
 from typing_extensions import override
 from vertexai.preview.generative_models import (
-    ChatSession,
     GenerationConfig,
     GenerationResponse,
     GenerativeModel,
@@ -34,6 +34,7 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro_vision import (
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5_pro import (
     Gemini_1_5_Pro_Prompt,
 )
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     GeminiDeployment,
@@ -43,6 +44,7 @@ from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 from aidial_adapter_vertexai.utils.timer import Timer
 from aidial_adapter_vertexai.vertex_ai import get_gemini_model, init_vertex_ai
 
@@ -96,18 +98,18 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     @override
     async def parse_prompt(
-        self, messages: List[Message]
+        self, tools: ToolsConfig, messages: List[Message]
     ) -> GeminiPrompt | UserError:
         match self.deployment:
             case ChatCompletionDeployment.GEMINI_PRO_1:
-                return Gemini_1_0_Pro_Prompt.parse(messages)
+                return Gemini_1_0_Pro_Prompt.parse(tools, messages)
             case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
                 return await Gemini_1_0_Pro_Vision_Prompt.parse(
-                    self.file_storage, messages
+                    self.file_storage, tools, messages
                 )
             case ChatCompletionDeployment.GEMINI_PRO_VISION_1_5:
                 return await Gemini_1_5_Pro_Prompt.parse(
-                    self.file_storage, messages
+                    self.file_storage, tools, messages
                 )
             case _:
                 assert_never(self.deployment)
@@ -115,25 +117,28 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt
     ) -> AsyncIterator[GenerationResponse]:
-        session = ChatSession(model=self.model, history=prompt.history)
         parameters = create_generation_config(params)
+        tools = prompt.tools.to_gemini_tools()
+        tool_config = prompt.tools.to_gemini_tool_config()
 
         if params.stream:
-            response = await session._send_message_streaming_async(
-                content=prompt.prompt,  # type: ignore
+            response = await self.model._generate_content_streaming_async(
+                contents=prompt.contents,
                 generation_config=parameters,
                 safety_settings=default_safety_settings,
-                tools=None,
+                tools=tools,
+                tool_config=tool_config,
             )
 
             async for chunk in response:
                 yield chunk
         else:
-            response = await session._send_message_async(
-                content=prompt.prompt,  # type: ignore
+            response = await self.model._generate_content_async(
+                contents=prompt.contents,
                 generation_config=parameters,
                 safety_settings=default_safety_settings,
-                tools=None,
+                tools=tools,
+                tool_config=tool_config,
             )
 
             yield response
@@ -141,37 +146,28 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     @staticmethod
     async def process_chunks(
         consumer: Consumer,
+        tools: ToolsConfig,
         generator: Callable[[], AsyncIterator[GenerationResponse]],
     ) -> AsyncIterator[str]:
-        no_content_generated = True
 
         async for chunk in generator():
             if log.isEnabledFor(DEBUG):
-                log.debug(
-                    f"response chunk: {json_dumps(chunk, excluded_keys=['safetyRatings'])}"
-                )
-
-            finish_reason = chunk.candidates[0].finish_reason
-
-            openai_finish_reason = to_openai_finish_reason(
-                finish_reason=finish_reason,
-                retriable=no_content_generated,
-            )
-
-            if openai_finish_reason is not None:
-                await consumer.set_finish_reason(openai_finish_reason)
+                chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
+                log.debug(f"response chunk: {chunk_str}")
 
             content = get_content(chunk)
             if content is not None:
-                no_content_generated = no_content_generated and content == ""
+                await consumer.append_content(content)
                 yield content
+
+            await create_function_calls(chunk, consumer, tools)
+            await set_usage(chunk, consumer)
+            await set_finish_reason(chunk, consumer)
 
     @override
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: GeminiPrompt
     ) -> None:
-        prompt_tokens = await self.count_prompt_tokens(prompt)
-
         with Timer("predict timing: {time}", log.debug):
             if log.isEnabledFor(DEBUG):
                 log.debug(
@@ -184,26 +180,21 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             async for content in generate_with_retries(
                 lambda: self.process_chunks(
                     consumer,
+                    prompt.tools,
                     lambda: self.send_message_async(params, prompt),
                 ),
                 2,
             ):
                 completion += content
-                await consumer.append_content(content)
 
             log.debug(f"predict response: {completion!r}")
 
-        completion_tokens = await self.count_completion_tokens(completion)
-
-        await consumer.set_usage(
-            TokenUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-            )
-        )
-
     @override
     async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
+        # NOTE: Currently tools/functions couldn't be passed to the count_tokens method:
+        # https://github.com/googleapis/python-aiplatform/issues/3631
+        prompt.tools.not_supported()
+
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self.model.count_tokens_async(prompt.contents)
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
@@ -235,6 +226,54 @@ def get_content(response: GenerationResponse) -> Optional[str]:
         return response.text
     except Exception:
         return None
+
+
+async def set_finish_reason(
+    response: GenerationResponse, consumer: Consumer
+) -> None:
+    reason = response.candidates[0].finish_reason
+
+    openai_reason = to_openai_finish_reason(
+        finish_reason=reason,
+        retriable=consumer.is_empty(),
+    )
+
+    if openai_reason is not None:
+        await consumer.set_finish_reason(openai_reason)
+
+
+async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
+    usage = response.usage_metadata
+    if usage:
+        log.debug(f"usage: {json_dumps(usage)}")
+        await consumer.set_usage(
+            TokenUsage(
+                prompt_tokens=usage.prompt_token_count,
+                completion_tokens=usage.candidates_token_count,
+            )
+        )
+
+
+async def create_function_calls(
+    response: GenerationResponse, consumer: Consumer, tools: ToolsConfig
+) -> None:
+    for call in response.candidates[0].function_calls:
+        arguments = json.dumps(recurse_proto_marshal_to_dict(call.args))
+
+        if tools.is_tool:
+            id = tools.create_fresh_tool_call_id(call.name)
+            log.debug(f"tool call: id={id}, {json_dumps(call)}")
+            await consumer.create_tool_call(
+                id=id,
+                name=call.name,
+                arguments=arguments,
+            )
+        else:
+            log.debug(f"function call: {json_dumps(call)}")
+            await consumer.create_function_call(
+                name=call.name,
+                arguments=arguments,
+            )
 
 
 def to_openai_finish_reason(
