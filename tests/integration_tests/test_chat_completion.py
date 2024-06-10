@@ -108,6 +108,7 @@ chat_deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
     ChatCompletionDeployment.CODECHAT_BISON_1,
     ChatCompletionDeployment.GEMINI_PRO_1,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5,
 ]
 
 
