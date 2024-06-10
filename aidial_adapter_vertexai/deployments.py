@@ -14,6 +14,7 @@ class ChatCompletionDeployment(str, Enum):
     GEMINI_PRO_1 = "gemini-pro"
     GEMINI_PRO_VISION_1 = "gemini-pro-vision"
     GEMINI_PRO_1_5 = "gemini-1.5-pro-preview-0409"
+    GEMINI_FLASH_1_5 = "gemini-1.5-flash-001"
 
     IMAGEN_005 = "imagegeneration@005"
 
@@ -25,6 +26,7 @@ GeminiDeployment = Literal[
     ChatCompletionDeployment.GEMINI_PRO_1,
     ChatCompletionDeployment.GEMINI_PRO_VISION_1,
     ChatCompletionDeployment.GEMINI_PRO_1_5,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5,
 ]
 
 
