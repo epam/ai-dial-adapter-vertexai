@@ -19,7 +19,7 @@ from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
 
-class Gemini_1_5_Pro_Prompt(GeminiPrompt):
+class Gemini_1_5_Prompt(GeminiPrompt):
     @classmethod
     async def parse(
         cls,
