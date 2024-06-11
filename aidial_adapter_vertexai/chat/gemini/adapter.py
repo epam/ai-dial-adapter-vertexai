@@ -60,8 +60,6 @@ default_safety_settings: Dict[HarmCategory, HarmBlockThreshold] = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
 }
 
-DEFAULT_CITATIONS_LIMIT = 10
-
 
 def create_generation_config(params: ModelParameters) -> GenerationConfig:
     # Currently n>1 is emulated by calling the model n times.
@@ -248,7 +246,6 @@ async def set_finish_reason(
 async def create_attachments_from_citations(
     response: GenerationResponse,
     consumer: Consumer,
-    citations_limit: int = DEFAULT_CITATIONS_LIMIT,
 ) -> None:
     if response.candidates is None or not len(response.candidates):
         return None
@@ -261,10 +258,11 @@ async def create_attachments_from_citations(
     ):
         return None
 
-    for citation in citation_metadata.citations[:citations_limit]:
-        await consumer.add_attachment(
-            Attachment(url=citation.uri, title=citation.title)
-        )
+    for citation in citation_metadata.citations:
+        if citation.uri:
+            await consumer.add_attachment(
+                Attachment(url=citation.uri, title=citation.title)
+            )
 
 
 async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
