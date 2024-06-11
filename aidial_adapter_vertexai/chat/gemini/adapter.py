@@ -31,8 +31,8 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro_vision import (
     Gemini_1_0_Pro_Vision_Prompt,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5_pro import (
-    Gemini_1_5_Pro_Prompt,
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
+    Gemini_1_5_Prompt,
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import (
@@ -107,8 +107,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 return await Gemini_1_0_Pro_Vision_Prompt.parse(
                     self.file_storage, tools, messages
                 )
-            case ChatCompletionDeployment.GEMINI_PRO_1_5:
-                return await Gemini_1_5_Pro_Prompt.parse(
+            case (
+                ChatCompletionDeployment.GEMINI_PRO_1_5
+                | ChatCompletionDeployment.GEMINI_FLASH_1_5
+            ):
+                return await Gemini_1_5_Prompt.parse(
                     self.file_storage, tools, messages
                 )
             case _:
