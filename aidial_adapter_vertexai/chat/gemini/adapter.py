@@ -11,7 +11,7 @@ from typing import (
 )
 
 import vertexai.preview.generative_models as generative_models
-from aidial_sdk.chat_completion import FinishReason, Message
+from aidial_sdk.chat_completion import Attachment, FinishReason, Message
 from typing_extensions import override
 from vertexai.preview.generative_models import (
     GenerationConfig,
@@ -164,6 +164,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 yield content
 
             await create_function_calls(chunk, consumer, tools)
+            await create_attachments_from_citations(chunk, consumer)
             await set_usage(chunk, consumer)
             await set_finish_reason(chunk, consumer)
 
@@ -243,6 +244,28 @@ async def set_finish_reason(
 
     if openai_reason is not None:
         await consumer.set_finish_reason(openai_reason)
+
+
+async def create_attachments_from_citations(
+    response: GenerationResponse,
+    consumer: Consumer,
+) -> None:
+    if response.candidates is None or not len(response.candidates):
+        return None
+    citation_metadata = response.candidates[0].citation_metadata
+
+    if (
+        citation_metadata is None
+        or citation_metadata.citations is None
+        or not len(citation_metadata.citations)
+    ):
+        return None
+
+    for citation in citation_metadata.citations:
+        if citation.uri:
+            await consumer.add_attachment(
+                Attachment(url=citation.uri, title=citation.title)
+            )
 
 
 async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
