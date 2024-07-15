@@ -25,7 +25,7 @@ uvicorn = "0.22.0"
 aiocache = "0.12.2"
 pillow = "^10.3.0"
 httpx = "^0.26.0" # TODO: remove once SDK supports conditional instrumentation
-pypdf = "^4.2.0"
+pypdf = {version = "^4.2.0", extras = ["crypto"]}
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.4.0"
