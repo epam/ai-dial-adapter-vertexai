@@ -19,6 +19,33 @@ from aidial_adapter_vertexai.chat.gemini.processor import (
 # 1.5: max_total_tokens ~: 1M, max_completion_tokens: not specified
 
 
+# Plain text file processing:
+#   Counts as text processing.
+def get_plain_text_processor(
+    init_validator: InitValidator | None = None,
+) -> AttachmentProcessor:
+    return AttachmentProcessor(
+        file_types={
+            "text/plain": "txt",
+            "text/html": ["html", "htm"],
+            "text/css": "css",
+            "text/javascript": "js",
+            "application/x-javascript": "js",
+            "text/x-typescript": "ts",
+            "application/x-typescript": "ts",
+            "text/csv": "csv",
+            "text/markdown": "md",
+            "text/x-python": "py",
+            "application/x-python-code": "py",
+            "application/json": "json",
+            "text/xml": "xml",
+            "application/rtf": "rtf",
+            "text/rtf": "rtf",
+        },
+        init_validator=init_validator,
+    )
+
+
 # Image processing:
 # 1.0:
 #  * max number of images: 16
@@ -66,7 +93,7 @@ def get_audio_processor(
 
 # PDF processing
 # 1.0: max number of PDF pages: 16
-# 1.5: max number of PDF pages: 3000
+# 1.5: max number of PDF pages: 300
 # The maximum file size for a PDF is 50MB (not checked).
 # PDF pages are treated as individual images.
 def get_pdf_processor(
@@ -104,6 +131,9 @@ def get_video_processor(
             "video/wmv": "wmv",
             "video/mpegps": "mpegps",
             "video/flv": "flv",
+            "video/x-flv": "flv",
+            "video/webm": "webm",
+            "video/3gpp": "3gpp",
         },
         init_validator=seq_validators(
             init_validator, max_count_validator(max_count)

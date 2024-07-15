@@ -11,6 +11,7 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
     get_file_exts,
     get_image_processor,
     get_pdf_processor,
+    get_plain_text_processor,
     get_video_processor,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
@@ -38,6 +39,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
 
         exclusive = exclusive_validator()
         processors = [
+            get_plain_text_processor(),
             get_image_processor(16, exclusive("image")),
             get_pdf_processor(16, exclusive("pdf")),
             get_video_processor(1, exclusive("video")),
