@@ -19,7 +19,6 @@ def to_dial_exception(e: Exception) -> DialException:
             type="invalid_request_error",
             message=f"Invalid Authentication: {str(e)}",
             code="invalid_api_key",
-            param=None,
         )
 
     if isinstance(e, PermissionDenied):
@@ -28,7 +27,6 @@ def to_dial_exception(e: Exception) -> DialException:
             type="invalid_request_error",
             message=f"Permission denied: {str(e)}",
             code="permission_denied",
-            param=None,
         )
 
     if isinstance(e, InvalidArgument):
@@ -50,7 +48,6 @@ def to_dial_exception(e: Exception) -> DialException:
             type="invalid_request_error",
             message=f"Invalid argument: {str(e)}",
             code="invalid_argument",
-            param=None,
         )
 
     if isinstance(e, GoogleAPICallError):
@@ -58,8 +55,6 @@ def to_dial_exception(e: Exception) -> DialException:
             status_code=e.code or 500,
             type="invalid_request_error",
             message=f"Invalid argument: {str(e)}",
-            code=None,
-            param=None,
         )
 
     if isinstance(e, ValidationError):
@@ -75,8 +70,6 @@ def to_dial_exception(e: Exception) -> DialException:
         status_code=500,
         type="internal_server_error",
         message=str(e),
-        code=None,
-        param=None,
     )
 
 
@@ -86,7 +79,9 @@ def dial_exception_decorator(func):
         try:
             return await func(*args, **kwargs)
         except Exception as e:
-            log.exception(e)
+            log.exception(
+                f"caught exception: {type(e).__module__}.{type(e).__name__}"
+            )
             raise to_dial_exception(e) from e
 
     return wrapper
