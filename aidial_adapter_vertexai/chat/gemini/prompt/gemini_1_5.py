@@ -9,6 +9,7 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
     get_file_exts,
     get_image_processor,
     get_pdf_processor,
+    get_plain_text_processor,
     get_video_processor,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
@@ -35,6 +36,7 @@ class Gemini_1_5_Prompt(GeminiPrompt):
         messages = accommodate_first_system_message(messages)
 
         processors = [
+            get_plain_text_processor(),
             get_image_processor(3000),
             get_pdf_processor(300),
             get_video_processor(10),
