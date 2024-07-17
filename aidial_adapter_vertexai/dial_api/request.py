@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import List, Mapping, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message, Request
@@ -33,21 +32,6 @@ class ModelParameters(BaseModel):
             max_prompt_tokens=request.max_prompt_tokens,
             stream=request.stream,
         )
-
-
-class EmbeddingsType(str, Enum):
-    SYMMETRIC = "symmetric"
-    DOCUMENT = "document"
-    QUERY = "query"
-
-
-class EmbeddingsQuery(BaseModel):
-    input: str | List[str]
-    user: Optional[str] = None
-
-    @staticmethod
-    def example() -> "EmbeddingsQuery":
-        return EmbeddingsQuery(input=["fish", "ball"])
 
 
 def get_attachments(message: Message) -> List[Attachment]:

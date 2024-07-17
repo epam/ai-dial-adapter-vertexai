@@ -18,10 +18,10 @@ from aidial_adapter_vertexai.deployments import (
     EmbeddingsDeployment,
 )
 from aidial_adapter_vertexai.dial_api.storage import create_file_storage
-from aidial_adapter_vertexai.embeddings.embeddings_adapter import (
+from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
-from aidial_adapter_vertexai.embeddings.gecko import (
+from aidial_adapter_vertexai.embedding.gecko import (
     GeckoTextGenericEmbeddingsAdapter,
 )
 

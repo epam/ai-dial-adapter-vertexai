@@ -15,7 +15,7 @@ repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
 
 [tool.poetry.dependencies]
 python = "~3.11"
-aidial-sdk = {version = "0.8.0", extras = ["telemetry"]}
+aidial-sdk = { git = "https://github.com/epam/ai-dial-sdk.git", branch = "feat/added-embeddings-response-for-base64" }
 fastapi = "0.109.2"
 google-cloud-aiplatform = "^1.49.0"
 google-auth = "2.21.0"
@@ -24,14 +24,14 @@ pydantic = "1.10.13"
 uvicorn = "0.22.0"
 aiocache = "0.12.2"
 pillow = "^10.3.0"
-httpx = "^0.26.0" # TODO: remove once SDK supports conditional instrumentation
 pypdf = {version = "^4.2.0", extras = ["crypto"]}
+numpy = "^2.0.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.4.0"
 pytest-asyncio = "0.21.1"
 python-dotenv = "1.0.0"
-requests = "2.32.0"
+requests = "^2.32.2"
 pytest-dotenv = "^0.5.2"
 pytest-xdist = "^3.5.0"
 
