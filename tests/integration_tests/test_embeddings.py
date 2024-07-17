@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from itertools import product
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Set
 
 import pytest
 from openai import AsyncAzureOpenAI
@@ -15,80 +15,60 @@ from tests.utils.openai import sanitize_test_name
 @dataclass
 class ModelSpec:
     deployment: EmbeddingsDeployment
-    supports_types: List[str]
+    supports_types: Set[str]
     supports_instr: bool
     default_dimension: int
     supports_dimensions: bool
 
 
+all_embedding_types: Set[str] = {
+    "CLASSIFICATION",
+    "CLUSTERING",
+    "DEFAULT",
+    "RETRIEVAL_DOCUMENT",
+    "RETRIEVAL_QUERY",
+    "SEMANTIC_SIMILARITY",
+    "FACT_VERIFICATION",
+    "QUESTION_ANSWERING",
+}
+
+basic_embedding_types = all_embedding_types - {
+    "FACT_VERIFICATION",
+    "QUESTION_ANSWERING",
+}
+
 specs: List[ModelSpec] = [
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1,
-        supports_types=[],
+        supports_types=set(),
         supports_instr=False,
         default_dimension=768,
         supports_dimensions=False,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
-        supports_types=[
-            "CLASSIFICATION",
-            "CLUSTERING",
-            "DEFAULT",
-            "RETRIEVAL_DOCUMENT",
-            "RETRIEVAL_QUERY",
-            "SEMANTIC_SIMILARITY",
-            # "FACT_VERIFICATION",
-            # "QUESTION_ANSWERING",
-        ],
+        supports_types=basic_embedding_types,
         supports_instr=False,
         default_dimension=768,
         supports_dimensions=False,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_4,
-        supports_types=[
-            "CLASSIFICATION",
-            "CLUSTERING",
-            "DEFAULT",
-            "RETRIEVAL_DOCUMENT",
-            "RETRIEVAL_QUERY",
-            "SEMANTIC_SIMILARITY",
-            "FACT_VERIFICATION",
-            "QUESTION_ANSWERING",
-        ],
+        supports_types=all_embedding_types,
         supports_instr=False,
         default_dimension=768,
         supports_dimensions=True,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
-        supports_types=[
-            "CLASSIFICATION",
-            "CLUSTERING",
-            "DEFAULT",
-            "RETRIEVAL_DOCUMENT",
-            "RETRIEVAL_QUERY",
-            "SEMANTIC_SIMILARITY",
-            # "FACT_VERIFICATION",
-            # "QUESTION_ANSWERING",
-        ],
+        supports_types=basic_embedding_types,
         supports_instr=False,
         default_dimension=768,
         supports_dimensions=False,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
-        supports_types=[
-            "CLASSIFICATION",
-            "CLUSTERING",
-            "DEFAULT",
-            "RETRIEVAL_DOCUMENT",
-            "RETRIEVAL_QUERY",
-            "SEMANTIC_SIMILARITY",
-            "FACT_VERIFICATION",
-            "QUESTION_ANSWERING",
-        ],
+        supports_types=all_embedding_types,
         supports_instr=False,
         default_dimension=768,
         supports_dimensions=True,
@@ -157,7 +137,7 @@ def get_test_case(
         expected = Exception(
             "Request parameter 'custom_fields.instruction' is not supported"
         )
-    elif embedding_type and spec.supports_types == []:
+    elif embedding_type and len(spec.supports_types) == 0:
         expected = Exception(
             "Request parameter 'custom_fields.type' is not supported"
         )
@@ -208,7 +188,7 @@ def get_test_case(
                 "RETRIEVAL_QUERY",
                 "SEMANTIC_SIMILARITY",
             ],
-            [None, "dummy"],
+            [None, "instruction"],
             [None, 512],
         )
     ],
