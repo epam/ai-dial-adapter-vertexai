@@ -29,6 +29,22 @@ specs: List[ModelSpec] = [
         default_dimension=768,
         supports_dimensions=False,
     ),
+    ModelSpec(
+        deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
+        supports_types=[
+            "CLASSIFICATION",
+            "CLUSTERING",
+            "DEFAULT",
+            "RETRIEVAL_DOCUMENT",
+            "RETRIEVAL_QUERY",
+            "SEMANTIC_SIMILARITY",
+            # "FACT_VERIFICATION",
+            # "QUESTION_ANSWERING",
+        ],
+        supports_instr=False,
+        default_dimension=768,
+        supports_dimensions=False,
+    ),
 ]
 
 
@@ -48,17 +64,6 @@ class TestCase:
         )
 
 
-gecko_title_test_case: TestCase = TestCase(
-    deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1,
-    input=[],
-    extra_body=({"custom_input": [["title", "text"]]}),
-    expected=Exception(
-        "The model does not support inputs with titles "
-        "unless the type is 'RETRIEVAL_DOCUMENT'"
-    ),
-)
-
-
 def get_test_case(
     spec: ModelSpec,
     input: str | List[str],
@@ -71,15 +76,20 @@ def get_test_case(
 
     def check_response(resp: CreateEmbeddingResponse):
         n_inputs = 1 if isinstance(input, str) else len(input)
+        n_tokens = n_inputs
         if custom_input:
-            n_inputs += len(custom_input)
+            for i in custom_input:
+                n_inputs += 1
+                n_tokens += 1 if isinstance(i, str) else len(i)
 
-        assert resp.usage.prompt_tokens == n_inputs
-        assert resp.usage.total_tokens == n_inputs
+        assert resp.usage.prompt_tokens == n_tokens
+        assert resp.usage.total_tokens == n_tokens
         assert len(resp.data) == n_inputs
         assert (
             len(resp.data[0].embedding) == dimensions or spec.default_dimension
         )
+
+    has_titles = custom_input and any(isinstance(i, list) for i in custom_input)
 
     custom_fields = {}
 
@@ -99,9 +109,19 @@ def get_test_case(
         expected = Exception(
             "Request parameter 'custom_fields.instruction' is not supported"
         )
-    elif embedding_type and embedding_type not in spec.supports_types:
+    elif embedding_type and spec.supports_types == []:
         expected = Exception(
             "Request parameter 'custom_fields.type' is not supported"
+        )
+    elif has_titles and embedding_type != "RETRIEVAL_DOCUMENT":
+        expected = Exception(
+            "The model does not support inputs with titles "
+            "unless the type is RETRIEVAL_DOCUMENT"
+        )
+    elif embedding_type and embedding_type not in spec.supports_types:
+        # NOTE: error coming directly from Bedrock
+        expected = Exception(
+            f"Unable to submit request because the model does not support the task type {embedding_type}"
         )
 
     return TestCase(
@@ -127,7 +147,7 @@ def get_test_case(
         for spec, input, custom_input, format, ty, instr, dims in product(
             specs,
             ["dog", ["fish", "cat"]],
-            [None, ["ball", "sun"]],
+            [None, ["ball", "sun"], [["title", "text"]]],
             ["base64", "float"],
             [
                 None,

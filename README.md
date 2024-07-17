@@ -24,9 +24,13 @@ The models that support `/truncate_prompt` do also support `max_prompt_tokens` r
 
 The following models support `SERVER_URL/openai/deployments/DEPLOYMENT_NAME/embeddings` endpoint:
 
-|Model|Deployment name|Modality|
-|---|---|---|
-|Embeddings for Text|textembedding-gecko@001|text-to-embedding|
+|Model|Deployment name|Language support|Modality|
+|---|---|---|---|
+|Gecko Embeddings for Text V1|textembedding-gecko@001|English|text-to-embedding|
+|Gecko Embeddings for Text V3|textembedding-gecko@003|English|text-to-embedding|
+|Embeddings for Text|text-embedding-004|English|text-to-embedding|
+|Gecko Embeddings for Text Multilingual|textembedding-gecko-multilingual@001|Multilingual|text-to-embedding|
+|Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
 
 ## Developer environment
 

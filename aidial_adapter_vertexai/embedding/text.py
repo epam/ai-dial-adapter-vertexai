@@ -1,12 +1,14 @@
-from typing import Iterable, List, Optional, assert_never
+from typing import Dict, Iterable, List, Optional, assert_never
 
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings import Usage
 from aidial_sdk.embeddings.request import EmbeddingsRequest
+from pydantic import BaseModel
 from vertexai.language_models import TextEmbeddingInput
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
 from aidial_adapter_vertexai.dial_api.response import make_embeddings_response
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
@@ -17,6 +19,26 @@ from aidial_adapter_vertexai.vertex_ai import TextEmbeddingModel
 # See available task types at: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api#tasktype
 # The list of task types tends to grow with time,
 # so we don't try to validate it here.
+
+
+class ModelSpec(BaseModel):
+    supports_type: bool
+    supports_instr: bool
+    supports_dimensions: bool
+
+
+specs: Dict[str, ModelSpec] = {
+    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1: ModelSpec(
+        supports_type=False,
+        supports_instr=False,
+        supports_dimensions=False,
+    ),
+    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3: ModelSpec(
+        supports_type=True,
+        supports_instr=False,
+        supports_dimensions=False,
+    ),
+}
 
 
 async def get_text_embeddings(
@@ -49,17 +71,20 @@ async def get_text_embeddings(
     )
 
 
-def validate_request(request: EmbeddingsRequest) -> None:
-    if request.dimensions:
+def validate_request(spec: ModelSpec, request: EmbeddingsRequest) -> None:
+    if not spec.supports_dimensions and request.dimensions:
         raise ValidationError("Request parameter 'dimensions' is not supported")
 
     if request.custom_fields is not None:
-        if request.custom_fields.instruction is not None:
+        if (
+            not spec.supports_instr
+            and request.custom_fields.instruction is not None
+        ):
             raise ValidationError(
                 "Request parameter 'custom_fields.instruction' is not supported"
             )
 
-        if request.custom_fields.type is not None:
+        if not spec.supports_type and request.custom_fields.type is not None:
             raise ValidationError(
                 "Request parameter 'custom_fields.type' is not supported"
             )
@@ -84,7 +109,7 @@ def get_embedding_inputs(
         if title is not None and task_type != "RETRIEVAL_DOCUMENT":
             raise ValidationError(
                 "The model does not support inputs with titles "
-                "unless the type is 'RETRIEVAL_DOCUMENT'"
+                "unless the type is RETRIEVAL_DOCUMENT"
             )
         return TextEmbeddingInput(title=title, text=text, task_type=task_type)
 
@@ -120,17 +145,23 @@ def get_embedding_inputs(
                 )
             else:
                 raise ValidationError(
-                    "No more than two elements are allowed in an element of custom_input list"
+                    "No more than two elements are allowed in an element of custom_input list - one for title and one for text."
                 )
         else:
             assert_never(input)
 
 
-class GeckoTextGenericEmbeddingsAdapter(EmbeddingsAdapter):
+class TextEmbeddingsAdapter(EmbeddingsAdapter):
     async def embeddings(
         self, request: EmbeddingsRequest
     ) -> EmbeddingsResponse:
-        validate_request(request)
+        spec = specs.get(self.model_id)
+        if spec is None:
+            raise RuntimeError(
+                f"Can't find the model {self.model_id!r} in the specs"
+            )
+
+        validate_request(spec, request)
 
         task_type: Optional[str] = None
         if request.custom_fields is not None:
