@@ -38,6 +38,21 @@ specs: Dict[str, ModelSpec] = {
         supports_instr=False,
         supports_dimensions=False,
     ),
+    EmbeddingsDeployment.TEXT_EMBEDDING_4: ModelSpec(
+        supports_type=True,
+        supports_instr=False,
+        supports_dimensions=True,
+    ),
+    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1: ModelSpec(
+        supports_type=True,
+        supports_instr=False,
+        supports_dimensions=False,
+    ),
+    EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2: ModelSpec(
+        supports_type=True,
+        supports_instr=False,
+        supports_dimensions=True,
+    ),
 }
 
 
