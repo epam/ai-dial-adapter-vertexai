@@ -21,9 +21,7 @@ from aidial_adapter_vertexai.dial_api.storage import create_file_storage
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
-from aidial_adapter_vertexai.embedding.text import (
-    TextEmbeddingsAdapter,
-)
+from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
 
 
 async def get_chat_completion_model(
