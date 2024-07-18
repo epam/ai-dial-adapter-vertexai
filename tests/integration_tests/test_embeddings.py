@@ -17,7 +17,7 @@ class ModelSpec:
     deployment: EmbeddingsDeployment
     supports_types: Set[str]
     supports_instr: bool
-    default_dimension: int
+    default_dimensions: int
     supports_dimensions: bool
 
 
@@ -42,35 +42,35 @@ specs: List[ModelSpec] = [
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1,
         supports_types=set(),
         supports_instr=False,
-        default_dimension=768,
+        default_dimensions=768,
         supports_dimensions=False,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
         supports_types=basic_embedding_types,
         supports_instr=False,
-        default_dimension=768,
+        default_dimensions=768,
         supports_dimensions=False,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_4,
         supports_types=all_embedding_types,
         supports_instr=False,
-        default_dimension=768,
+        default_dimensions=768,
         supports_dimensions=True,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
         supports_types=basic_embedding_types,
         supports_instr=False,
-        default_dimension=768,
+        default_dimensions=768,
         supports_dimensions=False,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
         supports_types=all_embedding_types,
         supports_instr=False,
-        default_dimension=768,
+        default_dimensions=768,
         supports_dimensions=True,
     ),
 ]
@@ -114,7 +114,7 @@ def get_test_case(
         assert resp.usage.total_tokens == n_tokens
         assert len(resp.data) == n_inputs
         assert (
-            len(resp.data[0].embedding) == dimensions or spec.default_dimension
+            len(resp.data[0].embedding) == dimensions or spec.default_dimensions
         )
 
     has_titles = custom_input and any(isinstance(i, list) for i in custom_input)
@@ -132,14 +132,12 @@ def get_test_case(
     )
 
     if dimensions and not spec.supports_dimensions:
-        expected = Exception("Request parameter 'dimensions' is not supported")
+        expected = Exception("Dimensions parameter is not supported")
     elif embedding_instr and not spec.supports_instr:
-        expected = Exception(
-            "Request parameter 'custom_fields.instruction' is not supported"
-        )
+        expected = Exception("Instruction prompt is not supported")
     elif embedding_type and len(spec.supports_types) == 0:
         expected = Exception(
-            "Request parameter 'custom_fields.type' is not supported"
+            "The embedding model does not support embedding types"
         )
     elif has_titles and embedding_type != "RETRIEVAL_DOCUMENT":
         expected = Exception(

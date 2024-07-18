@@ -38,8 +38,8 @@ telemetry = ["opentelemetry-api (==1.20.0)", "opentelemetry-distro (==0.41b0)", 
 [package.source]
 type = "git"
 url = "https://github.com/epam/ai-dial-sdk.git"
-reference = "HEAD"
-resolved_reference = "e31592627c1b8e28c9a4d03946d0ef8cd405fc6d"
+reference = "development"
+resolved_reference = "608bd4e5de45fae8ea28a294e2d159c2f06c8715"
 
 [[package]]
 name = "aiocache"
@@ -2757,4 +2757,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "0d7df3670678b950c25e05c361113acd5a95ba72a3ba7dd027e0a8cc9454946c"
+content-hash = "974e6aeb3a540a4659ee3a358e094397785e5586d8863c10612806e1a8d485fb"

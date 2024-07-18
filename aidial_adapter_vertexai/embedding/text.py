@@ -88,20 +88,18 @@ async def get_text_embeddings(
 
 def validate_request(spec: ModelSpec, request: EmbeddingsRequest) -> None:
     if not spec.supports_dimensions and request.dimensions:
-        raise ValidationError("Request parameter 'dimensions' is not supported")
+        raise ValidationError("Dimensions parameter is not supported")
 
     if request.custom_fields is not None:
         if (
             not spec.supports_instr
             and request.custom_fields.instruction is not None
         ):
-            raise ValidationError(
-                "Request parameter 'custom_fields.instruction' is not supported"
-            )
+            raise ValidationError("Instruction prompt is not supported")
 
         if not spec.supports_type and request.custom_fields.type is not None:
             raise ValidationError(
-                "Request parameter 'custom_fields.type' is not supported"
+                "The embedding model does not support embedding types"
             )
 
 
