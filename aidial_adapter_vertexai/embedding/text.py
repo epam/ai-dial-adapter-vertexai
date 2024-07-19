@@ -1,6 +1,6 @@
-from typing import Dict, Iterable, List, Optional, assert_never
+from logging import DEBUG
+from typing import Dict, List, Optional
 
-from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings import Usage
 from aidial_sdk.embeddings.request import EmbeddingsRequest
@@ -9,11 +9,16 @@ from vertexai.language_models import TextEmbeddingInput
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
+from aidial_adapter_vertexai.dial_api.embedding_inputs import (
+    collect_embedding_inputs_no_attachments,
+)
 from aidial_adapter_vertexai.dial_api.response import make_embeddings_response
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
 from aidial_adapter_vertexai.embedding.encoding import vector_to_base64
+from aidial_adapter_vertexai.utils.json import json_dumps_short
+from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.vertex_ai import TextEmbeddingModel
 
 # See available task types at: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api#tasktype
@@ -56,7 +61,7 @@ specs: Dict[str, ModelSpec] = {
 }
 
 
-async def get_text_embeddings(
+async def compute_embeddings(
     model_id: str,
     model: TextEmbeddingModel,
     base64_encode: bool,
@@ -64,7 +69,19 @@ async def get_text_embeddings(
     inputs: List[str | TextEmbeddingInput],
 ) -> EmbeddingsResponse:
 
+    if log.isEnabledFor(DEBUG):
+        msg = json_dumps_short(
+            {"inputs": inputs, "output_dimensionality": dimensions}
+        )
+        log.debug(f"request: {msg}")
+
     embeddings = model.get_embeddings(inputs, output_dimensionality=dimensions)
+
+    if log.isEnabledFor(DEBUG):
+        msg = json_dumps_short(
+            embeddings, excluded_keys=["_prediction_response"]
+        )
+        log.debug(f"response: {msg}")
 
     vectors: List[List[float] | str] = []
     token_count = 0
@@ -103,65 +120,33 @@ def validate_request(spec: ModelSpec, request: EmbeddingsRequest) -> None:
             )
 
 
-def get_text(input: str | Attachment) -> str:
-    if isinstance(input, str):
-        return input
-    else:
-        raise ValidationError("Attachments are not supported")
-
-
-def get_embedding_inputs(
+async def get_embedding_inputs(
     request: EmbeddingsRequest, task_type: Optional[str]
-) -> Iterable[str | TextEmbeddingInput]:
+) -> List[str | TextEmbeddingInput]:
 
-    def make_input(
-        text: str, title: str | None = None
+    async def on_text(text: str) -> str | TextEmbeddingInput:
+        return text
+
+    async def on_texts(
+        fst: str, snd: str, rest: List[str]
     ) -> str | TextEmbeddingInput:
-        if task_type is None and title is None:
-            return text
-        if title is not None and task_type != "RETRIEVAL_DOCUMENT":
+        if rest != []:
+            raise ValidationError(
+                "No more than two elements are allowed in an element of custom_input list - one for title and one for text."
+            )
+
+        if task_type != "RETRIEVAL_DOCUMENT":
             raise ValidationError(
                 "The model does not support inputs with titles "
                 "unless the type is RETRIEVAL_DOCUMENT"
             )
-        return TextEmbeddingInput(title=title, text=text, task_type=task_type)
+        return TextEmbeddingInput(title=fst, text=snd, task_type=task_type)
 
-    if isinstance(request.input, str):
-        yield make_input(request.input)
-    elif isinstance(request.input, list):
-        for input in request.input:
-            if isinstance(input, str):
-                yield make_input(input)
-            else:
-                raise ValidationError(
-                    "Tokens in the input are not supported, provide text instead. "
-                    "When Langchain AzureOpenAIEmbeddings class is used, set 'check_embedding_ctx_length=False' to disable tokenization."
-                )
-    else:
-        assert_never(request.input)
+    iterator = collect_embedding_inputs_no_attachments(
+        request, on_text=on_text, on_texts=on_texts
+    )
 
-    if request.custom_input is None:
-        return
-
-    for input in request.custom_input:
-        if isinstance(input, (str, Attachment)):
-            yield make_input(get_text(input))
-        elif isinstance(input, list):
-            if len(input) == 0:
-                pass
-            elif len(input) == 1:
-                yield make_input(get_text(input[0]))
-            elif len(input) == 2:
-                yield make_input(
-                    title=get_text(input[0]),
-                    text=get_text(input[1]),
-                )
-            else:
-                raise ValidationError(
-                    "No more than two elements are allowed in an element of custom_input list - one for title and one for text."
-                )
-        else:
-            assert_never(input)
+    return [input async for input in iterator]
 
 
 class TextEmbeddingsAdapter(EmbeddingsAdapter):
@@ -180,13 +165,11 @@ class TextEmbeddingsAdapter(EmbeddingsAdapter):
         if request.custom_fields is not None:
             task_type = request.custom_fields.type
 
-        inputs: List[str | TextEmbeddingInput] = list(
-            get_embedding_inputs(request, task_type)
-        )
+        inputs = await get_embedding_inputs(request, task_type)
 
         base64_encode = request.encoding_format == "base64"
 
-        return await get_text_embeddings(
+        return await compute_embeddings(
             self.model_id,
             self.model,
             base64_encode,

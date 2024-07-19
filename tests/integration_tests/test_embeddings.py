@@ -21,18 +21,13 @@ class ModelSpec:
     supports_dimensions: bool
 
 
-all_embedding_types: Set[str] = {
+embedding_types: Set[str] = {
     "CLASSIFICATION",
     "CLUSTERING",
     "DEFAULT",
     "RETRIEVAL_DOCUMENT",
     "RETRIEVAL_QUERY",
     "SEMANTIC_SIMILARITY",
-    "FACT_VERIFICATION",
-    "QUESTION_ANSWERING",
-}
-
-basic_embedding_types = all_embedding_types - {
     "FACT_VERIFICATION",
     "QUESTION_ANSWERING",
 }
@@ -47,28 +42,28 @@ specs: List[ModelSpec] = [
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
-        supports_types=basic_embedding_types,
+        supports_types=embedding_types,
         supports_instr=False,
         default_dimensions=768,
         supports_dimensions=False,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_4,
-        supports_types=all_embedding_types,
+        supports_types=embedding_types,
         supports_instr=False,
         default_dimensions=768,
         supports_dimensions=True,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
-        supports_types=basic_embedding_types,
+        supports_types=embedding_types,
         supports_instr=False,
         default_dimensions=768,
         supports_dimensions=False,
     ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
-        supports_types=all_embedding_types,
+        supports_types=embedding_types,
         supports_instr=False,
         default_dimensions=768,
         supports_dimensions=True,
