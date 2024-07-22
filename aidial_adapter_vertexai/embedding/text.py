@@ -10,7 +10,8 @@ from vertexai.language_models import TextEmbeddingInput
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
 from aidial_adapter_vertexai.dial_api.embedding_inputs import (
-    collect_embedding_inputs_no_attachments,
+    EMPTY_INPUT_LIST_ERROR,
+    collect_embedding_inputs_without_attachments,
 )
 from aidial_adapter_vertexai.dial_api.response import make_embeddings_response
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
@@ -124,26 +125,28 @@ async def get_embedding_inputs(
     request: EmbeddingsRequest, task_type: Optional[str]
 ) -> List[str | TextEmbeddingInput]:
 
-    async def on_text(text: str) -> str | TextEmbeddingInput:
-        return text
-
-    async def on_texts(
-        fst: str, snd: str, rest: List[str]
-    ) -> str | TextEmbeddingInput:
-        if rest != []:
+    async def on_texts(texts: List[str]) -> str | TextEmbeddingInput:
+        if len(texts) == 0:
+            raise EMPTY_INPUT_LIST_ERROR
+        elif len(texts) == 1:
+            return texts[0]
+        elif len(texts) == 2:
+            title, text = texts
+            if task_type != "RETRIEVAL_DOCUMENT":
+                raise ValidationError(
+                    "The model does not support inputs with titles "
+                    "unless the type is RETRIEVAL_DOCUMENT"
+                )
+            return TextEmbeddingInput(
+                title=title, text=text, task_type=task_type
+            )
+        else:
             raise ValidationError(
                 "No more than two elements are allowed in an element of custom_input list - one for title and one for text."
             )
 
-        if task_type != "RETRIEVAL_DOCUMENT":
-            raise ValidationError(
-                "The model does not support inputs with titles "
-                "unless the type is RETRIEVAL_DOCUMENT"
-            )
-        return TextEmbeddingInput(title=fst, text=snd, task_type=task_type)
-
-    iterator = collect_embedding_inputs_no_attachments(
-        request, on_text=on_text, on_texts=on_texts
+    iterator = collect_embedding_inputs_without_attachments(
+        request, on_texts=on_texts
     )
 
     return [input async for input in iterator]
