@@ -134,17 +134,14 @@ async def get_requests(
     async def on_attachment(attachment: Attachment):
         return ModelRequest(image=await download_image(storage, attachment))
 
-    async def on_text_or_attachment(text: str | Attachment):
-        if isinstance(text, str):
-            return await on_text(text)
-        else:
-            return await on_attachment(text)
-
     async def on_mixed(inputs: List[str | Attachment]) -> ModelRequest:
         if len(inputs) == 0:
             raise EMPTY_INPUT_LIST_ERROR
         elif len(inputs) == 1:
-            return await on_text_or_attachment(inputs[0])
+            if isinstance(inputs[0], str):
+                return await on_text(inputs[0])
+            else:
+                return await on_attachment(inputs[0])
         elif len(inputs) == 2:
             if isinstance(inputs[0], str) and isinstance(inputs[1], Attachment):
                 return ModelRequest(
@@ -205,7 +202,7 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
         vectors: List[List[float] | str] = []
         token_count = 0
 
-        # NOTE: Multi-model model doesn't support batched inputs
+        # NOTE: The model doesn't support batched inputs
         async for sub_request in await get_requests(request, self.storage):
             embedding, tokens = await compute_embeddings(
                 sub_request, self.model, dimensions=request.dimensions
