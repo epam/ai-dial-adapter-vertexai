@@ -18,12 +18,10 @@ from aidial_adapter_vertexai.deployments import (
     EmbeddingsDeployment,
 )
 from aidial_adapter_vertexai.dial_api.storage import create_file_storage
-from aidial_adapter_vertexai.embeddings.embeddings_adapter import (
+from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
-from aidial_adapter_vertexai.embeddings.gecko import (
-    GeckoTextGenericEmbeddingsAdapter,
-)
+from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
 
 
 async def get_chat_completion_model(
@@ -73,8 +71,14 @@ async def get_embeddings_model(
 ) -> EmbeddingsAdapter:
     model_id = deployment.get_model_id()
     match deployment:
-        case EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1:
-            return await GeckoTextGenericEmbeddingsAdapter.create(
+        case (
+            EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1
+            | EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3
+            | EmbeddingsDeployment.TEXT_EMBEDDING_4
+            | EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1
+            | EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2
+        ):
+            return await TextEmbeddingsAdapter.create(
                 model_id, project_id, location
             )
         case _:

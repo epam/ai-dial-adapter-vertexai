@@ -1,28 +1,18 @@
-import json
-from typing import Optional
-
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
-from fastapi import Body, Header, Path
 
-from aidial_adapter_vertexai.adapters import get_embeddings_model
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
-from aidial_adapter_vertexai.dial_api.request import (
-    EmbeddingsQuery,
-    EmbeddingsType,
-)
 from aidial_adapter_vertexai.dial_api.response import (
     ModelObject,
     ModelsResponse,
-    make_embeddings_response,
 )
+from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
 from aidial_adapter_vertexai.utils.env import get_env
-from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
 
 DEFAULT_REGION = get_env("DEFAULT_REGION")
@@ -60,28 +50,11 @@ for deployment in ChatCompletionDeployment:
     )
 
 
-@app.post("/openai/deployments/{deployment}/embeddings")
-@dial_exception_decorator
-async def embeddings(
-    embeddings_type: EmbeddingsType = Header(
-        alias="X-DIAL-Type", default=EmbeddingsType.SYMMETRIC
-    ),
-    embeddings_instruction: Optional[str] = Header(
-        alias="X-DIAL-Instruction", default=None
-    ),
-    deployment: EmbeddingsDeployment = Path(...),
-    query: EmbeddingsQuery = Body(..., example=EmbeddingsQuery.example()),
-):
-    log.debug(f"query: {json.dumps(query.dict(exclude_none=True))}")
-
-    model = await get_embeddings_model(
-        location=DEFAULT_REGION,
-        deployment=deployment,
-        project_id=GCP_PROJECT_ID,
+for deployment in EmbeddingsDeployment:
+    app.add_embeddings(
+        deployment.get_model_id(),
+        VertexAIEmbeddings(
+            project_id=GCP_PROJECT_ID,
+            region=DEFAULT_REGION,
+        ),
     )
-
-    response = await model.embeddings(
-        query.input, embeddings_instruction, embeddings_type
-    )
-
-    return make_embeddings_response(deployment, response)

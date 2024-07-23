@@ -31,7 +31,14 @@ GeminiDeployment = Literal[
 
 
 class EmbeddingsDeployment(str, Enum):
+    # English models
     TEXT_EMBEDDING_GECKO_1 = "textembedding-gecko@001"
+    TEXT_EMBEDDING_GECKO_3 = "textembedding-gecko@003"
+    TEXT_EMBEDDING_4 = "text-embedding-004"
+
+    # Multilingual models
+    TEXT_EMBEDDING_GECKO_MULTILINGUAL_1 = "textembedding-gecko-multilingual@001"
+    TEXT_MULTILINGUAL_EMBEDDING_2 = "text-multilingual-embedding-002"
 
     def get_model_id(self) -> str:
         return self.value
