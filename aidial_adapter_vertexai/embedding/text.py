@@ -20,7 +20,11 @@ from aidial_adapter_vertexai.embedding.embeddings_adapter import (
 from aidial_adapter_vertexai.embedding.encoding import vector_to_base64
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.vertex_ai import TextEmbeddingModel
+from aidial_adapter_vertexai.vertex_ai import (
+    TextEmbeddingModel,
+    get_text_embedding_model,
+    init_vertex_ai,
+)
 
 # See available task types at: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api#tasktype
 # The list of task types tends to grow with time,
@@ -76,18 +80,16 @@ async def compute_embeddings(
         )
         log.debug(f"request: {msg}")
 
-    embeddings = model.get_embeddings(inputs, output_dimensionality=dimensions)
+    response = model.get_embeddings(inputs, output_dimensionality=dimensions)
 
     if log.isEnabledFor(DEBUG):
-        msg = json_dumps_short(
-            embeddings, excluded_keys=["_prediction_response"]
-        )
+        msg = json_dumps_short(response, excluded_keys=["_prediction_response"])
         log.debug(f"response: {msg}")
 
     vectors: List[List[float] | str] = []
     token_count = 0
 
-    for embedding in embeddings:
+    for embedding in response:
         vectors.append(
             vector_to_base64(embedding.values)
             if base64_encode
@@ -153,6 +155,20 @@ async def get_embedding_inputs(
 
 
 class TextEmbeddingsAdapter(EmbeddingsAdapter):
+    model_id: str
+    model: TextEmbeddingModel
+
+    @classmethod
+    async def create(
+        cls,
+        model_id: str,
+        project_id: str,
+        location: str,
+    ) -> "EmbeddingsAdapter":
+        await init_vertex_ai(project_id, location)
+        model = await get_text_embedding_model(model_id)
+        return cls(model_id=model_id, model=model)
+
     async def embeddings(
         self, request: EmbeddingsRequest
     ) -> EmbeddingsResponse:

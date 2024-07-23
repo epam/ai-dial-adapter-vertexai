@@ -7,6 +7,7 @@ from vertexai.preview.language_models import (
     TextEmbeddingModel,
 )
 from vertexai.preview.vision_models import ImageGenerationModel
+from vertexai.vision_models import MultiModalEmbeddingModel
 
 from aidial_adapter_vertexai.utils.concurrency import make_async
 
@@ -36,8 +37,15 @@ async def get_gemini_model(model_id: str) -> GenerativeModel:
 
 
 @cached()
-async def get_embedding_model(model_id: str) -> TextEmbeddingModel:
+async def get_text_embedding_model(model_id: str) -> TextEmbeddingModel:
     return await make_async(TextEmbeddingModel.from_pretrained, model_id)
+
+
+@cached()
+async def get_multi_modal_embedding_model(
+    model_id: str,
+) -> MultiModalEmbeddingModel:
+    return await make_async(MultiModalEmbeddingModel.from_pretrained, model_id)
 
 
 @cached()

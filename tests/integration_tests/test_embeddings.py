@@ -4,6 +4,7 @@ from itertools import product
 from typing import Any, Callable, List, Set
 
 import pytest
+from aidial_sdk.chat_completion import Attachment
 from openai import AsyncAzureOpenAI
 from openai.types import CreateEmbeddingResponse
 
@@ -87,6 +88,21 @@ class TestCase:
         )
 
 
+def check_embeddings_response(
+    input: str | List[str],
+    custom_input: list[Any] | None,
+    dimensions: int,
+) -> Callable[[CreateEmbeddingResponse], None]:
+    def ret(resp: CreateEmbeddingResponse):
+        n_inputs = 1 if isinstance(input, str) else len(input)
+        n_inputs += len(custom_input) if custom_input else 0
+
+        assert len(resp.data) == n_inputs
+        assert len(resp.data[0].embedding) == dimensions
+
+    return ret
+
+
 def get_test_case(
     spec: ModelSpec,
     input: str | List[str],
@@ -96,21 +112,6 @@ def get_test_case(
     embedding_instr: str | None,
     dimensions: int | None,
 ) -> TestCase:
-
-    def check_response(resp: CreateEmbeddingResponse):
-        n_inputs = 1 if isinstance(input, str) else len(input)
-        n_tokens = n_inputs
-        if custom_input:
-            for i in custom_input:
-                n_inputs += 1
-                n_tokens += 1 if isinstance(i, str) else len(i)
-
-        assert resp.usage.prompt_tokens == n_tokens
-        assert resp.usage.total_tokens == n_tokens
-        assert len(resp.data) == n_inputs
-        assert (
-            len(resp.data[0].embedding) == dimensions or spec.default_dimensions
-        )
 
     has_titles = custom_input and any(isinstance(i, list) for i in custom_input)
 
@@ -123,7 +124,9 @@ def get_test_case(
         custom_fields["type"] = embedding_type
 
     expected: Callable[[CreateEmbeddingResponse], None] | Exception = (
-        check_response
+        check_embeddings_response(
+            input, custom_input, dimensions or spec.default_dimensions
+        )
     )
 
     if dimensions and not spec.supports_dimensions:
@@ -160,27 +163,70 @@ def get_test_case(
     )
 
 
+image_attachment = Attachment(
+    type="image/png",
+    url="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png",
+).dict()
+
+
+def get_image_test_cases(
+    input: str | List[str],
+    custom_input: list[Any] | None,
+    dimensions: int | None,
+    exception: Exception | None,
+) -> TestCase:
+    expected = exception or check_embeddings_response(
+        input, custom_input, dimensions or 1408
+    )
+
+    return TestCase(
+        deployment=EmbeddingsDeployment.MULTI_MODAL_EMBEDDING_1,
+        input=input,
+        extra_body=(
+            {
+                "custom_input": custom_input,
+                "dimensions": dimensions,
+            }
+        ),
+        expected=expected,
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test",
     [
+        get_image_test_cases(input, custom_input, dimensions, exception)
+        for dimensions in [None, 512]
+        for input, custom_input, exception in [
+            ("dog", ["cat", image_attachment], None),
+            ([], [["image title", image_attachment]], None),
+            ([], [[image_attachment, "image title"]], None),
+            (
+                [],
+                [["text1", "text2"]],
+                Exception(
+                    "The first element of a custom_input list element must be a string "
+                    "and the second element must be an image attachment or vice versa"
+                ),
+            ),
+            (
+                [],
+                [["image title 2", image_attachment, "image title 1"]],
+                Exception(
+                    "No more than two elements are allowed in an element of custom_input list"
+                ),
+            ),
+        ]
+    ]
+    + [
         get_test_case(spec, input, custom_input, format, ty, instr, dims)
         for spec, input, custom_input, format, ty, instr, dims in product(
             specs,
             ["dog", ["fish", "cat"]],
             [None, ["ball", "sun"], [["title", "text"]]],
             ["base64", "float"],
-            [
-                None,
-                "CLASSIFICATION",
-                "CLUSTERING",
-                "DEFAULT",
-                "FACT_VERIFICATION",
-                "QUESTION_ANSWERING",
-                "RETRIEVAL_DOCUMENT",
-                "RETRIEVAL_QUERY",
-                "SEMANTIC_SIMILARITY",
-            ],
+            [None, *embedding_types],
             [None, "instruction"],
             [None, 512],
         )

@@ -31,6 +31,7 @@ The following models support `SERVER_URL/openai/deployments/DEPLOYMENT_NAME/embe
 |Embeddings for Text|text-embedding-004|English|text-to-embedding|
 |Gecko Embeddings for Text Multilingual|textembedding-gecko-multilingual@001|Multilingual|text-to-embedding|
 |Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
+|Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
 
 ## Developer environment
 

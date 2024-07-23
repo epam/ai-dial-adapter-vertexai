@@ -21,6 +21,9 @@ from aidial_adapter_vertexai.dial_api.storage import create_file_storage
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
+from aidial_adapter_vertexai.embedding.multi_modal import (
+    MultiModalEmbeddingsAdapter,
+)
 from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
 
 
@@ -67,7 +70,10 @@ async def get_chat_completion_model(
 
 
 async def get_embeddings_model(
-    deployment: EmbeddingsDeployment, project_id: str, location: str
+    deployment: EmbeddingsDeployment,
+    project_id: str,
+    location: str,
+    headers: Mapping[str, str],
 ) -> EmbeddingsAdapter:
     model_id = deployment.get_model_id()
     match deployment:
@@ -80,6 +86,10 @@ async def get_embeddings_model(
         ):
             return await TextEmbeddingsAdapter.create(
                 model_id, project_id, location
+            )
+        case EmbeddingsDeployment.MULTI_MODAL_EMBEDDING_1:
+            return await MultiModalEmbeddingsAdapter.create(
+                model_id, project_id, location, headers
             )
         case _:
             assert_never(deployment)
