@@ -53,7 +53,7 @@ class VertexAIChatCompletion(ChatCompletion):
             deployment=ChatCompletionDeployment(request.deployment_id),
             project_id=self.project_id,
             location=self.region,
-            headers=request.headers,
+            api_key=request.api_key,
         )
 
     @dial_exception_decorator

@@ -8,7 +8,6 @@ from urllib.parse import urljoin
 import aiohttp
 from pydantic import BaseModel
 
-from aidial_adapter_vertexai.utils.auth import Auth
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
@@ -26,14 +25,18 @@ class Bucket(TypedDict):
 
 class FileStorage(BaseModel):
     dial_url: str
-    auth: Auth
+    api_key: str
     bucket: Optional[Bucket] = None
+
+    @property
+    def auth_headers(self) -> Mapping[str, str]:
+        return {"api-key": self.api_key}
 
     async def _get_bucket(self, session: aiohttp.ClientSession) -> Bucket:
         if self.bucket is None:
             async with session.get(
                 f"{self.dial_url}/v1/bucket",
-                headers=self.auth.headers,
+                headers=self.auth_headers,
             ) as response:
                 response.raise_for_status()
                 self.bucket = await response.json()
@@ -69,7 +72,7 @@ class FileStorage(BaseModel):
             async with session.put(
                 url=url,
                 data=data,
-                headers=self.auth.headers,
+                headers=self.auth_headers,
             ) as response:
                 response.raise_for_status()
                 meta = await response.json()
@@ -83,7 +86,7 @@ class FileStorage(BaseModel):
     async def download_file(self, url: str) -> bytes:
         headers: Mapping[str, str] = {}
         if url.startswith(self.dial_url):
-            headers = self.auth.headers
+            headers = self.auth_headers
 
         return await download_file(url, headers)
 
@@ -102,16 +105,8 @@ def compute_hash_digest(file_content: str) -> str:
 DIAL_URL = os.getenv("DIAL_URL")
 
 
-def create_file_storage(headers: Mapping[str, str]) -> Optional[FileStorage]:
+def create_file_storage(api_key: str) -> Optional[FileStorage]:
     if DIAL_URL is None:
         return None
 
-    auth = Auth.from_headers("api-key", headers)
-    if auth is None:
-        log.debug(
-            "The request doesn't have required headers to use the DIAL file storage. "
-            "Fallback to base64 encoding of images."
-        )
-        return None
-
-    return FileStorage(dial_url=DIAL_URL, auth=auth)
+    return FileStorage(dial_url=DIAL_URL, api_key=api_key)
