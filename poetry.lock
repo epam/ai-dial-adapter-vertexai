@@ -39,7 +39,7 @@ telemetry = ["opentelemetry-api (==1.20.0)", "opentelemetry-distro (==0.41b0)", 
 type = "git"
 url = "https://github.com/epam/ai-dial-sdk.git"
 reference = "development"
-resolved_reference = "a9b121166fc3b9d46c17be3a8e3eacb8593b1732"
+resolved_reference = "608bd4e5de45fae8ea28a294e2d159c2f06c8715"
 
 [[package]]
 name = "aiocache"
