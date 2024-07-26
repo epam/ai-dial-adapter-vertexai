@@ -1,4 +1,4 @@
-from typing import Mapping, assert_never
+from typing import assert_never
 
 from aidial_adapter_vertexai.chat.bison.adapter import (
     BisonChatAdapter,
@@ -28,7 +28,7 @@ from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
 
 
 async def get_chat_completion_model(
-    headers: Mapping[str, str],
+    api_key: str,
     deployment: ChatCompletionDeployment,
     project_id: str,
     location: str,
@@ -56,12 +56,12 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.GEMINI_PRO_1_5
             | ChatCompletionDeployment.GEMINI_FLASH_1_5
         ):
-            storage = create_file_storage(headers)
+            storage = create_file_storage(api_key)
             return await GeminiChatCompletionAdapter.create(
                 storage, model_id, deployment, project_id, location
             )
         case ChatCompletionDeployment.IMAGEN_005:
-            storage = create_file_storage(headers)
+            storage = create_file_storage(api_key)
             return await ImagenChatCompletionAdapter.create(
                 storage, model_id, project_id, location
             )
