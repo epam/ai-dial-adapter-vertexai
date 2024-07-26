@@ -73,7 +73,7 @@ async def get_embeddings_model(
     deployment: EmbeddingsDeployment,
     project_id: str,
     location: str,
-    headers: Mapping[str, str],
+    api_key: str,
 ) -> EmbeddingsAdapter:
     model_id = deployment.get_model_id()
     match deployment:
@@ -89,7 +89,7 @@ async def get_embeddings_model(
             )
         case EmbeddingsDeployment.MULTI_MODAL_EMBEDDING_1:
             return await MultiModalEmbeddingsAdapter.create(
-                model_id, project_id, location, headers
+                model_id, project_id, location, api_key
             )
         case _:
             assert_never(deployment)

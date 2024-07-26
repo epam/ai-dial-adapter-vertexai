@@ -1,5 +1,5 @@
 from logging import DEBUG
-from typing import AsyncIterator, List, Mapping, Tuple
+from typing import AsyncIterator, List, Tuple
 
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
@@ -175,7 +175,7 @@ async def get_requests(
 class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
     model_id: str
     model: MultiModalEmbeddingModel
-    headers: Mapping[str, str]
+    api_key: str
     storage: FileStorage | None
 
     @classmethod
@@ -184,13 +184,13 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
         model_id: str,
         project_id: str,
         location: str,
-        headers: Mapping[str, str],
+        api_key: str,
     ) -> "EmbeddingsAdapter":
-        storage = create_file_storage(headers)
+        storage = create_file_storage(api_key)
         await init_vertex_ai(project_id, location)
         model = await get_multi_modal_embedding_model(model_id)
         return cls(
-            model_id=model_id, model=model, headers=headers, storage=storage
+            model_id=model_id, model=model, api_key=api_key, storage=storage
         )
 
     async def embeddings(
