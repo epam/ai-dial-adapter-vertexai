@@ -3,6 +3,7 @@ import mimetypes
 
 from aidial_sdk.chat_completion import Attachment
 
+from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.dial_api.storage import FileStorage, download_file
 from aidial_adapter_vertexai.utils.resource import Resource
 
@@ -31,7 +32,12 @@ async def download_attachment(
     file_storage: FileStorage | None, attachment: Attachment
 ) -> bytes:
     if attachment.data is not None:
-        return base64.b64decode(attachment.data, validate=True)
+        try:
+            return base64.b64decode(attachment.data, validate=True)
+        except Exception:
+            raise ValidationError(
+                "Data field of an attachment is expected to be base64-encoded"
+            )
 
     if attachment.url is not None:
         attachment_link: str = attachment.url
