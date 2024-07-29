@@ -1,9 +1,10 @@
 import base64
 import mimetypes
+from typing import List
 
 from aidial_sdk.chat_completion import Attachment
 
-from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.dial_api.storage import FileStorage, download_file
 from aidial_adapter_vertexai.utils.resource import Resource
 
@@ -53,3 +54,21 @@ async def download_attachment(
         return await download_file(attachment_link)
 
     raise ValueError("Invalid attachment: neither url nor data is provided")
+
+
+async def download_with_content_type(
+    supported_content_types: List[str],
+    file_storage: FileStorage | None,
+    attachment: Attachment,
+) -> bytes:
+    content_type = derive_attachment_mime_type(attachment)
+
+    if content_type is None:
+        raise ValidationError("The attachment type is not provided")
+
+    if content_type not in supported_content_types:
+        raise UserError(
+            f"Unsupported content type: {content_type}. Supported types: {', '.join(supported_content_types)}."
+        )
+
+    return await download_attachment(file_storage, attachment)

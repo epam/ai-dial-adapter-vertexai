@@ -12,10 +12,9 @@ from vertexai.vision_models import (
     MultiModalEmbeddingResponse,
 )
 
-from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.dial_api.attachments import (
-    derive_attachment_mime_type,
-    download_attachment,
+    download_with_content_type,
 )
 from aidial_adapter_vertexai.dial_api.embedding_inputs import (
     EMPTY_INPUT_LIST_ERROR,
@@ -107,32 +106,21 @@ def validate_request(request: EmbeddingsRequest) -> None:
             )
 
 
-async def download_image(
-    file_storage: FileStorage | None, attachment: Attachment
-) -> Image:
-    content_type = derive_attachment_mime_type(attachment)
-
-    if content_type is None:
-        raise ValidationError("The attachment type is not provided")
-
-    if content_type not in SUPPORTED_IMAGE_TYPES:
-        raise UserError(
-            f"Unsupported image type: {content_type}. Supported types: {', '.join(SUPPORTED_IMAGE_TYPES)}."
-        )
-
-    data = await download_attachment(file_storage, attachment)
-    return Image(image_bytes=data)
-
-
 async def get_requests(
     request: EmbeddingsRequest,
     storage: FileStorage | None,
 ) -> AsyncIterator[ModelRequest]:
+    async def download_image(attachment: Attachment) -> Image:
+        data = await download_with_content_type(
+            SUPPORTED_IMAGE_TYPES, storage, attachment
+        )
+        return Image(image_bytes=data)
+
     async def on_text(text: str):
         return ModelRequest(contextual_text=text)
 
     async def on_attachment(attachment: Attachment):
-        return ModelRequest(image=await download_image(storage, attachment))
+        return ModelRequest(image=await download_image(attachment))
 
     async def on_mixed(inputs: List[str | Attachment]) -> ModelRequest:
         if len(inputs) == 0:
@@ -146,14 +134,14 @@ async def get_requests(
             if isinstance(inputs[0], str) and isinstance(inputs[1], Attachment):
                 return ModelRequest(
                     contextual_text=inputs[0],
-                    image=await download_image(storage, inputs[1]),
+                    image=await download_image(inputs[1]),
                 )
             elif isinstance(inputs[0], Attachment) and isinstance(
                 inputs[1], str
             ):
                 return ModelRequest(
                     contextual_text=inputs[1],
-                    image=await download_image(storage, inputs[0]),
+                    image=await download_image(inputs[0]),
                 )
             else:
                 raise ValidationError(
