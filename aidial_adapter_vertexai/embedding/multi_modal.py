@@ -1,9 +1,9 @@
+import asyncio
 from logging import DEBUG
-from typing import AsyncIterator, List, Tuple
+from typing import Any, AsyncIterator, Coroutine, List, Tuple
 
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
-from aidial_sdk.embeddings import Usage
 from aidial_sdk.embeddings.request import EmbeddingsRequest
 from pydantic import BaseModel
 from vertexai.vision_models import (
@@ -20,7 +20,6 @@ from aidial_adapter_vertexai.dial_api.embedding_inputs import (
     EMPTY_INPUT_LIST_ERROR,
     collect_embedding_inputs,
 )
-from aidial_adapter_vertexai.dial_api.response import make_embeddings_response
 from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
     create_file_storage,
@@ -28,7 +27,11 @@ from aidial_adapter_vertexai.dial_api.storage import (
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
-from aidial_adapter_vertexai.embedding.encoding import vector_to_base64
+from aidial_adapter_vertexai.embedding.types import (
+    Embedding,
+    make_embeddings_response,
+    vector_to_embedding,
+)
 from aidial_adapter_vertexai.utils.concurrency import make_async
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
@@ -78,8 +81,9 @@ class ModelRequest(BaseModel):
 async def compute_embeddings(
     request: ModelRequest,
     model: MultiModalEmbeddingModel,
+    base64_encode: bool,
     dimensions: int | None,
-) -> Tuple[List[float], int]:
+) -> Tuple[Embedding, int]:
 
     if log.isEnabledFor(DEBUG):
         msg = json_dumps_short(
@@ -104,7 +108,9 @@ async def compute_embeddings(
         msg = json_dumps_short(response)
         log.debug(f"response: {msg}")
 
-    return request.extract_embeddings(response)
+    vec, tokens = request.extract_embeddings(response)
+
+    return vector_to_embedding(base64_encode, vec), tokens
 
 
 def validate_request(request: EmbeddingsRequest) -> None:
@@ -199,26 +205,28 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
 
         validate_request(request)
 
-        vectors: List[List[float] | str] = []
-        token_count = 0
+        embeddings: List[Embedding] = []
+        tokens = 0
 
         # NOTE: The model doesn't support batched inputs
+        tasks: List[Coroutine[Any, Any, Tuple[Embedding, int]]] = []
+        base64_encode = request.encoding_format == "base64"
         async for sub_request in await get_requests(request, self.storage):
-            embedding, tokens = await compute_embeddings(
-                sub_request, self.model, dimensions=request.dimensions
+            tasks.append(
+                compute_embeddings(
+                    sub_request,
+                    self.model,
+                    base64_encode=base64_encode,
+                    dimensions=request.dimensions,
+                )
             )
 
-            vector = (
-                vector_to_base64(embedding)
-                if request.encoding_format == "base64"
-                else embedding
-            )
-
-            vectors.append(vector)
-            token_count += tokens
+        for embedding, tokens in await asyncio.gather(*tasks):
+            embeddings.append(embedding)
+            tokens += tokens
 
         return make_embeddings_response(
             model=self.model_id,
-            vectors=vectors,
-            usage=Usage(prompt_tokens=token_count, total_tokens=token_count),
+            vectors=embeddings,
+            tokens=tokens,
         )
