@@ -18,6 +18,7 @@ from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
 from aidial_adapter_vertexai.embedding.encoding import vector_to_base64
+from aidial_adapter_vertexai.utils.concurrency import make_async
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.vertex_ai import (
@@ -80,7 +81,12 @@ async def compute_embeddings(
         )
         log.debug(f"request: {msg}")
 
-    response = model.get_embeddings(inputs, output_dimensionality=dimensions)
+    response = await make_async(
+        lambda _: model.get_embeddings(
+            inputs, output_dimensionality=dimensions
+        ),
+        (),
+    )
 
     if log.isEnabledFor(DEBUG):
         msg = json_dumps_short(response, excluded_keys=["_prediction_response"])

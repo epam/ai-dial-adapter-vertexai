@@ -29,6 +29,7 @@ from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
 from aidial_adapter_vertexai.embedding.encoding import vector_to_base64
+from aidial_adapter_vertexai.utils.concurrency import make_async
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.vertex_ai import (
@@ -48,11 +49,19 @@ class ModelRequest(BaseModel):
     image: Image | None = None
     contextual_text: str | None = None
 
+    def count_input_tokens(self) -> int:
+        # The model doesn't report the number of input tokens.
+        # However, one could count it oneself:
+        # https://cloud.google.com/vertex-ai/generative-ai/pricing#embedding-models
+        # As of 29 Jul 2024, one image costs as much as 500 text input characters
+        ret = len(self.contextual_text or "")
+        if self.image:
+            ret += 500
+        return ret
+
     def extract_embeddings(
         self, response: MultiModalEmbeddingResponse
     ) -> Tuple[List[float], int]:
-        # The model doesn't report the number of input tokens
-        tokens = 1
 
         vector: List[float] | None = None
         if self.image:
@@ -63,7 +72,7 @@ class ModelRequest(BaseModel):
         if vector is None:
             raise ValueError("No embeddings returned")
 
-        return vector, tokens
+        return vector, self.count_input_tokens()
 
 
 async def compute_embeddings(
@@ -82,10 +91,13 @@ async def compute_embeddings(
         )
         log.debug(f"request: {msg}")
 
-    response: MultiModalEmbeddingResponse = model.get_embeddings(
-        image=request.image,
-        contextual_text=request.contextual_text,
-        dimension=dimensions,
+    response: MultiModalEmbeddingResponse = await make_async(
+        lambda _: model.get_embeddings(
+            image=request.image,
+            contextual_text=request.contextual_text,
+            dimension=dimensions,
+        ),
+        (),
     )
 
     if log.isEnabledFor(DEBUG):
