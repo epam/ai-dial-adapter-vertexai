@@ -14,12 +14,12 @@ def vector_to_embedding(base64_encode: bool, vector: List[float]) -> Embedding:
 
 
 def make_embeddings_response(
-    model: str, vectors: List[Embedding], tokens: int
+    model: str, embeddings: List[Embedding], tokens: int
 ) -> EmbeddingsResponse:
 
     data: List[SDKEmbedding] = [
         SDKEmbedding(index=index, embedding=embedding)
-        for index, embedding in enumerate(vectors)
+        for index, embedding in enumerate(embeddings)
     ]
 
     usage = Usage(
