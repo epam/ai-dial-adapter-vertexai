@@ -1,6 +1,5 @@
-import asyncio
 from logging import DEBUG
-from typing import Any, AsyncIterator, Coroutine, List, Tuple
+from typing import AsyncIterator, Callable, List, Tuple
 
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
@@ -32,7 +31,7 @@ from aidial_adapter_vertexai.embedding.types import (
     make_embeddings_response,
     vector_to_embedding,
 )
-from aidial_adapter_vertexai.utils.concurrency import make_async
+from aidial_adapter_vertexai.utils.concurrency import gather_sync
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.vertex_ai import (
@@ -78,7 +77,7 @@ class ModelRequest(BaseModel):
         return vector, self.count_input_tokens()
 
 
-async def compute_embeddings(
+def compute_embeddings(
     request: ModelRequest,
     model: MultiModalEmbeddingModel,
     base64_encode: bool,
@@ -95,13 +94,10 @@ async def compute_embeddings(
         )
         log.debug(f"request: {msg}")
 
-    response: MultiModalEmbeddingResponse = await make_async(
-        lambda _: model.get_embeddings(
-            image=request.image,
-            contextual_text=request.contextual_text,
-            dimension=dimensions,
-        ),
-        (),
+    response: MultiModalEmbeddingResponse = model.get_embeddings(
+        image=request.image,
+        contextual_text=request.contextual_text,
+        dimension=dimensions,
     )
 
     if log.isEnabledFor(DEBUG):
@@ -205,15 +201,13 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
 
         validate_request(request)
 
-        embeddings: List[Embedding] = []
-        tokens = 0
+        base64_encode = request.encoding_format == "base64"
 
         # NOTE: The model doesn't support batched inputs
-        tasks: List[Coroutine[Any, Any, Tuple[Embedding, int]]] = []
-        base64_encode = request.encoding_format == "base64"
+        tasks: List[Callable[[], Tuple[Embedding, int]]] = []
         async for sub_request in await get_requests(request, self.storage):
             tasks.append(
-                compute_embeddings(
+                lambda: compute_embeddings(
                     sub_request,
                     self.model,
                     base64_encode=base64_encode,
@@ -221,7 +215,10 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
                 )
             )
 
-        for embedding, tokens in await asyncio.gather(*tasks):
+        embeddings: List[Embedding] = []
+        tokens = 0
+
+        for embedding, tokens in await gather_sync(tasks):
             embeddings.append(embedding)
             tokens += tokens
 
