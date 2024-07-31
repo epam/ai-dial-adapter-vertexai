@@ -40,5 +40,7 @@ class EmbeddingsDeployment(str, Enum):
     TEXT_EMBEDDING_GECKO_MULTILINGUAL_1 = "textembedding-gecko-multilingual@001"
     TEXT_MULTILINGUAL_EMBEDDING_2 = "text-multilingual-embedding-002"
 
+    MULTI_MODAL_EMBEDDING_1 = "multimodalembedding@001"
+
     def get_model_id(self) -> str:
         return self.value

@@ -1,8 +1,7 @@
 from logging import DEBUG
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
-from aidial_sdk.embeddings import Usage
 from aidial_sdk.embeddings.request import EmbeddingsRequest
 from pydantic import BaseModel
 from vertexai.language_models import TextEmbeddingInput
@@ -13,14 +12,22 @@ from aidial_adapter_vertexai.dial_api.embedding_inputs import (
     EMPTY_INPUT_LIST_ERROR,
     collect_embedding_inputs_without_attachments,
 )
-from aidial_adapter_vertexai.dial_api.response import make_embeddings_response
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
-from aidial_adapter_vertexai.embedding.encoding import vector_to_base64
+from aidial_adapter_vertexai.embedding.types import (
+    Embedding,
+    make_embeddings_response,
+    vector_to_embedding,
+)
+from aidial_adapter_vertexai.utils.concurrency import make_async
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.vertex_ai import TextEmbeddingModel
+from aidial_adapter_vertexai.vertex_ai import (
+    TextEmbeddingModel,
+    get_text_embedding_model,
+    init_vertex_ai,
+)
 
 # See available task types at: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api#tasktype
 # The list of task types tends to grow with time,
@@ -63,12 +70,11 @@ specs: Dict[str, ModelSpec] = {
 
 
 async def compute_embeddings(
-    model_id: str,
     model: TextEmbeddingModel,
     base64_encode: bool,
     dimensions: int | None,
     inputs: List[str | TextEmbeddingInput],
-) -> EmbeddingsResponse:
+) -> Tuple[List[Embedding], int]:
 
     if log.isEnabledFor(DEBUG):
         msg = json_dumps_short(
@@ -76,32 +82,27 @@ async def compute_embeddings(
         )
         log.debug(f"request: {msg}")
 
-    embeddings = model.get_embeddings(inputs, output_dimensionality=dimensions)
+    response = await make_async(
+        lambda _: model.get_embeddings(
+            inputs, output_dimensionality=dimensions
+        ),
+        (),
+    )
 
     if log.isEnabledFor(DEBUG):
-        msg = json_dumps_short(
-            embeddings, excluded_keys=["_prediction_response"]
-        )
+        msg = json_dumps_short(response, excluded_keys=["_prediction_response"])
         log.debug(f"response: {msg}")
 
-    vectors: List[List[float] | str] = []
-    token_count = 0
+    embeddings: List[Embedding] = []
+    tokens = 0
 
-    for embedding in embeddings:
-        vectors.append(
-            vector_to_base64(embedding.values)
-            if base64_encode
-            else embedding.values
-        )
+    for embedding in response:
+        embeddings.append(vector_to_embedding(base64_encode, embedding.values))
 
         if embedding.statistics:
-            token_count += embedding.statistics.token_count
+            tokens += embedding.statistics.token_count
 
-    return make_embeddings_response(
-        model=model_id,
-        vectors=vectors,
-        usage=Usage(prompt_tokens=token_count, total_tokens=token_count),
-    )
+    return embeddings, tokens
 
 
 def validate_request(spec: ModelSpec, request: EmbeddingsRequest) -> None:
@@ -153,6 +154,20 @@ async def get_embedding_inputs(
 
 
 class TextEmbeddingsAdapter(EmbeddingsAdapter):
+    model_id: str
+    model: TextEmbeddingModel
+
+    @classmethod
+    async def create(
+        cls,
+        model_id: str,
+        project_id: str,
+        location: str,
+    ) -> "EmbeddingsAdapter":
+        await init_vertex_ai(project_id, location)
+        model = await get_text_embedding_model(model_id)
+        return cls(model_id=model_id, model=model)
+
     async def embeddings(
         self, request: EmbeddingsRequest
     ) -> EmbeddingsResponse:
@@ -172,10 +187,12 @@ class TextEmbeddingsAdapter(EmbeddingsAdapter):
 
         base64_encode = request.encoding_format == "base64"
 
-        return await compute_embeddings(
-            self.model_id,
-            self.model,
-            base64_encode,
-            request.dimensions,
-            inputs,
+        embeddings, tokens = await compute_embeddings(
+            self.model, base64_encode, request.dimensions, inputs
+        )
+
+        return make_embeddings_response(
+            model=self.model_id,
+            embeddings=embeddings,
+            tokens=tokens,
         )

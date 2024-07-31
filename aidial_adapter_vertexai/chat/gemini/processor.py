@@ -14,8 +14,8 @@ from aidial_sdk.chat_completion import Attachment, Message
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.inputs import (
-    MessageWithResources,
+from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
+from aidial_adapter_vertexai.dial_api.attachments import (
     derive_attachment_mime_type,
     download_attachment,
 )

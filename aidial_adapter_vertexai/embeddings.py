@@ -17,6 +17,7 @@ class VertexAIEmbeddings(Embeddings):
             deployment=EmbeddingsDeployment(request.deployment_id),
             project_id=self.project_id,
             location=self.region,
+            api_key=request.api_key,
         )
 
         return await model.embeddings(request)
