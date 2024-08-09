@@ -142,7 +142,8 @@ class ToolsConfig(BaseModel):
                 function_declarations=[
                     GeminiFunction(
                         name=func.name,
-                        parameters=func.parameters,
+                        parameters=func.parameters
+                        or {"type": "object", "properties": {}},
                         description=func.description,
                     )
                     for func in self.functions
