@@ -1,11 +1,8 @@
-FROM ubuntu:23.10 as builder
+FROM python:3.11-alpine as builder
 
-# python3.11 is used in ubuntu:23.10 (https://packages.ubuntu.com/jammy/python3)
-RUN apt-get update && \
-  apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-poetry
+RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
+RUN apk add --no-cache alpine-sdk linux-headers
+RUN pip install poetry
 
 WORKDIR /app
 
@@ -17,11 +14,13 @@ RUN poetry install --no-interaction --no-ansi --no-cache --no-root --no-director
 COPY . .
 RUN poetry install --no-interaction --no-ansi --no-cache --only main
 
-FROM ubuntu:23.10 as server
+FROM python:3.11-alpine as server
 
-# python3.11 is used in ubuntu:23.10
-RUN apt-get update && \
-  apt-get install -y python3 adduser
+RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
+# fix CVE-2023-52425
+RUN apk upgrade --no-cache libexpat
+# fix CVE-2024-6345
+RUN pip install "setuptools==70.0.0"
 
 WORKDIR /app
 
