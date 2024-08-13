@@ -21,7 +21,7 @@ google-cloud-aiplatform = "^1.49.0"
 google-auth = "2.21.0"
 openai = "1.13.3"
 pydantic = "1.10.13"
-uvicorn = "0.22.0"
+uvicorn = "0.23.2"
 aiocache = "0.12.2"
 pillow = "^10.3.0"
 pypdf = {version = "^4.2.0", extras = ["crypto"]}
