@@ -225,5 +225,5 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
         return make_embeddings_response(
             model=self.model_id,
             embeddings=embeddings,
-            tokens=tokens,
+            tokens=total_tokens,
         )
