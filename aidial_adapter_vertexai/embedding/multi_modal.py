@@ -216,11 +216,11 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
             )
 
         embeddings: List[Embedding] = []
-        tokens = 0
+        total_tokens = 0
 
         for embedding, tokens in await gather_sync(tasks):
             embeddings.append(embedding)
-            tokens += tokens
+            total_tokens += tokens
 
         return make_embeddings_response(
             model=self.model_id,
