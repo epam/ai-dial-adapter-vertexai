@@ -1,4 +1,3 @@
-import vertexai
 from aiocache import cached
 from vertexai.preview.generative_models import GenerativeModel
 from vertexai.preview.language_models import (
@@ -10,15 +9,6 @@ from vertexai.preview.vision_models import ImageGenerationModel
 from vertexai.vision_models import MultiModalEmbeddingModel
 
 from aidial_adapter_vertexai.utils.concurrency import make_async
-
-
-# TODO: For now assume that there will be only one project and location.
-# We need to fix it otherwise.
-@cached()
-async def init_vertex_ai(project_id: str, location: str) -> None:
-    await make_async(
-        lambda _: vertexai.init(project=project_id, location=location), ()
-    )
 
 
 @cached()
