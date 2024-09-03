@@ -10,7 +10,6 @@ from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.vertex_ai import (
     get_chat_model,
     get_code_chat_model,
-    init_vertex_ai,
 )
 
 
@@ -52,7 +51,6 @@ class BisonChatAdapter(BisonChatCompletionAdapter):
     async def create(
         cls, model_id: str, project_id: str, location: str
     ) -> "BisonChatAdapter":
-        await init_vertex_ai(project_id, location)
         return cls(await get_chat_model(model_id))
 
     def prepare_parameters_no_stream(
@@ -108,7 +106,6 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
     async def create(
         cls, model_id: str, project_id: str, location: str
     ) -> "BisonCodeChatAdapter":
-        await init_vertex_ai(project_id, location)
         return cls(await get_code_chat_model(model_id))
 
     def validate_parameters(self, params: ModelParameters) -> None:

@@ -34,10 +34,7 @@ from aidial_adapter_vertexai.embedding.types import (
 from aidial_adapter_vertexai.utils.concurrency import gather_sync
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.vertex_ai import (
-    get_multi_modal_embedding_model,
-    init_vertex_ai,
-)
+from aidial_adapter_vertexai.vertex_ai import get_multi_modal_embedding_model
 
 # See the documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-embeddings-api
 
@@ -189,7 +186,6 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
         api_key: str,
     ) -> "EmbeddingsAdapter":
         storage = create_file_storage(api_key)
-        await init_vertex_ai(project_id, location)
         model = await get_multi_modal_embedding_model(model_id)
         return cls(
             model_id=model_id, model=model, api_key=api_key, storage=storage
