@@ -2,7 +2,7 @@ from typing import Optional
 
 from aidial_sdk.chat_completion import Response
 from aidial_sdk.exceptions import HTTPException as DialException
-from aidial_sdk.exceptions import request_validation_error
+from aidial_sdk.exceptions import RequestValidationError
 
 
 class UserError(Exception):
@@ -35,7 +35,7 @@ class UserError(Exception):
             await response.aflush()
 
     def to_dial_exception(self) -> DialException:
-        return request_validation_error(
+        return RequestValidationError(
             message=self.error_message,
             display_message=self.error_message,
         )
@@ -60,7 +60,7 @@ class ValidationError(Exception):
         super().__init__(self.message)
 
     def to_dial_exception(self) -> DialException:
-        return request_validation_error(self.message)
+        return RequestValidationError(self.message)
 
 
 # The third category of errors is everything else, including standard Python exceptions, like ValueError or KeyError.

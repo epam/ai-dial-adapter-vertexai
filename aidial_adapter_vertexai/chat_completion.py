@@ -20,7 +20,7 @@ from aidial_sdk.deployment.truncate_prompt import (
     TruncatePromptResult,
     TruncatePromptSuccess,
 )
-from aidial_sdk.exceptions import resource_not_found_error
+from aidial_sdk.exceptions import ResourceNotFoundError
 from typing_extensions import override
 
 from aidial_adapter_vertexai.adapters import get_chat_completion_model
@@ -116,7 +116,7 @@ class VertexAIChatCompletion(ChatCompletion):
         if not is_implemented(
             model.count_completion_tokens
         ) or not is_implemented(model.count_prompt_tokens):
-            raise resource_not_found_error("The endpoint is not implemented")
+            raise ResourceNotFoundError("The endpoint is not implemented")
 
         outputs: List[TokenizeOutput] = []
         for input in request.inputs:
@@ -164,7 +164,7 @@ class VertexAIChatCompletion(ChatCompletion):
         model = await self._get_model(request)
 
         if not is_implemented(model.truncate_prompt):
-            raise resource_not_found_error("The endpoint is not implemented")
+            raise ResourceNotFoundError("The endpoint is not implemented")
 
         outputs: List[TruncatePromptResult] = []
         for input in request.inputs:

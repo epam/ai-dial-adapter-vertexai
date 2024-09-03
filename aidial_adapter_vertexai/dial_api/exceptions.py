@@ -1,7 +1,7 @@
 from functools import wraps
 
 from aidial_sdk.exceptions import HTTPException as DialException
-from aidial_sdk.exceptions import internal_server_error, invalid_request_error
+from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
 from google.api_core.exceptions import (
     GoogleAPICallError,
     InvalidArgument,
@@ -36,13 +36,13 @@ def to_dial_exception(e: Exception) -> DialException:
             "The response is blocked, as it may violate our policies."
         )
         if content_filter_msg in str(e):
-            return invalid_request_error(
+            return InvalidRequestError(
                 message=content_filter_msg,
                 code="content_filter",
                 param="prompt",
             )
 
-        return invalid_request_error(
+        return InvalidRequestError(
             f"Invalid argument: {str(e)}",
         )
 
@@ -62,7 +62,7 @@ def to_dial_exception(e: Exception) -> DialException:
     if isinstance(e, DialException):
         return e
 
-    return internal_server_error(str(e))
+    return InternalServerError(str(e))
 
 
 def dial_exception_decorator(func):
