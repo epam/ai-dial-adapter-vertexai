@@ -38,6 +38,7 @@ class UserError(Exception):
         return RequestValidationError(
             message=self.error_message,
             display_message=self.error_message,
+            code="invalid_argument",
         )
 
 
@@ -60,7 +61,10 @@ class ValidationError(Exception):
         super().__init__(self.message)
 
     def to_dial_exception(self) -> DialException:
-        return RequestValidationError(self.message)
+        return RequestValidationError(
+            message=self.message,
+            code="invalid_argument",
+        )
 
 
 # The third category of errors is everything else, including standard Python exceptions, like ValueError or KeyError.
