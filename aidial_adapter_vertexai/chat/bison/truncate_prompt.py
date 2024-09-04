@@ -1,10 +1,11 @@
 from typing import List, Tuple
 
+from aidial_sdk.exceptions import TruncatePromptSystemAndLastUserError
+
 from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
-from aidial_adapter_vertexai.chat.errors import ValidationError
 
 
 def _estimate_discarded_messages(
@@ -38,8 +39,8 @@ async def get_discarded_messages_count(
         return 0
 
     if len(messages) == 1:
-        raise ValidationError(
-            f"Prompt token size ({prompt_tokens}) exceeds prompt token limit ({max_prompt_tokens})."
+        raise TruncatePromptSystemAndLastUserError(
+            max_prompt_tokens, prompt_tokens
         )
 
     discarded_messages_count = _estimate_discarded_messages(
@@ -64,9 +65,8 @@ async def get_discarded_messages_count(
             if prompt_tokens <= max_prompt_tokens:
                 return discarded_messages_count
 
-        raise ValidationError(
-            f"The token size of system message and the last user message ({prompt_tokens}) exceeds"
-            f" prompt token limit ({max_prompt_tokens})."
+        raise TruncatePromptSystemAndLastUserError(
+            max_prompt_tokens, prompt_tokens
         )
     else:  # prompt_tokens < max_prompt_tokens
         for index in range(discarded_messages_count - 2, 0, -2):

@@ -2,19 +2,19 @@
 
 [[package]]
 name = "aidial-sdk"
-version = "0.10.0"
+version = "0.13.0"
 description = "Framework to create applications and model adapters for AI DIAL"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "aidial_sdk-0.10.0-py3-none-any.whl", hash = "sha256:230c3a97cbb54997a98e99175df8e43f5f201397dc9bd242e92fa5e5db93b634"},
-    {file = "aidial_sdk-0.10.0.tar.gz", hash = "sha256:5187e713ad2a6ceded47abb9709af09c0f9312ba1cd595bf69717f20457051a7"},
+    {file = "aidial_sdk-0.13.0-py3-none-any.whl", hash = "sha256:35784f12367e43f4540d67bab7b18315832e313517e02e969068d7ff2de3d69e"},
+    {file = "aidial_sdk-0.13.0.tar.gz", hash = "sha256:c895c22d95d1c1954e170ebda3f5010e80cd47ed8b7225d375d1da01f67962e5"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.8.3,<4.0.0"
 fastapi = ">=0.51,<1.0"
-httpx = ">=0.25.0,<0.26.0"
+httpx = ">=0.25.0,<1.0"
 opentelemetry-api = {version = "1.20.0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-distro = {version = "0.41b0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-exporter-otlp-proto-grpc = {version = "1.20.0", optional = true, markers = "extra == \"telemetry\""}
@@ -2765,4 +2765,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "988320d553463ab84ccf59b09f218ee0e4690d3bee90a24fbf083c19daead977"
+content-hash = "ce024e56a0cb7603e0dfda0c2315346b861046879aa6db9d8e071ffdc6eafea2"
