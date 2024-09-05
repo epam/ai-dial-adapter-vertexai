@@ -23,10 +23,7 @@ from aidial_adapter_vertexai.dial_api.storage import (
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
-from aidial_adapter_vertexai.vertex_ai import (
-    get_image_generation_model,
-    init_vertex_ai,
-)
+from aidial_adapter_vertexai.vertex_ai import get_image_generation_model
 
 ImagenPrompt = str
 
@@ -135,6 +132,5 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         project_id: str,
         location: str,
     ) -> "ImagenChatCompletionAdapter":
-        await init_vertex_ai(project_id, location)
         model = await get_image_generation_model(model_id)
         return cls(file_storage, model)

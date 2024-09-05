@@ -46,7 +46,7 @@ from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 from aidial_adapter_vertexai.utils.timer import Timer
-from aidial_adapter_vertexai.vertex_ai import get_gemini_model, init_vertex_ai
+from aidial_adapter_vertexai.vertex_ai import get_gemini_model
 
 HarmCategory = generative_models.HarmCategory
 HarmBlockThreshold = generative_models.HarmBlockThreshold
@@ -220,7 +220,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         project_id: str,
         location: str,
     ) -> "GeminiChatCompletionAdapter":
-        await init_vertex_ai(project_id, location)
         model = await get_gemini_model(model_id)
         return cls(file_storage, model, deployment)
 

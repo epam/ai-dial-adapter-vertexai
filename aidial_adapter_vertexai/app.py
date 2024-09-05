@@ -1,3 +1,6 @@
+from contextlib import asynccontextmanager
+
+import vertexai
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
 
@@ -18,10 +21,18 @@ from aidial_adapter_vertexai.utils.log_config import configure_loggers
 DEFAULT_REGION = get_env("DEFAULT_REGION")
 GCP_PROJECT_ID = get_env("GCP_PROJECT_ID")
 
+
+@asynccontextmanager
+async def lifespan(app: DIALApp):
+    vertexai.init(project=GCP_PROJECT_ID, location=DEFAULT_REGION)
+    yield
+
+
 app = DIALApp(
     description="Google VertexAI adapter for DIAL API",
     telemetry_config=TelemetryConfig(),
     add_healthcheck=True,
+    lifespan=lifespan,
 )
 
 # NOTE: configuring logger after the DIAL telemetry is initialized,
