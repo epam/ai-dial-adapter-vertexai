@@ -1,4 +1,3 @@
-import time
 from contextlib import asynccontextmanager
 
 import vertexai
@@ -16,10 +15,8 @@ from aidial_adapter_vertexai.dial_api.response import (
     ModelsResponse,
 )
 from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
-from aidial_adapter_vertexai.utils.concurrency import gather_sync
 from aidial_adapter_vertexai.utils.env import get_env
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
-from aidial_adapter_vertexai.vertex_ai import DEPLOYMENT_TO_CONSTRUCTOR
 
 DEFAULT_REGION = get_env("DEFAULT_REGION")
 GCP_PROJECT_ID = get_env("GCP_PROJECT_ID")
@@ -53,22 +50,10 @@ def _init_embeddings(app: DIALApp) -> None:
 
 @asynccontextmanager
 async def lifespan(app: DIALApp):
-    vertex_start_time = time.time()
+    # NOTE: configuring logger after the DIAL telemetry is initialized,
+    # because it may have configured the root logger on its own.
+    configure_loggers()
     _init_vertexai_client()
-
-    print(
-        f"VertexAI client initialized in {time.time() - vertex_start_time} seconds"
-    )
-
-    start_time = time.time()
-
-    tasks = [
-        lambda: DEPLOYMENT_TO_CONSTRUCTOR[deployment](deployment.get_model_id())
-        for deployment in ChatCompletionDeployment
-    ]
-    await gather_sync(tasks)
-    print(f"Model initialized in {time.time() - start_time} seconds")
-
     _init_embeddings(app)
     _init_chat_completions(app)
     yield
@@ -80,11 +65,6 @@ app = DIALApp(
     add_healthcheck=True,
     lifespan=lifespan,
 )
-
-
-# NOTE: configuring logger after the DIAL telemetry is initialized,
-# because it may have configured the root logger on its own.
-configure_loggers()
 
 
 @app.get("/openai/models")
