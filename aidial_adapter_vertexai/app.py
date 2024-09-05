@@ -22,42 +22,9 @@ DEFAULT_REGION = get_env("DEFAULT_REGION")
 GCP_PROJECT_ID = get_env("GCP_PROJECT_ID")
 
 
-def _init_vertexai_client() -> None:
-    # TODO: For now assume that there will be only one project and location.
-    # We need to fix it otherwise.
-    vertexai.init(project=GCP_PROJECT_ID, location=DEFAULT_REGION)
-
-
-def _init_chat_completions(app: DIALApp) -> None:
-    for deployment in ChatCompletionDeployment:
-        app.add_chat_completion(
-            deployment.get_model_id(),
-            VertexAIChatCompletion(
-                project_id=GCP_PROJECT_ID,
-                region=DEFAULT_REGION,
-            ),
-        )
-
-
-def _init_embeddings(app: DIALApp) -> None:
-    for deployment in EmbeddingsDeployment:
-        app.add_embeddings(
-            deployment.get_model_id(),
-            VertexAIEmbeddings(
-                project_id=GCP_PROJECT_ID,
-                region=DEFAULT_REGION,
-            ),
-        )
-
-
 @asynccontextmanager
 async def lifespan(app: DIALApp):
-    # NOTE: configuring logger after the DIAL telemetry is initialized,
-    # because it may have configured the root logger on its own.
-    configure_loggers()
-    _init_vertexai_client()
-    _init_embeddings(app)
-    _init_chat_completions(app)
+    vertexai.init(project=GCP_PROJECT_ID, location=DEFAULT_REGION)
     yield
 
 
@@ -67,6 +34,10 @@ app = DIALApp(
     add_healthcheck=True,
     lifespan=lifespan,
 )
+
+# NOTE: configuring logger after the DIAL telemetry is initialized,
+# because it may have configured the root logger on its own.
+configure_loggers()
 
 
 @app.get("/openai/models")
@@ -78,3 +49,23 @@ async def models():
     ]
 
     return ModelsResponse(data=models)
+
+
+for deployment in ChatCompletionDeployment:
+    app.add_chat_completion(
+        deployment.get_model_id(),
+        VertexAIChatCompletion(
+            project_id=GCP_PROJECT_ID,
+            region=DEFAULT_REGION,
+        ),
+    )
+
+
+for deployment in EmbeddingsDeployment:
+    app.add_embeddings(
+        deployment.get_model_id(),
+        VertexAIEmbeddings(
+            project_id=GCP_PROJECT_ID,
+            region=DEFAULT_REGION,
+        ),
+    )
