@@ -13,7 +13,7 @@ from aidial_adapter_vertexai.utils.concurrency import make_single_thread_async
 
 @cached()
 async def get_code_chat_model(model_id: str) -> CodeChatModel:
-    # TODO: We're using single trehaded async call, because
+    # TODO: We're using single threaded async call, because
     # calling `from_pretrained` in different threads cause deadlock
     # https://github.com/googleapis/python-aiplatform/issues/4342
     # When this issue is resolved, we use just `make_async`

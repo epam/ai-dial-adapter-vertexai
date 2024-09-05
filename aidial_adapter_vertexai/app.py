@@ -23,6 +23,8 @@ GCP_PROJECT_ID = get_env("GCP_PROJECT_ID")
 
 
 def _init_vertexai_client() -> None:
+    # TODO: For now assume that there will be only one project and location.
+    # We need to fix it otherwise.
     vertexai.init(project=GCP_PROJECT_ID, location=DEFAULT_REGION)
 
 
