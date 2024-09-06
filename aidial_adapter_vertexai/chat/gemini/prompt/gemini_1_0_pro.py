@@ -65,5 +65,7 @@ def accommodate_first_system_message(messages: List[Message]) -> List[Message]:
     if first_message.content is None or second_message.content is None:
         return messages
 
-    content = first_message.content + "\n" + second_message.content
-    return [Message(role=Role.USER, content=content)] + messages[2:]
+    new_message = second_message.copy()
+    new_message.content = first_message.content + "\n" + second_message.content
+
+    return [new_message] + messages[2:]
