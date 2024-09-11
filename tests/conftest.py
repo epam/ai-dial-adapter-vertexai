@@ -16,8 +16,8 @@ def configure_unit_tests(monkeypatch, request):
     Set up fake environment variables for unit tests.
     """
     if "tests/unit_tests" in request.node.nodeid:
-        monkeypatch.setenv("DEFAULT_REGION", "us-central1")
-        monkeypatch.setenv("GCP_PROJECT_ID", "dummy_project_id")
+        monkeypatch.setenv("DEFAULT_REGION", "test-region")
+        monkeypatch.setenv("GCP_PROJECT_ID", "test-project-id")
 
 
 @pytest.fixture(autouse=True)
