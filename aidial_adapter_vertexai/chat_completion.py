@@ -80,6 +80,11 @@ class VertexAIChatCompletion(ChatCompletion):
 
         discarded_messages: List[int] = []
         if params.max_prompt_tokens is not None:
+            if not is_implemented(model.truncate_prompt):
+                raise ValidationError(
+                    "max_prompt_tokens request parameter is not supported"
+                )
+
             prompt, discarded_messages = await model.truncate_prompt(
                 prompt, params.max_prompt_tokens
             )
