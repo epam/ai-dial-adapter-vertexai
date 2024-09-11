@@ -224,7 +224,7 @@ def get_image_test_cases(
             ["dog", ["fish", "cat"]],
             [None, ["ball", "sun"], [["title", "text"]]],
             ["base64", "float"],
-            [None, *embedding_types],
+            [None, *sorted(embedding_types)],
             [None, "instruction"],
             [None, 512],
         )
