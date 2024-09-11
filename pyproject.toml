@@ -47,6 +47,7 @@ nox = "^2023.4.22"
 google-auth-oauthlib = "1.0.0"
 
 [tool.pytest.ini_options]
+env_override_existing_values = 1
 # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184
 filterwarnings = [
     "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
