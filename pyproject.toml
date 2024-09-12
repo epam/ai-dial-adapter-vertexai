@@ -34,6 +34,7 @@ python-dotenv = "1.0.0"
 requests = "^2.32.2"
 pytest-dotenv = "^0.5.2"
 pytest-xdist = "^3.5.0"
+asgi-lifespan = "^2.1.0"
 
 [tool.poetry.group.lint.dependencies]
 autoflake = "2.2.0"

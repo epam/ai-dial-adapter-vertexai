@@ -47,7 +47,6 @@ async def models():
         ModelObject(id=model.value, object="model")
         for model in ChatCompletionDeployment
     ]
-
     return ModelsResponse(data=models)
 
 

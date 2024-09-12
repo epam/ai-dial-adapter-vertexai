@@ -1,13 +1,12 @@
 import os
-from typing import Mapping
 
 import httpx
 import pytest
 import pytest_asyncio
+from asgi_lifespan import LifespanManager
+from google.cloud.aiplatform.constants.base import DEFAULT_REGION
 from httpx import ASGITransport
 from openai import AsyncAzureOpenAI
-
-DEFAULT_API_VERSION = "2023-03-15-preview"
 
 
 @pytest.fixture(autouse=True)
@@ -16,7 +15,8 @@ def configure_unit_tests(monkeypatch, request):
     Set up fake environment variables for unit tests.
     """
     if "tests/unit_tests" in request.node.nodeid:
-        monkeypatch.setenv("DEFAULT_REGION", "test-region")
+        monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "test-creds")
+        monkeypatch.setenv("DEFAULT_REGION", DEFAULT_REGION)
         monkeypatch.setenv("GCP_PROJECT_ID", "test-project-id")
 
 
@@ -34,11 +34,12 @@ def disable_aiocache():
 async def test_http_client():
     from aidial_adapter_vertexai.app import app
 
-    async with httpx.AsyncClient(
-        transport=ASGITransport(app=app),  # type: ignore
-        base_url="http://test-app.com",
-    ) as client:
-        yield client
+    async with LifespanManager(app):
+        async with httpx.AsyncClient(
+            transport=ASGITransport(app),  # type: ignore
+            base_url="http://test-app.com",
+        ) as client:
+            yield client
 
 
 @pytest.fixture
