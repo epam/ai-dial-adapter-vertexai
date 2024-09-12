@@ -22,11 +22,14 @@ def configure_unit_tests(monkeypatch, request):
 
 @pytest.fixture(autouse=True)
 def disable_aiocache():
-    # It's important to reset caches defined in aidial_adapter_vertexai.vertex_ai,
-    # because pytest recreates app for every test function.
-    # Cache _(which is essentially a global variable)_ is retained
-    # after the app and its event loops are closed.
-    # That's why we need to avoid it.
+    # It's important to disable caches defined in aidial_adapter_vertexai.vertex_ai,
+    # because pytest recreates app for every test function,
+    # but the caches are shared across the tests.
+    #
+    # A cached model holds a reference to an event loop
+    # that is created for the first app instance.
+    # Once the first app instance is released, the event loop is closed.
+    # This reference to a closed event loop breaks follow-up tests.
     os.environ["AIOCACHE_DISABLE"] = "1"
 
 
