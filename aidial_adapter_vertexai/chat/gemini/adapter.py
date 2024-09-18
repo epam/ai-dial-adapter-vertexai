@@ -12,8 +12,12 @@ from typing import (
 
 import vertexai.preview.generative_models as generative_models
 from aidial_sdk.chat_completion import Attachment, FinishReason, Message
+from google.cloud.aiplatform_v1beta1.types.prediction_service import (
+    GenerateContentResponse,
+)
 from typing_extensions import override
 from vertexai.preview.generative_models import (
+    Candidate,
     GenerationConfig,
     GenerationResponse,
     GenerativeModel,
@@ -158,15 +162,22 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
                 log.debug(f"response chunk: {chunk_str}")
 
-            content = get_content(chunk)
-            if content is not None:
+            if (content := get_content(chunk)) is not None:
                 await consumer.append_content(content)
                 yield content
 
-            await create_function_calls(chunk, consumer, tools)
-            await create_attachments_from_citations(chunk, consumer)
-            await set_usage(chunk, consumer)
-            await set_finish_reason(chunk, consumer)
+            if chunk.prompt_feedback:
+                await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
+                return
+
+            if chunk.candidates:
+                candidate = chunk.candidates[0]
+                await create_function_calls(candidate, consumer, tools)
+                await create_attachments_from_citations(candidate, consumer)
+                await set_finish_reason(candidate, consumer)
+
+            if chunk.usage_metadata:
+                await set_usage(chunk.usage_metadata, consumer)
 
     @override
     async def chat(
@@ -231,13 +242,9 @@ def get_content(response: GenerationResponse) -> Optional[str]:
         return None
 
 
-async def set_finish_reason(
-    response: GenerationResponse, consumer: Consumer
-) -> None:
-    reason = response.candidates[0].finish_reason
-
+async def set_finish_reason(candidate: Candidate, consumer: Consumer) -> None:
     openai_reason = to_openai_finish_reason(
-        finish_reason=reason,
+        finish_reason=candidate.finish_reason,
         retriable=consumer.is_empty(),
     )
 
@@ -246,12 +253,9 @@ async def set_finish_reason(
 
 
 async def create_attachments_from_citations(
-    response: GenerationResponse,
-    consumer: Consumer,
+    candidate: Candidate, consumer: Consumer
 ) -> None:
-    if response.candidates is None or not len(response.candidates):
-        return None
-    citation_metadata = response.candidates[0].citation_metadata
+    citation_metadata = candidate.citation_metadata
 
     if (
         citation_metadata is None
@@ -267,22 +271,22 @@ async def create_attachments_from_citations(
             )
 
 
-async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
-    usage = response.usage_metadata
-    if usage:
-        log.debug(f"usage: {json_dumps(usage)}")
-        await consumer.set_usage(
-            TokenUsage(
-                prompt_tokens=usage.prompt_token_count,
-                completion_tokens=usage.candidates_token_count,
-            )
+async def set_usage(
+    usage: GenerateContentResponse.UsageMetadata, consumer: Consumer
+) -> None:
+    log.debug(f"usage: {json_dumps(usage)}")
+    await consumer.set_usage(
+        TokenUsage(
+            prompt_tokens=usage.prompt_token_count,
+            completion_tokens=usage.candidates_token_count,
         )
+    )
 
 
 async def create_function_calls(
-    response: GenerationResponse, consumer: Consumer, tools: ToolsConfig
+    candidate: Candidate, consumer: Consumer, tools: ToolsConfig
 ) -> None:
-    for call in response.candidates[0].function_calls:
+    for call in candidate.function_calls:
         arguments = json.dumps(recurse_proto_marshal_to_dict(call.args))
 
         if tools.is_tool:
