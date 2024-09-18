@@ -162,22 +162,22 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
                 log.debug(f"response chunk: {chunk_str}")
 
-            if (content := get_content(chunk)) is not None:
+            if chunk.candidates:
+                candidate = chunk.candidates[0]
+
+                content = candidate.text
                 await consumer.append_content(content)
                 yield content
 
-            if chunk.prompt_feedback:
-                await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
-                return
-
-            if chunk.candidates:
-                candidate = chunk.candidates[0]
                 await create_function_calls(candidate, consumer, tools)
                 await create_attachments_from_citations(candidate, consumer)
                 await set_finish_reason(candidate, consumer)
 
             if chunk.usage_metadata:
                 await set_usage(chunk.usage_metadata, consumer)
+
+            if chunk.prompt_feedback:
+                await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
 
     @override
     async def chat(
@@ -233,13 +233,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     ) -> "GeminiChatCompletionAdapter":
         model = await get_gemini_model(model_id)
         return cls(file_storage, model, deployment)
-
-
-def get_content(response: GenerationResponse) -> Optional[str]:
-    try:
-        return response.text
-    except Exception:
-        return None
 
 
 async def set_finish_reason(candidate: Candidate, consumer: Consumer) -> None:
