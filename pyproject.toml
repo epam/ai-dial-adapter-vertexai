@@ -24,7 +24,7 @@ pydantic = "1.10.13"
 uvicorn = "0.22.0"
 aiocache = "0.12.2"
 pillow = "^10.3.0"
-pypdf = {version = "^4.2.0", extras = ["crypto"]}
+pypdf = {version = "^4.3.1", extras = ["crypto"]}
 numpy = "^2.0.0"
 
 [tool.poetry.group.test.dependencies]
