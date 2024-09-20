@@ -49,10 +49,11 @@ google-auth-oauthlib = "1.0.0"
 
 [tool.pytest.ini_options]
 env_override_existing_values = 1
-# muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184
+# muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
 filterwarnings = [
     "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
     "ignore::DeprecationWarning:google.rpc",
+    "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies"
 ]
 
 [tool.pyright]
