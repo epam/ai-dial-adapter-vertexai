@@ -108,7 +108,7 @@ chat_deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
     ChatCompletionDeployment.CODECHAT_BISON_1,
     ChatCompletionDeployment.GEMINI_PRO_1,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
 ]
 
 
@@ -123,7 +123,7 @@ def is_codechat(deployment: ChatCompletionDeployment) -> bool:
 def supports_tools(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_PRO_1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
     ]
 
 
