@@ -53,8 +53,11 @@ async def get_chat_completion_model(
         case (
             ChatCompletionDeployment.GEMINI_PRO_1
             | ChatCompletionDeployment.GEMINI_PRO_VISION_1
-            | ChatCompletionDeployment.GEMINI_PRO_1_5
-            | ChatCompletionDeployment.GEMINI_FLASH_1_5
+            | ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
+            | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
+            | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
+            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
+            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
         ):
             storage = create_file_storage(api_key)
             return await GeminiChatCompletionAdapter.create(

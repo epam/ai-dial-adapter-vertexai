@@ -112,8 +112,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                     self.file_storage, tools, messages
                 )
             case (
-                ChatCompletionDeployment.GEMINI_PRO_1_5
-                | ChatCompletionDeployment.GEMINI_FLASH_1_5
+                ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
+                | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
+                | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
+                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
+                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
             ):
                 return await Gemini_1_5_Prompt.parse(
                     self.file_storage, tools, messages
