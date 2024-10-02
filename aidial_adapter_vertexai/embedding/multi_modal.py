@@ -203,8 +203,8 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
         tasks: List[Callable[[], Tuple[Embedding, int]]] = []
         async for sub_request in await get_requests(request, self.storage):
             tasks.append(
-                lambda: compute_embeddings(
-                    sub_request,
+                lambda sub_req=sub_request: compute_embeddings(
+                    sub_req,
                     self.model,
                     base64_encode=base64_encode,
                     dimensions=request.dimensions,
