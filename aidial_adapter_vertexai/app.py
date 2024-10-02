@@ -54,18 +54,12 @@ async def models():
 for deployment in ChatCompletionDeployment:
     app.add_chat_completion(
         deployment.get_model_id(),
-        VertexAIChatCompletion(
-            project_id=GCP_PROJECT_ID,
-            region=DEFAULT_REGION,
-        ),
+        VertexAIChatCompletion(),
     )
 
 
 for deployment in EmbeddingsDeployment:
     app.add_embeddings(
         deployment.get_model_id(),
-        VertexAIEmbeddings(
-            project_id=GCP_PROJECT_ID,
-            region=DEFAULT_REGION,
-        ),
+        VertexAIEmbeddings(),
     )

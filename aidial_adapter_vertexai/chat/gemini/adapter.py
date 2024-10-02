@@ -231,8 +231,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         file_storage: Optional[FileStorage],
         model_id: str,
         deployment: GeminiDeployment,
-        project_id: str,
-        location: str,
     ) -> "GeminiChatCompletionAdapter":
         model = await get_gemini_model(model_id)
         return cls(file_storage, model, deployment)

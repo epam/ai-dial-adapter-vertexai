@@ -157,12 +157,7 @@ class TextEmbeddingsAdapter(EmbeddingsAdapter):
     model: TextEmbeddingModel
 
     @classmethod
-    async def create(
-        cls,
-        model_id: str,
-        project_id: str,
-        location: str,
-    ) -> "EmbeddingsAdapter":
+    async def create(cls, model_id: str) -> "EmbeddingsAdapter":
         model = await get_text_embedding_model(model_id)
         return cls(model_id=model_id, model=model)
 
