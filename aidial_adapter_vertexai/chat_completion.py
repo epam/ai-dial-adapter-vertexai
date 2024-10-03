@@ -39,20 +39,11 @@ from aidial_adapter_vertexai.utils.not_implemented import is_implemented
 
 
 class VertexAIChatCompletion(ChatCompletion):
-    region: str
-    project_id: str
-
-    def __init__(self, region: str, project_id: str):
-        self.region = region
-        self.project_id = project_id
-
     async def _get_model(
         self, request: FromRequestDeploymentMixin
     ) -> ChatCompletionAdapter:
         return await get_chat_completion_model(
             deployment=ChatCompletionDeployment(request.deployment_id),
-            project_id=self.project_id,
-            location=self.region,
             api_key=request.api_key,
         )
 

@@ -19,10 +19,7 @@ from aidial_adapter_vertexai.dial_api.embedding_inputs import (
     EMPTY_INPUT_LIST_ERROR,
     collect_embedding_inputs,
 )
-from aidial_adapter_vertexai.dial_api.storage import (
-    FileStorage,
-    create_file_storage,
-)
+from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
@@ -174,22 +171,15 @@ async def get_requests(
 class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
     model_id: str
     model: MultiModalEmbeddingModel
-    api_key: str
     storage: FileStorage | None
 
     @classmethod
     async def create(
-        cls,
-        model_id: str,
-        project_id: str,
-        location: str,
-        api_key: str,
+        cls, storage: FileStorage | None, model_id: str
     ) -> "EmbeddingsAdapter":
-        storage = create_file_storage(api_key)
+
         model = await get_multi_modal_embedding_model(model_id)
-        return cls(
-            model_id=model_id, model=model, api_key=api_key, storage=storage
-        )
+        return cls(model_id=model_id, model=model, storage=storage)
 
     async def embeddings(
         self, request: EmbeddingsRequest

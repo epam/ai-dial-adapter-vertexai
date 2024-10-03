@@ -129,8 +129,6 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         cls,
         file_storage: Optional[FileStorage],
         model_id: str,
-        project_id: str,
-        location: str,
     ) -> "ImagenChatCompletionAdapter":
         model = await get_image_generation_model(model_id)
         return cls(file_storage, model)
