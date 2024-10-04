@@ -125,10 +125,8 @@ class AttachmentProcessors(BaseModel):
         self, dial_resource: DialResource, elem: str | Resource
     ) -> Resource | None:
         if log.isEnabledFor(DEBUG):
-            log.debug(
-                f"resource reference: {json_dumps_short(dial_resource)}\n"
-                f"resource content: {json_dumps_short(elem)}"
-            )
+            log.debug(f"resource reference: {json_dumps_short(dial_resource)}")
+            log.debug(f"resource content: {json_dumps_short(elem)}")
 
         if isinstance(elem, str):
             name = await dial_resource.get_resource_name(self.file_storage)
