@@ -162,7 +162,7 @@ class AttachmentProcessors(BaseModel):
             resource = await self.process_resource(dial_resource)
             if resource is not None:
                 part = Part.from_data(
-                    data=resource.data_bytes, mime_type=resource.type
+                    data=resource.data, mime_type=resource.type
                 )
                 ret.append(part)
 

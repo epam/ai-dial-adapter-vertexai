@@ -47,7 +47,7 @@ class URLResource(DialResource):
     async def download(self, storage: FileStorage | None) -> Resource:
         type = await self.get_content_type()
         data = await _download_url_as_base64(storage, self.url)
-        return Resource(type=type, data=data)
+        return Resource.from_base64(type=type, data_base64=data)
 
     async def guess_content_type(self) -> str | None:
         return (
@@ -90,7 +90,7 @@ class AttachmentResource(DialResource):
         else:
             raise ValidationError(f"Invalid {self.entity_name}")
 
-        return Resource(type=type, data=data)
+        return Resource.from_base64(type=type, data_base64=data)
 
     async def guess_content_type(self) -> str | None:
         if (
@@ -125,7 +125,7 @@ async def _download_url_as_base64(
     file_storage: FileStorage | None, url: str
 ) -> str:
     if (resource := Resource.from_data_url(url)) is not None:
-        return resource.data
+        return resource.data_base64
 
     if file_storage:
         return await file_storage.download_file_as_base64(url)
