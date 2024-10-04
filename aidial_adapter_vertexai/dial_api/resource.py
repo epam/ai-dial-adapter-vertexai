@@ -41,7 +41,6 @@ class URLResource(DialResource):
 
     @root_validator
     def validator(cls, values):
-        print(values)
         values["entity_name"] = values.get("entity_name") or "URL"
         return values
 

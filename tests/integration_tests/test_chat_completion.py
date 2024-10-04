@@ -15,6 +15,7 @@ from openai.types.chat.completion_create_params import Function
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from aidial_adapter_vertexai.utils.resource import Resource
 from tests.conftest import TEST_SERVER_URL
 from tests.utils.json import match_objects
 from tests.utils.openai import (
@@ -137,7 +138,39 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
     ]
 
 
-blue_pic = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGNkYPjPwMDAwMDAxAADCBYAG10BBdmz9y8AAAAASUVORK5CYII="
+blue_pic = Resource(
+    type="image/png",
+    data="iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGNkYPjPwMDAwMDAxAADCBYAG10BBdmz9y8AAAAASUVORK5CYII=",
+)
+
+
+def image_attachment_data(content: str, image: Resource) -> dict:
+    return {
+        "role": "user",
+        "content": content,
+        "custom_content": {"attachments": [image.dict()]},
+    }
+
+
+def image_attachment_url(content: str, image: Resource) -> dict:
+    return {
+        "role": "user",
+        "content": content,
+        "custom_content": {"attachments": [{"url": image.to_data_url()}]},
+    }
+
+
+def image_content_part(content: str, image: Resource) -> dict:
+    return {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": content},
+            {
+                "type": "image_url",
+                "image_url": {"url": image.to_data_url()},
+            },
+        ],
+    }
 
 
 def get_test_cases(
@@ -236,39 +269,21 @@ def get_test_cases(
     )
 
     if is_vision_model(deployment):
-        test_case(
-            name="image in a content part",
-            max_tokens=100,
-            messages=[
-                user(
-                    [
-                        {"type": "text", "text": "describe the image"},
-                        {"type": "image_url", "image_url": {"url": blue_pic}},
-                    ]
-                )
-            ],
-            expected=lambda s: "blue" in s.content.lower(),
-        )
+        query = "describe the image"
+        for idx, message in enumerate(
+            [
+                image_attachment_data(query, blue_pic),
+                image_attachment_url(query, blue_pic),
+                image_content_part(query, blue_pic),
+            ]
+        ):
 
-        test_case(
-            name="image in an attachment",
-            max_tokens=100,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": "describe the image"}],
-                    "custom_content": {
-                        "attachments": [
-                            {
-                                "type": "image/png",
-                                "url": blue_pic,
-                            }
-                        ],
-                    },
-                }  # type: ignore
-            ],
-            expected=lambda s: "blue" in s.content.lower(),
-        )
+            test_case(
+                name=f"describe image {idx}",
+                max_tokens=100,
+                messages=[sys("be a helpful assistant"), message],  # type: ignore
+                expected=lambda s: "blue" in s.content.lower(),
+            )
 
     if supports_tools(deployment):
         query = "What's the temperature in Glasgow in celsius?"
