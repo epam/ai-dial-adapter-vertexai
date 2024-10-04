@@ -6,26 +6,31 @@ from typing import (
     List,
     Optional,
     ParamSpec,
-    Tuple,
+    Set,
     Union,
+    assert_never,
 )
 
-from aidial_sdk.chat_completion import Attachment, Message
-from pydantic import BaseModel
+from aidial_sdk.chat_completion import (
+    Message,
+    MessageContentImagePart,
+    MessageContentTextPart,
+)
+from pydantic import BaseModel, Field
+from vertexai.preview.generative_models import Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.inputs import MessageWithResources
-from aidial_adapter_vertexai.dial_api.attachments import (
-    derive_attachment_mime_type,
-    download_attachment,
-)
 from aidial_adapter_vertexai.dial_api.request import get_attachments
+from aidial_adapter_vertexai.dial_api.resource import (
+    AttachmentResource,
+    DialResource,
+    ImageURLResource,
+)
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.pdf import get_pdf_page_count
 from aidial_adapter_vertexai.utils.resource import Resource
-from aidial_adapter_vertexai.utils.text import format_ordinal
 
 FileTypes = Dict[str, Union[str, List[str]]]
 
@@ -54,21 +59,18 @@ class AttachmentProcessor(BaseModel):
         ]
 
     async def process(
-        self, file_storage: Optional[FileStorage], attachment: Attachment
+        self, file_storage: FileStorage | None, dial_resource: DialResource
     ) -> Optional[Resource | str]:
         try:
-            mime_type = derive_attachment_mime_type(attachment)
-            if mime_type is None:
-                return "Can't derive media type of the attachment"
+            type = await dial_resource.get_content_type()
 
-            if mime_type not in self.mime_types:
+            if type not in self.mime_types:
                 return None
 
             if self.init_validator is not None:
                 await self.init_validator()
 
-            data = await download_attachment(file_storage, attachment)
-            resource = Resource(mime_type=mime_type, data=data)
+            resource = await dial_resource.download(file_storage)
 
             if self.post_validator is not None:
                 await self.post_validator(resource)
@@ -80,110 +82,119 @@ class AttachmentProcessor(BaseModel):
             return e.message
 
         except Exception as e:
-            log.error(f"Failed to download file: {str(e)}")
-            return "Failed to download file"
+            log.error(
+                f"Failed to download {dial_resource.entity_name}: {str(e)}"
+            )
+            return f"Failed to download {dial_resource.entity_name}"
 
 
-async def process_attachment(
-    processors: List[AttachmentProcessor],
-    file_storage: Optional[FileStorage],
-    attachment: Attachment,
-) -> Resource | str:
-    for processor in processors:
-        resource = await processor.process(file_storage, attachment)
-        if resource is not None:
-            return resource
+class ProcessingError(BaseModel):
+    class Config:
+        frozen = True  # Makes the model comparable
 
-    return "The attachment isn't one of the supported types"
+    name: str
+    message: str
 
 
-class ProcessingErrors(BaseModel):
-    """Processing errors for a particular message"""
+class AttachmentProcessors(BaseModel):
+    processors: List[AttachmentProcessor]
+    file_storage: FileStorage | None
 
-    errors: List[Tuple[int, str]]
-    """List of pairs (attachment index, error message)"""
+    errors: Set[ProcessingError] = Field(default_factory=set)
+    resource_count: int = 0
 
-    @staticmethod
-    def format_error_message(
-        errors: Dict[int, "ProcessingErrors"], n: int
-    ) -> str:
-        msg = "Some of the attachments failed to process:"
-        for i, error in errors.items():
-            msg += f"\n- {format_ordinal(n - i)} message from end:"
-            for j, err in error.errors:
-                msg += f"\n  - {format_ordinal(j + 1)} attachment: {err}"
-        return msg
+    def get_error_message(self) -> str | None:
+        error_list = sorted(list(self.errors))  # type: ignore
+        if error_list:
+            msg = "The following files failed to process:\n"
+            msg += "\n".join(
+                f"{idx}. {error.name}: {error.message}"
+                for idx, error in enumerate(self.errors, start=1)
+            )
+            return msg
 
+        return None
 
-async def process_attachments(
-    processors: List[AttachmentProcessor],
-    file_storage: Optional[FileStorage],
-    attachments: List[Attachment],
-) -> List[Resource] | ProcessingErrors:
-    if len(attachments) == 0:
-        return []
+    def get_file_exts(self) -> List[str]:
+        return sorted({ext for p in self.processors for ext in p.file_exts})
 
-    if log.isEnabledFor(DEBUG):
-        log.debug(f"attachments: {json_dumps_short(attachments)}")
+    def get_mime_types(self) -> List[str]:
+        return sorted({ty for p in self.processors for ty in p.mime_types})
 
-    download_results: List[Resource | str] = [
-        await process_attachment(processors, file_storage, attachment)
-        for attachment in attachments
-    ]
+    async def _collect_error(
+        self, dial_resource: DialResource, elem: str | Resource
+    ) -> Resource | None:
+        if log.isEnabledFor(DEBUG):
+            log.debug(
+                f"resource reference: {json_dumps_short(dial_resource)}\n"
+                f"resource content: {json_dumps_short(elem)}"
+            )
 
-    if log.isEnabledFor(DEBUG):
-        log.debug(f"processing results: {json_dumps_short(download_results)}")
-
-    ret: List[Resource] = []
-    errors: List[Tuple[int, str]] = []
-
-    for idx, result in enumerate(download_results):
-        if isinstance(result, Resource):
-            ret.append(result)
+        if isinstance(elem, str):
+            name = await dial_resource.get_resource_name(self.file_storage)
+            self.errors.add(ProcessingError(name=name, message=elem))
+            return None
         else:
-            errors.append((idx, result))
+            self.resource_count += 1
+            return elem
 
-    if len(errors) > 0:
-        log.error(f"processing errors: {errors}")
-        return ProcessingErrors(errors=errors)
+    async def process_resource(
+        self, dial_resource: DialResource
+    ) -> Resource | None:
+        if not self.processors:
+            raise ValidationError("The attachments aren't supported")
 
-    return ret
+        for processor in self.processors:
+            resource = await processor.process(self.file_storage, dial_resource)
+            if resource is not None:
+                return await self._collect_error(dial_resource, resource)
 
+        return await self._collect_error(
+            dial_resource,
+            f"The {dial_resource.entity_name} isn't one of the supported types",
+        )
 
-async def process_message(
-    processors: List[AttachmentProcessor],
-    file_storage: Optional[FileStorage],
-    message: Message,
-) -> MessageWithResources | ProcessingErrors:
+    async def process_message(self, message: Message) -> List[Part]:
 
-    attachments = get_attachments(message)
-    resources = await process_attachments(processors, file_storage, attachments)
+        ret: List[Part] = []
 
-    if isinstance(resources, ProcessingErrors):
-        return resources
+        async def collect_resource(dial_resource: DialResource):
+            resource = await self.process_resource(dial_resource)
+            if resource is not None:
+                part = Part.from_data(
+                    data=resource.data_bytes, mime_type=resource.type
+                )
+                ret.append(part)
 
-    return MessageWithResources(message=message, resources=resources)
+        def collect_text(text: str):
+            ret.append(Part.from_text(text))
 
+        # Placing Images/Video parts before the text as per
+        # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
+        for attachment in get_attachments(message):
+            await collect_resource(AttachmentResource(attachment=attachment))
 
-async def process_messages(
-    processors: List[AttachmentProcessor],
-    file_storage: Optional[FileStorage],
-    messages: List[Message],
-) -> List[MessageWithResources] | str:
-    ret: List[MessageWithResources] = []
-    errors: Dict[int, ProcessingErrors] = {}
+        content = message.content
 
-    for idx, message in enumerate(messages):
-        result = await process_message(processors, file_storage, message)
-        if isinstance(result, ProcessingErrors):
-            errors[idx] = result
-        else:
-            ret.append(result)
+        match content:
+            case None:
+                pass
+            case str():
+                if content:
+                    collect_text(content)
+            case list():
+                for part in content:
+                    match part:
+                        case MessageContentTextPart(text=text):
+                            collect_text(text)
+                        case MessageContentImagePart(image_url=image_url):
+                            await collect_resource(
+                                ImageURLResource(url=image_url.url)
+                            )
+            case _:
+                assert_never(content)
 
-    if errors:
-        return ProcessingErrors.format_error_message(errors, len(messages))
-
-    return ret
+        return ret
 
 
 def max_count_validator(limit: int) -> InitValidator:

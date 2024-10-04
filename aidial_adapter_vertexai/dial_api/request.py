@@ -1,7 +1,15 @@
-from typing import List, Mapping, Optional
+from typing import List, Mapping, Optional, TypeGuard
 
-from aidial_sdk.chat_completion import Attachment, Message, Request
+from aidial_sdk.chat_completion import (
+    Attachment,
+    Message,
+    MessageContentPart,
+    MessageContentTextPart,
+    Request,
+)
 from pydantic import BaseModel
+
+from aidial_adapter_vertexai.chat.errors import ValidationError
 
 
 class ModelParameters(BaseModel):
@@ -39,3 +47,39 @@ def get_attachments(message: Message) -> List[Attachment]:
     if custom_content is None:
         return []
     return custom_content.attachments or []
+
+
+def collect_text_content(
+    content: str | List[MessageContentPart] | None,
+    delimiter: str = "\n",
+    strict: bool = True,
+) -> str:
+
+    if content is None:
+        return ""
+
+    if isinstance(content, str):
+        return content
+
+    texts: List[str] = []
+    for part in content:
+        if isinstance(part, MessageContentTextPart):
+            texts.append(part.text)
+        elif strict:
+            raise ValidationError(
+                "Can't extract text from a multi-modal content part"
+            )
+
+    return delimiter.join(texts)
+
+
+def is_text_content_parts(
+    content: List[MessageContentPart],
+) -> TypeGuard[List[MessageContentTextPart]]:
+    return all(isinstance(part, MessageContentTextPart) for part in content)
+
+
+def is_plain_text_content(
+    content: str | List[MessageContentPart] | None,
+) -> TypeGuard[str | None]:
+    return content is None or isinstance(content, str)

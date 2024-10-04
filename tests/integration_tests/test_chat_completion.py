@@ -104,11 +104,13 @@ class TestCase:
         )
 
 
-chat_deployments = [
+deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
     ChatCompletionDeployment.CODECHAT_BISON_1,
     ChatCompletionDeployment.GEMINI_PRO_1,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+    ChatCompletionDeployment.GEMINI_PRO_VISION_1,
+    ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
 ]
 
 
@@ -125,6 +127,17 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
     ]
+
+
+def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
+    return deployment in [
+        ChatCompletionDeployment.GEMINI_PRO_VISION_1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
+        ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+    ]
+
+
+blue_pic = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGNkYPjPwMDAwMDAxAADCBYAG10BBdmz9y8AAAAASUVORK5CYII="
 
 
 def get_test_cases(
@@ -222,6 +235,41 @@ def get_test_cases(
         ),
     )
 
+    if is_vision_model(deployment):
+        test_case(
+            name="image in a content part",
+            max_tokens=100,
+            messages=[
+                user(
+                    [
+                        {"type": "text", "text": "describe the image"},
+                        {"type": "image_url", "image_url": {"url": blue_pic}},
+                    ]
+                )
+            ],
+            expected=lambda s: "blue" in s.content.lower(),
+        )
+
+        test_case(
+            name="image in an attachment",
+            max_tokens=100,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": "describe the image"}],
+                    "custom_content": {
+                        "attachments": [
+                            {
+                                "type": "image/png",
+                                "url": blue_pic,
+                            }
+                        ],
+                    },
+                }  # type: ignore
+            ],
+            expected=lambda s: "blue" in s.content.lower(),
+        )
+
     if supports_tools(deployment):
         query = "What's the temperature in Glasgow in celsius?"
 
@@ -283,7 +331,7 @@ def get_test_cases(
     "test",
     [
         test
-        for deployment in chat_deployments
+        for deployment in deployments
         for streaming in [False, True]
         for test in get_test_cases(deployment, streaming)
     ],

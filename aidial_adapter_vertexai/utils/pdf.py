@@ -1,15 +1,13 @@
 import asyncio
-from io import BytesIO
 
 from pypdf import PdfReader
 
 
-async def get_pdf_page_count(doc: bytes) -> int:
+async def get_pdf_page_count(doc: str) -> int:
     loop = asyncio.get_running_loop()
 
     def _sync_get_page_count():
-        pdf_bytes_io = BytesIO(doc)
-        pdf = PdfReader(pdf_bytes_io)
+        pdf = PdfReader(doc)
         return len(pdf.pages)
 
     num_pages = await loop.run_in_executor(

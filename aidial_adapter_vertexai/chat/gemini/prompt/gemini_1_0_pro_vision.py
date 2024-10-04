@@ -1,14 +1,16 @@
-from typing import List, Optional, Self, Union
+from typing import List, Self, Union
 
 from aidial_sdk.chat_completion import Message, Role
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.gemini.inputs import (
+    messages_to_gemini_history,
+)
 from aidial_adapter_vertexai.chat.gemini.processor import (
+    AttachmentProcessors,
     exclusive_validator,
-    process_messages,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
-    get_file_exts,
     get_image_processor,
     get_pdf_processor,
     get_plain_text_processor,
@@ -24,7 +26,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
     @classmethod
     async def parse(
         cls,
-        file_storage: Optional[FileStorage],
+        file_storage: FileStorage | None,
         tools: ToolsConfig,
         messages: List[Message],
     ) -> Union[Self, UserError]:
@@ -38,24 +40,28 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         messages = truncate_messages(messages)
 
         exclusive = exclusive_validator()
-        processors = [
-            get_plain_text_processor(),
-            get_image_processor(16, exclusive("image")),
-            get_pdf_processor(16, exclusive("pdf")),
-            get_video_processor(1, exclusive("video")),
-        ]
 
-        result = await process_messages(processors, file_storage, messages)
+        processors = AttachmentProcessors(
+            processors=[
+                get_plain_text_processor(),
+                get_image_processor(16, exclusive("image")),
+                get_pdf_processor(16, exclusive("pdf")),
+                get_video_processor(1, exclusive("video")),
+            ],
+            file_storage=file_storage,
+        )
 
-        usage_message = get_usage_message(get_file_exts(processors))
+        history = await messages_to_gemini_history(processors, tools, messages)
 
-        if isinstance(result, str):
-            return UserError(result, usage_message)
+        def usage_message():
+            return _get_usage_message(processors.get_file_exts())
 
-        if all(len(res.resources) == 0 for res in result):
-            return UserError("No documents were found", usage_message)
+        if error_message := processors.get_error_message():
+            return UserError(error_message, usage_message())
 
-        history = [res.to_content(tools) for res in result]
+        if processors.resource_count == 0:
+            return UserError("No documents were found", usage_message())
+
         return cls(
             history=history[:-1],
             prompt=history[-1].parts,
@@ -97,7 +103,7 @@ def truncate_messages(messages: List[Message]) -> List[Message]:
     return [msg1]
 
 
-def get_usage_message(exts: List[str]) -> str:
+def _get_usage_message(exts: List[str]) -> str:
     return f"""
 The application answers queries about attached documents.
 Attach documents and ask questions about them in the same message.

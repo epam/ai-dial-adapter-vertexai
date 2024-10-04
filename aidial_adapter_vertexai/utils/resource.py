@@ -1,58 +1,50 @@
 import base64
-import mimetypes
 import re
-from pathlib import Path
-from typing import Optional, Self
+from typing import Optional
 
-from aidial_sdk.chat_completion import Attachment
 from pydantic import BaseModel
-from vertexai.preview.generative_models import Part
 
 
 class Resource(BaseModel):
-    """
-    Resource: byte value + MIME type
-    """
-
-    mime_type: str
-    data: bytes
+    type: str
+    data: str
 
     @classmethod
-    def from_path(cls, path: Path) -> Self:
-        mime_type = mimetypes.guess_type(path)[0]
-        if mime_type is None:
-            raise ValueError(f"Could not determine MIME type for {path}")
-        return cls(mime_type=mime_type, data=path.read_bytes())
-
-    @classmethod
-    def from_data_url(cls, url: str) -> Optional[Self]:
+    def from_data_url(cls, data_url: str) -> Optional["Resource"]:
         """
+        Parsing a resource encoded as a data URL.
         See https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs for reference.
         """
 
-        pattern = r"^data:([^;]+);base64,(.+)$"
-        match = re.match(pattern, url)
-        if match is None:
+        type = cls.parse_data_url_content_type(data_url)
+        if type is None:
             return None
 
-        mime_type = match.group(1)
-        base64_data = match.group(2)
+        data = data_url.removeprefix(cls._to_data_url_prefix(type))
 
         try:
-            data = base64.b64decode(base64_data, validate=True)
+            base64.b64decode(data)
         except Exception:
             raise ValueError("Invalid base64 data")
 
-        return cls(mime_type=mime_type, data=data)
+        return cls(type=type, data=data)
 
-    def get_base64_data(self) -> str:
-        return base64.b64encode(self.data).decode()
+    @property
+    def data_bytes(self) -> bytes:
+        return self.data.encode()
 
-    def to_part(self) -> Part:
-        return Part.from_data(data=self.data, mime_type=self.mime_type)
+    def to_data_url(self) -> str:
+        return f"{self._to_data_url_prefix(self.type)}{self.data}"
 
-    def to_attachment(self) -> Attachment:
-        return Attachment(
-            type=self.mime_type,
-            data=self.get_base64_data(),
-        )
+    @staticmethod
+    def parse_data_url_content_type(data_url: str) -> Optional[str]:
+        pattern = r"^data:([^;]+);base64,"
+        match = re.match(pattern, data_url)
+        return None if match is None else match.group(1)
+
+    @staticmethod
+    def _to_data_url_prefix(content_type: str) -> str:
+        return f"data:{content_type};base64,"
+
+    def __str__(self) -> str:
+        return self.to_data_url()[:100] + "..."
