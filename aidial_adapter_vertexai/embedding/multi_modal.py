@@ -128,7 +128,7 @@ async def get_requests(
             storage
         )
         _validate_content_type(resource.type, SUPPORTED_IMAGE_TYPES)
-        return Image(image_bytes=resource.data_bytes)
+        return Image(image_bytes=resource.data)
 
     async def on_text(text: str):
         return ModelRequest(contextual_text=text)

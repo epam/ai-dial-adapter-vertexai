@@ -37,10 +37,6 @@ class Resource(BaseModel):
     def data_base64(self) -> str:
         return base64.b64encode(self.data).decode()
 
-    @property
-    def data_bytes(self) -> bytes:
-        return self.data
-
     def to_data_url(self) -> str:
         return f"{self._to_data_url_prefix(self.type)}{self.data_base64}"
 
