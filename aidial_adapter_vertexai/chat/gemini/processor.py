@@ -31,6 +31,7 @@ from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.pdf import get_pdf_page_count
 from aidial_adapter_vertexai.utils.resource import Resource
+from aidial_adapter_vertexai.utils.text import decapitalize
 
 FileTypes = Dict[str, Union[str, List[str]]]
 
@@ -108,7 +109,7 @@ class AttachmentProcessors(BaseModel):
         if error_list:
             msg = "The following files failed to process:\n"
             msg += "\n".join(
-                f"{idx}. {error.name}: {error.message}"
+                f"{idx}. {error.name}: {decapitalize(error.message)}"
                 for idx, error in enumerate(self.errors, start=1)
             )
             return msg
