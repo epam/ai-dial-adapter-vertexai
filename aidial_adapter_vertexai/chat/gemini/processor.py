@@ -24,7 +24,7 @@ from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
     AttachmentResource,
     DialResource,
-    ImageURLResource,
+    URLResource,
 )
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.json import json_dumps_short
@@ -188,7 +188,9 @@ class AttachmentProcessors(BaseModel):
                             collect_text(text)
                         case MessageContentImagePart(image_url=image_url):
                             await collect_resource(
-                                ImageURLResource(url=image_url.url)
+                                URLResource(
+                                    url=image_url.url, entity_name="image_url"
+                                )
                             )
             case _:
                 assert_never(content)

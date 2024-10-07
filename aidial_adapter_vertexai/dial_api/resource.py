@@ -65,13 +65,6 @@ class URLResource(DialResource):
         return self.url
 
 
-class ImageURLResource(URLResource):
-    @root_validator
-    def validator(cls, values):
-        values["entity_name"] = values.get("entity_name") or "image_url"
-        return values
-
-
 class AttachmentResource(DialResource):
     attachment: Attachment
 
