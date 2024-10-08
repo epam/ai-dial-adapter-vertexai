@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from logging import DEBUG
 from typing import (
     Callable,
@@ -25,6 +26,9 @@ from aidial_adapter_vertexai.dial_api.resource import (
     AttachmentResource,
     DialResource,
     URLResource,
+)
+from aidial_adapter_vertexai.dial_api.resource import (
+    ValidationError as ResourceValidationError,
 )
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.json import json_dumps_short
@@ -78,26 +82,25 @@ class AttachmentProcessor(BaseModel):
 
             return resource
 
-        except ValidationError as e:
-            log.error(f"Validation error: {e.message}")
-            return e.message
-
         except Exception as e:
             log.error(
                 f"Failed to download {dial_resource.entity_name}: {str(e)}"
             )
+            if isinstance(e, ResourceValidationError):
+                return e.message
             return f"Failed to download {dial_resource.entity_name}"
 
 
-class ProcessingError(BaseModel):
-    class Config:
-        frozen = True  # Makes the model comparable
-
+@dataclass(order=True, frozen=True)
+class ProcessingError:
     name: str
     message: str
 
 
 class AttachmentProcessors(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True  # for errors
+
     processors: List[AttachmentProcessor]
     file_storage: FileStorage | None
 
@@ -105,7 +108,7 @@ class AttachmentProcessors(BaseModel):
     resource_count: int = 0
 
     def get_error_message(self) -> str | None:
-        error_list = sorted(list(self.errors))  # type: ignore
+        error_list = sorted(list(self.errors))
         if error_list:
             msg = "The following files failed to process:\n"
             msg += "\n".join(
@@ -122,20 +125,20 @@ class AttachmentProcessors(BaseModel):
     def get_mime_types(self) -> List[str]:
         return sorted({ty for p in self.processors for ty in p.mime_types})
 
-    async def _collect_error(
-        self, dial_resource: DialResource, elem: str | Resource
+    async def _collect_resource(
+        self, dial_resource: DialResource, resource: Resource | str
     ) -> Resource | None:
         if log.isEnabledFor(DEBUG):
             log.debug(f"resource reference: {json_dumps_short(dial_resource)}")
-            log.debug(f"resource content: {json_dumps_short(elem)}")
+            log.debug(f"resource content: {json_dumps_short(resource)}")
 
-        if isinstance(elem, str):
+        if isinstance(resource, str):
             name = await dial_resource.get_resource_name(self.file_storage)
-            self.errors.add(ProcessingError(name=name, message=elem))
+            self.errors.add(ProcessingError(name=name, message=resource))
             return None
         else:
             self.resource_count += 1
-            return elem
+            return resource
 
     async def process_resource(
         self, dial_resource: DialResource
@@ -146,9 +149,9 @@ class AttachmentProcessors(BaseModel):
         for processor in self.processors:
             resource = await processor.process(self.file_storage, dial_resource)
             if resource is not None:
-                return await self._collect_error(dial_resource, resource)
+                return await self._collect_resource(dial_resource, resource)
 
-        return await self._collect_error(
+        return await self._collect_resource(
             dial_resource,
             f"The {dial_resource.entity_name} isn't one of the supported types",
         )

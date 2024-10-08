@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import io
 import mimetypes
@@ -90,19 +89,17 @@ class FileStorage(BaseModel):
                 return meta
 
     def attachment_link_to_url(self, link: str) -> str:
-        base_url = f"{self.dial_url}/v1/"
-        return urljoin(base_url, link)
-
-    async def download_file_as_base64(self, dial_path: str) -> str:
-        url = urljoin(f"{self.dial_url}/v1/", dial_path)
-        headers: Mapping[str, str] = {}
-        if url.lower().startswith(self.dial_url.lower()):
-            headers = self.auth_headers
-
-        return await download_file_as_base64(url, headers)
+        return urljoin(f"{self.dial_url}/v1/", link)
 
     def _url_to_attachment_link(self, url: str) -> str:
         return url.removeprefix(f"{self.dial_url}/v1/")
+
+    async def download_file(self, link: str) -> bytes:
+        url = self.attachment_link_to_url(link)
+        headers: Mapping[str, str] = {}
+        if url.lower().startswith(self.dial_url.lower()):
+            headers = self.auth_headers
+        return await download_file(url, headers)
 
     async def get_human_readable_name(self, link: str) -> str:
         url = self.attachment_link_to_url(link)
@@ -121,20 +118,11 @@ class FileStorage(BaseModel):
         return link if link == decoded_link else repr(decoded_link)
 
 
-async def _download_file(
-    url: str, headers: Optional[Mapping[str, str]]
-) -> bytes:
+async def download_file(url: str, headers: Mapping[str, str] = {}) -> bytes:
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers) as response:
             response.raise_for_status()
             return await response.read()
-
-
-async def download_file_as_base64(
-    url: str, headers: Optional[Mapping[str, str]] = None
-) -> str:
-    data = await _download_file(url, headers)
-    return base64.b64encode(data).decode("ascii")
 
 
 def compute_hash_digest(file_content: str) -> str:
