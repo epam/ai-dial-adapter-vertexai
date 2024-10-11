@@ -1,4 +1,4 @@
-from typing import List, Mapping, Optional, TypeGuard
+from typing import List, Mapping, Optional
 
 from aidial_sdk.chat_completion import (
     Attachment,
@@ -50,9 +50,7 @@ def get_attachments(message: Message) -> List[Attachment]:
 
 
 def collect_text_content(
-    content: str | List[MessageContentPart] | None,
-    delimiter: str = "\n",
-    strict: bool = True,
+    content: str | List[MessageContentPart] | None, delimiter: str = "\n\n"
 ) -> str:
 
     if content is None:
@@ -65,21 +63,9 @@ def collect_text_content(
     for part in content:
         if isinstance(part, MessageContentTextPart):
             texts.append(part.text)
-        elif strict:
+        else:
             raise ValidationError(
                 "Can't extract text from a multi-modal content part"
             )
 
     return delimiter.join(texts)
-
-
-def is_text_content_parts(
-    content: List[MessageContentPart],
-) -> TypeGuard[List[MessageContentTextPart]]:
-    return all(isinstance(part, MessageContentTextPart) for part in content)
-
-
-def is_plain_text_content(
-    content: str | List[MessageContentPart] | None,
-) -> TypeGuard[str | None]:
-    return content is None or isinstance(content, str)
