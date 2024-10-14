@@ -16,7 +16,6 @@ from pydantic import BaseModel
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.utils.resource import Resource
-from tests.conftest import TEST_SERVER_URL
 from tests.utils.json import match_objects
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
@@ -28,7 +27,6 @@ from tests.utils.openai import (
     for_all_choices,
     function_request,
     function_response,
-    get_client,
     sanitize_test_name,
     sys,
     tool_request,
@@ -325,8 +323,8 @@ def get_test_cases(
     ],
     ids=lambda test: test.get_id(),
 )
-async def test_chat_completion_openai(server, test: TestCase):
-    client = get_client(TEST_SERVER_URL, test.deployment.value)
+async def test_chat_completion_openai(get_openai_client, test: TestCase):
+    client = get_openai_client(test.deployment.value)
 
     async def run_chat_completion() -> ChatCompletionResult:
         return await chat_completion(

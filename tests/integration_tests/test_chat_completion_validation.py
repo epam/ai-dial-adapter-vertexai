@@ -7,12 +7,10 @@ from openai import BadRequestError, UnprocessableEntityError
 from openai.types.chat import ChatCompletionMessageParam
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from tests.conftest import TEST_SERVER_URL
 from tests.utils.openai import (
     ChatCompletionResult,
     ai,
     chat_completion,
-    get_client,
     sanitize_test_name,
     sys,
     user,
@@ -133,8 +131,8 @@ validation_test_cases: List[TestCase] = [
 @pytest.mark.parametrize(
     "test", validation_test_cases, ids=lambda test: test.get_id()
 )
-async def test_input_validation(server, test: TestCase):
-    client = get_client(TEST_SERVER_URL, test.deployment.value)
+async def test_input_validation(get_openai_client, test: TestCase):
+    client = get_openai_client(test.deployment.value)
 
     async def run_chat_completion() -> ChatCompletionResult:
         return await chat_completion(
@@ -152,10 +150,8 @@ async def test_input_validation(server, test: TestCase):
 
 
 @pytest.mark.asyncio
-async def test_imagen_content_filtering(server):
-    client = get_client(
-        TEST_SERVER_URL, ChatCompletionDeployment.IMAGEN_005.value
-    )
+async def test_imagen_content_filtering(get_openai_client):
+    client = get_openai_client(ChatCompletionDeployment.IMAGEN_005.value)
     messages: List[ChatCompletionMessageParam] = [
         user("generate something unsafe")
     ]

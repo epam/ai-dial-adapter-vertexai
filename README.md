@@ -81,7 +81,6 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |LOG_LEVEL|INFO|Log level. Use DEBUG for dev purposes and INFO in prod|
 |AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
-|TEST_SERVER_URL|http://0.0.0.0:5001|Server URL used in the integration tests|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 
 ### Docker
