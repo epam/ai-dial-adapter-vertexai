@@ -48,9 +48,7 @@ class BisonChatAdapter(BisonChatCompletionAdapter):
     model: ChatModel
 
     @classmethod
-    async def create(
-        cls, model_id: str, project_id: str, location: str
-    ) -> "BisonChatAdapter":
+    async def create(cls, model_id: str) -> "BisonChatAdapter":
         return cls(await get_chat_model(model_id))
 
     def prepare_parameters_no_stream(
@@ -103,9 +101,7 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
     model: CodeChatModel
 
     @classmethod
-    async def create(
-        cls, model_id: str, project_id: str, location: str
-    ) -> "BisonCodeChatAdapter":
+    async def create(cls, model_id: str) -> "BisonCodeChatAdapter":
         return cls(await get_code_chat_model(model_id))
 
     def validate_parameters(self, params: ModelParameters) -> None:

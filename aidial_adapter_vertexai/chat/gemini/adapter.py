@@ -106,7 +106,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     ) -> GeminiPrompt | UserError:
         match self.deployment:
             case ChatCompletionDeployment.GEMINI_PRO_1:
-                return Gemini_1_0_Pro_Prompt.parse(tools, messages)
+                return await Gemini_1_0_Pro_Prompt.parse(tools, messages)
             case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
                 return await Gemini_1_0_Pro_Vision_Prompt.parse(
                     self.file_storage, tools, messages
@@ -231,8 +231,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         file_storage: Optional[FileStorage],
         model_id: str,
         deployment: GeminiDeployment,
-        project_id: str,
-        location: str,
     ) -> "GeminiChatCompletionAdapter":
         model = await get_gemini_model(model_id)
         return cls(file_storage, model, deployment)
