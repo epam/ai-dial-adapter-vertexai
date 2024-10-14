@@ -8,6 +8,7 @@ from typing import (
     Optional,
     TypeVar,
     assert_never,
+    cast,
 )
 
 import vertexai.preview.generative_models as generative_models
@@ -21,6 +22,8 @@ from vertexai.preview.generative_models import (
     GenerationConfig,
     GenerationResponse,
     GenerativeModel,
+    Image,
+    Part,
 )
 
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
@@ -50,7 +53,6 @@ from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 from aidial_adapter_vertexai.utils.timer import Timer
-from aidial_adapter_vertexai.vertex_ai import get_gemini_model
 
 HarmCategory = generative_models.HarmCategory
 HarmBlockThreshold = generative_models.HarmBlockThreshold
@@ -82,9 +84,9 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
 
 class FinishReasonOtherError(Exception):
     def __init__(self, msg: str, retriable: bool):
+        super().__init__(self.msg)
         self.msg = msg
         self.retriable = retriable
-        super().__init__(self.msg)
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
@@ -93,11 +95,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     def __init__(
         self,
         file_storage: Optional[FileStorage],
-        model: GenerativeModel,
+        model_id: str,
         deployment: GeminiDeployment,
     ):
         self.file_storage = file_storage
-        self.model = model
+        self.model_id = model_id
         self.deployment = deployment
 
     @override
@@ -124,34 +126,48 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             case _:
                 assert_never(self.deployment)
 
+    def _get_model(
+        self,
+        *,
+        params: ModelParameters | None = None,
+        prompt: GeminiPrompt | None = None,
+    ) -> GenerativeModel:
+        parameters = create_generation_config(params) if params else None
+
+        if prompt is not None:
+            tools = prompt.tools.to_gemini_tools()
+            tool_config = prompt.tools.to_gemini_tool_config()
+            system_instruction = cast(
+                List[str | Part | Image] | None,
+                prompt.conversation.system_instruction,
+            )
+        else:
+            tools = None
+            tool_config = None
+            system_instruction = None
+
+        return GenerativeModel(
+            self.model_id,
+            generation_config=parameters,
+            tools=tools,
+            tool_config=tool_config,
+            system_instruction=system_instruction,
+        )
+
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt
     ) -> AsyncIterator[GenerationResponse]:
-        parameters = create_generation_config(params)
-        tools = prompt.tools.to_gemini_tools()
-        tool_config = prompt.tools.to_gemini_tool_config()
+
+        model = self._get_model(params=params, prompt=prompt)
+        contents = prompt.conversation.contents
 
         if params.stream:
-            response = await self.model._generate_content_streaming_async(
-                contents=prompt.contents,
-                generation_config=parameters,
-                safety_settings=default_safety_settings,
-                tools=tools,
-                tool_config=tool_config,
-            )
+            response = await model._generate_content_streaming_async(contents)
 
             async for chunk in response:
                 yield chunk
         else:
-            response = await self.model._generate_content_async(
-                contents=prompt.contents,
-                generation_config=parameters,
-                safety_settings=default_safety_settings,
-                tools=tools,
-                tool_config=tool_config,
-            )
-
-            yield response
+            yield await model._generate_content_async(contents)
 
     @staticmethod
     async def process_chunks(
@@ -209,19 +225,17 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     @override
     async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
-        # NOTE: Currently tools/functions couldn't be passed to the count_tokens method:
-        # https://github.com/googleapis/python-aiplatform/issues/3631
-        prompt.tools.not_supported()
-
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
-            resp = await self.model.count_tokens_async(prompt.contents)
+            resp = await self._get_model(prompt=prompt).count_tokens_async(
+                prompt.conversation.contents
+            )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             return resp.total_tokens
 
     @override
     async def count_completion_tokens(self, string: str) -> int:
         with Timer("count_tokens[completion] timing: {time}", log.debug):
-            resp = await self.model.count_tokens_async(string)
+            resp = await self._get_model().count_tokens_async(string)
             log.debug(f"count_tokens[completion] response: {json_dumps(resp)}")
             return resp.total_tokens
 
@@ -232,8 +246,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         model_id: str,
         deployment: GeminiDeployment,
     ) -> "GeminiChatCompletionAdapter":
-        model = await get_gemini_model(model_id)
-        return cls(file_storage, model, deployment)
+        return cls(file_storage, model_id, deployment)
 
 
 async def set_finish_reason(candidate: Candidate, consumer: Consumer) -> None:
@@ -317,10 +330,16 @@ def to_openai_finish_reason(
             | GenFinishReason.SPII
         ):
             return FinishReason.CONTENT_FILTER
+
+        # The following finish reasons could be usually fixed with a retry
         case GenFinishReason.OTHER:
-            # OTHER finish reason could be usually fixed with a retry
             raise FinishReasonOtherError(
                 msg="The model terminated generation unexpectedly",
+                retriable=retriable,
+            )
+        case GenFinishReason.MALFORMED_FUNCTION_CALL:
+            raise FinishReasonOtherError(
+                msg="The function call generated by the model is invalid",
                 retriable=retriable,
             )
         case _:
