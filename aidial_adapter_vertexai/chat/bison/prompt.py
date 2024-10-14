@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from vertexai.preview.language_models import ChatMessage, ChatSession
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.dial_api.request import collect_text_content
 
 
 class ChatAuthor(str, Enum):
@@ -57,7 +58,7 @@ def _validate_messages_and_split(
 
     context: Optional[str] = None
     if len(messages) > 0 and messages[0].role == Role.SYSTEM:
-        context = messages[0].content or ""
+        context = collect_text_content(messages[0].content)
         context = context if context.strip() else None
         messages = messages[1:]
 
@@ -98,4 +99,6 @@ def _parse_message(message: Message) -> ChatMessage:
         ChatAuthor.BOT if message.role == Role.ASSISTANT else ChatAuthor.USER
     )
     assert message.content is not None
-    return ChatMessage(author=author, content=message.content)
+    return ChatMessage(
+        author=author, content=collect_text_content(message.content)
+    )

@@ -15,7 +15,10 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.dial_api.request import (
+    ModelParameters,
+    collect_text_content,
+)
 from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
     compute_hash_digest,
@@ -46,11 +49,11 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         if len(messages) == 0:
             raise ValidationError("The list of messages must not be empty")
 
-        prompt = messages[-1].content
-        if prompt is None:
+        content = messages[-1].content
+        if content is None:
             raise ValidationError("The last message must have content")
 
-        return prompt
+        return collect_text_content(content)
 
     @override
     async def truncate_prompt(
