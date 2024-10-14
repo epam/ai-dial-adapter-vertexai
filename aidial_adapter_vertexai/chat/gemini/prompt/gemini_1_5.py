@@ -4,7 +4,7 @@ from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.inputs import (
-    messages_to_gemini_history,
+    messages_to_gemini_content,
 )
 from aidial_adapter_vertexai.chat.gemini.processor import AttachmentProcessors
 from aidial_adapter_vertexai.chat.gemini.processors import (
@@ -43,7 +43,7 @@ class Gemini_1_5_Prompt(GeminiPrompt):
             file_storage=file_storage,
         )
 
-        history = await messages_to_gemini_history(processors, tools, messages)
+        history = await messages_to_gemini_content(processors, tools, messages)
 
         if error_message := processors.get_error_message():
             usage_message = get_usage_message(processors.get_file_exts())

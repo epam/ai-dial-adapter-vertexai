@@ -47,7 +47,7 @@ def content_to_function_args(content: str) -> Dict[str, Any]:
     return {"content": args}
 
 
-async def messages_to_gemini_history(
+async def messages_to_gemini_content(
     processors: AttachmentProcessors,
     tools: ToolsConfig,
     messages: List[Message],
