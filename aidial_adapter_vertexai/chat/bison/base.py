@@ -10,14 +10,12 @@ from vertexai.preview.language_models import (
 )
 
 from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt
-from aidial_adapter_vertexai.chat.bison.truncate_prompt import (
-    get_discarded_messages,
-)
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.chat.truncate_prompt import DiscardedMessages
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
@@ -46,8 +44,10 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
     @override
     async def truncate_prompt(
         self, prompt: BisonPrompt, max_prompt_tokens: int
-    ) -> Tuple[BisonPrompt, List[int]]:
-        return await get_discarded_messages(self, prompt, max_prompt_tokens)
+    ) -> Tuple[DiscardedMessages, BisonPrompt]:
+        return await prompt.truncate_prompt(
+            tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        )
 
     @override
     async def chat(
@@ -91,7 +91,7 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
         )
 
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
-            resp = chat_session.count_tokens(message=prompt.user_prompt)
+            resp = chat_session.count_tokens(message=prompt.prompt)
             log.debug(
                 f"count_tokens[prompt] response: {_display_token_count(resp)}"
             )

@@ -1,11 +1,12 @@
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
 from vertexai.preview.language_models import ChatMessage, ChatSession
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.truncate_prompt import Truncatable
 from aidial_adapter_vertexai.dial_api.request import collect_text_content
 
 
@@ -17,31 +18,77 @@ class ChatAuthor(str, Enum):
         return f"{self.value!r}"
 
 
-class BisonPrompt(BaseModel):
-    context: Optional[str]
-    messages: List[ChatMessage]
+class BisonPrompt(BaseModel, Truncatable):
+    context: Optional[str] = None
+    history: List[ChatMessage] = []
+    prompt: str
 
     @classmethod
     def parse(cls, messages: List[Message]) -> "BisonPrompt":
-        context, messages = _validate_messages_and_split(messages)
+        context, messages = _validate_and_split_messages(messages)
+        bison_messages = list(map(_parse_message, messages))
+
         return cls(
             context=context,
-            messages=list(map(_parse_message, messages)),
+            history=bison_messages[:-1],
+            prompt=bison_messages[-1].content,
         )
 
     @property
-    def user_prompt(self) -> str:
-        return self.messages[-1].content or ""
+    def has_system_message(self) -> bool:
+        return self.context is not None
 
-    @property
-    def history(self) -> List[ChatMessage]:
-        return self.messages[:-1]
+    def keep(self, index: int) -> bool:
+        # Keep the system message...
+        if self.context is not None and index == 0:
+            return True
+        index -= self.has_system_message
+
+        # ...and the last user message
+        if index == len(self.history):
+            return True
+
+        return False
+
+    def __len__(self) -> int:
+        return int(self.has_system_message) + len(self.history) + 1
+
+    def partition(self) -> List[int]:
+        n = len(self.history)
+        return (
+            [1] * self.has_system_message + [2] * (n // 2) + [1] * (n % 2) + [1]
+        )
+
+    def select(self, indices: Set[int]) -> "BisonPrompt":
+        context: str | None = None
+        history: List[ChatMessage] = []
+
+        offset = 0
+        if self.has_system_message and 0 in indices:
+            context = self.context
+            offset += 1
+
+        for idx in range(len(self.history)):
+            if idx + offset in indices:
+                history.append(self.history[idx])
+        offset += len(self.history)
+
+        if offset not in indices:
+            print(self)
+            print(indices)
+            raise RuntimeError("The last user prompt must not be omitted.")
+
+        return BisonPrompt(
+            context=context,
+            history=history,
+            prompt=self.prompt,
+        )
 
 
 _SUPPORTED_ROLES = {Role.SYSTEM, Role.USER, Role.ASSISTANT}
 
 
-def _validate_messages_and_split(
+def _validate_and_split_messages(
     messages: List[Message],
 ) -> Tuple[Optional[str], List[Message]]:
     if len(messages) == 0:
