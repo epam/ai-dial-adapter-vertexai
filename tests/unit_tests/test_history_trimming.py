@@ -38,26 +38,26 @@ class MockBisonPrompt(BisonPrompt):
         return len(text.split())
 
 
-@pytest.fixture()
-def mock():
+@pytest.fixture
+def mock_tokenize():
     mock = AsyncMock()
-    mock.tokenize.side_effect = MockBisonPrompt.tokenize_by_words
+    mock.side_effect = MockBisonPrompt.tokenize_by_words
     return mock
 
 
 @pytest.mark.asyncio
-async def test_history_truncation_cut_nothing_1(mock):
+async def test_history_truncation_cut_nothing_1(mock_tokenize):
 
     prompt = BisonPrompt(prompt="hello")
 
-    discarded_messages = await get_discarded_messages(mock.tokenize, prompt, 1)
+    discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 1)
 
     assert discarded_messages == []
-    assert mock.tokenize.call_args_list == [call(prompt)]
+    assert mock_tokenize.call_args_list == [call(prompt)]
 
 
 @pytest.mark.asyncio
-async def test_history_truncation_cut_nothing_2(mock):
+async def test_history_truncation_cut_nothing_2(mock_tokenize):
 
     history: List[ChatMessage] = [
         ChatMessage(author=ChatAuthor.USER, content="message2"),
@@ -68,10 +68,10 @@ async def test_history_truncation_cut_nothing_2(mock):
 
     prompt = BisonPrompt(context=None, history=history, prompt="message6")
 
-    discarded_messages = await get_discarded_messages(mock.tokenize, prompt, 5)
+    discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 5)
 
     assert discarded_messages == []
-    assert mock.tokenize.call_args_list == [
+    assert mock_tokenize.call_args_list == [
         call(prompt.omit({0, 1, 2, 3})),
         call(prompt.omit({0, 1})),
         call(prompt),
@@ -79,7 +79,7 @@ async def test_history_truncation_cut_nothing_2(mock):
 
 
 @pytest.mark.asyncio
-async def test_history_truncation_cut_nothing_3(mock):
+async def test_history_truncation_cut_nothing_3(mock_tokenize):
 
     history: List[ChatMessage] = [
         ChatMessage(author=ChatAuthor.USER, content="message2"),
@@ -91,11 +91,11 @@ async def test_history_truncation_cut_nothing_3(mock):
     prompt = BisonPrompt(context=None, history=history, prompt="message6")
 
     discarded_messages = await get_discarded_messages(
-        mock.tokenize, prompt, 1000
+        mock_tokenize, prompt, 1000
     )
 
     assert discarded_messages == []
-    assert mock.tokenize.call_args_list == [
+    assert mock_tokenize.call_args_list == [
         call(prompt.omit({0, 1, 2, 3})),
         call(prompt.omit({0, 1})),
         call(prompt),
@@ -103,7 +103,7 @@ async def test_history_truncation_cut_nothing_3(mock):
 
 
 @pytest.mark.asyncio
-async def test_history_truncation_cut_all_turns(mock):
+async def test_history_truncation_cut_all_turns(mock_tokenize):
     context = "message1"
     history: List[ChatMessage] = [
         ChatMessage(author=ChatAuthor.USER, content="message2"),
@@ -114,16 +114,16 @@ async def test_history_truncation_cut_all_turns(mock):
 
     prompt = BisonPrompt(context=context, history=history, prompt="message6")
 
-    discarded_messages = await get_discarded_messages(mock.tokenize, prompt, 2)
+    discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 2)
     assert discarded_messages == [1, 2, 3, 4]
-    assert mock.tokenize.call_args_list == [
+    assert mock_tokenize.call_args_list == [
         call(prompt.omit({1, 2, 3, 4})),
         call(prompt.omit({1, 2})),
     ]
 
 
 @pytest.mark.asyncio
-async def test_history_truncation_cut_mid_turn(mock):
+async def test_history_truncation_cut_mid_turn(mock_tokenize):
     context = "message1"
     history: List[ChatMessage] = [
         ChatMessage(author=ChatAuthor.USER, content="message2"),
@@ -134,16 +134,16 @@ async def test_history_truncation_cut_mid_turn(mock):
 
     prompt = BisonPrompt(context=context, history=history, prompt="message6")
 
-    discarded_messages = await get_discarded_messages(mock.tokenize, prompt, 3)
+    discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 3)
     assert discarded_messages == [1, 2, 3, 4]
-    assert mock.tokenize.call_args_list == [
+    assert mock_tokenize.call_args_list == [
         call(prompt.omit({1, 2, 3, 4})),
         call(prompt.omit({1, 2})),
     ]
 
 
 @pytest.mark.asyncio
-async def test_history_truncation_cut_last_turn(mock):
+async def test_history_truncation_cut_last_turn(mock_tokenize):
     context = "message1"
     history: List[ChatMessage] = [
         ChatMessage(author=ChatAuthor.USER, content="message2"),
@@ -154,9 +154,9 @@ async def test_history_truncation_cut_last_turn(mock):
 
     prompt = BisonPrompt(context=context, history=history, prompt="message6")
 
-    discarded_messages = await get_discarded_messages(mock.tokenize, prompt, 4)
+    discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 4)
     assert discarded_messages == [1, 2]
-    assert mock.tokenize.call_args_list == [
+    assert mock_tokenize.call_args_list == [
         call(prompt.omit({1, 2, 3, 4})),
         call(prompt.omit({1, 2})),
         call(prompt),
@@ -165,7 +165,7 @@ async def test_history_truncation_cut_last_turn(mock):
 
 @pytest.mark.asyncio
 async def test_history_truncation_last_and_system_messages_are_too_big(
-    mock,
+    mock_tokenize,
 ):
     context = "message1 message1"
     history: List[ChatMessage] = [
@@ -178,7 +178,7 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
     prompt = BisonPrompt(context=context, history=history, prompt="message6")
 
     with pytest.raises(DialException) as exc_info:
-        await get_discarded_messages(mock.tokenize, prompt, 2)
+        await get_discarded_messages(mock_tokenize, prompt, 2)
 
     assert (
         exc_info.value.message
@@ -187,11 +187,11 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
 
 
 @pytest.mark.asyncio
-async def test_history_truncation_last_message_is_too_big(mock):
+async def test_history_truncation_last_message_is_too_big(mock_tokenize):
     prompt = BisonPrompt(prompt="hello hello")
 
     with pytest.raises(DialException) as exc_info:
-        await get_discarded_messages(mock.tokenize, prompt, 1)
+        await get_discarded_messages(mock_tokenize, prompt, 1)
 
     assert (
         exc_info.value.message
