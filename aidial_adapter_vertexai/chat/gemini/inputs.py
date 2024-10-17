@@ -6,6 +6,7 @@ from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.processor import AttachmentProcessors
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiConversation
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 
 
@@ -47,11 +48,11 @@ def content_to_function_args(content: str) -> Dict[str, Any]:
     return {"content": args}
 
 
-async def messages_to_gemini_content(
+async def messages_to_gemini_conversation(
     processors: AttachmentProcessors,
     tools: ToolsConfig,
     messages: List[Message],
-) -> List[Content]:
+) -> GeminiConversation:
     gemini_messages = [
         (
             await _message_to_gemini_parts(processors, tools, message),
@@ -60,12 +61,19 @@ async def messages_to_gemini_content(
         for message in messages
     ]
 
-    gemini_messages = eliminate_leading_system_messages(gemini_messages)
+    system_instruction, gemini_messages = separate_system_messages(
+        gemini_messages
+    )
 
-    return [
+    contents = [
         Content(role=_to_gemini_role(role), parts=parts)
         for parts, role in gemini_messages
     ]
+
+    return GeminiConversation(
+        system_instruction=system_instruction,
+        contents=contents,
+    )
 
 
 async def _message_to_gemini_parts(
@@ -133,24 +141,14 @@ async def _message_to_gemini_parts(
 _T = TypeVar("_T")
 
 
-def eliminate_leading_system_messages(
+def separate_system_messages(
     messages: List[Tuple[List[_T], Role]]
-) -> List[Tuple[List[_T], Role]]:
+) -> Tuple[List[_T] | None, List[Tuple[List[_T], Role]]]:
     """
-    Attach the leading system messages to a subsequent user message.
-
-    NOTE: it's possible to pass `system_instruction` to `GenerativeModel` constructor,
-    however `system_instruction` field isn't yet fully integrated into the VertexAI SDK.
-    In particular, it's not exposed in `GenerativeModel.count_tokens_async` method:
-    https://github.com/googleapis/python-aiplatform/issues/3631
-
-    NOTE: it's not enough to simply turn system message into yet another user message,
-    because Gemini will complain about incorrect chat structure:
-        400 Please ensure that multiturn requests alternate between user and model.
+    Extract the leading system messages from the list of messages.
     """
-
     if len(messages) == 0:
-        return messages
+        return None, messages
 
     system_messages: List[_T] = []
 
@@ -162,8 +160,4 @@ def eliminate_leading_system_messages(
         else:
             break
 
-    if messages:
-        message, role = messages[0]
-        return [(system_messages + message, role)] + messages[1:]
-    else:
-        return [(system_messages, Role.USER)]
+    return system_messages or None, messages

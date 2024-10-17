@@ -4,7 +4,7 @@ from aidial_sdk.chat_completion import Message, Role
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.inputs import (
-    messages_to_gemini_content,
+    messages_to_gemini_conversation,
 )
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessors,
@@ -51,7 +51,9 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
             file_storage=file_storage,
         )
 
-        history = await messages_to_gemini_content(processors, tools, messages)
+        conversation = await messages_to_gemini_conversation(
+            processors, tools, messages
+        )
 
         def usage_message():
             return _get_usage_message(processors.get_file_exts())
@@ -62,11 +64,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         if processors.resource_count == 0:
             return UserError("No documents were found", usage_message())
 
-        return cls(
-            history=history[:-1],
-            prompt=history[-1].parts,
-            tools=tools,
-        )
+        return cls(conversation=conversation, tools=tools)
 
 
 def truncate_messages(messages: List[Message]) -> List[Message]:
