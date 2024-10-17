@@ -11,18 +11,13 @@ from vertexai.vision_models import (
     MultiModalEmbeddingResponse,
 )
 
-from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.dial_api.attachments import (
-    download_with_content_type,
-)
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.dial_api.embedding_inputs import (
     EMPTY_INPUT_LIST_ERROR,
     collect_embedding_inputs,
 )
-from aidial_adapter_vertexai.dial_api.storage import (
-    FileStorage,
-    create_file_storage,
-)
+from aidial_adapter_vertexai.dial_api.resource import AttachmentResource
+from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
@@ -117,15 +112,23 @@ def validate_request(request: EmbeddingsRequest) -> None:
             )
 
 
+def _validate_content_type(content_type: str, supported_types: List[str]):
+    if content_type not in supported_types:
+        raise UserError(
+            f"Unsupported attachment content type: {content_type}. "
+            f"Supported attachment  types: {', '.join(supported_types)}."
+        )
+
+
 async def get_requests(
-    request: EmbeddingsRequest,
-    storage: FileStorage | None,
+    storage: FileStorage | None, request: EmbeddingsRequest
 ) -> AsyncIterator[ModelRequest]:
     async def download_image(attachment: Attachment) -> Image:
-        data = await download_with_content_type(
-            SUPPORTED_IMAGE_TYPES, storage, attachment
+        resource = await AttachmentResource(attachment=attachment).download(
+            storage
         )
-        return Image(image_bytes=data)
+        _validate_content_type(resource.type, SUPPORTED_IMAGE_TYPES)
+        return Image(image_bytes=resource.data)
 
     async def on_text(text: str):
         return ModelRequest(contextual_text=text)
@@ -174,22 +177,15 @@ async def get_requests(
 class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
     model_id: str
     model: MultiModalEmbeddingModel
-    api_key: str
     storage: FileStorage | None
 
     @classmethod
     async def create(
-        cls,
-        model_id: str,
-        project_id: str,
-        location: str,
-        api_key: str,
+        cls, storage: FileStorage | None, model_id: str
     ) -> "EmbeddingsAdapter":
-        storage = create_file_storage(api_key)
+
         model = await get_multi_modal_embedding_model(model_id)
-        return cls(
-            model_id=model_id, model=model, api_key=api_key, storage=storage
-        )
+        return cls(model_id=model_id, model=model, storage=storage)
 
     async def embeddings(
         self, request: EmbeddingsRequest
@@ -201,10 +197,10 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
 
         # NOTE: The model doesn't support batched inputs
         tasks: List[Callable[[], Tuple[Embedding, int]]] = []
-        async for sub_request in await get_requests(request, self.storage):
+        async for sub_request in await get_requests(self.storage, request):
             tasks.append(
-                lambda: compute_embeddings(
-                    sub_request,
+                lambda sub_req=sub_request: compute_embeddings(
+                    sub_req,
                     self.model,
                     base64_encode=base64_encode,
                     dimensions=request.dimensions,

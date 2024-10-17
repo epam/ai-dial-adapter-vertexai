@@ -1,21 +1,20 @@
-from typing import List, Optional, Self, Union
+from typing import List, Optional, Self
 
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
-from aidial_adapter_vertexai.chat.gemini.processor import process_messages
+from aidial_adapter_vertexai.chat.gemini.inputs import (
+    messages_to_gemini_content,
+)
+from aidial_adapter_vertexai.chat.gemini.processor import AttachmentProcessors
 from aidial_adapter_vertexai.chat.gemini.processors import (
     get_audio_processor,
-    get_file_exts,
     get_image_processor,
     get_pdf_processor,
     get_plain_text_processor,
     get_video_processor,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
-from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
-    accommodate_first_system_message,
-)
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
@@ -27,29 +26,29 @@ class Gemini_1_5_Prompt(GeminiPrompt):
         file_storage: Optional[FileStorage],
         tools: ToolsConfig,
         messages: List[Message],
-    ) -> Union[Self, UserError]:
+    ) -> Self | UserError:
         if len(messages) == 0:
             raise ValidationError(
                 "The chat history must have at least one message"
             )
 
-        messages = accommodate_first_system_message(messages)
+        processors = AttachmentProcessors(
+            processors=[
+                get_plain_text_processor(),
+                get_image_processor(3000),
+                get_pdf_processor(300),
+                get_video_processor(10),
+                get_audio_processor(),
+            ],
+            file_storage=file_storage,
+        )
 
-        processors = [
-            get_plain_text_processor(),
-            get_image_processor(3000),
-            get_pdf_processor(300),
-            get_video_processor(10),
-            get_audio_processor(),
-        ]
+        history = await messages_to_gemini_content(processors, tools, messages)
 
-        result = await process_messages(processors, file_storage, messages)
+        if error_message := processors.get_error_message():
+            usage_message = get_usage_message(processors.get_file_exts())
+            return UserError(error_message, usage_message)
 
-        if isinstance(result, str):
-            usage_message = get_usage_message(get_file_exts(processors))
-            return UserError(result, usage_message)
-
-        history = [res.to_content(tools) for res in result]
         return cls(
             history=history[:-1],
             prompt=history[-1].parts,

@@ -1,56 +1,15 @@
 import json
-from typing import Any, Dict, List, assert_never
+from typing import Any, Dict, List, Tuple, TypeVar, assert_never
 
 from aidial_sdk.chat_completion import FunctionCall, Message, Role, ToolCall
-from pydantic import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.gemini.processor import AttachmentProcessors
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.utils.resource import Resource
 
 
-class MessageWithResources(BaseModel):
-    message: Message
-    resources: List[Resource]
-
-    @property
-    def content(self) -> str:
-        content = self.message.content
-        if content is None:
-            raise ValidationError("Message content must be present")
-
-        # Gemini doesn't support empty messages: neither user's nor assistant's.
-        # It throws an error:
-        #   400 Unable to submit request because it has an empty text parameter.
-        #   Add a value to the parameter and try again.
-        if content == "":
-            content = " "
-
-        return content
-
-    def to_text(self) -> str:
-        if len(self.resources) > 0:
-            raise ValidationError("Inputs are not supported for text messages")
-
-        return self.content
-
-    def to_parts(self, tools: ToolsConfig) -> List[Part]:
-        # Placing Images/Video parts before the text as per
-        # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
-        parts = [resource.to_part() for resource in self.resources]
-        parts.extend(message_to_gemini(tools, self.message))
-
-        return parts
-
-    def to_content(self, tools: ToolsConfig) -> Content:
-        return Content(
-            role=from_dial_role(self.message.role),
-            parts=self.to_parts(tools),
-        )
-
-
-def from_dial_role(role: Role) -> str:
+def _to_gemini_role(role: Role) -> str:
     match role:
         case Role.SYSTEM:
             raise ValidationError(
@@ -88,7 +47,30 @@ def content_to_function_args(content: str) -> Dict[str, Any]:
     return {"content": args}
 
 
-def message_to_gemini(tools: ToolsConfig, message: Message) -> List[Part]:
+async def messages_to_gemini_content(
+    processors: AttachmentProcessors,
+    tools: ToolsConfig,
+    messages: List[Message],
+) -> List[Content]:
+    gemini_messages = [
+        (
+            await _message_to_gemini_parts(processors, tools, message),
+            message.role,
+        )
+        for message in messages
+    ]
+
+    gemini_messages = eliminate_leading_system_messages(gemini_messages)
+
+    return [
+        Content(role=_to_gemini_role(role), parts=parts)
+        for parts, role in gemini_messages
+    ]
+
+
+async def _message_to_gemini_parts(
+    processors: AttachmentProcessors, tools: ToolsConfig, message: Message
+) -> List[Part]:
 
     content = message.content
 
@@ -96,12 +78,12 @@ def message_to_gemini(tools: ToolsConfig, message: Message) -> List[Part]:
         case Role.SYSTEM:
             if content is None:
                 raise ValidationError("System message content must be present")
-            return [Part.from_text(content)]
+            return await processors.process_message(message)
 
         case Role.USER:
             if content is None:
                 raise ValidationError("User message content must be present")
-            return [Part.from_text(content)]
+            return await processors.process_message(message)
 
         case Role.ASSISTANT:
             if message.function_call is not None:
@@ -113,12 +95,16 @@ def message_to_gemini(tools: ToolsConfig, message: Message) -> List[Part]:
                     raise ValidationError(
                         "Assistant message content must be present"
                     )
-                return [Part.from_text(content)]
+                return await processors.process_message(message)
 
         case Role.FUNCTION:
             if content is None:
                 raise ValidationError(
                     "Function message content must be present"
+                )
+            if not isinstance(content, str):
+                raise ValidationError(
+                    "Function message content must be a string"
                 )
             args = content_to_function_args(content)
             name = message.name
@@ -129,6 +115,8 @@ def message_to_gemini(tools: ToolsConfig, message: Message) -> List[Part]:
         case Role.TOOL:
             if content is None:
                 raise ValidationError("Tool message content must be present")
+            if not isinstance(content, str):
+                raise ValidationError("Tool message content must be a string")
             args = content_to_function_args(content)
             tool_call_id = message.tool_call_id
             if tool_call_id is None:
@@ -140,3 +128,42 @@ def message_to_gemini(tools: ToolsConfig, message: Message) -> List[Part]:
 
         case _:
             assert_never(message.role)
+
+
+_T = TypeVar("_T")
+
+
+def eliminate_leading_system_messages(
+    messages: List[Tuple[List[_T], Role]]
+) -> List[Tuple[List[_T], Role]]:
+    """
+    Attach the leading system messages to a subsequent user message.
+
+    NOTE: it's possible to pass `system_instruction` to `GenerativeModel` constructor,
+    however `system_instruction` field isn't yet fully integrated into the VertexAI SDK.
+    In particular, it's not exposed in `GenerativeModel.count_tokens_async` method:
+    https://github.com/googleapis/python-aiplatform/issues/3631
+
+    NOTE: it's not enough to simply turn system message into yet another user message,
+    because Gemini will complain about incorrect chat structure:
+        400 Please ensure that multiturn requests alternate between user and model.
+    """
+
+    if len(messages) == 0:
+        return messages
+
+    system_messages: List[_T] = []
+
+    while messages:
+        message, role = messages[0]
+        if role == Role.SYSTEM:
+            system_messages.extend(message)
+            messages = messages[1:]
+        else:
+            break
+
+    if messages:
+        message, role = messages[0]
+        return [(system_messages + message, role)] + messages[1:]
+    else:
+        return [(system_messages, Role.USER)]

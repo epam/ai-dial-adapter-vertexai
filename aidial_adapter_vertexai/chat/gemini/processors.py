@@ -1,5 +1,3 @@
-from typing import List
-
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessor,
     InitValidator,
@@ -139,11 +137,3 @@ def get_video_processor(
             init_validator, max_count_validator(max_count)
         ),
     )
-
-
-def get_file_exts(processors: List[AttachmentProcessor]) -> List[str]:
-    return sorted(set([ext for p in processors for ext in p.file_exts]))
-
-
-def get_mime_types(processors: List[AttachmentProcessor]) -> List[str]:
-    return sorted(set([ty for p in processors for ty in p.mime_types]))
