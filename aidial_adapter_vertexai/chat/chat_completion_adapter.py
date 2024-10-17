@@ -6,6 +6,7 @@ from aidial_sdk.chat_completion import Message
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.chat.truncate_prompt import DiscardedMessages
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.utils.not_implemented import not_implemented
 
@@ -28,7 +29,7 @@ class ChatCompletionAdapter(ABC, Generic[P]):
     @not_implemented
     async def truncate_prompt(
         self, prompt: P, max_prompt_tokens: int
-    ) -> Tuple[P, List[int]]: ...
+    ) -> Tuple[DiscardedMessages, P]: ...
 
     @not_implemented
     async def count_prompt_tokens(self, prompt: P) -> int: ...

@@ -15,6 +15,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.chat.truncate_prompt import DiscardedMessages
 from aidial_adapter_vertexai.dial_api.request import (
     ModelParameters,
     collect_text_content,
@@ -58,8 +59,8 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     @override
     async def truncate_prompt(
         self, prompt: ImagenPrompt, max_prompt_tokens: int
-    ) -> Tuple[ImagenPrompt, List[int]]:
-        return prompt, []
+    ) -> Tuple[DiscardedMessages, ImagenPrompt]:
+        return [], prompt
 
     @staticmethod
     def get_image_type(image: PIL_Image.Image) -> str:

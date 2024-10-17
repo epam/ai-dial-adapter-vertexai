@@ -84,14 +84,14 @@ class BisonChatAdapter(BisonChatCompletionAdapter):
 
         if params.stream:
             stream = chat.send_message_streaming_async(
-                message=prompt.user_prompt,
+                message=prompt.prompt,
                 **self.prepare_parameters_stream(params),
             )
             async for chunk in stream:
                 yield chunk.text
         else:
             response = await chat.send_message_async(
-                message=prompt.user_prompt,
+                message=prompt.prompt,
                 **self.prepare_parameters_no_stream(params),
             )
             yield response.text
@@ -143,14 +143,14 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
 
         if params.stream:
             stream = chat.send_message_streaming_async(
-                message=prompt.user_prompt,
+                message=prompt.prompt,
                 **self.prepare_parameters_stream(params),
             )
             async for chunk in stream:
                 yield chunk.text
         else:
             response = await chat.send_message_async(
-                message=prompt.user_prompt,
+                message=prompt.prompt,
                 **self.prepare_parameters_no_stream(params),
             )
             yield response.text
