@@ -1,5 +1,4 @@
 from aiocache import cached
-from vertexai.preview.generative_models import GenerativeModel
 from vertexai.preview.language_models import (
     ChatModel,
     CodeChatModel,
@@ -25,11 +24,6 @@ async def get_code_chat_model(model_id: str) -> CodeChatModel:
 @cached()
 async def get_chat_model(model_id: str) -> ChatModel:
     return await make_single_thread_async(ChatModel.from_pretrained, model_id)
-
-
-@cached()
-async def get_gemini_model(model_id: str) -> GenerativeModel:
-    return await make_single_thread_async(GenerativeModel, model_id)
 
 
 @cached()
