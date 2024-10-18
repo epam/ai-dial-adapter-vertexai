@@ -74,8 +74,6 @@ class BisonPrompt(BaseModel, Truncatable):
         offset += len(self.history)
 
         if offset not in indices:
-            print(self)
-            print(indices)
             raise RuntimeError("The last user prompt must not be omitted.")
 
         return BisonPrompt(
