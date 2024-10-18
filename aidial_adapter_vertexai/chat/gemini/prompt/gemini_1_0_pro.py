@@ -30,4 +30,8 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
         if error_message := processors.get_error_message():
             return UserError(error_message, error_message)
 
-        return cls(conversation=conversation, tools=tools)
+        return cls(
+            system_instruction=conversation.system_instruction,
+            contents=conversation.contents,
+            tools=tools,
+        )
