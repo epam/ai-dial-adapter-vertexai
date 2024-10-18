@@ -51,7 +51,11 @@ class Gemini_1_5_Prompt(GeminiPrompt):
             usage_message = get_usage_message(processors.get_file_exts())
             return UserError(error_message, usage_message)
 
-        return cls(conversation=conversation, tools=tools)
+        return cls(
+            system_instruction=conversation.system_instruction,
+            contents=conversation.contents,
+            tools=tools,
+        )
 
 
 def get_usage_message(exts: List[str]) -> str:
