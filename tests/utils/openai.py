@@ -1,7 +1,14 @@
 import json
 import re
-from typing import Any, AsyncGenerator, Callable, List, Optional
+from typing import Any, AsyncGenerator, Callable, List, Optional, TypeVar
 
+import httpx
+from aidial_sdk.deployment.tokenize import (
+    TokenizeError,
+    TokenizeOutput,
+    TokenizeResponse,
+    TokenizeSuccess,
+)
 from aidial_sdk.utils.streaming import merge_chunks
 from openai import AsyncAzureOpenAI, AsyncStream
 from openai._types import NOT_GIVEN
@@ -32,6 +39,11 @@ from pydantic import BaseModel
 
 from aidial_adapter_vertexai.utils.resource import Resource
 from tests.conftest import DEFAULT_API_VERSION
+
+blue_pic = Resource.from_base64(
+    type="image/png",
+    data_base64="iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGNkYPjPwMDAwMDAxAADCBYAG10BBdmz9y8AAAAASUVORK5CYII=",
+)
 
 
 def sys(content: str) -> ChatCompletionSystemMessageParam:
@@ -169,6 +181,37 @@ class ChatCompletionResult(BaseModel):
         return self.message.tool_calls
 
 
+async def tokenize(
+    base_url: str,
+    model_id: str,
+    messages: List[ChatCompletionMessageParam],
+    functions: List[Function] | None,
+    tools: List[ChatCompletionToolParam] | None,
+) -> TokenizeResponse:
+
+    chat_completion_request = {
+        "model": model_id,
+        "messages": messages,
+        "tools": tools,
+        "functions": functions,
+    }
+
+    tokenize_request = {
+        "inputs": [{"type": "request", "value": chat_completion_request}],
+    }
+
+    http_client = httpx.AsyncClient(
+        base_url=f"{base_url}/openai/deployments/{model_id}",
+        headers={"api-key": "dummy-api-key"},
+    )
+
+    tokenize_request = await http_client.post("tokenize", json=tokenize_request)
+
+    tokenize_request.raise_for_status()
+
+    return TokenizeResponse.parse_obj(tokenize_request.json())
+
+
 async def chat_completion(
     client: AsyncAzureOpenAI,
     messages: List[ChatCompletionMessageParam],
@@ -234,6 +277,32 @@ def for_all_choices(
         return all(predicate(content) for content in contents)
 
     return f
+
+
+_T = TypeVar("_T")
+
+
+def _make_list(tokens: List[_T] | _T) -> List[_T]:
+    if isinstance(tokens, list):
+        return tokens
+    else:
+        return [tokens]
+
+
+def _create_tokenize_output(value: int | str) -> TokenizeOutput:
+    if isinstance(value, int):
+        return TokenizeSuccess(token_count=value)
+    else:
+        return TokenizeError(error=value)
+
+
+def check_tokenize_response(
+    expected: List[int | str] | int | str,
+) -> Callable[[TokenizeResponse], bool]:
+    expected_list = _make_list(expected)
+    expected_outputs = list(map(_create_tokenize_output, expected_list))
+
+    return lambda resp: expected_outputs == resp.outputs
 
 
 GET_WEATHER_FUNCTION: Function = {
