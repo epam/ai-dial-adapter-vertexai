@@ -77,21 +77,22 @@ class BisonChatAdapter(BisonChatCompletionAdapter):
         self, params: ModelParameters, prompt: BisonPrompt
     ) -> AsyncIterator[str]:
         chat = self.model.start_chat(
-            context=prompt.context, message_history=prompt.history
+            context=prompt.system_instruction,
+            message_history=prompt.history,
         )
 
         generic_validate_parameters(params)
 
         if params.stream:
             stream = chat.send_message_streaming_async(
-                message=prompt.prompt,
+                message=prompt.last_user_message,
                 **self.prepare_parameters_stream(params),
             )
             async for chunk in stream:
                 yield chunk.text
         else:
             response = await chat.send_message_async(
-                message=prompt.prompt,
+                message=prompt.last_user_message,
                 **self.prepare_parameters_no_stream(params),
             )
             yield response.text
@@ -135,7 +136,8 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
         self, params: ModelParameters, prompt: BisonPrompt
     ) -> AsyncIterator[str]:
         chat = self.model.start_chat(
-            context=prompt.context, message_history=prompt.history
+            context=prompt.system_instruction,
+            message_history=prompt.history,
         )
 
         generic_validate_parameters(params)
@@ -143,14 +145,14 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
 
         if params.stream:
             stream = chat.send_message_streaming_async(
-                message=prompt.prompt,
+                message=prompt.last_user_message,
                 **self.prepare_parameters_stream(params),
             )
             async for chunk in stream:
                 yield chunk.text
         else:
             response = await chat.send_message_async(
-                message=prompt.prompt,
+                message=prompt.last_user_message,
                 **self.prepare_parameters_no_stream(params),
             )
             yield response.text

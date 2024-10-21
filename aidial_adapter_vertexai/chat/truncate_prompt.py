@@ -67,13 +67,13 @@ def _partition_indexer(chunks: List[int]) -> Callable[[int], List[int]]:
 DiscardedMessages = List[int]
 
 
-class Truncatable(ABC, Sized):
+class TruncatablePrompt(ABC, Sized):
 
     @abstractmethod
-    def keep(self, index: int) -> bool: ...
+    def is_required_message(self, index: int) -> bool: ...
 
     @abstractmethod
-    def partition(self) -> List[int]: ...
+    def partition_messages(self) -> List[int]: ...
 
     @abstractmethod
     def select(self, indices: Set[int]) -> Self: ...
@@ -81,7 +81,7 @@ class Truncatable(ABC, Sized):
     def omit(self, indices: Set[int]) -> Self:
         return self.select(set(range(len(self))) - indices)
 
-    async def truncate_prompt(
+    async def truncate(
         self,
         *,
         tokenizer: Callable[[Self], Awaitable[int]],
@@ -131,7 +131,7 @@ class Truncatable(ABC, Sized):
                 model_limit=model_limit, token_count=token_count
             )
 
-        partition_sizes = self.partition()
+        partition_sizes = self.partition_messages()
         if sum(partition_sizes) != len(self):
             raise ValueError(
                 "Partition sizes must add up to the number of messages."
@@ -147,7 +147,7 @@ class Truncatable(ABC, Sized):
             j
             for i in range(n)
             for j in get_partition_indices(i)
-            if self.keep(i)
+            if self.is_required_message(i)
         }
 
         token_count = await _tokenize_selected(kept_indices)

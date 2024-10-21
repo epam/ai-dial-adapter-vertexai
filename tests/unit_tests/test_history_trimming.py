@@ -8,10 +8,10 @@ from vertexai.preview.language_models import ChatMessage
 from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt, ChatAuthor
 from aidial_adapter_vertexai.chat.truncate_prompt import (
     DiscardedMessages,
-    Truncatable,
+    TruncatablePrompt,
 )
 
-_P = TypeVar("_P", bound=Truncatable)
+_P = TypeVar("_P", bound=TruncatablePrompt)
 
 
 async def get_discarded_messages(
@@ -20,9 +20,7 @@ async def get_discarded_messages(
     max_prompt_tokens: int,
 ) -> DiscardedMessages:
     return (
-        await prompt.truncate_prompt(
-            tokenizer=tokenizer, user_limit=max_prompt_tokens
-        )
+        await prompt.truncate(tokenizer=tokenizer, user_limit=max_prompt_tokens)
     )[0]
 
 
@@ -30,9 +28,9 @@ class MockBisonPrompt(BisonPrompt):
     async def tokenize_by_words(self) -> int:
         text = " ".join(
             [
-                self.context or "",
+                self.system_instruction or "",
                 *[msg.content for msg in self.history],
-                self.prompt,
+                self.last_user_message,
             ]
         )
         return len(text.split())
@@ -48,7 +46,7 @@ def mock_tokenize():
 @pytest.mark.asyncio
 async def test_history_truncation_cut_nothing_1(mock_tokenize):
 
-    prompt = BisonPrompt(prompt="hello")
+    prompt = BisonPrompt(last_user_message="hello")
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 1)
 
@@ -66,7 +64,11 @@ async def test_history_truncation_cut_nothing_2(mock_tokenize):
         ChatMessage(author=ChatAuthor.BOT, content="message5"),
     ]
 
-    prompt = BisonPrompt(context=None, history=history, prompt="message6")
+    prompt = BisonPrompt(
+        system_instruction=None,
+        history=history,
+        last_user_message="message6",
+    )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 5)
 
@@ -88,7 +90,11 @@ async def test_history_truncation_cut_nothing_3(mock_tokenize):
         ChatMessage(author=ChatAuthor.BOT, content="message5"),
     ]
 
-    prompt = BisonPrompt(context=None, history=history, prompt="message6")
+    prompt = BisonPrompt(
+        system_instruction=None,
+        history=history,
+        last_user_message="message6",
+    )
 
     discarded_messages = await get_discarded_messages(
         mock_tokenize, prompt, 1000
@@ -112,7 +118,11 @@ async def test_history_truncation_cut_all_turns(mock_tokenize):
         ChatMessage(author=ChatAuthor.BOT, content="message5"),
     ]
 
-    prompt = BisonPrompt(context=context, history=history, prompt="message6")
+    prompt = BisonPrompt(
+        system_instruction=context,
+        history=history,
+        last_user_message="message6",
+    )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 2)
     assert discarded_messages == [1, 2, 3, 4]
@@ -132,7 +142,11 @@ async def test_history_truncation_cut_mid_turn(mock_tokenize):
         ChatMessage(author=ChatAuthor.BOT, content="message5"),
     ]
 
-    prompt = BisonPrompt(context=context, history=history, prompt="message6")
+    prompt = BisonPrompt(
+        system_instruction=context,
+        history=history,
+        last_user_message="message6",
+    )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 3)
     assert discarded_messages == [1, 2, 3, 4]
@@ -152,7 +166,11 @@ async def test_history_truncation_cut_last_turn(mock_tokenize):
         ChatMessage(author=ChatAuthor.BOT, content="message5"),
     ]
 
-    prompt = BisonPrompt(context=context, history=history, prompt="message6")
+    prompt = BisonPrompt(
+        system_instruction=context,
+        history=history,
+        last_user_message="message6",
+    )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 4)
     assert discarded_messages == [1, 2]
@@ -175,7 +193,11 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
         ChatMessage(author=ChatAuthor.BOT, content="message5"),
     ]
 
-    prompt = BisonPrompt(context=context, history=history, prompt="message6")
+    prompt = BisonPrompt(
+        system_instruction=context,
+        history=history,
+        last_user_message="message6",
+    )
 
     with pytest.raises(DialException) as exc_info:
         await get_discarded_messages(mock_tokenize, prompt, 2)
@@ -188,7 +210,7 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
 
 @pytest.mark.asyncio
 async def test_history_truncation_last_message_is_too_big(mock_tokenize):
-    prompt = BisonPrompt(prompt="hello hello")
+    prompt = BisonPrompt(last_user_message="hello hello")
 
     with pytest.raises(DialException) as exc_info:
         await get_discarded_messages(mock_tokenize, prompt, 1)
