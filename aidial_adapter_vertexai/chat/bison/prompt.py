@@ -1,11 +1,12 @@
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 from aidial_sdk.chat_completion import Message, Role
 from pydantic import BaseModel
 from vertexai.preview.language_models import ChatMessage, ChatSession
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 from aidial_adapter_vertexai.dial_api.request import collect_text_content
 
 
@@ -17,33 +18,80 @@ class ChatAuthor(str, Enum):
         return f"{self.value!r}"
 
 
-class BisonPrompt(BaseModel):
-    context: Optional[str]
-    messages: List[ChatMessage]
+class BisonPrompt(BaseModel, TruncatablePrompt):
+    system_instruction: Optional[str] = None
+    history: List[ChatMessage] = []
+    last_user_message: str
 
     @classmethod
-    def parse(cls, messages: List[Message]) -> "BisonPrompt":
-        context, messages = _validate_messages_and_split(messages)
+    def parse(cls, history: List[Message]) -> "BisonPrompt":
+        system_instruction, history, last_user_message = (
+            _validate_and_split_messages(history)
+        )
+
         return cls(
-            context=context,
-            messages=list(map(_parse_message, messages)),
+            system_instruction=system_instruction,
+            history=list(map(_to_bison_message, history)),
+            last_user_message=last_user_message,
         )
 
     @property
-    def user_prompt(self) -> str:
-        return self.messages[-1].content or ""
+    def has_system_instruction(self) -> bool:
+        return self.system_instruction is not None
 
-    @property
-    def history(self) -> List[ChatMessage]:
-        return self.messages[:-1]
+    def is_required_message(self, index: int) -> bool:
+        # Keep the system instruction...
+        if self.has_system_instruction and index == 0:
+            return True
+
+        # ...and the last user message
+        if index == len(self) - 1:
+            return True
+
+        return False
+
+    def __len__(self) -> int:
+        return int(self.has_system_instruction) + len(self.history) + 1
+
+    def partition_messages(self) -> List[int]:
+        n = len(self.history)
+        return (
+            [1] * self.has_system_instruction
+            + [2] * (n // 2)
+            + [1] * (n % 2)
+            + [1]
+        )
+
+    def select(self, indices: Set[int]) -> "BisonPrompt":
+        system_instruction: str | None = None
+        history: List[ChatMessage] = []
+
+        offset = 0
+        if self.has_system_instruction and 0 in indices:
+            system_instruction = self.system_instruction
+            offset += 1
+
+        for idx in range(len(self.history)):
+            if idx + offset in indices:
+                history.append(self.history[idx])
+        offset += len(self.history)
+
+        if offset not in indices:
+            raise RuntimeError("The last user prompt must not be omitted.")
+
+        return BisonPrompt(
+            system_instruction=system_instruction,
+            history=history,
+            last_user_message=self.last_user_message,
+        )
 
 
 _SUPPORTED_ROLES = {Role.SYSTEM, Role.USER, Role.ASSISTANT}
 
 
-def _validate_messages_and_split(
+def _validate_and_split_messages(
     messages: List[Message],
-) -> Tuple[Optional[str], List[Message]]:
+) -> Tuple[Optional[str], List[Message], str]:
     if len(messages) == 0:
         raise ValidationError("The chat history must have at least one message")
 
@@ -56,19 +104,23 @@ def _validate_messages_and_split(
                 f"Message role must be one of {_SUPPORTED_ROLES}"
             )
 
-    context: Optional[str] = None
+    system_instruction: Optional[str] = None
     if len(messages) > 0 and messages[0].role == Role.SYSTEM:
-        context = collect_text_content(messages[0].content)
-        context = context if context.strip() else None
-        messages = messages[1:]
+        system_instruction = collect_text_content(messages[0].content)
+        system_instruction = (
+            system_instruction if system_instruction.strip() else None
+        )
+        history = messages[1:]
+    else:
+        history = messages
 
-    if len(messages) == 0 and context is not None:
+    if len(history) == 0 and system_instruction is not None:
         raise ValidationError(
             "The chat history must have at least one non-system message"
         )
 
     role: Optional[Role] = None
-    for message in messages:
+    for message in history:
         if message.role == Role.SYSTEM:
             raise ValidationError(
                 "System messages other than the initial system message are not allowed"
@@ -83,22 +135,27 @@ def _validate_messages_and_split(
 
         role = message.role
 
-    if len(messages) % 2 == 0:
+    if len(history) % 2 == 0:
         raise ValidationError(
             "There should be odd number of messages for correct alternating turn"
         )
 
-    if messages[-1].role != Role.USER:
+    if history[-1].role != Role.USER:
         raise ValidationError("The last message must be a user message")
 
-    return context, messages
+    last_user_message = history[-1]
+
+    return (
+        system_instruction,
+        history[:-1],
+        collect_text_content(last_user_message.content),
+    )
 
 
-def _parse_message(message: Message) -> ChatMessage:
+def _to_bison_message(message: Message) -> ChatMessage:
     author = (
         ChatAuthor.BOT if message.role == Role.ASSISTANT else ChatAuthor.USER
     )
-    assert message.content is not None
     return ChatMessage(
         author=author, content=collect_text_content(message.content)
     )

@@ -174,7 +174,7 @@ class VertexAIChatCompletion(ChatCompletion):
             if request.max_prompt_tokens is None:
                 raise ValidationError("max_prompt_tokens is required")
 
-            _prompt, discarded_messages = await model.truncate_prompt(
+            discarded_messages, _prompt = await model.truncate_prompt(
                 request.messages, request.max_prompt_tokens
             )
             return TruncatePromptSuccess(discarded_messages=discarded_messages)
