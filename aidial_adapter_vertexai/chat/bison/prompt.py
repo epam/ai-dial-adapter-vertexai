@@ -104,15 +104,14 @@ def _validate_and_split_messages(
                 f"Message role must be one of {_SUPPORTED_ROLES}"
             )
 
-    system_instruction: Optional[str] = None
     if len(messages) > 0 and messages[0].role == Role.SYSTEM:
-        system_instruction = collect_text_content(messages[0].content)
+        system_message, *history = messages
+        system_instruction = collect_text_content(system_message.content)
         system_instruction = (
             system_instruction if system_instruction.strip() else None
         )
-        history = messages[1:]
     else:
-        history = messages
+        system_instruction, history = None, messages
 
     if len(history) == 0 and system_instruction is not None:
         raise ValidationError(
@@ -140,15 +139,15 @@ def _validate_and_split_messages(
             "There should be odd number of messages for correct alternating turn"
         )
 
-    if history[-1].role != Role.USER:
-        raise ValidationError("The last message must be a user message")
+    *history, last_message = history
 
-    last_user_message = history[-1]
+    if last_message.role != Role.USER:
+        raise ValidationError("The last message must be a user message")
 
     return (
         system_instruction,
-        history[:-1],
-        collect_text_content(last_user_message.content),
+        history,
+        collect_text_content(last_message.content),
     )
 
 
