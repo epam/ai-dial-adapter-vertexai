@@ -1,4 +1,4 @@
-from typing import Awaitable, Callable, List, TypeVar
+from typing import List
 from unittest.mock import AsyncMock, call
 
 import pytest
@@ -6,40 +6,32 @@ from aidial_sdk.exceptions import HTTPException as DialException
 from vertexai.preview.language_models import ChatMessage
 
 from aidial_adapter_vertexai.chat.bison.prompt import BisonPrompt, ChatAuthor
-from aidial_adapter_vertexai.chat.truncate_prompt import (
-    DiscardedMessages,
-    TruncatablePrompt,
-)
-
-_P = TypeVar("_P", bound=TruncatablePrompt)
+from tests.unit_tests.prompt_truncation.utils import get_discarded_messages
 
 
-async def get_discarded_messages(
-    tokenizer: Callable[[_P], Awaitable[int]],
-    prompt: _P,
-    max_prompt_tokens: int,
-) -> DiscardedMessages:
-    return (
-        await prompt.truncate(tokenizer=tokenizer, user_limit=max_prompt_tokens)
-    )[0]
+async def tokenize_by_words(prompt: BisonPrompt) -> int:
+    text = " ".join(
+        [
+            prompt.system_instruction or "",
+            *[msg.content for msg in prompt.history],
+            prompt.last_user_message,
+        ]
+    )
+    return len(text.split())
 
 
-class MockBisonPrompt(BisonPrompt):
-    async def tokenize_by_words(self) -> int:
-        text = " ".join(
-            [
-                self.system_instruction or "",
-                *[msg.content for msg in self.history],
-                self.last_user_message,
-            ]
-        )
-        return len(text.split())
+def user(s: str) -> ChatMessage:
+    return ChatMessage(author=ChatAuthor.USER, content=s)
+
+
+def bot(s: str) -> ChatMessage:
+    return ChatMessage(author=ChatAuthor.BOT, content=s)
 
 
 @pytest.fixture
 def mock_tokenize():
     mock = AsyncMock()
-    mock.side_effect = MockBisonPrompt.tokenize_by_words
+    mock.side_effect = tokenize_by_words
     return mock
 
 
@@ -58,10 +50,10 @@ async def test_history_truncation_cut_nothing_1(mock_tokenize):
 async def test_history_truncation_cut_nothing_2(mock_tokenize):
 
     history: List[ChatMessage] = [
-        ChatMessage(author=ChatAuthor.USER, content="message2"),
-        ChatMessage(author=ChatAuthor.BOT, content="message3"),
-        ChatMessage(author=ChatAuthor.USER, content="message4"),
-        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        user("message2"),
+        bot("message3"),
+        user("message4"),
+        bot("message5"),
     ]
 
     prompt = BisonPrompt(
@@ -84,10 +76,10 @@ async def test_history_truncation_cut_nothing_2(mock_tokenize):
 async def test_history_truncation_cut_nothing_3(mock_tokenize):
 
     history: List[ChatMessage] = [
-        ChatMessage(author=ChatAuthor.USER, content="message2"),
-        ChatMessage(author=ChatAuthor.BOT, content="message3"),
-        ChatMessage(author=ChatAuthor.USER, content="message4"),
-        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        user("message2"),
+        bot("message3"),
+        user("message4"),
+        bot("message5"),
     ]
 
     prompt = BisonPrompt(
@@ -110,16 +102,16 @@ async def test_history_truncation_cut_nothing_3(mock_tokenize):
 
 @pytest.mark.asyncio
 async def test_history_truncation_cut_all_turns(mock_tokenize):
-    context = "message1"
+    system_instruction = "message1"
     history: List[ChatMessage] = [
-        ChatMessage(author=ChatAuthor.USER, content="message2"),
-        ChatMessage(author=ChatAuthor.BOT, content="message3"),
-        ChatMessage(author=ChatAuthor.USER, content="message4"),
-        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        user("message2"),
+        bot("message3"),
+        user("message4"),
+        bot("message5"),
     ]
 
     prompt = BisonPrompt(
-        system_instruction=context,
+        system_instruction=system_instruction,
         history=history,
         last_user_message="message6",
     )
@@ -134,16 +126,16 @@ async def test_history_truncation_cut_all_turns(mock_tokenize):
 
 @pytest.mark.asyncio
 async def test_history_truncation_cut_mid_turn(mock_tokenize):
-    context = "message1"
+    system_instruction = "message1"
     history: List[ChatMessage] = [
-        ChatMessage(author=ChatAuthor.USER, content="message2"),
-        ChatMessage(author=ChatAuthor.BOT, content="message3"),
-        ChatMessage(author=ChatAuthor.USER, content="message4"),
-        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        user("message2"),
+        bot("message3"),
+        user("message4"),
+        bot("message5"),
     ]
 
     prompt = BisonPrompt(
-        system_instruction=context,
+        system_instruction=system_instruction,
         history=history,
         last_user_message="message6",
     )
@@ -158,16 +150,16 @@ async def test_history_truncation_cut_mid_turn(mock_tokenize):
 
 @pytest.mark.asyncio
 async def test_history_truncation_cut_last_turn(mock_tokenize):
-    context = "message1"
+    system_instruction = "message1"
     history: List[ChatMessage] = [
-        ChatMessage(author=ChatAuthor.USER, content="message2"),
-        ChatMessage(author=ChatAuthor.BOT, content="message3"),
-        ChatMessage(author=ChatAuthor.USER, content="message4"),
-        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        user("message2"),
+        bot("message3"),
+        user("message4"),
+        bot("message5"),
     ]
 
     prompt = BisonPrompt(
-        system_instruction=context,
+        system_instruction=system_instruction,
         history=history,
         last_user_message="message6",
     )
@@ -185,16 +177,16 @@ async def test_history_truncation_cut_last_turn(mock_tokenize):
 async def test_history_truncation_last_and_system_messages_are_too_big(
     mock_tokenize,
 ):
-    context = "message1 message1"
+    system_instruction = "message1 message1"
     history: List[ChatMessage] = [
-        ChatMessage(author=ChatAuthor.USER, content="message2"),
-        ChatMessage(author=ChatAuthor.BOT, content="message3"),
-        ChatMessage(author=ChatAuthor.USER, content="message4"),
-        ChatMessage(author=ChatAuthor.BOT, content="message5"),
+        user("message2"),
+        bot("message3"),
+        user("message4"),
+        bot("message5"),
     ]
 
     prompt = BisonPrompt(
-        system_instruction=context,
+        system_instruction=system_instruction,
         history=history,
         last_user_message="message6",
     )

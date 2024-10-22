@@ -104,6 +104,10 @@ class ToolsConfig(BaseModel):
                 return tool_choice
 
     @classmethod
+    def noop(cls) -> Self:
+        return cls(functions=[], required=False, tool_ids=None)
+
+    @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
         validate_messages(request)
 

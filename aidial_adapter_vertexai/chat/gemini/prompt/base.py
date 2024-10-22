@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import List, Set
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -19,7 +19,7 @@ class GeminiConversation(BaseModel):
 class GeminiPrompt(BaseModel, TruncatablePrompt, ABC):
     system_instruction: List[Part] | None = None
     contents: List[Content]
-    tools: ToolsConfig
+    tools: ToolsConfig = Field(default_factory=ToolsConfig.noop)
 
     class Config:
         arbitrary_types_allowed = True
