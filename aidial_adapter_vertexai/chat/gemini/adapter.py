@@ -186,9 +186,13 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             if chunk.candidates:
                 candidate = chunk.candidates[0]
 
-                content = candidate.text
-                await consumer.append_content(content)
-                yield content
+                try:
+                    content = candidate.text
+                except Exception:
+                    pass
+                else:
+                    await consumer.append_content(content)
+                    yield content
 
                 await create_function_calls(candidate, consumer, tools)
                 await create_attachments_from_citations(candidate, consumer)
