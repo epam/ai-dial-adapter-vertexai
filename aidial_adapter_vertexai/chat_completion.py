@@ -30,6 +30,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.chat.truncate_prompt import DiscardedMessages
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
@@ -69,14 +70,14 @@ class VertexAIChatCompletion(ChatCompletion):
         if n > 1 and params.stream:
             raise ValidationError("n>1 is not supported in streaming mode")
 
-        discarded_messages: List[int] = []
+        discarded_messages: DiscardedMessages = []
         if params.max_prompt_tokens is not None:
             if not is_implemented(model.truncate_prompt):
                 raise ValidationError(
                     "max_prompt_tokens request parameter is not supported"
                 )
 
-            prompt, discarded_messages = await model.truncate_prompt(
+            discarded_messages, prompt = await model.truncate_prompt(
                 prompt, params.max_prompt_tokens
             )
 
