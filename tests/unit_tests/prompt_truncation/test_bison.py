@@ -65,11 +65,7 @@ async def test_history_truncation_cut_nothing_2(mock_tokenize):
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 5)
 
     assert discarded_messages == []
-    assert mock_tokenize.call_args_list == [
-        call(prompt.omit({0, 1, 2, 3})),
-        call(prompt.omit({0, 1})),
-        call(prompt),
-    ]
+    assert mock_tokenize.call_args_list == [call(prompt)]
 
 
 @pytest.mark.asyncio
@@ -93,11 +89,7 @@ async def test_history_truncation_cut_nothing_3(mock_tokenize):
     )
 
     assert discarded_messages == []
-    assert mock_tokenize.call_args_list == [
-        call(prompt.omit({0, 1, 2, 3})),
-        call(prompt.omit({0, 1})),
-        call(prompt),
-    ]
+    assert mock_tokenize.call_args_list == [call(prompt)]
 
 
 @pytest.mark.asyncio
@@ -119,6 +111,7 @@ async def test_history_truncation_cut_all_turns(mock_tokenize):
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 2)
     assert discarded_messages == [1, 2, 3, 4]
     assert mock_tokenize.call_args_list == [
+        call(prompt),
         call(prompt.omit({1, 2, 3, 4})),
         call(prompt.omit({1, 2})),
     ]
@@ -143,6 +136,7 @@ async def test_history_truncation_cut_mid_turn(mock_tokenize):
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 3)
     assert discarded_messages == [1, 2, 3, 4]
     assert mock_tokenize.call_args_list == [
+        call(prompt),
         call(prompt.omit({1, 2, 3, 4})),
         call(prompt.omit({1, 2})),
     ]
@@ -167,9 +161,9 @@ async def test_history_truncation_cut_last_turn(mock_tokenize):
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 4)
     assert discarded_messages == [1, 2]
     assert mock_tokenize.call_args_list == [
+        call(prompt),
         call(prompt.omit({1, 2, 3, 4})),
         call(prompt.omit({1, 2})),
-        call(prompt),
     ]
 
 

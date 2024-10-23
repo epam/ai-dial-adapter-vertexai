@@ -169,6 +169,9 @@ class TruncatablePrompt(ABC, Sized):
                 model_limit=model_limit, token_count=token_count
             )
 
+        if await tokenizer(self) <= user_limit:
+            return []
+
         partition_sizes = self.partition_messages()
         if sum(partition_sizes) != len(self):
             raise ValueError(
@@ -199,13 +202,15 @@ class TruncatablePrompt(ABC, Sized):
                 continue
 
             chunk_indices = get_partition_indices(idx)
-            new_token_count = await _tokenize_selected(
-                {*kept_indices, *chunk_indices}
-            )
-            if new_token_count > user_limit:
+            new_kept_indices = {*kept_indices, *chunk_indices}
+
+            if (
+                len(new_kept_indices) == n
+                or await _tokenize_selected(new_kept_indices) > user_limit
+            ):
                 break
 
-            kept_indices.update(chunk_indices)
+            kept_indices = new_kept_indices
 
         all_indices = set(range(n))
         return sorted(list(all_indices - kept_indices))
