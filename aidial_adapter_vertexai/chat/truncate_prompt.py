@@ -70,13 +70,40 @@ DiscardedMessages = List[int]
 class TruncatablePrompt(ABC, Sized):
 
     @abstractmethod
-    def is_required_message(self, index: int) -> bool: ...
+    def is_required_message(self, index: int) -> bool:
+        """
+        Returns True if the message at the given index is required,
+        meaning that the prompt truncation algorithm should not
+        remove such a message.
+
+        Typically it's all system messages and the last message in the conversation.
+        """
+        ...
 
     @abstractmethod
-    def partition_messages(self) -> List[int]: ...
+    def partition_messages(self) -> List[int]:
+        """
+        Returns a list of sizes of contiguous non-overlapping sequences of messages
+        which together represent partition of the list of messages.
+
+        Therefore, the sum of the sizes must be equal to the number of messages.
+
+        Each partition is either preserved or discarded by the prompt truncation algorithm *as a whole*.
+
+        Typical partition are:
+        * the trivial partition that turns each message into a single-element block of messages
+        * the turn-based partition that consolidates user-bot turns into two-element blocks of messages.
+            This is useful for models that require the conversation to be composed of
+            a whole number of user-bot turns followed by a user query.
+        """
+        ...
 
     @abstractmethod
-    def select(self, indices: Set[int]) -> Self: ...
+    def select(self, indices: Set[int]) -> Self:
+        """
+        Return a new prompt composed of the messages with the given indices.
+        """
+        ...
 
     def omit(self, indices: Set[int]) -> Self:
         return self.select(set(range(len(self))) - indices)
@@ -89,7 +116,18 @@ class TruncatablePrompt(ABC, Sized):
         user_limit: Optional[int] = None,
     ) -> Tuple[DiscardedMessages, Self]:
         """
-        Returns a list of indices of discarded messages and a list of preserved messages
+        Returns a list of indices of discarded messages and
+        the truncated prompt that doesn't include the discarded messages and fits into the given user limit.
+
+        The list of discarded messages is a prefix of the list of non-required messages and
+        its length is as minimal as possible to fit the truncated prompt into the given user limit.
+
+        Parameters:
+        * The tokenizer computes number of tokens in the given prompt.
+        * The model limit is the intrinsic context limit on the number of input tokes for the given model.
+        * The user limit (aka max_prompt_tokens) defines the number of tokens that the resulting truncated prompt must fit in.
+
+        Throws a DIAL exception when the truncation satisfying the given limits is impossible.
         """
 
         result = await self.compute_discarded_messages(
@@ -131,6 +169,9 @@ class TruncatablePrompt(ABC, Sized):
                 model_limit=model_limit, token_count=token_count
             )
 
+        if await tokenizer(self) <= user_limit:
+            return []
+
         partition_sizes = self.partition_messages()
         if sum(partition_sizes) != len(self):
             raise ValueError(
@@ -161,13 +202,15 @@ class TruncatablePrompt(ABC, Sized):
                 continue
 
             chunk_indices = get_partition_indices(idx)
-            new_token_count = await _tokenize_selected(
-                {*kept_indices, *chunk_indices}
-            )
-            if new_token_count > user_limit:
+            new_kept_indices = {*kept_indices, *chunk_indices}
+
+            if (
+                len(new_kept_indices) == n
+                or await _tokenize_selected(new_kept_indices) > user_limit
+            ):
                 break
 
-            kept_indices.update(chunk_indices)
+            kept_indices = new_kept_indices
 
         all_indices = set(range(n))
         return sorted(list(all_indices - kept_indices))
