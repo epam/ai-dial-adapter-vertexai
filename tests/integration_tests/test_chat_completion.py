@@ -15,7 +15,6 @@ from openai.types.chat.completion_create_params import Function
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from aidial_adapter_vertexai.utils.resource import Resource
 from tests.utils.json import match_objects
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
@@ -23,6 +22,7 @@ from tests.utils.openai import (
     ChatCompletionResult,
     ai_function,
     ai_tools,
+    blue_pic,
     chat_completion,
     for_all_choices,
     function_request,
@@ -139,12 +139,6 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
     ]
 
 
-blue_pic = Resource.from_base64(
-    type="image/png",
-    data_base64="iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGNkYPjPwMDAwMDAxAADCBYAG10BBdmz9y8AAAAASUVORK5CYII=",
-)
-
-
 def get_test_cases(
     deployment: ChatCompletionDeployment, streaming: bool
 ) -> List[TestCase]:
@@ -252,7 +246,7 @@ def get_test_cases(
             test_case(
                 name=f"describe image {idx}",
                 max_tokens=100,
-                messages=[sys("be a helpful assistant"), user_message],  # type: ignore
+                messages=[sys("be a helpful assistant"), user_message],
                 expected=lambda s: "blue" in s.content.lower(),
             )
 

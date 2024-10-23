@@ -1,4 +1,5 @@
 import os
+from typing import AsyncGenerator
 
 import httpx
 import pytest
@@ -34,7 +35,7 @@ def disable_aiocache():
 
 
 @pytest_asyncio.fixture()
-async def test_http_client():
+async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     from aidial_adapter_vertexai.app import app
 
     async with LifespanManager(app):
