@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import AsyncIterator, List, Tuple
+from typing import AsyncIterator, List
 
 from aidial_sdk.chat_completion import FinishReason, Message
 from typing_extensions import override
@@ -15,7 +15,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.chat.truncate_prompt import DiscardedMessages
+from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
@@ -44,7 +44,7 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
     @override
     async def truncate_prompt(
         self, prompt: BisonPrompt, max_prompt_tokens: int
-    ) -> Tuple[DiscardedMessages, BisonPrompt]:
+    ) -> TruncatedPrompt[BisonPrompt]:
         return await prompt.truncate(
             tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
