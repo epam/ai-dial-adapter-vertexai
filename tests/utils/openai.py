@@ -38,7 +38,6 @@ from openai.types.shared_params.function_definition import FunctionDefinition
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.utils.resource import Resource
-from tests.conftest import DEFAULT_API_VERSION
 
 blue_pic = Resource.from_base64(
     type="image/png",
@@ -182,7 +181,7 @@ class ChatCompletionResult(BaseModel):
 
 
 async def tokenize(
-    base_url: str,
+    http_client: httpx.AsyncClient,
     model_id: str,
     messages: List[ChatCompletionMessageParam],
     functions: List[Function] | None,
@@ -200,16 +199,15 @@ async def tokenize(
         "inputs": [{"type": "request", "value": chat_completion_request}],
     }
 
-    http_client = httpx.AsyncClient(
-        base_url=f"{base_url}/openai/deployments/{model_id}",
-        headers={"api-key": "dummy-api-key"},
+    tokenize_response = await http_client.post(
+        f"openai/deployments/{model_id}/tokenize",
+        json=tokenize_request,
+        headers={"api-key": "dummy_key"},
     )
 
-    tokenize_request = await http_client.post("tokenize", json=tokenize_request)
+    tokenize_response.raise_for_status()
 
-    tokenize_request.raise_for_status()
-
-    return TokenizeResponse.parse_obj(tokenize_request.json())
+    return TokenizeResponse.parse_obj(tokenize_response.json())
 
 
 async def chat_completion(
@@ -253,17 +251,6 @@ async def chat_completion(
 
     response = await get_response()
     return ChatCompletionResult(response=response)
-
-
-def get_client(base_url: str, model_id: str) -> AsyncAzureOpenAI:
-    return AsyncAzureOpenAI(
-        azure_endpoint=base_url,
-        azure_deployment=model_id,
-        api_version=DEFAULT_API_VERSION,
-        api_key="dummy_key",
-        max_retries=0,
-        timeout=30,
-    )
 
 
 def for_all_choices(

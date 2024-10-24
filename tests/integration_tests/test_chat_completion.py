@@ -15,7 +15,6 @@ from openai.types.chat.completion_create_params import Function
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from tests.conftest import TEST_SERVER_URL
 from tests.utils.json import match_objects
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
@@ -28,7 +27,6 @@ from tests.utils.openai import (
     for_all_choices,
     function_request,
     function_response,
-    get_client,
     sanitize_test_name,
     sys,
     tool_request,
@@ -110,6 +108,7 @@ class TestCase:
 
 deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
+    ChatCompletionDeployment.CHAT_BISON_2_32K,
     ChatCompletionDeployment.CODECHAT_BISON_1,
     ChatCompletionDeployment.GEMINI_PRO_1,
     ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
@@ -131,6 +130,10 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
     ]
+
+
+def supports_text_input(deployment: ChatCompletionDeployment) -> bool:
+    return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
 
 
 def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
@@ -173,68 +176,74 @@ def get_test_cases(
             )
         )
 
-    test_case(
-        name="2+3=5",
-        messages=[user("2+3=?")],
-        expected=for_all_choices(lambda s: "5" in s),
-    )
+    if supports_text_input(deployment):
+        test_case(
+            name="2+3=5",
+            messages=[user("2+3=?")],
+            expected=for_all_choices(lambda s: "5" in s),
+        )
 
-    test_case(
-        name="hello",
-        messages=[user('Reply with "Hello"')],
-        expected=for_all_choices(lambda s: "hello" in s.lower()),
-    )
+        test_case(
+            name="hello",
+            messages=[user('Reply with "Hello"')],
+            expected=for_all_choices(lambda s: "hello" in s.lower()),
+        )
 
-    test_case(
-        name="empty sys message",
-        messages=[sys(""), user("2+4=?")],
-        expected=for_all_choices(lambda s: "6" in s),
-    )
+        test_case(
+            name="empty sys message",
+            messages=[sys(""), user("2+4=?")],
+            expected=for_all_choices(lambda s: "6" in s),
+        )
 
-    test_case(
-        name="non empty sys message",
-        messages=[sys("Act as helpful assistant"), user("2+5=?")],
-        expected=for_all_choices(lambda s: "7" in s),
-    )
+        test_case(
+            name="non empty sys message",
+            messages=[sys("Act as helpful assistant"), user("2+5=?")],
+            expected=for_all_choices(lambda s: "7" in s),
+        )
 
-    test_case(
-        name="max tokens 1",
-        max_tokens=1,
-        messages=[user("tell me the full story of Pinocchio")],
-        expected=for_all_choices(lambda s: len(s.split()) == 1),
-    )
+        test_case(
+            name="max tokens 1",
+            max_tokens=1,
+            messages=[user("tell me the full story of Pinocchio")],
+            expected=for_all_choices(lambda s: len(s.split()) == 1),
+        )
 
-    test_case(
-        name="multiple candidates",
-        max_tokens=10,
-        n=5,
-        messages=[user("heads or tails?")],
-        expected=(
-            ExpectedException(
-                type=UnprocessableEntityError,
-                message="n>1 is not supported in streaming mode",
-                status_code=422,
+        test_case(
+            name="multiple candidates",
+            max_tokens=10,
+            n=5,
+            messages=[user("2+3=?")],
+            expected=(
+                ExpectedException(
+                    type=UnprocessableEntityError,
+                    message="n>1 is not supported in streaming mode",
+                    status_code=422,
+                )
+                if streaming
+                else for_all_choices(lambda _: True, 5)
+            ),
+        )
+
+        # Stop sequences do not work for some reason for CHAT_BISON_2_32K and streaming mode
+        if (deployment, streaming) != (
+            ChatCompletionDeployment.CHAT_BISON_2_32K,
+            True,
+        ):
+            test_case(
+                name="stop sequence",
+                max_tokens=None,
+                stop=["world"],
+                messages=[user('Reply with "hello world"')],
+                expected=(
+                    ExpectedException(
+                        type=UnprocessableEntityError,
+                        message="stop sequences are not supported for code chat model",
+                        status_code=422,
+                    )
+                    if is_codechat(deployment)
+                    else for_all_choices(lambda s: "world" not in s.lower())
+                ),
             )
-            if streaming
-            else for_all_choices(lambda _: True, 5)
-        ),
-    )
-
-    test_case(
-        name="stop sequence",
-        max_tokens=None,
-        stop=["world"],
-        messages=[user('Reply with "hello world"')],
-        expected=(
-            ExpectedException(
-                type=UnprocessableEntityError,
-                message="stop sequences are not supported for code chat model",
-                status_code=422,
-            )
-            if is_codechat(deployment)
-            else for_all_choices(lambda s: "world" not in s.lower())
-        ),
-    )
 
     if is_vision_model(deployment):
         content = "describe the image"
@@ -319,8 +328,8 @@ def get_test_cases(
     ],
     ids=lambda test: test.get_id(),
 )
-async def test_chat_completion_openai(server, test: TestCase):
-    client = get_client(TEST_SERVER_URL, test.deployment.value)
+async def test_chat_completion_openai(get_openai_client, test: TestCase):
+    client = get_openai_client(test.deployment.value)
 
     async def run_chat_completion() -> ChatCompletionResult:
         return await chat_completion(

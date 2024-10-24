@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable, List
 
+import httpx
 import pytest
 from aidial_sdk.deployment.tokenize import TokenizeResponse
 from openai.types.chat import (
@@ -11,7 +12,6 @@ from openai.types.chat.completion_create_params import Function
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.utils.resource import Resource
-from tests.conftest import TEST_SERVER_URL
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
     GET_WEATHER_TOOL,
@@ -222,10 +222,10 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     [test for deployment in deployments for test in get_test_cases(deployment)],
     ids=TestCase.get_id,
 )
-async def test_tokenize(server, test: TestCase):
+async def test_tokenize(test_http_client: httpx.AsyncClient, test: TestCase):
 
     actual_output = await tokenize(
-        TEST_SERVER_URL,
+        test_http_client,
         test.deployment.value,
         test.messages,
         test.functions,
