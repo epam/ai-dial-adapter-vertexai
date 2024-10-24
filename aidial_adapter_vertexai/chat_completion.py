@@ -26,6 +26,7 @@ from typing_extensions import override
 from aidial_adapter_vertexai.adapters import get_chat_completion_model
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
+    TruncatedPrompt,
 )
 from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
@@ -69,14 +70,16 @@ class VertexAIChatCompletion(ChatCompletion):
         if n > 1 and params.stream:
             raise ValidationError("n>1 is not supported in streaming mode")
 
-        discarded_messages: List[int] = []
-        if params.max_prompt_tokens is not None:
+        if params.max_prompt_tokens is None:
+            truncated_prompt = TruncatedPrompt(
+                prompt=prompt, discarded_messages=[]
+            )
+        else:
             if not is_implemented(model.truncate_prompt):
                 raise ValidationError(
                     "max_prompt_tokens request parameter is not supported"
                 )
-
-            prompt, discarded_messages = await model.truncate_prompt(
+            truncated_prompt = await model.truncate_prompt(
                 prompt, params.max_prompt_tokens
             )
 
@@ -85,7 +88,7 @@ class VertexAIChatCompletion(ChatCompletion):
             choice.open()
 
             consumer = ChoiceConsumer(choice)
-            await model.chat(params, consumer, prompt)
+            await model.chat(params, consumer, truncated_prompt.prompt)
             usage.accumulate(consumer.usage)
 
             finish_reason = consumer.finish_reason
@@ -102,7 +105,7 @@ class VertexAIChatCompletion(ChatCompletion):
         response.set_usage(usage.prompt_tokens, usage.completion_tokens)
 
         if params.max_prompt_tokens is not None:
-            response.set_discarded_messages(discarded_messages)
+            response.set_discarded_messages(truncated_prompt.discarded_messages)
 
     @override
     @dial_exception_decorator
@@ -174,9 +177,14 @@ class VertexAIChatCompletion(ChatCompletion):
             if request.max_prompt_tokens is None:
                 raise ValidationError("max_prompt_tokens is required")
 
-            discarded_messages, _prompt = await model.truncate_prompt(
-                request.messages, request.max_prompt_tokens
+            tools = ToolsConfig.from_request(request)
+            prompt = await model.parse_prompt(tools, request.messages)
+
+            truncated_prompt = await model.truncate_prompt(
+                prompt, request.max_prompt_tokens
             )
-            return TruncatePromptSuccess(discarded_messages=discarded_messages)
+            return TruncatePromptSuccess(
+                discarded_messages=truncated_prompt.discarded_messages
+            )
         except Exception as e:
             return TruncatePromptError(error=str(e))

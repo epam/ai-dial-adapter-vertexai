@@ -6,7 +6,6 @@ from typing import (
     Dict,
     List,
     Optional,
-    Tuple,
     TypeVar,
     assert_never,
     cast,
@@ -43,7 +42,7 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
     Gemini_1_5_Prompt,
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.chat.truncate_prompt import DiscardedMessages
+from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     GeminiDeployment,
@@ -228,7 +227,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     @override
     async def truncate_prompt(
         self, prompt: GeminiPrompt, max_prompt_tokens: int
-    ) -> Tuple[DiscardedMessages, GeminiPrompt]:
+    ) -> TruncatedPrompt[GeminiPrompt]:
         return await prompt.truncate(
             tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
