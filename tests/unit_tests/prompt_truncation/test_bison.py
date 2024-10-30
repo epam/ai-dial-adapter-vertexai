@@ -35,7 +35,6 @@ def mock_tokenize():
     return mock
 
 
-@pytest.mark.asyncio
 async def test_history_truncation_cut_nothing_1(mock_tokenize):
 
     prompt = BisonPrompt(last_user_message="hello")
@@ -46,7 +45,6 @@ async def test_history_truncation_cut_nothing_1(mock_tokenize):
     assert mock_tokenize.call_args_list == [call(prompt)]
 
 
-@pytest.mark.asyncio
 async def test_history_truncation_cut_nothing_2(mock_tokenize):
 
     history: List[ChatMessage] = [
@@ -68,7 +66,6 @@ async def test_history_truncation_cut_nothing_2(mock_tokenize):
     assert mock_tokenize.call_args_list == [call(prompt)]
 
 
-@pytest.mark.asyncio
 async def test_history_truncation_cut_nothing_3(mock_tokenize):
 
     history: List[ChatMessage] = [
@@ -92,7 +89,6 @@ async def test_history_truncation_cut_nothing_3(mock_tokenize):
     assert mock_tokenize.call_args_list == [call(prompt)]
 
 
-@pytest.mark.asyncio
 async def test_history_truncation_cut_all_turns(mock_tokenize):
     system_instruction = "message1"
     history: List[ChatMessage] = [
@@ -117,7 +113,6 @@ async def test_history_truncation_cut_all_turns(mock_tokenize):
     ]
 
 
-@pytest.mark.asyncio
 async def test_history_truncation_cut_mid_turn(mock_tokenize):
     system_instruction = "message1"
     history: List[ChatMessage] = [
@@ -142,7 +137,6 @@ async def test_history_truncation_cut_mid_turn(mock_tokenize):
     ]
 
 
-@pytest.mark.asyncio
 async def test_history_truncation_cut_last_turn(mock_tokenize):
     system_instruction = "message1"
     history: List[ChatMessage] = [
@@ -167,7 +161,6 @@ async def test_history_truncation_cut_last_turn(mock_tokenize):
     ]
 
 
-@pytest.mark.asyncio
 async def test_history_truncation_last_and_system_messages_are_too_big(
     mock_tokenize,
 ):
@@ -194,7 +187,6 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
     )
 
 
-@pytest.mark.asyncio
 async def test_history_truncation_last_message_is_too_big(mock_tokenize):
     prompt = BisonPrompt(last_user_message="hello hello")
 

@@ -185,9 +185,9 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             if chunk.candidates:
                 candidate = chunk.candidates[0]
 
-                content = candidate.text
-                await consumer.append_content(content)
-                yield content
+                if (content := _get_candidate_text_safe(candidate)) is not None:
+                    await consumer.append_content(content)
+                    yield content
 
                 await create_function_calls(candidate, consumer, tools)
                 await create_attachments_from_citations(candidate, consumer)
@@ -353,6 +353,17 @@ def to_openai_finish_reason(
             )
         case _:
             assert_never(finish_reason)
+
+
+def _get_candidate_text_safe(candidate: Candidate) -> str | None:
+    # The text content of a candidate may be missing when function is called
+    try:
+        return candidate.text
+    except ValueError:
+        if candidate.function_calls:
+            return None
+        else:
+            raise
 
 
 T = TypeVar("T")
