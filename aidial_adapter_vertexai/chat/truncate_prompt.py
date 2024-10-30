@@ -1,5 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Awaitable, Callable, List, Optional, Self, Set, Sized, Tuple
+from typing import (
+    Awaitable,
+    Callable,
+    Generic,
+    List,
+    Optional,
+    Self,
+    Set,
+    Sized,
+    TypeVar,
+)
 
 from aidial_sdk.exceptions import ContextLengthExceededError
 from aidial_sdk.exceptions import HTTPException as DialException
@@ -8,6 +18,15 @@ from aidial_sdk.exceptions import (
     TruncatePromptSystemAndLastUserError,
 )
 from pydantic import BaseModel
+
+DiscardedMessages = List[int]
+
+_P = TypeVar("_P")
+
+
+class TruncatedPrompt(BaseModel, Generic[_P]):
+    prompt: _P
+    discarded_messages: DiscardedMessages
 
 
 class TruncatePromptError(ABC, BaseModel):
@@ -64,9 +83,6 @@ def _partition_indexer(chunks: List[int]) -> Callable[[int], List[int]]:
     return mapping.__getitem__
 
 
-DiscardedMessages = List[int]
-
-
 class TruncatablePrompt(ABC, Sized):
 
     @abstractmethod
@@ -114,7 +130,7 @@ class TruncatablePrompt(ABC, Sized):
         tokenizer: Callable[[Self], Awaitable[int]],
         model_limit: Optional[int] = None,
         user_limit: Optional[int] = None,
-    ) -> Tuple[DiscardedMessages, Self]:
+    ) -> TruncatedPrompt[Self]:
         """
         Returns a list of indices of discarded messages and
         the truncated prompt that doesn't include the discarded messages and fits into the given user limit.
@@ -139,7 +155,10 @@ class TruncatablePrompt(ABC, Sized):
         if isinstance(result, TruncatePromptError):
             raise result.to_dial_exception()
 
-        return (list(result), self.omit(set(result)))
+        return TruncatedPrompt(
+            discarded_messages=list(result),
+            prompt=self.omit(set(result)),
+        )
 
     async def compute_discarded_messages(
         self,
