@@ -190,7 +190,6 @@ def get_image_test_cases(
     )
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test",
     [

@@ -3,7 +3,6 @@ from typing import AsyncGenerator
 
 import httpx
 import pytest
-import pytest_asyncio
 from asgi_lifespan import LifespanManager
 from google.cloud.aiplatform.constants.base import DEFAULT_REGION
 from httpx import ASGITransport
@@ -34,7 +33,7 @@ def disable_aiocache():
     os.environ["AIOCACHE_DISABLE"] = "1"
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture()
 async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     from aidial_adapter_vertexai.app import app
 

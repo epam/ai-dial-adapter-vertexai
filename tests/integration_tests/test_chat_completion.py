@@ -317,7 +317,6 @@ def get_test_cases(
     return test_cases
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test",
     [

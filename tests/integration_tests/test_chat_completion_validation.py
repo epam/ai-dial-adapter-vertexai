@@ -127,7 +127,6 @@ validation_test_cases: List[TestCase] = [
 ]
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test", validation_test_cases, ids=lambda test: test.get_id()
 )
@@ -149,7 +148,6 @@ async def test_input_validation(get_openai_client, test: TestCase):
         await run_chat_completion()
 
 
-@pytest.mark.asyncio
 async def test_imagen_content_filtering(get_openai_client):
     client = get_openai_client(ChatCompletionDeployment.IMAGEN_005.value)
     messages: List[ChatCompletionMessageParam] = [

@@ -216,7 +216,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     return test_cases
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test",
     [test for deployment in deployments for test in get_test_cases(deployment)],

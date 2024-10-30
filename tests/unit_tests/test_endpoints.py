@@ -38,7 +38,6 @@ async def assert_feature(
     ) == is_supported, f"is_supported={is_supported}, code={response.status_code}, url={endpoint}"
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "deployment, tokenize_supported, truncate_supported", test_cases
 )
