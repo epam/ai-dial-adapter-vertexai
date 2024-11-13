@@ -33,16 +33,6 @@ class StaticToolProcessor(ABC):
         return self.to_gemini_tools(tool)
 
 
-class GoogleSearchGroundingToolConfig(BaseModel):
-    class Config:
-        extra = "forbid"
-
-    datastore: str | None = None
-    project: str | None = None
-    location: str | None = None
-    data_store_id: str | None = None
-
-
 class GoogleSearchGroundingTool(StaticToolProcessor):
     def validate_config(self, config: dict | None) -> None:
         if config:
