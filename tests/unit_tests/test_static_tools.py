@@ -22,12 +22,7 @@ def test_normal_google_search():
     tool = StaticTool(
         type="static_function",
         static_function=StaticFunction(
-            name=ToolName.GOOGLE_SEARCH.value,
-            configuration={
-                "datastore": "test",
-                "project": "test",
-                "location": "test",
-            },
+            name=ToolName.GOOGLE_SEARCH.value, configuration={}
         ),
     )
     request = AzureChatCompletionRequest(messages=[], tools=[tool])
@@ -51,7 +46,9 @@ def test_invalid_google_search_config():
     with pytest.raises(ValidationError) as exc_info:
         config.to_gemini_tools()
 
-    assert "invalid_field" in str(exc_info.value)
+    assert "Google search tool doesn't support configuration" in str(
+        exc_info.value
+    )
 
 
 def test_unknown_tool():

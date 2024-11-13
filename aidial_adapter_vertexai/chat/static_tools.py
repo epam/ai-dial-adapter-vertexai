@@ -46,21 +46,15 @@ class GoogleSearchGroundingToolConfig(BaseModel):
 
 class GoogleSearchGroundingTool(StaticToolProcessor):
     def validate_config(self, config: dict | None) -> None:
-        if config is None:
-            return
-        try:
-            GoogleSearchGroundingToolConfig(**config)
-        except PydanticValidationError as e:
-            raise ValidationError(str(e)) from e
+        if config:
+            raise ValidationError(
+                "Google search tool doesn't support configuration"
+            )
 
     def to_gemini_tools(self, tool: StaticTool) -> List[GeminiTool]:
         return [
-            GeminiTool.from_retrieval(
-                grounding.Retrieval(
-                    grounding.VertexAISearch(
-                        **tool.static_function.configuration or {}
-                    )
-                )
+            GeminiTool.from_google_search_retrieval(
+                grounding.GoogleSearchRetrieval()
             )
         ]
 
