@@ -30,6 +30,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
@@ -52,13 +53,11 @@ class VertexAIChatCompletion(ChatCompletion):
     async def chat_completion(self, request: Request, response: Response):
         model = await self._get_model(request)
         tools = ToolsConfig.from_request(request)
-        prompt = await model.parse_prompt(tools, request.messages)
+        static_tools = StaticToolsConfig.from_request(request)
+        prompt = await model.parse_prompt(tools, static_tools, request.messages)
 
         if isinstance(prompt, UserError):
-            # Show a usage in a stage to educate a chat user
             await prompt.report_usage(response)
-
-            # Raise an exception for an API client
             raise prompt
 
         params = ModelParameters.create(request)
@@ -146,7 +145,10 @@ class VertexAIChatCompletion(ChatCompletion):
     ) -> TokenizeOutput:
         try:
             tools = ToolsConfig.from_request(request)
-            prompt = await model.parse_prompt(tools, request.messages)
+            static_tools = StaticToolsConfig.from_request(request)
+            prompt = await model.parse_prompt(
+                tools, static_tools, request.messages
+            )
             if isinstance(prompt, UserError):
                 raise prompt
 
@@ -178,7 +180,10 @@ class VertexAIChatCompletion(ChatCompletion):
                 raise ValidationError("max_prompt_tokens is required")
 
             tools = ToolsConfig.from_request(request)
-            prompt = await model.parse_prompt(tools, request.messages)
+            static_tools = StaticToolsConfig.from_request(request)
+            prompt = await model.parse_prompt(
+                tools, static_tools, request.messages
+            )
 
             truncated_prompt = await model.truncate_prompt(
                 prompt, request.max_prompt_tokens

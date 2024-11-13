@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, List
 
 import pytest
+from aidial_sdk.chat_completion.request import StaticFunction, StaticTool
 from openai import APIError, UnprocessableEntityError
 from openai.types.chat import (
     ChatCompletionMessageParam,
@@ -14,6 +15,7 @@ from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.chat.completion_create_params import Function
 from pydantic import BaseModel
 
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from tests.utils.json import match_objects
 from tests.utils.openai import (
@@ -95,6 +97,7 @@ class TestCase:
 
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
+    static_tools: StaticToolsConfig | None
 
     def get_id(self):
         max_tokens_str = f"maxt={self.max_tokens}" if self.max_tokens else ""
@@ -132,6 +135,16 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
     ]
 
 
+def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
+    return deployment in [
+        ChatCompletionDeployment.GEMINI_PRO_1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
+        ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
+        ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+    ]
+
+
 def supports_text_input(deployment: ChatCompletionDeployment) -> bool:
     return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
 
@@ -160,6 +173,7 @@ def get_test_cases(
         stop: List[str] | None = None,
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
+        static_tools: StaticToolsConfig | None = None,
     ) -> None:
         test_cases.append(
             TestCase(
@@ -173,6 +187,7 @@ def get_test_cases(
                 n,
                 functions,
                 tools,
+                static_tools,
             )
         )
 
@@ -314,6 +329,30 @@ def get_test_cases(
             expected=lambda s: "15" in s.content.lower(),
         )
 
+    if supports_static_tools(deployment):
+        test_case(
+            name="static google search",
+            messages=[user("Who won the latest Wimbledon?")],
+            static_tools=StaticToolsConfig(
+                tools=[
+                    StaticTool(
+                        type="static_function",
+                        static_function=StaticFunction(
+                            name="google_search",
+                            description="Search the web",
+                            configuration={},
+                        ),
+                    )
+                ]
+            ),
+            expected=lambda s: (
+                s.attachments is not None
+                and len(s.attachments) > 0
+                and isinstance(s.attachments[0].url, str)
+                and s.attachments[0].url.startswith("https://vertexaisearch")
+            ),
+        )
+
     return test_cases
 
 
@@ -340,6 +379,7 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
             test.n,
             test.functions,
             test.tools,
+            test.static_tools,
         )
 
     if isinstance(test.expected, ExpectedException):

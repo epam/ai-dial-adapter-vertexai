@@ -17,6 +17,7 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
     get_video_processor,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
@@ -28,9 +29,11 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         cls,
         file_storage: FileStorage | None,
         tools: ToolsConfig,
+        static_tools: StaticToolsConfig,
         messages: List[Message],
     ) -> Union[Self, UserError]:
         tools.not_supported()
+        static_tools.not_supported()
 
         if len(messages) == 0:
             raise ValidationError(
