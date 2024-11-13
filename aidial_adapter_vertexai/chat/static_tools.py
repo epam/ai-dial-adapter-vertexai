@@ -7,7 +7,6 @@ from aidial_sdk.chat_completion.request import (
     StaticTool,
 )
 from pydantic import BaseModel
-from pydantic import ValidationError as PydanticValidationError
 from vertexai.preview.generative_models import Tool as GeminiTool
 from vertexai.preview.generative_models import grounding
 
