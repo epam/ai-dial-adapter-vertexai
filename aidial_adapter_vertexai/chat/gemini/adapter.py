@@ -356,14 +356,13 @@ def to_openai_finish_reason(
 
 
 def _get_candidate_text_safe(candidate: Candidate) -> str | None:
-    # The text content of a candidate may be missing when function is called
+    # The text content of a candidate may be missing when function is called or
+    # when the generation was terminated with SAFETY finish reason.
     try:
         return candidate.text
-    except ValueError:
-        if candidate.function_calls:
-            return None
-        else:
-            raise
+    except ValueError as e:
+        log.debug(f"The Candidate doesn't have text: {e}")
+        return None
 
 
 T = TypeVar("T")
