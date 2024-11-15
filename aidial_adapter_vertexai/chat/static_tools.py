@@ -33,6 +33,10 @@ class GoogleSearchGroundingTool(StaticToolProcessor):
         static_function: StaticFunction,
     ) -> List[GeminiTool] | None:
         if static_function.name == ToolName.GOOGLE_SEARCH:
+            if static_function.configuration:
+                raise ValidationError(
+                    "Google search tool doesn't support configuration"
+                )
             return [
                 GeminiTool.from_google_search_retrieval(
                     grounding.GoogleSearchRetrieval()

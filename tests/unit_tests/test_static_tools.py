@@ -54,12 +54,14 @@ def test_invalid_google_search_config():
 def test_unknown_tool():
     tool = StaticTool(
         type="static_function",
-        static_function=StaticFunction(name="unknown_tool", configuration={}),
+        static_function=StaticFunction(
+            name="unknown_function", configuration={}
+        ),
     )
     request = AzureChatCompletionRequest(messages=[], tools=[tool])
     config = StaticToolsConfig.from_request(request)
 
     with pytest.raises(
-        ValidationError, match="Unsupported static tool: unknown_tool"
+        ValidationError, match="Unsupported static function: unknown_function"
     ):
         config.to_gemini_tools()
