@@ -74,7 +74,7 @@ class StaticToolsConfig(BaseModel):
         return cls(functions=[])
 
     def to_gemini_tools(self) -> List[GeminiTool]:
-        ret = []
+        ret: List[GeminiTool] = []
         for tool in self.functions:
             ret.extend(
                 GoogleSearchGroundingTool.parse_gemini_tools(tool)
