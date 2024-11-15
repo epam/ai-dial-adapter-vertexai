@@ -5,6 +5,7 @@ from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
@@ -16,7 +17,10 @@ P = TypeVar("P")
 class ChatCompletionAdapter(ABC, Generic[P]):
     @abstractmethod
     async def parse_prompt(
-        self, tools: ToolsConfig, messages: List[Message]
+        self,
+        tools: ToolsConfig,
+        static_tools: StaticToolsConfig,
+        messages: List[Message],
     ) -> P | UserError:
         pass
 

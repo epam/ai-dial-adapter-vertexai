@@ -3,6 +3,7 @@ import re
 from typing import Any, AsyncGenerator, Callable, List, Optional, TypeVar
 
 import httpx
+from aidial_sdk.chat_completion.request import Attachment, StaticTool
 from aidial_sdk.deployment.tokenize import (
     TokenizeError,
     TokenizeOutput,
@@ -37,6 +38,7 @@ from openai.types.chat.completion_create_params import Function
 from openai.types.shared_params.function_definition import FunctionDefinition
 from pydantic import BaseModel
 
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
 
 blue_pic = Resource.from_base64(
@@ -179,6 +181,15 @@ class ChatCompletionResult(BaseModel):
     def tool_calls(self) -> List[ChatCompletionMessageToolCall] | None:
         return self.message.tool_calls
 
+    @property
+    def attachments(self) -> List[Attachment] | None:
+        return [
+            Attachment.parse_obj(attachment)
+            for attachment in self.message.custom_content.get(  # type: ignore
+                "attachments", []
+            )
+        ] or None
+
 
 async def tokenize(
     http_client: httpx.AsyncClient,
@@ -219,8 +230,23 @@ async def chat_completion(
     n: Optional[int],
     functions: List[Function] | None,
     tools: List[ChatCompletionToolParam] | None,
+    static_tools: StaticToolsConfig | None,
 ) -> ChatCompletionResult:
     async def get_response() -> ChatCompletion:
+        merged_tools = (
+            [
+                StaticTool(
+                    type="static_function",
+                    static_function=function,
+                ).dict()
+                for function in (static_tools.functions or [])
+            ]
+            if static_tools
+            else []
+        )
+        if tools:
+            merged_tools += tools
+
         response = await client.chat.completions.create(
             model="dummy_model",
             messages=messages,
@@ -233,6 +259,9 @@ async def chat_completion(
             functions=functions or NOT_GIVEN,
             tool_choice="auto" if tools is not None else NOT_GIVEN,
             tools=tools or NOT_GIVEN,
+            # Using extra_body to override tools, since openai
+            # doesn't support static tools
+            extra_body=({"tools": merged_tools} if merged_tools else None),
         )
 
         if isinstance(response, AsyncStream):

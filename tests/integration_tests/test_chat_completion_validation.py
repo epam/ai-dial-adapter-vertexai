@@ -135,7 +135,7 @@ async def test_input_validation(get_openai_client, test: TestCase):
 
     async def run_chat_completion() -> ChatCompletionResult:
         return await chat_completion(
-            client, test.messages, False, None, None, None, None, None
+            client, test.messages, False, None, None, None, None, None, None
         )
 
     if test.expected_exception is not None:
@@ -156,7 +156,7 @@ async def test_imagen_content_filtering(get_openai_client):
 
     with pytest.raises(Exception) as exc_info:
         await chat_completion(
-            client, messages, False, None, None, None, None, None
+            client, messages, False, None, None, None, None, None, None
         )
 
     assert isinstance(exc_info.value, BadRequestError)

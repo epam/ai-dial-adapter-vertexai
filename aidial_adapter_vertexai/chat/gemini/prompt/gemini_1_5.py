@@ -15,6 +15,7 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
     get_video_processor,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
@@ -25,6 +26,7 @@ class Gemini_1_5_Prompt(GeminiPrompt):
         cls,
         file_storage: Optional[FileStorage],
         tools: ToolsConfig,
+        static_tools: StaticToolsConfig,
         messages: List[Message],
     ) -> Self | UserError:
         if len(messages) == 0:
@@ -55,6 +57,7 @@ class Gemini_1_5_Prompt(GeminiPrompt):
             system_instruction=conversation.system_instruction,
             contents=conversation.contents,
             tools=tools,
+            static_tools=static_tools,
         )
 
 

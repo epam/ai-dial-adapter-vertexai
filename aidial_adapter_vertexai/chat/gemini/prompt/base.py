@@ -3,7 +3,9 @@ from typing import List, Set
 
 from pydantic import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
+from vertexai.preview.generative_models import Tool as GeminiTool
 
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 
@@ -20,6 +22,9 @@ class GeminiPrompt(BaseModel, TruncatablePrompt, ABC):
     system_instruction: List[Part] | None = None
     contents: List[Content]
     tools: ToolsConfig = Field(default_factory=ToolsConfig.noop)
+    static_tools: StaticToolsConfig = Field(
+        default_factory=StaticToolsConfig.noop
+    )
 
     class Config:
         arbitrary_types_allowed = True
@@ -68,4 +73,10 @@ class GeminiPrompt(BaseModel, TruncatablePrompt, ABC):
             system_instruction=system_instruction,
             contents=contents,
             tools=self.tools,
+            static_tools=self.static_tools,
         )
+
+    def to_gemini_tools(self) -> List[GeminiTool]:
+        regular_tools = self.tools.to_gemini_tools()
+        static_tools = self.static_tools.to_gemini_tools()
+        return regular_tools + static_tools

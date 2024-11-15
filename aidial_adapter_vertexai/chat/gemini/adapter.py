@@ -41,6 +41,7 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro_vision import (
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
     Gemini_1_5_Prompt,
 )
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.deployments import (
@@ -105,14 +106,19 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     @override
     async def parse_prompt(
-        self, tools: ToolsConfig, messages: List[Message]
+        self,
+        tools: ToolsConfig,
+        static_tools: StaticToolsConfig,
+        messages: List[Message],
     ) -> GeminiPrompt | UserError:
         match self.deployment:
             case ChatCompletionDeployment.GEMINI_PRO_1:
-                return await Gemini_1_0_Pro_Prompt.parse(tools, messages)
+                return await Gemini_1_0_Pro_Prompt.parse(
+                    tools, static_tools, messages
+                )
             case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
                 return await Gemini_1_0_Pro_Vision_Prompt.parse(
-                    self.file_storage, tools, messages
+                    self.file_storage, tools, static_tools, messages
                 )
             case (
                 ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
@@ -122,7 +128,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
             ):
                 return await Gemini_1_5_Prompt.parse(
-                    self.file_storage, tools, messages
+                    self.file_storage, tools, static_tools, messages
                 )
             case _:
                 assert_never(self.deployment)
@@ -136,7 +142,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         parameters = create_generation_config(params) if params else None
 
         if prompt is not None:
-            tools = prompt.tools.to_gemini_tools()
+            tools = prompt.to_gemini_tools() or None
             tool_config = prompt.tools.to_gemini_tool_config()
             system_instruction = cast(
                 List[str | Part | Image] | None,
@@ -190,6 +196,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                     yield content
 
                 await create_function_calls(candidate, consumer, tools)
+                await create_grounding(candidate, consumer)
                 await create_attachments_from_citations(candidate, consumer)
                 await set_finish_reason(candidate, consumer)
 
@@ -211,7 +218,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 )
 
             completion = ""
-
             async for content in generate_with_retries(
                 lambda: self.process_chunks(
                     consumer,
@@ -318,6 +324,20 @@ async def create_function_calls(
             await consumer.create_function_call(
                 name=call.name,
                 arguments=arguments,
+            )
+
+
+async def create_grounding(candidate: Candidate, consumer: Consumer) -> None:
+    if (
+        not candidate.grounding_metadata
+        or not candidate.grounding_metadata.grounding_chunks
+    ):
+        return
+
+    for chunk in candidate.grounding_metadata.grounding_chunks:
+        if chunk.web and chunk.web.uri:
+            await consumer.add_attachment(
+                Attachment(url=chunk.web.uri, title=chunk.web.title)
             )
 
 
