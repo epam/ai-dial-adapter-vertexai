@@ -335,6 +335,8 @@ async def create_grounding(candidate: Candidate, consumer: Consumer) -> None:
         return
 
     for support in candidate.grounding_metadata.grounding_supports:
+        if not support.grounding_chunk_indices:
+            continue
         for chunk_index in support.grounding_chunk_indices:
             chunk = candidate.grounding_metadata.grounding_chunks[chunk_index]
             if not chunk.web or not chunk.web.uri:
