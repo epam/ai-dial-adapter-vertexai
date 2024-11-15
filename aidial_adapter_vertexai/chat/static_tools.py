@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Self
+from typing import List, NoReturn, Self
 
 from aidial_sdk.chat_completion.request import (
     AzureChatCompletionRequest,
+    StaticFunction,
     StaticTool,
 )
 from pydantic import BaseModel
@@ -14,69 +15,69 @@ from aidial_adapter_vertexai.chat.errors import ValidationError
 
 
 class ToolName(str, Enum):
-    """
-    https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/grounding
-    """
-
+    # https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/grounding
     GOOGLE_SEARCH = "google_search"
 
 
 class StaticToolProcessor(ABC):
+    @staticmethod
     @abstractmethod
-    def validate_config(self, config: dict | None) -> None: ...
-
-    @abstractmethod
-    def to_gemini_tools(self, tool: StaticTool) -> List[GeminiTool]: ...
-
-    def process(self, tool: StaticTool) -> List[GeminiTool]:
-        self.validate_config(tool.static_function.configuration)
-        return self.to_gemini_tools(tool)
+    def parse_gemini_tools(
+        static_function: StaticFunction,
+    ) -> List[GeminiTool] | None: ...
 
 
 class GoogleSearchGroundingTool(StaticToolProcessor):
-    def validate_config(self, config: dict | None) -> None:
-        if config:
-            raise ValidationError(
-                "Google search tool doesn't support configuration"
-            )
+    @staticmethod
+    def parse_gemini_tools(
+        static_function: StaticFunction,
+    ) -> List[GeminiTool] | None:
+        if static_function.name == ToolName.GOOGLE_SEARCH:
+            return [
+                GeminiTool.from_google_search_retrieval(
+                    grounding.GoogleSearchRetrieval()
+                )
+            ]
+        return None
 
-    def to_gemini_tools(self, tool: StaticTool) -> List[GeminiTool]:
-        return [
-            GeminiTool.from_google_search_retrieval(
-                grounding.GoogleSearchRetrieval()
-            )
-        ]
+
+def unknown_tool_name(
+    static_function: StaticFunction,
+) -> NoReturn:
+    raise ValidationError(
+        f"Unsupported static function: {static_function.name}"
+    )
 
 
 class StaticToolsConfig(BaseModel):
-    tools: List[StaticTool]
+    functions: List[StaticFunction]
 
     @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
         if request.tools is None:
-            return cls(tools=[])
+            return cls(functions=[])
 
         return cls(
-            tools=[
-                tool for tool in request.tools if isinstance(tool, StaticTool)
+            functions=[
+                tool.static_function
+                for tool in request.tools
+                if isinstance(tool, StaticTool)
             ]
         )
 
     @classmethod
     def noop(cls) -> Self:
-        return cls(tools=[])
+        return cls(functions=[])
 
     def to_gemini_tools(self) -> List[GeminiTool]:
-        gemini_tools = []
-        for tool in self.tools:
-            if tool.static_function.name == ToolName.GOOGLE_SEARCH.value:
-                gemini_tools.extend(GoogleSearchGroundingTool().process(tool))
-            else:
-                raise ValidationError(
-                    f"Unsupported static tool: {tool.static_function.name}"
-                )
-        return gemini_tools
+        ret = []
+        for tool in self.functions:
+            ret.extend(
+                GoogleSearchGroundingTool.parse_gemini_tools(tool)
+                or unknown_tool_name(tool)
+            )
+        return ret
 
     def not_supported(self) -> None:
-        if len(self.tools) > 0:
+        if self.functions:
             raise ValidationError("Static tools aren't supported")

@@ -142,10 +142,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         parameters = create_generation_config(params) if params else None
 
         if prompt is not None:
-            tools = (
-                prompt.tools.to_gemini_tools()
-                + prompt.static_tools.to_gemini_tools()
-            )
+            tools = prompt.to_gemini_tools() or None
             tool_config = prompt.tools.to_gemini_tool_config()
             system_instruction = cast(
                 List[str | Part | Image] | None,

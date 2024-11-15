@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, List
 
 import pytest
-from aidial_sdk.chat_completion.request import StaticFunction, StaticTool
+from aidial_sdk.chat_completion.request import StaticFunction
 from openai import APIError, UnprocessableEntityError
 from openai.types.chat import (
     ChatCompletionMessageParam,
@@ -334,15 +334,12 @@ def get_test_cases(
             name="static google search",
             messages=[user("Who won the latest Wimbledon?")],
             static_tools=StaticToolsConfig(
-                tools=[
-                    StaticTool(
-                        type="static_function",
-                        static_function=StaticFunction(
-                            name="google_search",
-                            description="Search the web",
-                            configuration={},
-                        ),
-                    )
+                functions=[
+                    StaticFunction(
+                        name="google_search",
+                        description="Search the web",
+                        configuration={},
+                    ),
                 ]
             ),
             expected=lambda s: (

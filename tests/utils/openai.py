@@ -3,7 +3,7 @@ import re
 from typing import Any, AsyncGenerator, Callable, List, Optional, TypeVar
 
 import httpx
-from aidial_sdk.chat_completion.request import Attachment
+from aidial_sdk.chat_completion.request import Attachment, StaticTool
 from aidial_sdk.deployment.tokenize import (
     TokenizeError,
     TokenizeOutput,
@@ -234,7 +234,13 @@ async def chat_completion(
 ) -> ChatCompletionResult:
     async def get_response() -> ChatCompletion:
         merged_tools = (
-            [tool.dict() for tool in (static_tools.tools or [])]
+            [
+                StaticTool(
+                    type="static_function",
+                    static_function=function,
+                )
+                for function in (static_tools.functions or [])
+            ]
             if static_tools
             else []
         )

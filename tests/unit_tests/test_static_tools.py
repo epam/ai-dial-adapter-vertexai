@@ -15,7 +15,7 @@ from aidial_adapter_vertexai.chat.static_tools import (
 def test_no_tools():
     request = AzureChatCompletionRequest(messages=[])
     config = StaticToolsConfig.from_request(request)
-    assert config.tools == []
+    assert config.functions == []
 
 
 def test_normal_google_search():
