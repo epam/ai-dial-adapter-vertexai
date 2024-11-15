@@ -330,14 +330,22 @@ async def create_function_calls(
 async def create_grounding(candidate: Candidate, consumer: Consumer) -> None:
     if (
         not candidate.grounding_metadata
-        or not candidate.grounding_metadata.grounding_chunks
+        or not candidate.grounding_metadata.grounding_supports
     ):
         return
 
-    for chunk in candidate.grounding_metadata.grounding_chunks:
-        if chunk.web and chunk.web.uri:
+    for support in candidate.grounding_metadata.grounding_supports:
+        for chunk_index in support.grounding_chunk_indices:
+            chunk = candidate.grounding_metadata.grounding_chunks[chunk_index]
+            if not chunk.web or not chunk.web.uri:
+                continue
             await consumer.add_attachment(
-                Attachment(url=chunk.web.uri, title=chunk.web.title)
+                Attachment(
+                    reference_url=chunk.web.uri,
+                    data=support.segment.text,
+                    title=chunk.web.title,
+                    type="text/markdown",
+                )
             )
 
 

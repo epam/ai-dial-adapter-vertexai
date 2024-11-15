@@ -345,8 +345,10 @@ def get_test_cases(
             expected=lambda s: (
                 s.attachments is not None
                 and len(s.attachments) > 0
-                and isinstance(s.attachments[0].url, str)
-                and s.attachments[0].url.startswith("https://vertexaisearch")
+                and isinstance(s.attachments[0].reference_url, str)
+                and s.attachments[0].reference_url.startswith(
+                    "https://vertexaisearch"
+                )
                 and "carlos alcaraz" in s.content.lower()
             ),
         )
