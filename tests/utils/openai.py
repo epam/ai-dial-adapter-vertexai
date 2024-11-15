@@ -238,7 +238,7 @@ async def chat_completion(
                 StaticTool(
                     type="static_function",
                     static_function=function,
-                )
+                ).dict()
                 for function in (static_tools.functions or [])
             ]
             if static_tools
