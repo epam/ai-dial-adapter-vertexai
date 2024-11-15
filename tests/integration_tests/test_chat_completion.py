@@ -332,7 +332,7 @@ def get_test_cases(
     if supports_static_tools(deployment):
         test_case(
             name="static google search",
-            messages=[user("Who won the latest Wimbledon?")],
+            messages=[user("Who won the Wimbledon in 2024?")],
             static_tools=StaticToolsConfig(
                 functions=[
                     StaticFunction(
@@ -347,6 +347,7 @@ def get_test_cases(
                 and len(s.attachments) > 0
                 and isinstance(s.attachments[0].url, str)
                 and s.attachments[0].url.startswith("https://vertexaisearch")
+                and "carlos alcaraz" in s.content.lower()
             ),
         )
 
