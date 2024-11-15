@@ -328,13 +328,6 @@ async def create_function_calls(
 
 
 async def create_grounding(candidate: Candidate, consumer: Consumer) -> None:
-    # TODO:  candidate.grounding_metadata.grounding_supports[i].segment
-    # actually points to piece of generation, that it grounds, like that
-    # segment {
-    #   end_index: 61
-    #   text: "Carlos Alcaraz won the men\'s singles title at Wimbledon 2024."
-    # }
-    # We need to figure out how to use such references in the future
     if (
         not candidate.grounding_metadata
         or not candidate.grounding_metadata.grounding_chunks
