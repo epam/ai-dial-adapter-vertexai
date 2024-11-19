@@ -208,13 +208,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
                 await create_attachments_from_citations(candidate, consumer)
                 await set_finish_reason(candidate, consumer)
-                if chunk.prompt_feedback:
-                    await consumer.set_finish_reason(
-                        FinishReason.CONTENT_FILTER
-                    )
 
             if chunk.usage_metadata:
                 usage_metadata = chunk.usage_metadata
+            if chunk.prompt_feedback:
+                await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
 
         if usage_metadata:
             await set_usage(
