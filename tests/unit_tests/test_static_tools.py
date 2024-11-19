@@ -46,9 +46,7 @@ def test_invalid_google_search_config():
     with pytest.raises(ValidationError) as exc_info:
         config.to_gemini_tools()
 
-    assert "Google search tool doesn't support configuration" in str(
-        exc_info.value
-    )
+    assert "Invalid configuration for Google search tool" in str(exc_info.value)
 
 
 def test_unknown_tool():
