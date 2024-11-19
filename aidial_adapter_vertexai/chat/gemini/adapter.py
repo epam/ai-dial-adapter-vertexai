@@ -306,11 +306,11 @@ async def set_usage(
     usage: GenerateContentResponse.UsageMetadata,
     consumer: Consumer,
     deployment: GeminiDeployment,
-    is_google_search_grounding: bool = False,
+    is_grounding_added: bool = False,
 ) -> None:
     log.debug(f"usage: {json_dumps(usage)}")
     completion_tokens = usage.candidates_token_count
-    if is_google_search_grounding:
+    if is_grounding_added:
         completion_tokens += google_search_grounding_tokens(deployment)
     await consumer.set_usage(
         TokenUsage(
