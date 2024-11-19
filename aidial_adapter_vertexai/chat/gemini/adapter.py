@@ -187,6 +187,9 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         generator: Callable[[], AsyncIterator[GenerationResponse]],
     ) -> AsyncIterator[str]:
 
+        usage_metadata = None
+        is_grounding_added = False
+
         async for chunk in generator():
             if log.isEnabledFor(DEBUG):
                 chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
@@ -200,20 +203,23 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                     yield content
 
                 await create_function_calls(candidate, consumer, tools)
-                is_grounding_added = await create_grounding(candidate, consumer)
+                is_grounding_added |= await create_grounding(
+                    candidate, consumer
+                )
+
                 await create_attachments_from_citations(candidate, consumer)
                 await set_finish_reason(candidate, consumer)
 
             if chunk.usage_metadata:
-                await set_usage(
-                    chunk.usage_metadata,
-                    consumer,
-                    self.deployment,
-                    is_grounding_added,
-                )
+                usage_metadata = chunk.usage_metadata
 
-            if chunk.prompt_feedback:
-                await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
+        if usage_metadata:
+            await set_usage(
+                usage_metadata,
+                consumer,
+                self.deployment,
+                is_grounding_added,
+            )
 
     @override
     async def chat(

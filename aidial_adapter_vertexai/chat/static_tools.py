@@ -7,7 +7,7 @@ from aidial_sdk.chat_completion.request import (
     StaticFunction,
     StaticTool,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, ConstrainedFloat, Field
 from pydantic import ValidationError as PydanticValidationError
 from vertexai.preview.generative_models import Tool as GeminiTool
 
@@ -27,9 +27,20 @@ class StaticToolProcessor(ABC):
     ) -> List[GeminiTool] | None: ...
 
 
+class DynamicThreshold(ConstrainedFloat):
+    ge = 0
+    le = 1
+
+
 class DynamicRetrievalConfig(BaseModel):
+    class Config:
+        extra = "forbid"
+        allow_population_by_field_name = True
+
     mode: Literal["MODE_DYNAMIC", "MODE_UNSPECIFIED"] | None = None
-    dynamic_threshold: float | None = None
+    dynamic_threshold: DynamicThreshold | None = Field(
+        None, alias="dynamicThreshold"
+    )
 
     @classmethod
     def root_validator(cls, values):
@@ -40,20 +51,17 @@ class DynamicRetrievalConfig(BaseModel):
             raise ValidationError(
                 "dynamic_threshold must be None when mode is MODE_UNSPECIFIED"
             )
-        if values.get("dynamic_threshold") is not None:
-            threshold = values.get("dynamic_threshold")
-            if threshold < 0 or threshold > 1:
-                raise ValidationError(
-                    "dynamic_threshold must be between 0 and 1"
-                )
         return values
 
 
 class GoogleSearchConfig(BaseModel):
     class Config:
         extra = "forbid"
+        allow_population_by_field_name = True
 
-    dynamic_retrieval_config: DynamicRetrievalConfig | None = None
+    dynamic_retrieval_config: DynamicRetrievalConfig | None = Field(
+        None, alias="dynamicRetrievalConfig"
+    )
 
 
 class GoogleSearchGroundingTool(StaticToolProcessor):
@@ -62,7 +70,9 @@ class GoogleSearchGroundingTool(StaticToolProcessor):
         static_function: StaticFunction,
     ) -> List[GeminiTool] | None:
         if static_function.name == ToolName.GOOGLE_SEARCH:
-            google_search_config = GoogleSearchConfig()
+            google_search_config = GoogleSearchConfig(
+                dynamicRetrievalConfig=None
+            )
             if static_function.configuration:
                 try:
                     google_search_config = GoogleSearchConfig.validate(
@@ -72,7 +82,7 @@ class GoogleSearchGroundingTool(StaticToolProcessor):
                     raise ValidationError(
                         "Invalid configuration for Google search tool"
                     )
-            tools = [
+            return [
                 GeminiTool.from_dict(
                     {
                         "google_search_retrieval": google_search_config.dict(
@@ -82,7 +92,6 @@ class GoogleSearchGroundingTool(StaticToolProcessor):
                 )
             ]
 
-            return tools
         return None
 
 
