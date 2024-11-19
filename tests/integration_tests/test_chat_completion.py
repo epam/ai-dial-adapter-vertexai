@@ -372,11 +372,12 @@ def get_test_cases(
                     ),
                 ]
             ),
+            max_tokens=10,
             expected=lambda s: (
                 not s.attachments
                 and "4" in s.content
                 and s.usage is not None
-                and s.usage.total_tokens < 50
+                and s.usage.total_tokens < 20
             ),
         )
         for index, retrieval_config in enumerate(
@@ -399,6 +400,7 @@ def get_test_cases(
                         ),
                     ]
                 ),
+                max_tokens=10,
                 expected=lambda s: (
                     s.attachments is not None
                     and len(s.attachments) > 0
