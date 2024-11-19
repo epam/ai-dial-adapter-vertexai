@@ -194,7 +194,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             if log.isEnabledFor(DEBUG):
                 chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
                 log.debug(f"response chunk: {chunk_str}")
-            is_grounding_added = False
             if chunk.candidates:
                 candidate = chunk.candidates[0]
 
@@ -209,6 +208,10 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
                 await create_attachments_from_citations(candidate, consumer)
                 await set_finish_reason(candidate, consumer)
+                if chunk.prompt_feedback:
+                    await consumer.set_finish_reason(
+                        FinishReason.CONTENT_FILTER
+                    )
 
             if chunk.usage_metadata:
                 usage_metadata = chunk.usage_metadata
