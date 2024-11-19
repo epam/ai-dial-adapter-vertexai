@@ -15,9 +15,7 @@ repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
 
 [tool.poetry.dependencies]
 python = "~3.11"
-# TODO: move to new version, when it's released
-#aidial-sdk = {version = "0.14.0", extras = ["telemetry"]}
-aidial-sdk = {git = "https://github.com/epam/ai-dial-sdk.git", branch = "feat/add-static-functions", extras = ["telemetry"]}
+aidial-sdk = {version = "0.15.0", extras = ["telemetry"]}
 fastapi = "0.115.2"
 google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
@@ -28,7 +26,7 @@ aiocache = "0.12.2"
 pillow = "^10.3.0"
 pypdf = {version = "^4.3.1", extras = ["crypto"]}
 numpy = "^2.0.0"
-aiohttp = "^3.10.2"
+aiohttp = "^3.10.11"
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.4.0"
