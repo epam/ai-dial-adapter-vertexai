@@ -9,6 +9,7 @@ from aidial_sdk.chat_completion.request import (
 )
 from pydantic import BaseModel, ConstrainedFloat, Field
 from pydantic import ValidationError as PydanticValidationError
+from pydantic import root_validator
 from vertexai.preview.generative_models import Tool as GeminiTool
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
@@ -42,11 +43,11 @@ class DynamicRetrievalConfig(BaseModel):
         None, alias="dynamicThreshold"
     )
 
-    @classmethod
-    def root_validator(cls, values):
-        if (
-            values.get("mode") == "MODE_UNSPECIFIED"
-            and values.get("dynamic_threshold") is not None
+    @root_validator(pre=True)
+    def check_dynamic_threshold(cls, values):
+        if values.get("mode") == "MODE_UNSPECIFIED" and (
+            values.get("dynamic_threshold") is not None
+            or values.get("dynamicThreshold") is not None
         ):
             raise ValidationError(
                 "dynamic_threshold must be None when mode is MODE_UNSPECIFIED"
