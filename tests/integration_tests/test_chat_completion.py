@@ -350,8 +350,67 @@ def get_test_cases(
                     "https://vertexaisearch"
                 )
                 and "carlos alcaraz" in s.content.lower()
+                and s.usage is not None
+                and s.usage.total_tokens > 7000
             ),
         )
+
+        test_case(
+            name="static google search with dynamic threshold not hit",
+            messages=[user("2+2=?")],
+            static_tools=StaticToolsConfig(
+                functions=[
+                    StaticFunction(
+                        name="google_search",
+                        description="Search the web",
+                        configuration={
+                            "dynamic_retrieval_config": {
+                                "mode": "MODE_DYNAMIC",
+                                "dynamic_threshold": 0.8,
+                            }
+                        },
+                    ),
+                ]
+            ),
+            expected=lambda s: (
+                not s.attachments
+                and "4" in s.content
+                and s.usage is not None
+                and s.usage.total_tokens < 7000
+            ),
+        )
+        for index, retrieval_config in enumerate(
+            [
+                {"mode": "MODE_DYNAMIC", "dynamic_threshold": 0.01},
+                {"mode": "MODE_UNSPECIFIED"},
+            ]
+        ):
+            test_case(
+                name=f"static google search with guaranteed search {index}",
+                messages=[user("2+2=")],
+                static_tools=StaticToolsConfig(
+                    functions=[
+                        StaticFunction(
+                            name="google_search",
+                            description="Search the web",
+                            configuration={
+                                "dynamic_retrieval_config": retrieval_config
+                            },
+                        ),
+                    ]
+                ),
+                expected=lambda s: (
+                    s.attachments is not None
+                    and len(s.attachments) > 0
+                    and isinstance(s.attachments[0].reference_url, str)
+                    and s.attachments[0].reference_url.startswith(
+                        "https://vertexaisearch"
+                    )
+                    and "4" in s.content.lower()
+                    and s.usage is not None
+                    and s.usage.total_tokens > 7000
+                ),
+            )
 
     return test_cases
 
