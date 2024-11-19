@@ -376,7 +376,7 @@ def get_test_cases(
                 not s.attachments
                 and "4" in s.content
                 and s.usage is not None
-                and s.usage.total_tokens < 7000
+                and s.usage.total_tokens < 50
             ),
         )
         for index, retrieval_config in enumerate(
