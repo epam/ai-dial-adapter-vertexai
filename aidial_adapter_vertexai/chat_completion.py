@@ -1,7 +1,6 @@
 import asyncio
 from typing import List, assert_never
 
-from aidial_sdk import HTTPException as DialException
 from aidial_sdk.chat_completion import ChatCompletion, Request, Response
 from aidial_sdk.chat_completion.request import ChatCompletionRequest
 from aidial_sdk.deployment.from_request_mixin import FromRequestDeploymentMixin
@@ -21,14 +20,17 @@ from aidial_sdk.deployment.truncate_prompt import (
     TruncatePromptResult,
     TruncatePromptSuccess,
 )
+from aidial_sdk.exceptions import ResourceNotFoundError
 from typing_extensions import override
 
 from aidial_adapter_vertexai.adapters import get_chat_completion_model
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
+    TruncatedPrompt,
 )
 from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
@@ -39,20 +41,11 @@ from aidial_adapter_vertexai.utils.not_implemented import is_implemented
 
 
 class VertexAIChatCompletion(ChatCompletion):
-    region: str
-    project_id: str
-
-    def __init__(self, region: str, project_id: str):
-        self.region = region
-        self.project_id = project_id
-
     async def _get_model(
         self, request: FromRequestDeploymentMixin
     ) -> ChatCompletionAdapter:
         return await get_chat_completion_model(
             deployment=ChatCompletionDeployment(request.deployment_id),
-            project_id=self.project_id,
-            location=self.region,
             api_key=request.api_key,
         )
 
@@ -60,13 +53,11 @@ class VertexAIChatCompletion(ChatCompletion):
     async def chat_completion(self, request: Request, response: Response):
         model = await self._get_model(request)
         tools = ToolsConfig.from_request(request)
-        prompt = await model.parse_prompt(tools, request.messages)
+        static_tools = StaticToolsConfig.from_request(request)
+        prompt = await model.parse_prompt(tools, static_tools, request.messages)
 
         if isinstance(prompt, UserError):
-            # Show a usage in a stage to educate a chat user
             await prompt.report_usage(response)
-
-            # Raise an exception for an API client
             raise prompt
 
         params = ModelParameters.create(request)
@@ -78,9 +69,16 @@ class VertexAIChatCompletion(ChatCompletion):
         if n > 1 and params.stream:
             raise ValidationError("n>1 is not supported in streaming mode")
 
-        discarded_messages: List[int] = []
-        if params.max_prompt_tokens is not None:
-            prompt, discarded_messages = await model.truncate_prompt(
+        if params.max_prompt_tokens is None:
+            truncated_prompt = TruncatedPrompt(
+                prompt=prompt, discarded_messages=[]
+            )
+        else:
+            if not is_implemented(model.truncate_prompt):
+                raise ValidationError(
+                    "max_prompt_tokens request parameter is not supported"
+                )
+            truncated_prompt = await model.truncate_prompt(
                 prompt, params.max_prompt_tokens
             )
 
@@ -89,7 +87,7 @@ class VertexAIChatCompletion(ChatCompletion):
             choice.open()
 
             consumer = ChoiceConsumer(choice)
-            await model.chat(params, consumer, prompt)
+            await model.chat(params, consumer, truncated_prompt.prompt)
             usage.accumulate(consumer.usage)
 
             finish_reason = consumer.finish_reason
@@ -106,7 +104,7 @@ class VertexAIChatCompletion(ChatCompletion):
         response.set_usage(usage.prompt_tokens, usage.completion_tokens)
 
         if params.max_prompt_tokens is not None:
-            response.set_discarded_messages(discarded_messages)
+            response.set_discarded_messages(truncated_prompt.discarded_messages)
 
     @override
     @dial_exception_decorator
@@ -116,7 +114,7 @@ class VertexAIChatCompletion(ChatCompletion):
         if not is_implemented(
             model.count_completion_tokens
         ) or not is_implemented(model.count_prompt_tokens):
-            raise DialException(status_code=404, message="Not found")
+            raise ResourceNotFoundError("The endpoint is not implemented")
 
         outputs: List[TokenizeOutput] = []
         for input in request.inputs:
@@ -147,7 +145,10 @@ class VertexAIChatCompletion(ChatCompletion):
     ) -> TokenizeOutput:
         try:
             tools = ToolsConfig.from_request(request)
-            prompt = await model.parse_prompt(tools, request.messages)
+            static_tools = StaticToolsConfig.from_request(request)
+            prompt = await model.parse_prompt(
+                tools, static_tools, request.messages
+            )
             if isinstance(prompt, UserError):
                 raise prompt
 
@@ -164,7 +165,7 @@ class VertexAIChatCompletion(ChatCompletion):
         model = await self._get_model(request)
 
         if not is_implemented(model.truncate_prompt):
-            raise DialException(status_code=404, message="Not found")
+            raise ResourceNotFoundError("The endpoint is not implemented")
 
         outputs: List[TruncatePromptResult] = []
         for input in request.inputs:
@@ -178,9 +179,17 @@ class VertexAIChatCompletion(ChatCompletion):
             if request.max_prompt_tokens is None:
                 raise ValidationError("max_prompt_tokens is required")
 
-            _prompt, discarded_messages = await model.truncate_prompt(
-                request.messages, request.max_prompt_tokens
+            tools = ToolsConfig.from_request(request)
+            static_tools = StaticToolsConfig.from_request(request)
+            prompt = await model.parse_prompt(
+                tools, static_tools, request.messages
             )
-            return TruncatePromptSuccess(discarded_messages=discarded_messages)
+
+            truncated_prompt = await model.truncate_prompt(
+                prompt, request.max_prompt_tokens
+            )
+            return TruncatePromptSuccess(
+                discarded_messages=truncated_prompt.discarded_messages
+            )
         except Exception as e:
             return TruncatePromptError(error=str(e))

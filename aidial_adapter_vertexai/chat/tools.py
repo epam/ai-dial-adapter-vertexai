@@ -7,7 +7,7 @@ from aidial_sdk.chat_completion import (
     Role,
     ToolChoice,
 )
-from aidial_sdk.chat_completion.request import AzureChatCompletionRequest
+from aidial_sdk.chat_completion.request import AzureChatCompletionRequest, Tool
 from pydantic import BaseModel
 from vertexai.preview.generative_models import (
     FunctionDeclaration as GeminiFunction,
@@ -104,6 +104,10 @@ class ToolsConfig(BaseModel):
                 return tool_choice
 
     @classmethod
+    def noop(cls) -> Self:
+        return cls(functions=[], required=False, tool_ids=None)
+
+    @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
         validate_messages(request)
 
@@ -113,7 +117,11 @@ class ToolsConfig(BaseModel):
             tool_ids = None
 
         elif request.tools is not None:
-            functions = [tool.function for tool in request.tools]
+            functions = [
+                tool.function
+                for tool in request.tools
+                if isinstance(tool, Tool)
+            ]
             function_call = ToolsConfig.tool_choice_to_function_call(
                 request.tool_choice
             )
@@ -133,16 +141,17 @@ class ToolsConfig(BaseModel):
 
         return cls(functions=selected, required=required, tool_ids=tool_ids)
 
-    def to_gemini_tools(self) -> List[GeminiTool] | None:
+    def to_gemini_tools(self) -> List[GeminiTool]:
         if not self.functions:
-            return None
+            return []
 
         return [
             GeminiTool(
                 function_declarations=[
                     GeminiFunction(
                         name=func.name,
-                        parameters=func.parameters,
+                        parameters=func.parameters
+                        or {"type": "object", "properties": {}},
                         description=func.description,
                     )
                     for func in self.functions

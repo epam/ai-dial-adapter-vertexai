@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, List
 
 import pytest
+from aidial_sdk.chat_completion.request import StaticFunction
 from openai import APIError, UnprocessableEntityError
 from openai.types.chat import (
     ChatCompletionMessageParam,
@@ -14,8 +15,8 @@ from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.chat.completion_create_params import Function
 from pydantic import BaseModel
 
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from tests.conftest import TEST_SERVER_URL
 from tests.utils.json import match_objects
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
@@ -23,16 +24,19 @@ from tests.utils.openai import (
     ChatCompletionResult,
     ai_function,
     ai_tools,
+    blue_pic,
     chat_completion,
     for_all_choices,
     function_request,
     function_response,
-    get_client,
     sanitize_test_name,
     sys,
     tool_request,
     tool_response,
     user,
+    user_with_attachment_data,
+    user_with_attachment_url,
+    user_with_image_url,
 )
 
 
@@ -93,6 +97,7 @@ class TestCase:
 
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
+    static_tools: StaticToolsConfig | None
 
     def get_id(self):
         max_tokens_str = f"maxt={self.max_tokens}" if self.max_tokens else ""
@@ -104,11 +109,14 @@ class TestCase:
         )
 
 
-chat_deployments = [
+deployments = [
     ChatCompletionDeployment.CHAT_BISON_1,
+    ChatCompletionDeployment.CHAT_BISON_2_32K,
     ChatCompletionDeployment.CODECHAT_BISON_1,
     ChatCompletionDeployment.GEMINI_PRO_1,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+    ChatCompletionDeployment.GEMINI_PRO_VISION_1,
+    ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
 ]
 
 
@@ -123,7 +131,29 @@ def is_codechat(deployment: ChatCompletionDeployment) -> bool:
 def supports_tools(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_PRO_1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
+    ]
+
+
+def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
+    return deployment in [
+        ChatCompletionDeployment.GEMINI_PRO_1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
+        ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
+        ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+    ]
+
+
+def supports_text_input(deployment: ChatCompletionDeployment) -> bool:
+    return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
+
+
+def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
+    return deployment in [
+        ChatCompletionDeployment.GEMINI_PRO_VISION_1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
+        ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
     ]
 
 
@@ -143,6 +173,7 @@ def get_test_cases(
         stop: List[str] | None = None,
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
+        static_tools: StaticToolsConfig | None = None,
     ) -> None:
         test_cases.append(
             TestCase(
@@ -156,74 +187,97 @@ def get_test_cases(
                 n,
                 functions,
                 tools,
+                static_tools,
             )
         )
 
-    test_case(
-        name="2+3=5",
-        messages=[user("2+3=?")],
-        expected=for_all_choices(lambda s: "5" in s),
-    )
+    if supports_text_input(deployment):
+        test_case(
+            name="2+3=5",
+            messages=[user("2+3=?")],
+            expected=for_all_choices(lambda s: "5" in s),
+        )
 
-    test_case(
-        name="hello",
-        messages=[user('Reply with "Hello"')],
-        expected=for_all_choices(lambda s: "hello" in s.lower()),
-    )
+        test_case(
+            name="hello",
+            messages=[user('Reply with "Hello"')],
+            expected=for_all_choices(lambda s: "hello" in s.lower()),
+        )
 
-    test_case(
-        name="empty sys message",
-        messages=[sys(""), user("2+4=?")],
-        expected=for_all_choices(lambda s: "6" in s),
-    )
+        test_case(
+            name="empty sys message",
+            messages=[sys(""), user("2+4=?")],
+            expected=for_all_choices(lambda s: "6" in s),
+        )
 
-    test_case(
-        name="non empty sys message",
-        messages=[sys("Act as helpful assistant"), user("2+5=?")],
-        expected=for_all_choices(lambda s: "7" in s),
-    )
+        test_case(
+            name="non empty sys message",
+            messages=[sys("Act as helpful assistant"), user("2+5=?")],
+            expected=for_all_choices(lambda s: "7" in s),
+        )
 
-    test_case(
-        name="max tokens 1",
-        max_tokens=1,
-        messages=[user("tell me the full story of Pinocchio")],
-        expected=for_all_choices(lambda s: len(s.split()) == 1),
-    )
+        test_case(
+            name="max tokens 1",
+            max_tokens=1,
+            messages=[user("tell me the full story of Pinocchio")],
+            expected=for_all_choices(lambda s: len(s.split()) == 1),
+        )
 
-    test_case(
-        name="multiple candidates",
-        max_tokens=10,
-        n=5,
-        messages=[user("heads or tails?")],
-        expected=(
-            ExpectedException(
-                type=UnprocessableEntityError,
-                message="n>1 is not supported in streaming mode",
-                status_code=422,
+        test_case(
+            name="multiple candidates",
+            max_tokens=10,
+            n=5,
+            messages=[user("2+3=?")],
+            expected=(
+                ExpectedException(
+                    type=UnprocessableEntityError,
+                    message="n>1 is not supported in streaming mode",
+                    status_code=422,
+                )
+                if streaming
+                else for_all_choices(lambda _: True, 5)
+            ),
+        )
+
+        # Stop sequences do not work for some reason for CHAT_BISON_2_32K and streaming mode
+        if (deployment, streaming) != (
+            ChatCompletionDeployment.CHAT_BISON_2_32K,
+            True,
+        ):
+            test_case(
+                name="stop sequence",
+                max_tokens=None,
+                stop=["world"],
+                messages=[user('Reply with "hello world"')],
+                expected=(
+                    ExpectedException(
+                        type=UnprocessableEntityError,
+                        message="stop sequences are not supported for code chat model",
+                        status_code=422,
+                    )
+                    if is_codechat(deployment)
+                    else for_all_choices(lambda s: "world" not in s.lower())
+                ),
             )
-            if streaming
-            else for_all_choices(lambda _: True, 5)
-        ),
-    )
 
-    test_case(
-        name="stop sequence",
-        max_tokens=None,
-        stop=["world"],
-        messages=[user('Reply with "hello world"')],
-        expected=(
-            ExpectedException(
-                type=UnprocessableEntityError,
-                message="stop sequences are not supported for code chat model",
-                status_code=422,
+    if is_vision_model(deployment):
+        content = "describe the image"
+        for idx, user_message in enumerate(
+            [
+                user_with_attachment_data(content, blue_pic),
+                user_with_attachment_url(content, blue_pic),
+                user_with_image_url(content, blue_pic),
+            ]
+        ):
+            test_case(
+                name=f"describe image {idx}",
+                max_tokens=100,
+                messages=[sys("be a helpful assistant"), user_message],
+                expected=lambda s: "blue" in s.content.lower(),
             )
-            if is_codechat(deployment)
-            else for_all_choices(lambda s: "world" not in s.lower())
-        ),
-    )
 
     if supports_tools(deployment):
-        query = "What's the temperature in Glasgow in celsius?"
+        content = "What's the temperature in Glasgow in celsius?"
 
         function_args_checker = {
             "location": lambda s: "glasgow" in s.lower(),
@@ -237,7 +291,7 @@ def get_test_cases(
         # Functions
         test_case(
             name="weather function",
-            messages=[user(query)],
+            messages=[user(content)],
             functions=[GET_WEATHER_FUNCTION],
             expected=lambda s: is_valid_function_call(
                 s.function_call, name, function_args_checker
@@ -249,7 +303,7 @@ def get_test_cases(
 
         test_case(
             name="weather function followup",
-            messages=[user(query), function_req, function_resp],
+            messages=[user(content), function_req, function_resp],
             functions=[GET_WEATHER_FUNCTION],
             expected=lambda s: "15" in s.content.lower(),
         )
@@ -258,7 +312,7 @@ def get_test_cases(
         tool_call_id = f"{name}_1"
         test_case(
             name="weather tool",
-            messages=[user(query)],
+            messages=[user(content)],
             tools=[GET_WEATHER_TOOL],
             expected=lambda s: is_valid_tool_calls(
                 s.tool_calls, tool_call_id, name, function_args_checker
@@ -270,27 +324,111 @@ def get_test_cases(
 
         test_case(
             name="weather tool followup",
-            messages=[user(query), tool_req, tool_resp],
+            messages=[user(content), tool_req, tool_resp],
             tools=[GET_WEATHER_TOOL],
             expected=lambda s: "15" in s.content.lower(),
         )
 
+    if supports_static_tools(deployment):
+        test_case(
+            name="static google search",
+            messages=[user("Who won the Wimbledon in 2024?")],
+            static_tools=StaticToolsConfig(
+                functions=[
+                    StaticFunction(
+                        name="google_search",
+                        description="Search the web",
+                        configuration={},
+                    ),
+                ]
+            ),
+            expected=lambda s: (
+                s.attachments is not None
+                and len(s.attachments) > 0
+                and isinstance(s.attachments[0].reference_url, str)
+                and s.attachments[0].reference_url.startswith(
+                    "https://vertexaisearch"
+                )
+                and "carlos alcaraz" in s.content.lower()
+                and s.usage is not None
+                and s.usage.total_tokens > 7000
+            ),
+        )
+
+        test_case(
+            name="static google search with dynamic threshold not hit",
+            messages=[user("2+2=?")],
+            static_tools=StaticToolsConfig(
+                functions=[
+                    StaticFunction(
+                        name="google_search",
+                        description="Search the web",
+                        configuration={
+                            "dynamic_retrieval_config": {
+                                "mode": "MODE_DYNAMIC",
+                                "dynamic_threshold": 0.8,
+                            }
+                        },
+                    ),
+                ]
+            ),
+            max_tokens=10,
+            expected=lambda s: (
+                not s.attachments
+                and "4" in s.content
+                and s.usage is not None
+                and s.usage.total_tokens < 20
+            ),
+        )
+        for index, retrieval_config in enumerate(
+            [
+                {"mode": "MODE_DYNAMIC", "dynamic_threshold": 0.01},
+                {"mode": "MODE_UNSPECIFIED"},
+            ]
+        ):
+            test_case(
+                name=f"static google search with guaranteed search {index}",
+                messages=[user("2+2=")],
+                static_tools=StaticToolsConfig(
+                    functions=[
+                        StaticFunction(
+                            name="google_search",
+                            description="Search the web",
+                            configuration={
+                                "dynamic_retrieval_config": retrieval_config
+                            },
+                        ),
+                    ]
+                ),
+                max_tokens=10,
+                expected=lambda s: (
+                    s.attachments is not None
+                    and len(s.attachments) > 0
+                    and isinstance(s.attachments[0].reference_url, str)
+                    and s.attachments[0].reference_url.startswith(
+                        "https://vertexaisearch"
+                    )
+                    and "4" in s.content.lower()
+                    and s.usage is not None
+                    and s.usage.total_tokens > 7000
+                ),
+            )
+
     return test_cases
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test",
     [
         test
-        for deployment in chat_deployments
+        for deployment in deployments
         for streaming in [False, True]
         for test in get_test_cases(deployment, streaming)
     ],
     ids=lambda test: test.get_id(),
 )
-async def test_chat_completion_openai(server, test: TestCase):
-    client = get_client(TEST_SERVER_URL, test.deployment.value)
+async def test_chat_completion_openai(get_openai_client, test: TestCase):
+    client = get_openai_client(test.deployment.value)
 
     async def run_chat_completion() -> ChatCompletionResult:
         return await chat_completion(
@@ -302,6 +440,7 @@ async def test_chat_completion_openai(server, test: TestCase):
             test.n,
             test.functions,
             test.tools,
+            test.static_tools,
         )
 
     if isinstance(test.expected, ExpectedException):

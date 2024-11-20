@@ -8,15 +8,22 @@ from typing import (
     Optional,
     TypeVar,
     assert_never,
+    cast,
 )
 
 import vertexai.preview.generative_models as generative_models
 from aidial_sdk.chat_completion import Attachment, FinishReason, Message
+from google.cloud.aiplatform_v1beta1.types.prediction_service import (
+    GenerateContentResponse,
+)
 from typing_extensions import override
 from vertexai.preview.generative_models import (
+    Candidate,
     GenerationConfig,
     GenerationResponse,
     GenerativeModel,
+    Image,
+    Part,
 )
 
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
@@ -24,6 +31,10 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
+from aidial_adapter_vertexai.chat.gemini.grounding import (
+    create_grounding,
+    google_search_grounding_tokens,
+)
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
     Gemini_1_0_Pro_Prompt,
@@ -34,7 +45,9 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro_vision import (
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
     Gemini_1_5_Prompt,
 )
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     GeminiDeployment,
@@ -46,7 +59,6 @@ from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 from aidial_adapter_vertexai.utils.timer import Timer
-from aidial_adapter_vertexai.vertex_ai import get_gemini_model, init_vertex_ai
 
 HarmCategory = generative_models.HarmCategory
 HarmBlockThreshold = generative_models.HarmBlockThreshold
@@ -78,9 +90,9 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
 
 class FinishReasonOtherError(Exception):
     def __init__(self, msg: str, retriable: bool):
+        super().__init__(self.msg)
         self.msg = msg
         self.retriable = retriable
-        super().__init__(self.msg)
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
@@ -89,84 +101,126 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     def __init__(
         self,
         file_storage: Optional[FileStorage],
-        model: GenerativeModel,
+        model_id: str,
         deployment: GeminiDeployment,
     ):
         self.file_storage = file_storage
-        self.model = model
+        self.model_id = model_id
         self.deployment = deployment
 
     @override
     async def parse_prompt(
-        self, tools: ToolsConfig, messages: List[Message]
+        self,
+        tools: ToolsConfig,
+        static_tools: StaticToolsConfig,
+        messages: List[Message],
     ) -> GeminiPrompt | UserError:
         match self.deployment:
             case ChatCompletionDeployment.GEMINI_PRO_1:
-                return Gemini_1_0_Pro_Prompt.parse(tools, messages)
+                return await Gemini_1_0_Pro_Prompt.parse(
+                    tools, static_tools, messages
+                )
             case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
                 return await Gemini_1_0_Pro_Vision_Prompt.parse(
-                    self.file_storage, tools, messages
+                    self.file_storage, tools, static_tools, messages
                 )
             case (
-                ChatCompletionDeployment.GEMINI_PRO_1_5
-                | ChatCompletionDeployment.GEMINI_FLASH_1_5
+                ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
+                | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
+                | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
+                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
+                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
             ):
                 return await Gemini_1_5_Prompt.parse(
-                    self.file_storage, tools, messages
+                    self.file_storage, tools, static_tools, messages
                 )
             case _:
                 assert_never(self.deployment)
 
+    def _get_model(
+        self,
+        *,
+        params: ModelParameters | None = None,
+        prompt: GeminiPrompt | None = None,
+    ) -> GenerativeModel:
+        parameters = create_generation_config(params) if params else None
+
+        if prompt is not None:
+            tools = prompt.to_gemini_tools() or None
+            tool_config = prompt.tools.to_gemini_tool_config()
+            system_instruction = cast(
+                List[str | Part | Image] | None,
+                prompt.system_instruction,
+            )
+        else:
+            tools = None
+            tool_config = None
+            system_instruction = None
+
+        return GenerativeModel(
+            self.model_id,
+            generation_config=parameters,
+            tools=tools,
+            tool_config=tool_config,
+            system_instruction=system_instruction,
+        )
+
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiPrompt
     ) -> AsyncIterator[GenerationResponse]:
-        parameters = create_generation_config(params)
-        tools = prompt.tools.to_gemini_tools()
-        tool_config = prompt.tools.to_gemini_tool_config()
+
+        model = self._get_model(params=params, prompt=prompt)
+        contents = prompt.contents
 
         if params.stream:
-            response = await self.model._generate_content_streaming_async(
-                contents=prompt.contents,
-                generation_config=parameters,
-                safety_settings=default_safety_settings,
-                tools=tools,
-                tool_config=tool_config,
-            )
+            response = await model._generate_content_streaming_async(contents)
 
             async for chunk in response:
                 yield chunk
         else:
-            response = await self.model._generate_content_async(
-                contents=prompt.contents,
-                generation_config=parameters,
-                safety_settings=default_safety_settings,
-                tools=tools,
-                tool_config=tool_config,
-            )
+            yield await model._generate_content_async(contents)
 
-            yield response
-
-    @staticmethod
     async def process_chunks(
+        self,
         consumer: Consumer,
         tools: ToolsConfig,
         generator: Callable[[], AsyncIterator[GenerationResponse]],
     ) -> AsyncIterator[str]:
 
+        usage_metadata = None
+        is_grounding_added = False
+
         async for chunk in generator():
             if log.isEnabledFor(DEBUG):
                 chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
                 log.debug(f"response chunk: {chunk_str}")
+            if chunk.candidates:
+                candidate = chunk.candidates[0]
 
-            content = get_content(chunk)
-            if content is not None:
-                await consumer.append_content(content)
-                yield content
+                if (content := _get_candidate_text_safe(candidate)) is not None:
+                    await consumer.append_content(content)
+                    yield content
 
-            await create_function_calls(chunk, consumer, tools)
-            await create_attachments_from_citations(chunk, consumer)
-            await set_usage(chunk, consumer)
-            await set_finish_reason(chunk, consumer)
+                await create_function_calls(candidate, consumer, tools)
+                is_grounding_added |= await create_grounding(
+                    candidate, consumer
+                )
+
+                await create_attachments_from_citations(candidate, consumer)
+                await set_finish_reason(candidate, consumer)
+
+            if chunk.usage_metadata:
+                usage_metadata = chunk.usage_metadata
+            if chunk.prompt_feedback:
+                await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
+
+        if usage_metadata:
+            await set_usage(
+                usage_metadata,
+                consumer,
+                self.deployment,
+                is_grounding_added,
+            )
 
     @override
     async def chat(
@@ -180,7 +234,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 )
 
             completion = ""
-
             async for content in generate_with_retries(
                 lambda: self.process_chunks(
                     consumer,
@@ -194,20 +247,26 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             log.debug(f"predict response: {completion!r}")
 
     @override
-    async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
-        # NOTE: Currently tools/functions couldn't be passed to the count_tokens method:
-        # https://github.com/googleapis/python-aiplatform/issues/3631
-        prompt.tools.not_supported()
+    async def truncate_prompt(
+        self, prompt: GeminiPrompt, max_prompt_tokens: int
+    ) -> TruncatedPrompt[GeminiPrompt]:
+        return await prompt.truncate(
+            tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        )
 
+    @override
+    async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
-            resp = await self.model.count_tokens_async(prompt.contents)
+            resp = await self._get_model(prompt=prompt).count_tokens_async(
+                prompt.contents
+            )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             return resp.total_tokens
 
     @override
     async def count_completion_tokens(self, string: str) -> int:
         with Timer("count_tokens[completion] timing: {time}", log.debug):
-            resp = await self.model.count_tokens_async(string)
+            resp = await self._get_model().count_tokens_async(string)
             log.debug(f"count_tokens[completion] response: {json_dumps(resp)}")
             return resp.total_tokens
 
@@ -217,28 +276,13 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         file_storage: Optional[FileStorage],
         model_id: str,
         deployment: GeminiDeployment,
-        project_id: str,
-        location: str,
     ) -> "GeminiChatCompletionAdapter":
-        await init_vertex_ai(project_id, location)
-        model = await get_gemini_model(model_id)
-        return cls(file_storage, model, deployment)
+        return cls(file_storage, model_id, deployment)
 
 
-def get_content(response: GenerationResponse) -> Optional[str]:
-    try:
-        return response.text
-    except Exception:
-        return None
-
-
-async def set_finish_reason(
-    response: GenerationResponse, consumer: Consumer
-) -> None:
-    reason = response.candidates[0].finish_reason
-
+async def set_finish_reason(candidate: Candidate, consumer: Consumer) -> None:
     openai_reason = to_openai_finish_reason(
-        finish_reason=reason,
+        finish_reason=candidate.finish_reason,
         retriable=consumer.is_empty(),
     )
 
@@ -247,12 +291,9 @@ async def set_finish_reason(
 
 
 async def create_attachments_from_citations(
-    response: GenerationResponse,
-    consumer: Consumer,
+    candidate: Candidate, consumer: Consumer
 ) -> None:
-    if response.candidates is None or not len(response.candidates):
-        return None
-    citation_metadata = response.candidates[0].citation_metadata
+    citation_metadata = candidate.citation_metadata
 
     if (
         citation_metadata is None
@@ -268,22 +309,28 @@ async def create_attachments_from_citations(
             )
 
 
-async def set_usage(response: GenerationResponse, consumer: Consumer) -> None:
-    usage = response.usage_metadata
-    if usage:
-        log.debug(f"usage: {json_dumps(usage)}")
-        await consumer.set_usage(
-            TokenUsage(
-                prompt_tokens=usage.prompt_token_count,
-                completion_tokens=usage.candidates_token_count,
-            )
+async def set_usage(
+    usage: GenerateContentResponse.UsageMetadata,
+    consumer: Consumer,
+    deployment: GeminiDeployment,
+    is_grounding_added: bool = False,
+) -> None:
+    log.debug(f"usage: {json_dumps(usage)}")
+    completion_tokens = usage.candidates_token_count
+    if is_grounding_added:
+        completion_tokens += google_search_grounding_tokens(deployment)
+    await consumer.set_usage(
+        TokenUsage(
+            prompt_tokens=usage.prompt_token_count,
+            completion_tokens=completion_tokens,
         )
+    )
 
 
 async def create_function_calls(
-    response: GenerationResponse, consumer: Consumer, tools: ToolsConfig
+    candidate: Candidate, consumer: Consumer, tools: ToolsConfig
 ) -> None:
-    for call in response.candidates[0].function_calls:
+    for call in candidate.function_calls:
         arguments = json.dumps(recurse_proto_marshal_to_dict(call.args))
 
         if tools.is_tool:
@@ -320,14 +367,30 @@ def to_openai_finish_reason(
             | GenFinishReason.SPII
         ):
             return FinishReason.CONTENT_FILTER
+
+        # The following finish reasons could be usually fixed with a retry
         case GenFinishReason.OTHER:
-            # OTHER finish reason could be usually fixed with a retry
             raise FinishReasonOtherError(
                 msg="The model terminated generation unexpectedly",
                 retriable=retriable,
             )
+        case GenFinishReason.MALFORMED_FUNCTION_CALL:
+            raise FinishReasonOtherError(
+                msg="The function call generated by the model is invalid",
+                retriable=retriable,
+            )
         case _:
             assert_never(finish_reason)
+
+
+def _get_candidate_text_safe(candidate: Candidate) -> str | None:
+    # The text content of a candidate may be missing when function is called or
+    # when the generation was terminated with SAFETY finish reason.
+    try:
+        return candidate.text
+    except ValueError as e:
+        log.debug(f"The Candidate doesn't have text: {e}")
+        return None
 
 
 T = TypeVar("T")

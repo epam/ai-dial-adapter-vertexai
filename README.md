@@ -8,10 +8,10 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
 |---|---|---|---|---|---|
-|Gemini 1.5 Pro|gemini-1.5-pro-preview-0409|(text/pdf/image/audio/video)-to-text|✅|❌|✅|
-|Gemini 1.5 Flash|gemini-1.5-flash-001|(text/pdf/image/audio/video)-to-text|✅|❌|✅|
-|Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|❌|❌|
-|Gemini 1.0 Pro|gemini-pro|text-to-text|✅|❌|✅|
+|Gemini 1.5 Pro|gemini-1.5-pro-[preview-0409\|001\|002]|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
+|Gemini 1.5 Flash|gemini-1.5-flash-[001\|002]|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
+|Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|
+|Gemini 1.0 Pro|gemini-pro|text-to-text|✅|✅|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|
 |PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|
 |PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|
@@ -81,7 +81,6 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |LOG_LEVEL|INFO|Log level. Use DEBUG for dev purposes and INFO in prod|
 |AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
-|TEST_SERVER_URL|http://0.0.0.0:5001|Server URL used in the integration tests|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 
 ### Docker

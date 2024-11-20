@@ -28,10 +28,7 @@ from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
 
 
 async def get_chat_completion_model(
-    api_key: str,
-    deployment: ChatCompletionDeployment,
-    project_id: str,
-    location: str,
+    api_key: str, deployment: ChatCompletionDeployment
 ) -> ChatCompletionAdapter:
     model_id = deployment.get_model_id()
 
@@ -41,39 +38,35 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.CHAT_BISON_2
             | ChatCompletionDeployment.CHAT_BISON_2_32K
         ):
-            return await BisonChatAdapter.create(model_id, project_id, location)
+            return await BisonChatAdapter.create(model_id)
         case (
             ChatCompletionDeployment.CODECHAT_BISON_1
             | ChatCompletionDeployment.CODECHAT_BISON_2
             | ChatCompletionDeployment.CODECHAT_BISON_2_32K
         ):
-            return await BisonCodeChatAdapter.create(
-                model_id, project_id, location
-            )
+            return await BisonCodeChatAdapter.create(model_id)
         case (
             ChatCompletionDeployment.GEMINI_PRO_1
             | ChatCompletionDeployment.GEMINI_PRO_VISION_1
-            | ChatCompletionDeployment.GEMINI_PRO_1_5
-            | ChatCompletionDeployment.GEMINI_FLASH_1_5
+            | ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
+            | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
+            | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
+            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
+            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
         ):
             storage = create_file_storage(api_key)
             return await GeminiChatCompletionAdapter.create(
-                storage, model_id, deployment, project_id, location
+                storage, model_id, deployment
             )
         case ChatCompletionDeployment.IMAGEN_005:
             storage = create_file_storage(api_key)
-            return await ImagenChatCompletionAdapter.create(
-                storage, model_id, project_id, location
-            )
+            return await ImagenChatCompletionAdapter.create(storage, model_id)
         case _:
             assert_never(deployment)
 
 
 async def get_embeddings_model(
-    deployment: EmbeddingsDeployment,
-    project_id: str,
-    location: str,
-    api_key: str,
+    api_key: str, deployment: EmbeddingsDeployment
 ) -> EmbeddingsAdapter:
     model_id = deployment.get_model_id()
     match deployment:
@@ -84,12 +77,9 @@ async def get_embeddings_model(
             | EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1
             | EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2
         ):
-            return await TextEmbeddingsAdapter.create(
-                model_id, project_id, location
-            )
+            return await TextEmbeddingsAdapter.create(model_id)
         case EmbeddingsDeployment.MULTI_MODAL_EMBEDDING_1:
-            return await MultiModalEmbeddingsAdapter.create(
-                model_id, project_id, location, api_key
-            )
+            storage = create_file_storage(api_key)
+            return await MultiModalEmbeddingsAdapter.create(storage, model_id)
         case _:
             assert_never(deployment)

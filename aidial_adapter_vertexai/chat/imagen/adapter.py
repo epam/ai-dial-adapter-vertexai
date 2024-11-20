@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message
 from PIL import Image as PIL_Image
@@ -14,8 +14,13 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
+from aidial_adapter_vertexai.dial_api.request import (
+    ModelParameters,
+    collect_text_content,
+)
 from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
     compute_hash_digest,
@@ -23,10 +28,7 @@ from aidial_adapter_vertexai.dial_api.storage import (
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
-from aidial_adapter_vertexai.vertex_ai import (
-    get_image_generation_model,
-    init_vertex_ai,
-)
+from aidial_adapter_vertexai.vertex_ai import get_image_generation_model
 
 ImagenPrompt = str
 
@@ -42,24 +44,27 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
 
     @override
     async def parse_prompt(
-        self, tools: ToolsConfig, messages: List[Message]
+        self,
+        tools: ToolsConfig,
+        static_tools: StaticToolsConfig,
+        messages: List[Message],
     ) -> ImagenPrompt:
         tools.not_supported()
-
+        static_tools.not_supported()
         if len(messages) == 0:
             raise ValidationError("The list of messages must not be empty")
 
-        prompt = messages[-1].content
-        if prompt is None:
+        content = messages[-1].content
+        if content is None:
             raise ValidationError("The last message must have content")
 
-        return prompt
+        return collect_text_content(content)
 
     @override
     async def truncate_prompt(
         self, prompt: ImagenPrompt, max_prompt_tokens: int
-    ) -> Tuple[ImagenPrompt, List[int]]:
-        return prompt, []
+    ) -> TruncatedPrompt[ImagenPrompt]:
+        return TruncatedPrompt(discarded_messages=[], prompt=prompt)
 
     @staticmethod
     def get_image_type(image: PIL_Image.Image) -> str:
@@ -132,9 +137,6 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         cls,
         file_storage: Optional[FileStorage],
         model_id: str,
-        project_id: str,
-        location: str,
     ) -> "ImagenChatCompletionAdapter":
-        await init_vertex_ai(project_id, location)
         model = await get_image_generation_model(model_id)
         return cls(file_storage, model)

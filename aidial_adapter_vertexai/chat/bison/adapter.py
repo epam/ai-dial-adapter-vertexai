@@ -10,7 +10,6 @@ from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.vertex_ai import (
     get_chat_model,
     get_code_chat_model,
-    init_vertex_ai,
 )
 
 
@@ -49,10 +48,7 @@ class BisonChatAdapter(BisonChatCompletionAdapter):
     model: ChatModel
 
     @classmethod
-    async def create(
-        cls, model_id: str, project_id: str, location: str
-    ) -> "BisonChatAdapter":
-        await init_vertex_ai(project_id, location)
+    async def create(cls, model_id: str) -> "BisonChatAdapter":
         return cls(await get_chat_model(model_id))
 
     def prepare_parameters_no_stream(
@@ -81,21 +77,22 @@ class BisonChatAdapter(BisonChatCompletionAdapter):
         self, params: ModelParameters, prompt: BisonPrompt
     ) -> AsyncIterator[str]:
         chat = self.model.start_chat(
-            context=prompt.context, message_history=prompt.history
+            context=prompt.system_instruction,
+            message_history=prompt.history,
         )
 
         generic_validate_parameters(params)
 
         if params.stream:
             stream = chat.send_message_streaming_async(
-                message=prompt.user_prompt,
+                message=prompt.last_user_message,
                 **self.prepare_parameters_stream(params),
             )
             async for chunk in stream:
                 yield chunk.text
         else:
             response = await chat.send_message_async(
-                message=prompt.user_prompt,
+                message=prompt.last_user_message,
                 **self.prepare_parameters_no_stream(params),
             )
             yield response.text
@@ -105,10 +102,7 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
     model: CodeChatModel
 
     @classmethod
-    async def create(
-        cls, model_id: str, project_id: str, location: str
-    ) -> "BisonCodeChatAdapter":
-        await init_vertex_ai(project_id, location)
+    async def create(cls, model_id: str) -> "BisonCodeChatAdapter":
         return cls(await get_code_chat_model(model_id))
 
     def validate_parameters(self, params: ModelParameters) -> None:
@@ -142,7 +136,8 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
         self, params: ModelParameters, prompt: BisonPrompt
     ) -> AsyncIterator[str]:
         chat = self.model.start_chat(
-            context=prompt.context, message_history=prompt.history
+            context=prompt.system_instruction,
+            message_history=prompt.history,
         )
 
         generic_validate_parameters(params)
@@ -150,14 +145,14 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
 
         if params.stream:
             stream = chat.send_message_streaming_async(
-                message=prompt.user_prompt,
+                message=prompt.last_user_message,
                 **self.prepare_parameters_stream(params),
             )
             async for chunk in stream:
                 yield chunk.text
         else:
             response = await chat.send_message_async(
-                message=prompt.user_prompt,
+                message=prompt.last_user_message,
                 **self.prepare_parameters_no_stream(params),
             )
             yield response.text
