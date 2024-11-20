@@ -1,15 +1,16 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, NoReturn, Self
+from typing import List, Literal, NoReturn, Self
 
 from aidial_sdk.chat_completion.request import (
     AzureChatCompletionRequest,
     StaticFunction,
     StaticTool,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, ConstrainedFloat, Field
+from pydantic import ValidationError as PydanticValidationError
+from pydantic import root_validator
 from vertexai.preview.generative_models import Tool as GeminiTool
-from vertexai.preview.generative_models import grounding
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 
@@ -27,21 +28,71 @@ class StaticToolProcessor(ABC):
     ) -> List[GeminiTool] | None: ...
 
 
+class DynamicThreshold(ConstrainedFloat):
+    ge = 0
+    le = 1
+
+
+class DynamicRetrievalConfig(BaseModel):
+    class Config:
+        extra = "forbid"
+        allow_population_by_field_name = True
+
+    mode: Literal["MODE_DYNAMIC", "MODE_UNSPECIFIED"] | None = None
+    dynamic_threshold: DynamicThreshold | None = Field(
+        None, alias="dynamicThreshold"
+    )
+
+    @root_validator(pre=True)
+    def check_dynamic_threshold(cls, values):
+        if values.get("mode") == "MODE_UNSPECIFIED" and (
+            values.get("dynamic_threshold") is not None
+            or values.get("dynamicThreshold") is not None
+        ):
+            raise ValidationError(
+                "dynamic_threshold must be None when mode is MODE_UNSPECIFIED"
+            )
+        return values
+
+
+class GoogleSearchConfig(BaseModel):
+    class Config:
+        extra = "forbid"
+        allow_population_by_field_name = True
+
+    dynamic_retrieval_config: DynamicRetrievalConfig | None = Field(
+        None, alias="dynamicRetrievalConfig"
+    )
+
+
 class GoogleSearchGroundingTool(StaticToolProcessor):
     @staticmethod
     def parse_gemini_tools(
         static_function: StaticFunction,
     ) -> List[GeminiTool] | None:
         if static_function.name == ToolName.GOOGLE_SEARCH:
+            google_search_config = GoogleSearchConfig(
+                dynamicRetrievalConfig=None
+            )
             if static_function.configuration:
-                raise ValidationError(
-                    "Google search tool doesn't support configuration"
-                )
+                try:
+                    google_search_config = GoogleSearchConfig.validate(
+                        static_function.configuration
+                    )
+                except PydanticValidationError:
+                    raise ValidationError(
+                        "Invalid configuration for Google search tool"
+                    )
             return [
-                GeminiTool.from_google_search_retrieval(
-                    grounding.GoogleSearchRetrieval()
+                GeminiTool.from_dict(
+                    {
+                        "google_search_retrieval": google_search_config.dict(
+                            exclude_none=True
+                        )
+                    }
                 )
             ]
+
         return None
 
 

@@ -31,6 +31,10 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
+from aidial_adapter_vertexai.chat.gemini.grounding import (
+    create_grounding,
+    google_search_grounding_tokens,
+)
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
     Gemini_1_0_Pro_Prompt,
@@ -176,18 +180,20 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         else:
             yield await model._generate_content_async(contents)
 
-    @staticmethod
     async def process_chunks(
+        self,
         consumer: Consumer,
         tools: ToolsConfig,
         generator: Callable[[], AsyncIterator[GenerationResponse]],
     ) -> AsyncIterator[str]:
 
+        usage_metadata = None
+        is_grounding_added = False
+
         async for chunk in generator():
             if log.isEnabledFor(DEBUG):
                 chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
                 log.debug(f"response chunk: {chunk_str}")
-
             if chunk.candidates:
                 candidate = chunk.candidates[0]
 
@@ -196,15 +202,25 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                     yield content
 
                 await create_function_calls(candidate, consumer, tools)
-                await create_grounding(candidate, consumer)
+                is_grounding_added |= await create_grounding(
+                    candidate, consumer
+                )
+
                 await create_attachments_from_citations(candidate, consumer)
                 await set_finish_reason(candidate, consumer)
 
             if chunk.usage_metadata:
-                await set_usage(chunk.usage_metadata, consumer)
-
+                usage_metadata = chunk.usage_metadata
             if chunk.prompt_feedback:
                 await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
+
+        if usage_metadata:
+            await set_usage(
+                usage_metadata,
+                consumer,
+                self.deployment,
+                is_grounding_added,
+            )
 
     @override
     async def chat(
@@ -294,13 +310,19 @@ async def create_attachments_from_citations(
 
 
 async def set_usage(
-    usage: GenerateContentResponse.UsageMetadata, consumer: Consumer
+    usage: GenerateContentResponse.UsageMetadata,
+    consumer: Consumer,
+    deployment: GeminiDeployment,
+    is_grounding_added: bool = False,
 ) -> None:
     log.debug(f"usage: {json_dumps(usage)}")
+    completion_tokens = usage.candidates_token_count
+    if is_grounding_added:
+        completion_tokens += google_search_grounding_tokens(deployment)
     await consumer.set_usage(
         TokenUsage(
             prompt_tokens=usage.prompt_token_count,
-            completion_tokens=usage.candidates_token_count,
+            completion_tokens=completion_tokens,
         )
     )
 
@@ -324,30 +346,6 @@ async def create_function_calls(
             await consumer.create_function_call(
                 name=call.name,
                 arguments=arguments,
-            )
-
-
-async def create_grounding(candidate: Candidate, consumer: Consumer) -> None:
-    if not (metadata := candidate.grounding_metadata) or not (
-        supports := metadata.grounding_supports
-    ):
-        return
-
-    for support in supports:
-        if not (chunk_indices := support.grounding_chunk_indices):
-            continue
-
-        for chunk_index in chunk_indices:
-            chunk = metadata.grounding_chunks[chunk_index]
-            if not chunk.web or not chunk.web.uri:
-                continue
-            await consumer.add_attachment(
-                Attachment(
-                    reference_url=chunk.web.uri,
-                    data=support.segment.text,
-                    title=chunk.web.title,
-                    type="text/markdown",
-                )
             )
 
 

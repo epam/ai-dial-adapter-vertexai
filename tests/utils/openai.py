@@ -183,6 +183,8 @@ class ChatCompletionResult(BaseModel):
 
     @property
     def attachments(self) -> List[Attachment] | None:
+        if not hasattr(self.message, "custom_content"):
+            return None
         return [
             Attachment.parse_obj(attachment)
             for attachment in self.message.custom_content.get(  # type: ignore
