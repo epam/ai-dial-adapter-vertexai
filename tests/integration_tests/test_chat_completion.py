@@ -372,7 +372,7 @@ def get_test_cases(
                     ),
                 ]
             ),
-            max_tokens=10,
+            max_tokens=100,
             expected=lambda s: (
                 not s.attachments
                 and "4" in s.content
@@ -400,7 +400,7 @@ def get_test_cases(
                         ),
                     ]
                 ),
-                max_tokens=10,
+                max_tokens=100,
                 expected=lambda s: (
                     s.attachments is not None
                     and len(s.attachments) > 0
@@ -449,7 +449,9 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
 
         actual_exc = exc_info.value
 
-        assert isinstance(actual_exc, test.expected.type)
+        assert isinstance(
+            actual_exc, test.expected.type
+        ), f"Actual exception type ({type(actual_exc)}) doesn't match the expected one ({test.expected.type})"
         actual_status_code = getattr(actual_exc, "status_code", None)
         assert actual_status_code == test.expected.status_code
         assert re.search(test.expected.message, str(actual_exc))

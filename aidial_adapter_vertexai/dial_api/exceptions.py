@@ -74,6 +74,10 @@ def dial_exception_decorator(func):
             log.exception(
                 f"caught exception: {type(e).__module__}.{type(e).__name__}"
             )
-            raise to_dial_exception(e) from e
+            dial_exception = to_dial_exception(e)
+            log.error(
+                f"the exception converted to the dial exception: {dial_exception!r}"
+            )
+            raise dial_exception from e
 
     return wrapper

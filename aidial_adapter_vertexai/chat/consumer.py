@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
+from types import TracebackType
 from typing import Optional
 
-from aidial_sdk.chat_completion import Attachment, Choice, FinishReason
+from aidial_sdk.chat_completion import (
+    Attachment,
+    Choice,
+    FinishReason,
+    Response,
+)
 
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
@@ -37,7 +43,8 @@ class Consumer(ABC):
 
 
 class ChoiceConsumer(Consumer):
-    choice: Choice
+    response: Response
+    _choice: Optional[Choice]
     usage: TokenUsage
     finish_reason: Optional[FinishReason]
 
@@ -46,11 +53,37 @@ class ChoiceConsumer(Consumer):
     Whether the consumer has sent something to the choice or not.
     """
 
-    def __init__(self, choice: Choice):
+    def __init__(self, response: Response):
+        self.response = response
+        self._choice = None
         self.empty = True
-        self.choice = choice
         self.usage = TokenUsage()
         self.finish_reason = None
+
+    @property
+    def choice(self) -> Choice:
+        if self._choice is None:
+            # Delay opening a choice to the very last moment
+            # so as to give opportunity for exceptions to bubble up to
+            # the level of HTTP response (instead of error objects in a stream).
+            choice = self._choice = self.response.create_choice()
+            choice.open()
+            return choice
+        else:
+            return self._choice
+
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        if exc is None and self._choice is not None:
+            self._choice.close()
+        return False
 
     def is_empty(self) -> bool:
         return self.empty
@@ -71,14 +104,7 @@ class ChoiceConsumer(Consumer):
 
     async def add_attachment(self, attachment: Attachment):
         self.empty = False
-        self.choice.add_attachment(
-            type=attachment.type,
-            title=attachment.title,
-            data=attachment.data,
-            url=attachment.url,
-            reference_url=attachment.reference_url,
-            reference_type=attachment.reference_type,
-        )
+        self.choice.add_attachment(attachment)
 
     async def set_usage(self, usage: TokenUsage):
         self.usage = usage
