@@ -72,6 +72,12 @@ class ChoiceConsumer(Consumer):
         else:
             return self._choice
 
+    @property
+    def choice_idx(self) -> int | None:
+        if self._choice is None:
+            return None
+        return self._choice.index
+
     def __enter__(self):
         return self
 

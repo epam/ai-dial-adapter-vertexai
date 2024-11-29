@@ -82,18 +82,18 @@ class VertexAIChatCompletion(ChatCompletion):
                 prompt, params.max_prompt_tokens
             )
 
-        async def generate_response(usage: TokenUsage, choice_idx: int) -> None:
+        async def generate_response(usage: TokenUsage) -> None:
             with ChoiceConsumer(response=response) as consumer:
                 await model.chat(params, consumer, truncated_prompt.prompt)
                 usage.accumulate(consumer.usage)
 
-            log.debug(f"finish_reason[{choice_idx}]: {consumer.finish_reason}")
+            log.debug(
+                f"finish_reason[{consumer.choice_idx}]: {consumer.finish_reason}"
+            )
 
         usage = TokenUsage()
 
-        await asyncio.gather(
-            *(generate_response(usage, idx) for idx in range(n))
-        )
+        await asyncio.gather(*(generate_response(usage) for _ in range(n)))
 
         log.debug(f"usage: {usage}")
         response.set_usage(usage.prompt_tokens, usage.completion_tokens)
