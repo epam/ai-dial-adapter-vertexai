@@ -2,7 +2,7 @@ import itertools
 import re
 from dataclasses import dataclass
 from itertools import product
-from typing import Any, Callable, List, Set
+from typing import Any, Callable, List, Set, Tuple
 
 import numpy as np
 import pytest
@@ -259,7 +259,7 @@ async def test_embeddings(get_openai_client, test: TestCase):
     ids=lambda x: "_".join(x),
 )
 async def test_multi_input_embeddings(
-    get_openai_client, model_id: str, input: List[str]
+    get_openai_client, model_id: str, input: Tuple[str]
 ):
     client = get_openai_client(model_id)
 
