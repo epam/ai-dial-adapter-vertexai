@@ -1,8 +1,10 @@
+import itertools
 import re
 from dataclasses import dataclass
 from itertools import product
-from typing import Any, Callable, List, Set
+from typing import Any, Callable, List, Set, Tuple
 
+import numpy as np
 import pytest
 from aidial_sdk.chat_completion import Attachment
 from openai.types import CreateEmbeddingResponse
@@ -248,3 +250,36 @@ async def test_embeddings(get_openai_client, test: TestCase):
     else:
         embeddings = await run()
         test.expected(embeddings)
+
+
+@pytest.mark.parametrize("model_id", [spec.deployment.value for spec in specs])
+@pytest.mark.parametrize(
+    "input",
+    itertools.product(["cat", "dog"], repeat=4),
+    ids=lambda x: "_".join(x),
+)
+async def test_multi_input_embeddings(
+    get_openai_client, model_id: str, input: Tuple[str]
+):
+    client = get_openai_client(model_id)
+
+    response: CreateEmbeddingResponse = await client.embeddings.create(
+        model=model_id, input=input, encoding_format="float"
+    )
+    vectors = [np.array(emb.embedding) for emb in response.data]
+
+    assert len(input) == len(vectors)
+
+    eps = 1e-8
+
+    for i, a in enumerate(vectors):
+        for j, b in enumerate(vectors):
+            if i >= j:
+                continue
+
+            assert len(a) == len(b)
+            dist = np.linalg.norm(a - b)
+            if input[i] == input[j]:
+                assert dist <= eps
+            else:
+                assert dist > eps
