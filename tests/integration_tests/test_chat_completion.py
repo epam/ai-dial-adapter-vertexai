@@ -227,16 +227,8 @@ def get_test_cases(
             name="multiple candidates",
             max_tokens=10,
             n=5,
-            messages=[user("2+3=?")],
-            expected=(
-                ExpectedException(
-                    type=UnprocessableEntityError,
-                    message="n>1 is not supported in streaming mode",
-                    status_code=422,
-                )
-                if streaming
-                else for_all_choices(lambda _: True, 5)
-            ),
+            messages=[user("2+7=? Reply with a single number")],
+            expected=for_all_choices(lambda s: "9" in s, 5),
         )
 
         # Stop sequences do not work for some reason for CHAT_BISON_2_32K and streaming mode

@@ -66,9 +66,6 @@ class VertexAIChatCompletion(ChatCompletion):
         n = params.n or 1
         params.n = None
 
-        if n > 1 and params.stream:
-            raise ValidationError("n>1 is not supported in streaming mode")
-
         if params.max_prompt_tokens is None:
             truncated_prompt = TruncatedPrompt(
                 prompt=prompt, discarded_messages=[]
