@@ -90,9 +90,9 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
 
 class FinishReasonOtherError(Exception):
     def __init__(self, msg: str, retriable: bool):
-        super().__init__(self.msg)
         self.msg = msg
         self.retriable = retriable
+        super().__init__(self.msg)
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
