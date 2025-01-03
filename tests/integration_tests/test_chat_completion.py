@@ -22,6 +22,7 @@ from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
     GET_WEATHER_TOOL,
     ChatCompletionResult,
+    ai,
     ai_function,
     ai_tools,
     blue_pic,
@@ -149,6 +150,14 @@ def supports_text_input(deployment: ChatCompletionDeployment) -> bool:
     return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
 
 
+def supports_empty_content(deployment: ChatCompletionDeployment) -> bool:
+    return is_codechat(deployment) or deployment in [
+        ChatCompletionDeployment.CHAT_BISON_1,
+        ChatCompletionDeployment.CHAT_BISON_2,
+        ChatCompletionDeployment.CHAT_BISON_2_32K,
+    ]
+
+
 def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_PRO_VISION_1,
@@ -214,6 +223,40 @@ def get_test_cases(
             name="non empty sys message",
             messages=[sys("Act as helpful assistant"), user("2+5=?")],
             expected=for_all_choices(lambda s: "7" in s),
+        )
+
+        test_case(
+            name="empty assistant content",
+            messages=[
+                user("hi, what is your name?"),
+                ai(""),
+                user("please come again?"),
+            ],
+            expected=(
+                expected_success
+                if supports_empty_content(deployment)
+                else ExpectedException(
+                    type=UnprocessableEntityError,
+                    message="Assistant message content must be present",
+                    status_code=422,
+                )
+            ),
+        )
+
+        test_case(
+            name="empty user content",
+            messages=[
+                user(""),
+            ],
+            expected=(
+                expected_success
+                if supports_empty_content(deployment)
+                else ExpectedException(
+                    type=UnprocessableEntityError,
+                    message="User message content must be present",
+                    status_code=422,
+                )
+            ),
         )
 
         test_case(
