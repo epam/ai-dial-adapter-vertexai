@@ -89,7 +89,7 @@ async def _message_to_gemini_parts(
             return await processors.process_message(message)
 
         case Role.USER:
-            if content is None:
+            if not content:
                 raise ValidationError("User message content must be present")
             return await processors.process_message(message)
 
@@ -99,7 +99,7 @@ async def _message_to_gemini_parts(
             elif message.tool_calls is not None:
                 return [tool_call_to_part(call) for call in message.tool_calls]
             else:
-                if content is None:
+                if not content:
                     raise ValidationError(
                         "Assistant message content must be present"
                     )
