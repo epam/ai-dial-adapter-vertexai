@@ -225,32 +225,39 @@ def get_test_cases(
             expected=for_all_choices(lambda s: "7" in s),
         )
 
-        if not supports_empty_content(deployment):
-            test_case(
-                name="empty assistant content",
-                messages=[
-                    user("hi, what is your name?"),
-                    ai(""),
-                    user("please come again?"),
-                ],
-                expected=ExpectedException(
+        test_case(
+            name="empty assistant content",
+            messages=[
+                user("hi, what is your name?"),
+                ai(""),
+                user("please come again?"),
+            ],
+            expected=(
+                expected_success
+                if supports_empty_content(deployment)
+                else ExpectedException(
                     type=UnprocessableEntityError,
                     message="Assistant message content must be present",
                     status_code=422,
-                ),
-            )
+                )
+            ),
+        )
 
-            test_case(
-                name="empty user content",
-                messages=[
-                    user(""),
-                ],
-                expected=ExpectedException(
+        test_case(
+            name="empty user content",
+            messages=[
+                user(""),
+            ],
+            expected=(
+                expected_success
+                if supports_empty_content(deployment)
+                else ExpectedException(
                     type=UnprocessableEntityError,
                     message="User message content must be present",
                     status_code=422,
-                ),
-            )
+                )
+            ),
+        )
 
         test_case(
             name="max tokens 1",
