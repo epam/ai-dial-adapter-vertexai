@@ -7,7 +7,7 @@ license = "Apache-2.0"
 readme = "README.md"
 keywords = ["ai"]
 classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
-dynamic = ["dependencies", "requires-python"]
+dynamic = ["dependencies"]
 
 [project.urls]
 homepage = "https://epam-rail.com"
