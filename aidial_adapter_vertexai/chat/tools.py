@@ -8,7 +8,7 @@ from aidial_sdk.chat_completion import (
     ToolChoice,
 )
 from aidial_sdk.chat_completion.request import AzureChatCompletionRequest, Tool
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import (
     FunctionDeclaration as GeminiFunction,
 )
@@ -25,14 +25,12 @@ class ToolsConfig(BaseModel):
     """
     List of functions/tools.
     """
-
     required: bool
     """
     True forces the model to call one of the available functions.
     False allows the model to pick between generating a message or
     calling one or more tools/functions.
     """
-
     tool_ids: Dict[str, str] | None
     """
     Mapping from tool call IDs to corresponding tool names.

@@ -8,23 +8,21 @@ documentation = "https://epam-rail.com/dial_api"
 license = "Apache-2.0"
 readme = "README.md"
 keywords = ["ai"]
-classifiers = [
-    "Topic :: Software Development :: Libraries :: Python Modules"
-]
+classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
 repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
 
 [tool.poetry.dependencies]
 python = "~3.11"
-aidial-sdk = {version = "0.16.0", extras = ["telemetry"]}
+aidial-sdk = { version = "0.16.0", extras = ["telemetry"] }
 fastapi = "0.115.2"
 google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
 openai = "1.13.3"
-pydantic = "1.10.13"
+pydantic = "^2.10.4"
 uvicorn = "0.22.0"
 aiocache = "0.12.2"
 pillow = "^10.3.0"
-pypdf = {version = "^4.3.1", extras = ["crypto"]}
+pypdf = { version = "^4.3.1", extras = ["crypto"] }
 numpy = "^2.0.0"
 aiohttp = "^3.10.11"
 
@@ -52,24 +50,20 @@ google-auth-oauthlib = "1.0.0"
 [tool.pytest.ini_options]
 addopts = "-n=auto --asyncio-mode=auto"
 env_override_existing_values = 1
-# muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
 filterwarnings = [
+    # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
     "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
     "ignore::DeprecationWarning:google.rpc",
-    "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies"
+    "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
+    # Pydantic v2 class-based config deprecation warning
+    "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
 ]
 
 [tool.pyright]
 typeCheckingMode = "basic"
 reportUnusedVariable = "error"
 reportIncompatibleMethodOverride = "error"
-exclude = [
-    ".git",
-    ".venv",
-    ".nox",
-    "**/__pycache__",
-    "~*"
-]
+exclude = [".git", ".venv", ".nox", "**/__pycache__", "~*"]
 
 [tool.black]
 line-length = 80
@@ -92,7 +86,4 @@ remove_all_unused_imports = true
 in_place = true
 recursive = true
 quiet = true
-exclude = [
-    "\\.venv",
-    "\\.nox",
-]
+exclude = ["\\.venv", "\\.nox"]
