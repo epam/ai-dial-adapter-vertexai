@@ -3,7 +3,7 @@ FROM python:3.11-alpine3.20 as builder
 RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
 # geos-dev is required for https://pypi.org/project/shapely/2.0.5/
 RUN apk add --no-cache alpine-sdk linux-headers geos-dev
-RUN pip install poetry
+RUN pip install poetry==1.8.5
 
 WORKDIR /app
 
