@@ -35,7 +35,10 @@ from aidial_adapter_vertexai.chat.gemini.grounding import (
     create_grounding,
     google_search_grounding_tokens,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.base import (
+    GeminiGenAIPrompt,
+    GeminiPrompt,
+)
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
     Gemini_1_0_Pro_Prompt,
 )
@@ -88,6 +91,7 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
     )
 
 
+# TODO: COMMON
 class FinishReasonOtherError(Exception):
     def __init__(self, msg: str, retriable: bool):
         self.msg = msg
@@ -396,6 +400,7 @@ def _get_candidate_text_safe(candidate: Candidate) -> str | None:
 T = TypeVar("T")
 
 
+# TODO: COMMON
 async def generate_with_retries(
     generator: Callable[[], AsyncIterator[T]], max_retries: int
 ) -> AsyncIterator[T]:
@@ -416,3 +421,23 @@ async def generate_with_retries(
                 raise e
 
             log.debug(f"retrying [{retries}/{max_retries}]")
+
+
+class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiGenAIPrompt]):
+    def parse_prompt(
+        self,
+        tools: ToolsConfig,
+        static_tools: StaticToolsConfig,
+        messages: List[Message],
+    ) -> GeminiGenAIPrompt | UserError:
+        return GeminiGenAIPrompt(
+            system_instruction=...,
+        )
+
+    def chat(
+        self,
+        params: ModelParameters,
+        consumer: Consumer,
+        prompt: GeminiGenAIPrompt,
+    ) -> None:
+        pass
