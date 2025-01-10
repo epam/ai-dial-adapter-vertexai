@@ -3,7 +3,7 @@ from typing import Generic, List, Self, Set, TypeVar
 
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 from vertexai.preview.generative_models import Tool as GeminiTool
 

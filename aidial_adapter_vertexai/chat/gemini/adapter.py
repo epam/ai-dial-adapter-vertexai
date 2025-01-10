@@ -7,15 +7,23 @@ from typing import (
     List,
     Optional,
     TypeVar,
+    Union,
     assert_never,
     cast,
 )
 
 import vertexai.preview.generative_models as generative_models
-from aidial_sdk.chat_completion import Attachment, FinishReason, Message
+from aidial_sdk.chat_completion import Attachment, FinishReason, Message, Stage
 from google.cloud.aiplatform_v1beta1.types.prediction_service import (
     GenerateContentResponse,
 )
+from google.genai.client import Client
+from google.genai.types import Candidate as GenAICandidate
+from google.genai.types import FinishReason as GenAIFinishReason
+from google.genai.types import (
+    GenerateContentResponse as GenAIGenerateContentResponse,
+)
+from google.genai.types import Part as GenAIPart
 from typing_extensions import override
 from vertexai.preview.generative_models import (
     Candidate,
@@ -48,32 +56,29 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro_vision import (
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
     Gemini_1_5_Prompt,
 )
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
+from aidial_adapter_vertexai.chat.gemini.utils import (
+    FinishReasonOtherError,
+    generate_with_retries,
+)
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
+    Gemini2Deployment,
     GeminiDeployment,
 )
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.env import DEFAULT_REGION, GCP_PROJECT_ID
 from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 from aidial_adapter_vertexai.utils.timer import Timer
 
-HarmCategory = generative_models.HarmCategory
-HarmBlockThreshold = generative_models.HarmBlockThreshold
 GenFinishReason = generative_models.FinishReason
-
-default_safety_settings: Dict[HarmCategory, HarmBlockThreshold] = {
-    HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-}
 
 
 def create_generation_config(params: ModelParameters) -> GenerationConfig:
@@ -89,14 +94,6 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
         top_p=params.top_p,
         candidate_count=params.n,
     )
-
-
-# TODO: COMMON
-class FinishReasonOtherError(Exception):
-    def __init__(self, msg: str, retriable: bool):
-        self.msg = msg
-        self.retriable = retriable
-        super().__init__(self.msg)
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
@@ -284,18 +281,8 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         return cls(file_storage, model_id, deployment)
 
 
-async def set_finish_reason(candidate: Candidate, consumer: Consumer) -> None:
-    openai_reason = to_openai_finish_reason(
-        finish_reason=candidate.finish_reason,
-        retriable=consumer.is_empty(),
-    )
-
-    if openai_reason is not None:
-        await consumer.set_finish_reason(openai_reason)
-
-
 async def create_attachments_from_citations(
-    candidate: Candidate, consumer: Consumer
+    candidate: Candidate | GenAICandidate, consumer: Consumer
 ) -> None:
     citation_metadata = candidate.citation_metadata
 
@@ -353,6 +340,30 @@ async def create_function_calls(
             )
 
 
+async def process_genai_function_call(
+    part: GenAIPart, consumer: Consumer, tools: ToolsConfig
+) -> None:
+    if not (function_call := part.function_call):
+        return
+    if not function_call.name:
+        return
+
+    function_args = (
+        json.dumps(function_call.args) if function_call.args else None
+    )
+    if tools.is_tool:
+        await consumer.create_tool_call(
+            id=tools.create_fresh_tool_call_id(function_call.name),
+            name=function_call.name,
+            arguments=function_args,
+        )
+    else:
+        await consumer.create_function_call(
+            name=function_call.name,
+            arguments=function_args,
+        )
+
+
 def to_openai_finish_reason(
     finish_reason: GenFinishReason, retriable: bool
 ) -> FinishReason | None:
@@ -387,6 +398,59 @@ def to_openai_finish_reason(
             assert_never(finish_reason)
 
 
+# TODO: MOVE
+def genai_to_openai_finish_reason(
+    finish_reason: GenAIFinishReason, retriable: bool
+) -> FinishReason | None:
+    match finish_reason:
+        case "FINISH_REASON_UNSPECIFIED":
+            return None
+        case "MAX_TOKENS":
+            return FinishReason.LENGTH
+        case "STOP":
+            return FinishReason.STOP
+        case (
+            "SAFETY"
+            | "RECITATION"
+            | "BLOCKLIST"
+            | "PROHIBITED_CONTENT"
+            | "SPII"
+        ):
+            return FinishReason.CONTENT_FILTER
+        case "OTHER":
+            raise FinishReasonOtherError(
+                msg="The model terminated generation unexpectedly",
+                retriable=retriable,
+            )
+        case "MALFORMED_FUNCTION_CALL":
+            raise FinishReasonOtherError(
+                msg="The function call generated by the model is invalid",
+                retriable=retriable,
+            )
+        case _:
+            assert_never(finish_reason)
+
+
+FinishReasonT = TypeVar(
+    "FinishReasonT", bound=Union[GenAIFinishReason, GenFinishReason]
+)
+Retriable = bool
+
+
+async def set_finish_reason(
+    candidate: Candidate,
+    consumer: Consumer,
+    finish_reason_converter: Callable[[FinishReasonT, Retriable], FinishReason],
+) -> None:
+    openai_reason = finish_reason_converter(
+        candidate.finish_reason,
+        consumer.is_empty(),
+    )
+
+    if openai_reason is not None:
+        await consumer.set_finish_reason(openai_reason)
+
+
 def _get_candidate_text_safe(candidate: Candidate) -> str | None:
     # The text content of a candidate may be missing when function is called or
     # when the generation was terminated with SAFETY finish reason.
@@ -397,47 +461,132 @@ def _get_candidate_text_safe(candidate: Candidate) -> str | None:
         return None
 
 
-T = TypeVar("T")
+class GeminiGenAIChatCompletionAdapter(
+    ChatCompletionAdapter[GeminiGenAIPrompt]
+):
+    deployment: Gemini2Deployment
 
+    def __init__(
+        self,
+        file_storage: Optional[FileStorage],
+        model_id: str,
+        deployment: Gemini2Deployment,
+    ):
+        self.file_storage = file_storage
+        self.model_id = model_id
+        self.deployment = deployment
+        self.client = Client(
+            vertexai=True, project=GCP_PROJECT_ID, location=DEFAULT_REGION
+        )
 
-# TODO: COMMON
-async def generate_with_retries(
-    generator: Callable[[], AsyncIterator[T]], max_retries: int
-) -> AsyncIterator[T]:
-    retries = 0
-    while True:
-        try:
-            async for content in generator():
-                yield content
-            break
-
-        except FinishReasonOtherError as e:
-            if not e.retriable:
-                raise e
-
-            retries += 1
-            if retries > max_retries:
-                log.debug(f"max retries exceeded ({max_retries})")
-                raise e
-
-            log.debug(f"retrying [{retries}/{max_retries}]")
-
-
-class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiGenAIPrompt]):
-    def parse_prompt(
+    @override
+    async def parse_prompt(
         self,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
         messages: List[Message],
     ) -> GeminiGenAIPrompt | UserError:
-        return GeminiGenAIPrompt(
-            system_instruction=...,
-        )
+        match self.deployment:
+            case (
+                ChatCompletionDeployment.GEMINI_2_EXPERIMENTAL_1206
+                | ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
+                | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219
+            ):
+                return await Gemini_2_Prompt.parse(
+                    self.file_storage, tools, static_tools, messages
+                )
+            case _:
+                assert_never(self.deployment)
 
-    def chat(
+    def send_message_async(
+        self, params: ModelParameters, prompt: GeminiGenAIPrompt
+    ):
+        if params.stream:
+            return self.client.aio.models.generate_content_stream(
+                model=self.model_id,
+                contents=[c for c in prompt.contents],
+            )
+        else:
+            return self.client.aio.models.generate_content(
+                model=self.model_id,
+                contents=[c for c in prompt.contents],
+            )
+
+    async def process_chunks(
+        self,
+        consumer: Consumer,
+        tools: ToolsConfig,
+        generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
+    ):
+        thinking_stage: Stage | None = None
+
+        usage_metadata = None
+        is_grounding_added = False
+
+        async for chunk in generator():
+            if log.isEnabledFor(DEBUG):
+                chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
+                log.debug(f"response chunk: {chunk_str}")
+            if chunk.candidates:
+                candidate = chunk.candidates[0]
+                if candidate.content and candidate.content.parts:
+                    for part in candidate.content.parts:
+                        await process_genai_function_call(part, consumer, tools)
+                        if part.thought and part.text:
+                            if thinking_stage is None:
+                                thinking_stage = consumer.create_stage(
+                                    "Thought process"
+                                )
+                            thinking_stage.append_content(part.text)
+                            yield part.text
+                        elif part.text:
+                            await consumer.append_content(part.text)
+                            yield part.text
+
+                is_grounding_added |= await create_grounding(
+                    candidate, consumer
+                )
+
+                await create_attachments_from_citations(candidate, consumer)
+                await set_finish_reason(candidate, consumer)
+
+        #     if chunk.usage_metadata:
+        #         usage_metadata = chunk.usage_metadata
+        #     if chunk.prompt_feedback:
+        #         await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
+
+        # if usage_metadata:
+        #     await set_usage(
+        #         usage_metadata,
+        #         consumer,
+        #         self.deployment,
+        #         is_grounding_added,
+        #     )
+
+    @override
+    async def chat(
         self,
         params: ModelParameters,
         consumer: Consumer,
         prompt: GeminiGenAIPrompt,
     ) -> None:
-        pass
+
+        with Timer("predict timing: {time}", log.debug):
+            if log.isEnabledFor(DEBUG):
+                log.debug(
+                    "predict request: "
+                    + json_dumps_short({"parameters": params, "prompt": prompt})
+                )
+
+            completion = ""
+            async for content in generate_with_retries(
+                lambda: self.process_chunks(
+                    consumer,
+                    prompt.tools,
+                    lambda: self.send_message_async(params, prompt),
+                ),
+                2,
+            ):
+                completion += content
+
+            log.debug(f"predict response: {completion!r}")

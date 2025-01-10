@@ -7,6 +7,7 @@ from aidial_sdk.chat_completion import (
     Choice,
     FinishReason,
     Response,
+    Stage,
 )
 
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
@@ -15,6 +16,10 @@ from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 class Consumer(ABC):
     @abstractmethod
     async def append_content(self, content: str):
+        pass
+
+    @abstractmethod
+    def create_stage(self, name: str) -> Stage:
         pass
 
     @abstractmethod
@@ -111,6 +116,9 @@ class ChoiceConsumer(Consumer):
     async def add_attachment(self, attachment: Attachment):
         self.empty = False
         self.choice.add_attachment(attachment)
+
+    def create_stage(self, name) -> Stage:
+        return self.choice.create_stage(name)
 
     async def set_usage(self, usage: TokenUsage):
         self.usage = usage

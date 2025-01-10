@@ -9,6 +9,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.gemini.adapter import (
     GeminiChatCompletionAdapter,
+    GeminiGenAIChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.imagen.adapter import (
     ImagenChatCompletionAdapter,
@@ -56,6 +57,11 @@ async def get_chat_completion_model(
         ):
             storage = create_file_storage(api_key)
             return await GeminiChatCompletionAdapter.create(
+                storage, model_id, deployment
+            )
+        case ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP:
+            storage = create_file_storage(api_key)
+            return GeminiGenAIChatCompletionAdapter(
                 storage, model_id, deployment
             )
         case ChatCompletionDeployment.IMAGEN_005:

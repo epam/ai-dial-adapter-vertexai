@@ -1,16 +1,7 @@
 import json
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Tuple,
-    TypeVar,
-    Union,
-    assert_never,
-)
+from typing import Callable, List, Tuple, TypeVar, Union, assert_never
 
-from aidial_sdk.chat_completion import Message, Role, ToolCall
+from aidial_sdk.chat_completion import Message, Role
 from google.genai.types import Content as GenAiContent
 from google.genai.types import Part as GenAiPart
 from vertexai.preview.generative_models import ChatSession, Content, Part
@@ -60,36 +51,6 @@ def _to_gemini_genai_role(role: Role) -> str:
 
 FunctionName = str
 FunctionArgs = str
-
-
-# def function_call_to_part(
-#     call: FunctionCall,
-#     part_factory: Callable[[Dict], PartT],
-# ) -> PartT:
-#     try:
-#         args = json.loads(call.arguments)
-#     except Exception:
-#         raise ValidationError("Function call arguments must be a valid JSON")
-#     return part_factory({"function_call": {"name": call.name, "args": args}})
-
-
-def tool_call_to_part(
-    call: ToolCall,
-    part_factory: Callable[[FunctionName, FunctionArgs], PartT],
-) -> PartT:
-    return part_factory(call.function.name, call.function.arguments)
-
-
-def content_to_function_args(content: str) -> Dict[str, Any]:
-    try:
-        args = json.loads(content)
-    except Exception:
-        args = content
-
-    if isinstance(args, dict):
-        return args
-
-    return {"content": args}
 
 
 GeminiConversationT = TypeVar(
@@ -261,7 +222,9 @@ async def _message_to_gemini_parts(
                 ]
             elif message.tool_calls is not None:
                 return [
-                    tool_call_to_part(call, function_call_factory)
+                    function_call_factory(
+                        call.function.name, call.function.arguments
+                    )
                     for call in message.tool_calls
                 ]
             else:

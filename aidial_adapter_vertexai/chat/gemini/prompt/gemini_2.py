@@ -4,10 +4,9 @@ from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.inputs import (
-    messages_to_gemini_conversation,
+    messages_to_gemini_genai_conversation,
 )
 from aidial_adapter_vertexai.chat.gemini.processor import (
-    AttachmentProcessors,
     AttachmentProcessorsGenAI,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
@@ -51,7 +50,7 @@ class Gemini_2_Prompt(GeminiGenAIPrompt):
             file_storage=file_storage,
         )
 
-        conversation = await messages_to_gemini_conversation(
+        conversation = await messages_to_gemini_genai_conversation(
             processors, tools, messages
         )
 

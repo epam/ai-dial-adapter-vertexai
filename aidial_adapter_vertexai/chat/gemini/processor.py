@@ -21,7 +21,7 @@ from aidial_sdk.chat_completion import (
     MessageContentTextPart,
 )
 from google.genai.types import Part as GenAIPart
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
