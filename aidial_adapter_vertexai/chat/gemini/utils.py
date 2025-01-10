@@ -1,5 +1,5 @@
 # TODO: COMMON
-from typing import AsyncIterator, Callable
+from typing import Any, AsyncIterator, Callable
 
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 
@@ -12,8 +12,8 @@ class FinishReasonOtherError(Exception):
 
 
 async def generate_with_retries(
-    generator: Callable[[], AsyncIterator[T]], max_retries: int
-) -> AsyncIterator[T]:
+    generator: Callable[[], AsyncIterator[Any]], max_retries: int
+) -> AsyncIterator[Any]:
     retries = 0
     while True:
         try:

@@ -2,12 +2,11 @@ import json
 from logging import DEBUG
 from typing import AsyncIterator, Callable, List, Optional, assert_never, cast
 
-import vertexai.preview.generative_models as generative_models
 from aidial_sdk.chat_completion import Attachment, FinishReason, Message, Stage
 from google.cloud.aiplatform_v1beta1.types.prediction_service import (
     GenerateContentResponse,
 )
-from google.genai.client import Client
+from google.genai.client import Client as GenAIClient
 from google.genai.types import Candidate as GenAICandidate
 from google.genai.types import GenerateContentConfig as GenAIGenerationConfig
 from google.genai.types import (
@@ -64,13 +63,10 @@ from aidial_adapter_vertexai.deployments import (
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
-from aidial_adapter_vertexai.env import DEFAULT_REGION, GCP_PROJECT_ID
 from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 from aidial_adapter_vertexai.utils.timer import Timer
-
-GenFinishReason = generative_models.FinishReason
 
 
 def create_generation_config(params: ModelParameters) -> GenerationConfig:
@@ -386,6 +382,7 @@ class GeminiGenAIChatCompletionAdapter(
 
     def __init__(
         self,
+        client: GenAIClient,
         file_storage: Optional[FileStorage],
         model_id: str,
         deployment: Gemini2Deployment,
@@ -393,9 +390,7 @@ class GeminiGenAIChatCompletionAdapter(
         self.file_storage = file_storage
         self.model_id = model_id
         self.deployment = deployment
-        self.client = Client(
-            vertexai=True, project=GCP_PROJECT_ID, location=DEFAULT_REGION
-        )
+        self.client = client
 
     @override
     async def parse_prompt(
@@ -444,40 +439,41 @@ class GeminiGenAIChatCompletionAdapter(
 
         async for chunk in generator():
             if log.isEnabledFor(DEBUG):
-                chunk_str = json_dumps(chunk, excluded_keys=["safety_ratings"])
+                chunk_str = json_dumps(chunk)
                 log.debug(f"response chunk: {chunk_str}")
-            if chunk.candidates:
-                candidate = chunk.candidates[0]
-                if candidate.content and candidate.content.parts:
-                    for part in candidate.content.parts:
-                        await process_genai_function_call(part, consumer, tools)
-                        if part.thought and part.text:
-                            if thinking_stage is None:
-                                thinking_stage = consumer.create_stage(
-                                    "Thought process"
-                                )
-                            thinking_stage.append_content(part.text)
-                            yield part.text
-                        elif part.text:
-                            await consumer.append_content(part.text)
-                            yield part.text
-
-                is_grounding_added |= await create_grounding(
-                    candidate, consumer
-                )
-
-                await create_attachments_from_citations(candidate, consumer)
-                if openai_reason := genai_to_openai_finish_reason(
-                    candidate.finish_reason,
-                    consumer.is_empty(),
-                ):
-                    await consumer.set_finish_reason(openai_reason)
 
             if chunk.prompt_feedback:
                 await consumer.set_finish_reason(FinishReason.CONTENT_FILTER)
 
             if chunk.usage_metadata:
                 usage_metadata = chunk.usage_metadata
+
+            if not chunk.candidates:
+                continue
+
+            candidate = chunk.candidates[0]
+            if candidate.content and candidate.content.parts:
+                for part in candidate.content.parts:
+                    await process_genai_function_call(part, consumer, tools)
+                    if part.thought and part.text:
+                        if thinking_stage is None:
+                            thinking_stage = consumer.create_stage(
+                                "Thought process"
+                            )
+                        thinking_stage.append_content(part.text)
+                        yield part.text
+                    elif part.text:
+                        await consumer.append_content(part.text)
+                        yield part.text
+
+            is_grounding_added |= await create_grounding(candidate, consumer)
+
+            await create_attachments_from_citations(candidate, consumer)
+            if openai_reason := genai_to_openai_finish_reason(
+                candidate.finish_reason,
+                consumer.is_empty(),
+            ):
+                await consumer.set_finish_reason(openai_reason)
 
         if usage_metadata:
             await set_usage(

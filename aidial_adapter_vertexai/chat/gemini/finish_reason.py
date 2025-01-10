@@ -1,10 +1,12 @@
 from typing import assert_never
 
+import vertexai.preview.generative_models as generative_models
 from aidial_sdk.chat_completion import FinishReason
 from google.genai.types import FinishReason as GenAIFinishReason
 
-from aidial_adapter_vertexai.chat.gemini.adapter import GenFinishReason
 from aidial_adapter_vertexai.chat.gemini.utils import FinishReasonOtherError
+
+GenFinishReason = generative_models.FinishReason
 
 
 def to_openai_finish_reason(
