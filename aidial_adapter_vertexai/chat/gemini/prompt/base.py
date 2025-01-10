@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import List, Set
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 from vertexai.preview.generative_models import Tool as GeminiTool
 

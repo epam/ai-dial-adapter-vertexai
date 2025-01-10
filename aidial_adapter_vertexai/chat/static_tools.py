@@ -7,9 +7,9 @@ from aidial_sdk.chat_completion.request import (
     StaticFunction,
     StaticTool,
 )
-from pydantic import BaseModel, ConstrainedFloat, Field
-from pydantic import ValidationError as PydanticValidationError
-from pydantic import root_validator
+from pydantic.v1 import BaseModel, ConstrainedFloat, Field
+from pydantic.v1 import ValidationError as PydanticValidationError
+from pydantic.v1 import root_validator
 from vertexai.preview.generative_models import Tool as GeminiTool
 
 from aidial_adapter_vertexai.chat.errors import ValidationError

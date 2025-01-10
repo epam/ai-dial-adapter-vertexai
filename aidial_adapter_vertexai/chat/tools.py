@@ -8,7 +8,7 @@ from aidial_sdk.chat_completion import (
     ToolChoice,
 )
 from aidial_sdk.chat_completion.request import AzureChatCompletionRequest, Tool
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import (
     FunctionDeclaration as GeminiFunction,
 )
