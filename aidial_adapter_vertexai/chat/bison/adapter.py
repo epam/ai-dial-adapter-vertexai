@@ -1,6 +1,6 @@
-from typing import AsyncIterator, List, Optional, TypedDict
+from typing import AsyncIterator, List, Optional
 
-from typing_extensions import override
+from typing_extensions import TypedDict, override
 from vertexai.preview.language_models import ChatModel, CodeChatModel
 
 from aidial_adapter_vertexai.chat.bison.base import BisonChatCompletionAdapter

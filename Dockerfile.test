@@ -1,6 +1,6 @@
 FROM python:3.10-slim as builder
 
-RUN pip install "poetry==1.6.1"
+RUN pip install poetry==1.8.5
 
 WORKDIR /app
 

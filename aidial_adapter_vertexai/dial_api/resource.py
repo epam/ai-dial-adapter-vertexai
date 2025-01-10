@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from aidial_sdk.chat_completion import Attachment
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic.v1 import BaseModel, Field, root_validator, validator
 
 from aidial_adapter_vertexai.dial_api.storage import FileStorage, download_file
 from aidial_adapter_vertexai.utils.resource import Resource
