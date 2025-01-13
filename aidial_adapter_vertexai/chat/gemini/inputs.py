@@ -16,6 +16,9 @@ from aidial_adapter_vertexai.chat.gemini.prompt.base import (
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 
+FunctionName = str
+FunctionArgs = str
+
 
 def _to_gemini_role(role: Role) -> str:
     match role:
@@ -29,24 +32,6 @@ def _to_gemini_role(role: Role) -> str:
             return ChatSession._MODEL_ROLE
         case _:
             assert_never(role)
-
-
-def _to_gemini_genai_role(role: Role) -> str:
-    match role:
-        case Role.SYSTEM:
-            raise ValidationError(
-                "System messages other than the first system message are not allowed"
-            )
-        case Role.USER | Role.FUNCTION | Role.TOOL:
-            return "user"
-        case Role.ASSISTANT:
-            return "model"
-        case _:
-            assert_never(role)
-
-
-FunctionName = str
-FunctionArgs = str
 
 
 GeminiConversationT = TypeVar(
