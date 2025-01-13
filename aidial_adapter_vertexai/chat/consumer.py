@@ -19,7 +19,7 @@ class Consumer(ABC):
         pass
 
     @abstractmethod
-    def create_stage(self, name: str) -> Stage:
+    async def create_stage(self, name: str) -> Stage:
         pass
 
     @abstractmethod
@@ -117,7 +117,7 @@ class ChoiceConsumer(Consumer):
         self.empty = False
         self.choice.add_attachment(attachment)
 
-    def create_stage(self, name) -> Stage:
+    async def create_stage(self, name) -> Stage:
         return self.choice.create_stage(name)
 
     async def set_usage(self, usage: TokenUsage):

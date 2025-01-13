@@ -3,7 +3,7 @@ from typing import List, Optional, Self
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
-from aidial_adapter_vertexai.chat.gemini.inputs import (
+from aidial_adapter_vertexai.chat.gemini.input import (
     messages_to_gemini_conversation,
 )
 from aidial_adapter_vertexai.chat.gemini.processor import AttachmentProcessors

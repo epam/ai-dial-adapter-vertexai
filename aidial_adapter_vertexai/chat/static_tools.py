@@ -7,8 +7,8 @@ from aidial_sdk.chat_completion.request import (
     StaticFunction,
     StaticTool,
 )
-from google.genai.types import GoogleSearch
-from google.genai.types import Tool as GenAITool
+from google.genai.types import GoogleSearchDict as GenAIGoogleSearch
+from google.genai.types import ToolDict as GenAITool
 from pydantic.v1 import BaseModel, ConstrainedFloat, Field
 from pydantic.v1 import ValidationError as PydanticValidationError
 from pydantic.v1 import root_validator
@@ -111,7 +111,7 @@ class GenAIGoogleSearchTool(StaticToolProcessor[GenAITool]):
                 raise ValidationError(
                     "Model doesn't support configuration for Google search tool"
                 )
-            return [GenAITool(google_search=GoogleSearch())]
+            return [GenAITool(google_search=GenAIGoogleSearch())]
 
         return None
 
@@ -126,6 +126,9 @@ def unknown_tool_name(
 
 class StaticToolsConfig(BaseModel):
     functions: List[StaticFunction]
+
+    def is_empty(self) -> bool:
+        return not self.functions
 
     @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
