@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Literal, NoReturn, Self
+from typing import Generic, List, Literal, NoReturn, Self, TypeVar
 
 from aidial_sdk.chat_completion.request import (
     AzureChatCompletionRequest,
@@ -20,12 +20,15 @@ class ToolName(str, Enum):
     GOOGLE_SEARCH = "google_search"
 
 
-class StaticToolProcessor(ABC):
+ToolT = TypeVar("ToolT", bound=GeminiTool)
+
+
+class StaticToolProcessor(ABC, Generic[ToolT]):
     @staticmethod
     @abstractmethod
     def parse_gemini_tools(
         static_function: StaticFunction,
-    ) -> List[GeminiTool] | None: ...
+    ) -> List[ToolT] | None: ...
 
 
 class DynamicThreshold(ConstrainedFloat):
@@ -65,7 +68,7 @@ class GoogleSearchConfig(BaseModel):
     )
 
 
-class GoogleSearchGroundingTool(StaticToolProcessor):
+class GoogleSearchGroundingTool(StaticToolProcessor[GeminiTool]):
     @staticmethod
     def parse_gemini_tools(
         static_function: StaticFunction,
@@ -106,6 +109,9 @@ def unknown_tool_name(
 
 class StaticToolsConfig(BaseModel):
     functions: List[StaticFunction]
+
+    def is_empty(self) -> bool:
+        return not self.functions
 
     @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:

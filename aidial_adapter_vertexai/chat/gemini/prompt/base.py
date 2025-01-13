@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import List, Set
+from typing import Generic, List, Self, Set, TypeVar
 
 from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
@@ -9,18 +9,27 @@ from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 
+PartT = TypeVar("PartT", bound=Part)
+ContentT = TypeVar("ContentT", bound=Content)
 
-class GeminiConversation(BaseModel):
-    system_instruction: List[Part] | None = None
-    contents: List[Content]
+
+class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):
+    system_instruction: List[PartT] | None = None
+    contents: List[ContentT]
 
     class Config:
         arbitrary_types_allowed = True
 
 
-class GeminiPrompt(BaseModel, TruncatablePrompt, ABC):
-    system_instruction: List[Part] | None = None
-    contents: List[Content]
+class GeminiConversation(GeminiConversationBase[Part, Content]):
+    pass
+
+
+class GeminiBasePrompt(
+    BaseModel, TruncatablePrompt, ABC, Generic[PartT, ContentT]
+):
+    system_instruction: List[PartT] | None = None
+    contents: List[ContentT]
     tools: ToolsConfig = Field(default_factory=ToolsConfig.noop)
     static_tools: StaticToolsConfig = Field(
         default_factory=StaticToolsConfig.noop
@@ -53,9 +62,9 @@ class GeminiPrompt(BaseModel, TruncatablePrompt, ABC):
             [1] * self.has_system_instruction + [2] * (n // 2) + [1] * (n % 2)
         )
 
-    def select(self, indices: Set[int]) -> "GeminiPrompt":
-        system_instruction: List[Part] | None = None
-        contents: List[Content] = []
+    def select(self, indices: Set[int]) -> Self:
+        system_instruction: List[PartT] | None = None
+        contents: List[ContentT] = []
 
         offset = 0
         if self.has_system_instruction and 0 in indices:
@@ -69,7 +78,7 @@ class GeminiPrompt(BaseModel, TruncatablePrompt, ABC):
         if len(self.contents) - 1 + offset not in indices:
             raise RuntimeError("The last user prompt must not be omitted.")
 
-        return GeminiPrompt(
+        return self.__class__(
             system_instruction=system_instruction,
             contents=contents,
             tools=self.tools,
@@ -80,3 +89,7 @@ class GeminiPrompt(BaseModel, TruncatablePrompt, ABC):
         regular_tools = self.tools.to_gemini_tools()
         static_tools = self.static_tools.to_gemini_tools()
         return regular_tools + static_tools
+
+
+class GeminiPrompt(GeminiBasePrompt[Part, Content]):
+    pass
