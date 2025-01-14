@@ -1,25 +1,10 @@
-import json
 from logging import DEBUG
-from typing import (
-    AsyncIterator,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    TypeVar,
-    assert_never,
-    cast,
-)
+from typing import AsyncIterator, Callable, List, Optional, assert_never, cast
 
-import vertexai.preview.generative_models as generative_models
-from aidial_sdk.chat_completion import Attachment, FinishReason, Message
-from google.cloud.aiplatform_v1beta1.types.prediction_service import (
-    GenerateContentResponse,
-)
+from aidial_sdk.chat_completion import FinishReason, Message
 from typing_extensions import override
 from vertexai.preview.generative_models import (
     Candidate,
-    GenerationConfig,
     GenerationResponse,
     GenerativeModel,
     Image,
@@ -31,9 +16,18 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
-from aidial_adapter_vertexai.chat.gemini.grounding import (
-    create_grounding,
-    google_search_grounding_tokens,
+from aidial_adapter_vertexai.chat.gemini.error import generate_with_retries
+from aidial_adapter_vertexai.chat.gemini.finish_reason import (
+    to_openai_finish_reason,
+)
+from aidial_adapter_vertexai.chat.gemini.generation_config import (
+    create_generation_config,
+)
+from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
+from aidial_adapter_vertexai.chat.gemini.output import (
+    create_attachments_from_citations,
+    create_function_calls,
+    set_usage,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
@@ -54,45 +48,19 @@ from aidial_adapter_vertexai.deployments import (
 )
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
-from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 from aidial_adapter_vertexai.utils.timer import Timer
 
-HarmCategory = generative_models.HarmCategory
-HarmBlockThreshold = generative_models.HarmBlockThreshold
-GenFinishReason = generative_models.FinishReason
 
-default_safety_settings: Dict[HarmCategory, HarmBlockThreshold] = {
-    HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-}
-
-
-def create_generation_config(params: ModelParameters) -> GenerationConfig:
-    # Currently n>1 is emulated by calling the model n times.
-    # So the individual generation requests are expected to have n=1 or unset.
-    if params.n is not None and params.n > 1:
-        raise ValueError("n is expected to be 1 or unset")
-
-    return GenerationConfig(
-        max_output_tokens=params.max_tokens,
-        temperature=params.temperature,
-        stop_sequences=params.stop,
-        top_p=params.top_p,
-        candidate_count=params.n,
-    )
-
-
-class FinishReasonOtherError(Exception):
-    def __init__(self, msg: str, retriable: bool):
-        self.msg = msg
-        self.retriable = retriable
-        super().__init__(self.msg)
+def _get_candidate_text_safe(candidate: Candidate) -> str | None:
+    # The text content of a candidate may be missing when function is called or
+    # when the generation was terminated with SAFETY finish reason.
+    try:
+        return candidate.text
+    except ValueError as e:
+        log.debug(f"The Candidate doesn't have text: {e}")
+        return None
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
@@ -207,7 +175,11 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 )
 
                 await create_attachments_from_citations(candidate, consumer)
-                await set_finish_reason(candidate, consumer)
+                if openai_reason := to_openai_finish_reason(
+                    candidate.finish_reason,
+                    consumer.is_empty(),
+                ):
+                    await consumer.set_finish_reason(openai_reason)
 
             if chunk.usage_metadata:
                 usage_metadata = chunk.usage_metadata
@@ -278,141 +250,3 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         deployment: GeminiDeployment,
     ) -> "GeminiChatCompletionAdapter":
         return cls(file_storage, model_id, deployment)
-
-
-async def set_finish_reason(candidate: Candidate, consumer: Consumer) -> None:
-    openai_reason = to_openai_finish_reason(
-        finish_reason=candidate.finish_reason,
-        retriable=consumer.is_empty(),
-    )
-
-    if openai_reason is not None:
-        await consumer.set_finish_reason(openai_reason)
-
-
-async def create_attachments_from_citations(
-    candidate: Candidate, consumer: Consumer
-) -> None:
-    citation_metadata = candidate.citation_metadata
-
-    if (
-        citation_metadata is None
-        or citation_metadata.citations is None
-        or not len(citation_metadata.citations)
-    ):
-        return None
-
-    for citation in citation_metadata.citations:
-        if citation.uri:
-            await consumer.add_attachment(
-                Attachment(url=citation.uri, title=citation.title)
-            )
-
-
-async def set_usage(
-    usage: GenerateContentResponse.UsageMetadata,
-    consumer: Consumer,
-    deployment: GeminiDeployment,
-    is_grounding_added: bool = False,
-) -> None:
-    log.debug(f"usage: {json_dumps(usage)}")
-    completion_tokens = usage.candidates_token_count
-    if is_grounding_added:
-        completion_tokens += google_search_grounding_tokens(deployment)
-    await consumer.set_usage(
-        TokenUsage(
-            prompt_tokens=usage.prompt_token_count,
-            completion_tokens=completion_tokens,
-        )
-    )
-
-
-async def create_function_calls(
-    candidate: Candidate, consumer: Consumer, tools: ToolsConfig
-) -> None:
-    for call in candidate.function_calls:
-        arguments = json.dumps(recurse_proto_marshal_to_dict(call.args))
-
-        if tools.is_tool:
-            id = tools.create_fresh_tool_call_id(call.name)
-            log.debug(f"tool call: id={id}, {json_dumps(call)}")
-            await consumer.create_tool_call(
-                id=id,
-                name=call.name,
-                arguments=arguments,
-            )
-        else:
-            log.debug(f"function call: {json_dumps(call)}")
-            await consumer.create_function_call(
-                name=call.name,
-                arguments=arguments,
-            )
-
-
-def to_openai_finish_reason(
-    finish_reason: GenFinishReason, retriable: bool
-) -> FinishReason | None:
-    match finish_reason:
-        case GenFinishReason.FINISH_REASON_UNSPECIFIED:
-            return None
-        case GenFinishReason.MAX_TOKENS:
-            return FinishReason.LENGTH
-        case GenFinishReason.STOP:
-            return FinishReason.STOP
-        case (
-            GenFinishReason.SAFETY
-            | GenFinishReason.RECITATION
-            | GenFinishReason.BLOCKLIST
-            | GenFinishReason.PROHIBITED_CONTENT
-            | GenFinishReason.SPII
-        ):
-            return FinishReason.CONTENT_FILTER
-
-        # The following finish reasons could be usually fixed with a retry
-        case GenFinishReason.OTHER:
-            raise FinishReasonOtherError(
-                msg="The model terminated generation unexpectedly",
-                retriable=retriable,
-            )
-        case GenFinishReason.MALFORMED_FUNCTION_CALL:
-            raise FinishReasonOtherError(
-                msg="The function call generated by the model is invalid",
-                retriable=retriable,
-            )
-        case _:
-            assert_never(finish_reason)
-
-
-def _get_candidate_text_safe(candidate: Candidate) -> str | None:
-    # The text content of a candidate may be missing when function is called or
-    # when the generation was terminated with SAFETY finish reason.
-    try:
-        return candidate.text
-    except ValueError as e:
-        log.debug(f"The Candidate doesn't have text: {e}")
-        return None
-
-
-T = TypeVar("T")
-
-
-async def generate_with_retries(
-    generator: Callable[[], AsyncIterator[T]], max_retries: int
-) -> AsyncIterator[T]:
-    retries = 0
-    while True:
-        try:
-            async for content in generator():
-                yield content
-            break
-
-        except FinishReasonOtherError as e:
-            if not e.retriable:
-                raise e
-
-            retries += 1
-            if retries > max_retries:
-                log.debug(f"max retries exceeded ({max_retries})")
-                raise e
-
-            log.debug(f"retrying [{retries}/{max_retries}]")
