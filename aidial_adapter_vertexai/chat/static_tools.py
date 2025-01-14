@@ -110,9 +110,6 @@ def unknown_tool_name(
 class StaticToolsConfig(BaseModel):
     functions: List[StaticFunction]
 
-    def is_empty(self) -> bool:
-        return not self.functions
-
     @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
         if request.tools is None:
