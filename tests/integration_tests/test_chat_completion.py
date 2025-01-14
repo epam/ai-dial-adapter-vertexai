@@ -118,6 +118,9 @@ deployments = [
     ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
     ChatCompletionDeployment.GEMINI_PRO_VISION_1,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+    ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219,
 ]
 
 
@@ -133,6 +136,8 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+        ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
     ]
 
 
@@ -143,6 +148,8 @@ def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+        ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
     ]
 
 
@@ -163,6 +170,12 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_VISION_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+    ]
+
+
+def support_thinking(deployment: ChatCompletionDeployment) -> bool:
+    return deployment in [
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219,
     ]
 
 
@@ -263,12 +276,18 @@ def get_test_cases(
             name="max tokens 1",
             max_tokens=1,
             messages=[user("tell me the full story of Pinocchio")],
-            expected=for_all_choices(lambda s: len(s.split()) == 1),
+            expected=for_all_choices(
+                lambda s: (
+                    len(s.split()) == 1
+                    if not support_thinking(deployment)
+                    else len(s.split()) == 0
+                )
+            ),
         )
 
         test_case(
             name="multiple candidates",
-            max_tokens=10,
+            max_tokens=10 if not support_thinking(deployment) else 250,
             n=5,
             messages=[user("2+7=? Reply with a single number")],
             expected=for_all_choices(lambda s: "9" in s, 5),
@@ -448,7 +467,15 @@ def get_test_cases(
                     and s.usage.total_tokens > 7000
                 ),
             )
-
+    if support_thinking(deployment):
+        test_case(
+            name="thinking",
+            messages=[user("2+2=?")],
+            expected=lambda s: s.stages is not None
+            and len(s.stages) == 0
+            and s.stages[0].name == "Thought Process"
+            and "4" in s.content,
+        )
     return test_cases
 
 
