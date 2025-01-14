@@ -4,6 +4,11 @@ from aidial_sdk.chat_completion import Attachment
 from google.cloud.aiplatform_v1beta1.types.prediction_service import (
     GenerateContentResponse,
 )
+from google.genai.types import Candidate as GenAICandidate
+from google.genai.types import (
+    GenerateContentResponseUsageMetadata as GenAIUsageMetadata,
+)
+from google.genai.types import Part as GenAIPart
 from vertexai.preview.generative_models import Candidate
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
@@ -11,7 +16,10 @@ from aidial_adapter_vertexai.chat.gemini.grounding import (
     google_search_grounding_tokens,
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.deployments import GeminiDeployment
+from aidial_adapter_vertexai.deployments import (
+    Gemini2Deployment,
+    GeminiDeployment,
+)
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
@@ -19,7 +27,7 @@ from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 
 
 async def create_attachments_from_citations(
-    candidate: Candidate, consumer: Consumer
+    candidate: Candidate | GenAICandidate, consumer: Consumer
 ) -> None:
     citation_metadata = candidate.citation_metadata
 
@@ -38,9 +46,9 @@ async def create_attachments_from_citations(
 
 
 async def set_usage(
-    usage: GenerateContentResponse.UsageMetadata,
+    usage: GenerateContentResponse.UsageMetadata | GenAIUsageMetadata,
     consumer: Consumer,
-    deployment: GeminiDeployment,
+    deployment: GeminiDeployment | Gemini2Deployment,
     is_grounding_added: bool = False,
 ) -> None:
     log.debug(f"usage: {json_dumps(usage)}")
@@ -75,3 +83,27 @@ async def create_function_calls(
                 name=call.name,
                 arguments=arguments,
             )
+
+
+async def create_function_calls_from_genai(
+    part: GenAIPart, consumer: Consumer, tools: ToolsConfig
+) -> None:
+    if not (function_call := part.function_call):
+        return
+    if not function_call.name:
+        return
+
+    function_args = (
+        json.dumps(function_call.args) if function_call.args else None
+    )
+    if tools.is_tool:
+        await consumer.create_tool_call(
+            id=tools.create_fresh_tool_call_id(function_call.name),
+            name=function_call.name,
+            arguments=function_args,
+        )
+    else:
+        await consumer.create_function_call(
+            name=function_call.name,
+            arguments=function_args,
+        )

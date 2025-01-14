@@ -1,6 +1,8 @@
 from abc import ABC
-from typing import Generic, List, Self, Set, TypeVar
+from typing import Generic, List, Self, Set, TypeVar, Union
 
+from google.genai.types import Content as GenAIContent
+from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 from vertexai.preview.generative_models import Tool as GeminiTool
@@ -9,8 +11,8 @@ from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 
-PartT = TypeVar("PartT", bound=Part)
-ContentT = TypeVar("ContentT", bound=Content)
+PartT = TypeVar("PartT", bound=Union[Part, GenAIPart])
+ContentT = TypeVar("ContentT", bound=Union[Content, GenAIContent])
 
 
 class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):
@@ -22,6 +24,10 @@ class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):
 
 
 class GeminiConversation(GeminiConversationBase[Part, Content]):
+    pass
+
+
+class GeminiGenAIConversation(GeminiConversationBase[GenAIPart, GenAIContent]):
     pass
 
 
@@ -92,4 +98,8 @@ class GeminiBasePrompt(
 
 
 class GeminiPrompt(GeminiBasePrompt[Part, Content]):
+    pass
+
+
+class GeminiGenAIPrompt(GeminiBasePrompt[GenAIPart, GenAIContent]):
     pass

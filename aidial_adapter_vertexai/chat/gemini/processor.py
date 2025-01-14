@@ -19,6 +19,7 @@ from aidial_sdk.chat_completion import (
     MessageContentImagePart,
     MessageContentTextPart,
 )
+from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Part
 
@@ -114,6 +115,14 @@ class PartFactory(PartFactoryBase[Part]):
 
     def create_text_part(self, text: str) -> Part:
         return Part.from_text(text)
+
+
+class GenAIPartFactory(PartFactoryBase[GenAIPart]):
+    def create_multi_modal_part(self, data: bytes, mime_type: str) -> GenAIPart:
+        return GenAIPart.from_bytes(data=data, mime_type=mime_type)
+
+    def create_text_part(self, text: str) -> GenAIPart:
+        return GenAIPart.from_text(text)
 
 
 class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
@@ -222,6 +231,10 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
 
 
 class AttachmentProcessors(AttachmentProcessorsBase[Part]):
+    pass
+
+
+class AttachmentProcessorsGenAI(AttachmentProcessorsBase[GenAIPart]):
     pass
 
 

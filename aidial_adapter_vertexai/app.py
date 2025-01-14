@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 import vertexai
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
+from google.genai.client import Client as GenAIClient
 
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
 from aidial_adapter_vertexai.deployments import (
@@ -52,7 +53,14 @@ async def models():
 
 
 for deployment in ChatCompletionDeployment:
-    app.add_chat_completion(deployment.get_model_id(), VertexAIChatCompletion())
-
+    app.add_chat_completion(
+        deployment.get_model_id(),
+        VertexAIChatCompletion(
+            GenAIClient(
+                vertexai=True, project=GCP_PROJECT_ID, location=DEFAULT_REGION
+            )
+        ),
+    )
 for deployment in EmbeddingsDeployment:
+    app.add_embeddings(deployment.get_model_id(), VertexAIEmbeddings())
     app.add_embeddings(deployment.get_model_id(), VertexAIEmbeddings())

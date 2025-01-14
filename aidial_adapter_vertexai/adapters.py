@@ -1,5 +1,7 @@
 from typing import assert_never
 
+from google.genai.client import Client as GenAIClient
+
 from aidial_adapter_vertexai.chat.bison.adapter import (
     BisonChatAdapter,
     BisonCodeChatAdapter,
@@ -9,6 +11,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.gemini.adapter import (
     GeminiChatCompletionAdapter,
+    GeminiGenAIChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.imagen.adapter import (
     ImagenChatCompletionAdapter,
@@ -28,7 +31,7 @@ from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
 
 
 async def get_chat_completion_model(
-    api_key: str, deployment: ChatCompletionDeployment
+    api_key: str, deployment: ChatCompletionDeployment, client: GenAIClient
 ) -> ChatCompletionAdapter:
     model_id = deployment.get_model_id()
 
@@ -58,6 +61,15 @@ async def get_chat_completion_model(
             return await GeminiChatCompletionAdapter.create(
                 storage, model_id, deployment
             )
+        case (
+            ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
+            | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219
+            | ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206
+        ):
+            storage = create_file_storage(api_key)
+            return GeminiGenAIChatCompletionAdapter(
+                client, storage, model_id, deployment
+            )
         case ChatCompletionDeployment.IMAGEN_005:
             storage = create_file_storage(api_key)
             return await ImagenChatCompletionAdapter.create(storage, model_id)
@@ -82,4 +94,6 @@ async def get_embeddings_model(
             storage = create_file_storage(api_key)
             return await MultiModalEmbeddingsAdapter.create(storage, model_id)
         case _:
+            assert_never(deployment)
+            assert_never(deployment)
             assert_never(deployment)

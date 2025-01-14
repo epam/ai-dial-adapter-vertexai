@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Generic, List, Literal, NoReturn, Self, TypeVar
+from typing import Generic, List, Literal, NoReturn, Self, TypeVar, Union
 
 from aidial_sdk.chat_completion.request import (
     AzureChatCompletionRequest,
     StaticFunction,
     StaticTool,
 )
+from google.genai.types import GoogleSearchDict as GenAIGoogleSearch
+from google.genai.types import ToolDict as GenAITool
 from pydantic.v1 import BaseModel, ConstrainedFloat, Field
 from pydantic.v1 import ValidationError as PydanticValidationError
 from pydantic.v1 import root_validator
@@ -20,7 +22,7 @@ class ToolName(str, Enum):
     GOOGLE_SEARCH = "google_search"
 
 
-ToolT = TypeVar("ToolT", bound=GeminiTool)
+ToolT = TypeVar("ToolT", bound=Union[GeminiTool, GenAITool])
 
 
 class StaticToolProcessor(ABC, Generic[ToolT]):
@@ -99,6 +101,21 @@ class GoogleSearchGroundingTool(StaticToolProcessor[GeminiTool]):
         return None
 
 
+class GenAIGoogleSearchTool(StaticToolProcessor[GenAITool]):
+    @staticmethod
+    def parse_gemini_tools(
+        static_function: StaticFunction,
+    ) -> List[GenAITool] | None:
+        if static_function.name == ToolName.GOOGLE_SEARCH:
+            if static_function.configuration:
+                raise ValidationError(
+                    "Model doesn't support configuration for Google search tool"
+                )
+            return [GenAITool(google_search=GenAIGoogleSearch())]
+
+        return None
+
+
 def unknown_tool_name(
     static_function: StaticFunction,
 ) -> NoReturn:
@@ -136,6 +153,18 @@ class StaticToolsConfig(BaseModel):
             )
         return ret
 
+    def to_gemini_genai_tools(self) -> List[GenAITool]:
+        ret: List[GenAITool] = []
+        for tool in self.functions:
+            ret.extend(
+                GenAIGoogleSearchTool.parse_gemini_tools(tool)
+                or unknown_tool_name(tool)
+            )
+        return ret
+
     def not_supported(self) -> None:
         if self.functions:
             raise ValidationError("Static tools aren't supported")
+
+    def is_empty(self) -> bool:
+        return not self.functions

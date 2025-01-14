@@ -1,17 +1,21 @@
 import json
-from typing import Callable, List, Tuple, TypeVar, assert_never
+from typing import Callable, List, Tuple, TypeVar, Union, assert_never
 
 from aidial_sdk.chat_completion import Message, Role
+from google.genai.types import Content as GenAiContent
+from google.genai.types import Part as GenAiPart
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessors,
     AttachmentProcessorsBase,
+    AttachmentProcessorsGenAI,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import (
     ContentT,
     GeminiConversation,
+    GeminiGenAIConversation,
     PartT,
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -34,9 +38,23 @@ def _to_gemini_role(role: Role) -> str:
             assert_never(role)
 
 
+def _to_gemini_genai_role(role: Role) -> str:
+    match role:
+        case Role.SYSTEM:
+            raise ValidationError(
+                "System messages other than the first system message are not allowed"
+            )
+        case Role.USER | Role.FUNCTION | Role.TOOL:
+            return "user"
+        case Role.ASSISTANT:
+            return "model"
+        case _:
+            assert_never(role)
+
+
 GeminiConversationT = TypeVar(
     "GeminiConversationT",
-    bound=GeminiConversation,
+    bound=Union[GeminiConversation, GeminiGenAIConversation],
 )
 
 
@@ -113,6 +131,53 @@ async def messages_to_gemini_conversation(
             return Part.from_function_response(name, args)
 
         return Part.from_function_response(name, {"content": args})
+
+    return await messages_to_gemini_conversation_base(
+        processors,
+        tools,
+        messages,
+        _content_factory,
+        _conversation_factory,
+        _function_call_factory,
+        _function_result_factory,
+    )
+
+
+async def messages_to_gemini_genai_conversation(
+    processors: AttachmentProcessorsGenAI,
+    tools: ToolsConfig,
+    messages: List[Message],
+) -> GeminiGenAIConversation:
+    def _content_factory(role: Role, parts: List[GenAiPart]) -> GenAiContent:
+        return GenAiContent(role=_to_gemini_genai_role(role), parts=parts)
+
+    def _conversation_factory(
+        system_instruction: List[GenAiPart] | None, contents: List[GenAiContent]
+    ) -> GeminiGenAIConversation:
+        return GeminiGenAIConversation(
+            system_instruction=system_instruction, contents=contents
+        )
+
+    def _function_call_factory(
+        name: FunctionName, args: FunctionArgs
+    ) -> GenAiPart:
+        try:
+            return GenAiPart.from_function_call(name, json.loads(args))
+        except Exception:
+            raise ValidationError(
+                "Function call arguments must be a valid JSON"
+            )
+
+    def _function_result_factory(name: str, content: str) -> GenAiPart:
+        try:
+            args = json.loads(content)
+        except Exception:
+            args = content
+
+        if isinstance(args, dict):
+            return GenAiPart.from_function_response(name, args)
+
+        return GenAiPart.from_function_response(name, {"output": args})
 
     return await messages_to_gemini_conversation_base(
         processors,
@@ -218,5 +283,6 @@ def separate_system_messages(
         else:
             break
 
+    return system_messages or None, messages
     return system_messages or None, messages
     return system_messages or None, messages
