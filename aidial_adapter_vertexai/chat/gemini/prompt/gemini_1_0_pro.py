@@ -6,7 +6,10 @@ from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.inputs import (
     messages_to_gemini_conversation,
 )
-from aidial_adapter_vertexai.chat.gemini.processor import AttachmentProcessors
+from aidial_adapter_vertexai.chat.gemini.processor import (
+    AttachmentProcessors,
+    PartFactory,
+)
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -25,7 +28,9 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
                 "The chat history must have at least one message"
             )
 
-        processors = AttachmentProcessors(processors=[], file_storage=None)
+        processors = AttachmentProcessors(
+            part_factory=PartFactory(), processors=[], file_storage=None
+        )
 
         conversation = await messages_to_gemini_conversation(
             processors, tools, messages

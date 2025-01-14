@@ -8,6 +8,7 @@ from aidial_adapter_vertexai.chat.gemini.inputs import (
 )
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessors,
+    PartFactory,
     exclusive_validator,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
@@ -45,6 +46,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         exclusive = exclusive_validator()
 
         processors = AttachmentProcessors(
+            part_factory=PartFactory(),
             processors=[
                 get_plain_text_processor(),
                 get_image_processor(16, exclusive("image")),

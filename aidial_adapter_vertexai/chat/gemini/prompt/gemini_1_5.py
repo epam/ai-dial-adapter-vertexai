@@ -6,7 +6,10 @@ from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.inputs import (
     messages_to_gemini_conversation,
 )
-from aidial_adapter_vertexai.chat.gemini.processor import AttachmentProcessors
+from aidial_adapter_vertexai.chat.gemini.processor import (
+    AttachmentProcessors,
+    PartFactory,
+)
 from aidial_adapter_vertexai.chat.gemini.processors import (
     get_audio_processor,
     get_image_processor,
@@ -35,6 +38,7 @@ class Gemini_1_5_Prompt(GeminiPrompt):
             )
 
         processors = AttachmentProcessors(
+            part_factory=PartFactory(),
             processors=[
                 get_plain_text_processor(),
                 get_image_processor(3000),

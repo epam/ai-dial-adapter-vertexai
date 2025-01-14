@@ -120,9 +120,9 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
     class Config:
         arbitrary_types_allowed = True  # for errors
 
-    part_factory: PartFactoryBase[PartT]
     processors: List[AttachmentProcessor]
     file_storage: FileStorage | None
+    part_factory: PartFactoryBase[PartT]
 
     errors: Set[ProcessingError] = Field(default_factory=set)
     resource_count: int = 0
@@ -222,7 +222,7 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
 
 
 class AttachmentProcessors(AttachmentProcessorsBase[Part]):
-    part_factory = PartFactory()
+    pass
 
 
 def max_count_validator(limit: int) -> InitValidator:
