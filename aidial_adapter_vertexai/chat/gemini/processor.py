@@ -100,10 +100,27 @@ class ProcessingError:
     message: str
 
 
+class PartFactoryBase(ABC, Generic[PartT]):
+    @abstractmethod
+    def create_multi_modal_part(self, data: bytes, mime_type: str) -> PartT: ...
+
+    @abstractmethod
+    def create_text_part(self, text: str) -> PartT: ...
+
+
+class PartFactory(PartFactoryBase[Part]):
+    def create_multi_modal_part(self, data: bytes, mime_type: str) -> Part:
+        return Part.from_data(data=data, mime_type=mime_type)
+
+    def create_text_part(self, text: str) -> Part:
+        return Part.from_text(text)
+
+
 class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
     class Config:
         arbitrary_types_allowed = True  # for errors
 
+    part_factory: PartFactoryBase[PartT]
     processors: List[AttachmentProcessor]
     file_storage: FileStorage | None
 
@@ -159,14 +176,6 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
             f"The {dial_resource.entity_name} isn't one of the supported types",
         )
 
-    @abstractmethod
-    def _create_multi_modal_part(
-        self, data: bytes, mime_type: str
-    ) -> PartT: ...
-
-    @abstractmethod
-    def _create_text_part(self, text: str) -> PartT: ...
-
     async def process_message(self, message: Message) -> List[PartT]:
         ret: List[PartT] = []
 
@@ -174,11 +183,13 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
             resource = await self.process_resource(dial_resource)
             if resource is not None:
                 ret.append(
-                    self._create_multi_modal_part(resource.data, resource.type)
+                    self.part_factory.create_multi_modal_part(
+                        resource.data, resource.type
+                    )
                 )
 
         def collect_text(text: str):
-            ret.append(self._create_text_part(text))
+            ret.append(self.part_factory.create_text_part(text))
 
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
@@ -211,11 +222,7 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
 
 
 class AttachmentProcessors(AttachmentProcessorsBase[Part]):
-    def _create_multi_modal_part(self, data: bytes, mime_type: str) -> Part:
-        return Part.from_data(data=data, mime_type=mime_type)
-
-    def _create_text_part(self, text: str) -> Part:
-        return Part.from_text(text)
+    part_factory = PartFactory()
 
 
 def max_count_validator(limit: int) -> InitValidator:
