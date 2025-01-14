@@ -8,6 +8,7 @@ from google.api_core.exceptions import (
     PermissionDenied,
 )
 from google.auth.exceptions import GoogleAuthError
+from google.genai.errors import APIError
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -53,6 +54,13 @@ def to_dial_exception(e: Exception) -> DialException:
             message=f"Invalid argument: {str(e)}",
         )
 
+    if isinstance(e, APIError):
+        return DialException(
+            status_code=e.code or 500,
+            type="invalid_request_error",
+            message=f"Invalid argument: {str(e)}",
+        )
+
     if isinstance(e, ValidationError):
         return e.to_dial_exception()
 
@@ -78,4 +86,5 @@ def dial_exception_decorator(func):
             )
             raise dial_exception from e
 
+    return wrapper
     return wrapper
