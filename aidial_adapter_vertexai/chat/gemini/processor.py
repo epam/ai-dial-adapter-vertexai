@@ -1,9 +1,11 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from logging import DEBUG
 from typing import (
     Callable,
     Coroutine,
     Dict,
+    Generic,
     List,
     Optional,
     ParamSpec,
@@ -17,10 +19,11 @@ from aidial_sdk.chat_completion import (
     MessageContentImagePart,
     MessageContentTextPart,
 )
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.gemini.prompt.base import PartT
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
     AttachmentResource,
@@ -97,12 +100,29 @@ class ProcessingError:
     message: str
 
 
-class AttachmentProcessors(BaseModel):
+class PartFactoryBase(ABC, Generic[PartT]):
+    @abstractmethod
+    def create_multi_modal_part(self, data: bytes, mime_type: str) -> PartT: ...
+
+    @abstractmethod
+    def create_text_part(self, text: str) -> PartT: ...
+
+
+class PartFactory(PartFactoryBase[Part]):
+    def create_multi_modal_part(self, data: bytes, mime_type: str) -> Part:
+        return Part.from_data(data=data, mime_type=mime_type)
+
+    def create_text_part(self, text: str) -> Part:
+        return Part.from_text(text)
+
+
+class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
     class Config:
         arbitrary_types_allowed = True  # for errors
 
     processors: List[AttachmentProcessor]
     file_storage: FileStorage | None
+    part_factory: PartFactoryBase[PartT]
 
     errors: Set[ProcessingError] = Field(default_factory=set)
     resource_count: int = 0
@@ -156,20 +176,20 @@ class AttachmentProcessors(BaseModel):
             f"The {dial_resource.entity_name} isn't one of the supported types",
         )
 
-    async def process_message(self, message: Message) -> List[Part]:
-
-        ret: List[Part] = []
+    async def process_message(self, message: Message) -> List[PartT]:
+        ret: List[PartT] = []
 
         async def collect_resource(dial_resource: DialResource):
             resource = await self.process_resource(dial_resource)
             if resource is not None:
-                part = Part.from_data(
-                    data=resource.data, mime_type=resource.type
+                ret.append(
+                    self.part_factory.create_multi_modal_part(
+                        resource.data, resource.type
+                    )
                 )
-                ret.append(part)
 
         def collect_text(text: str):
-            ret.append(Part.from_text(text))
+            ret.append(self.part_factory.create_text_part(text))
 
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
@@ -199,6 +219,10 @@ class AttachmentProcessors(BaseModel):
                 assert_never(content)
 
         return ret
+
+
+class AttachmentProcessors(AttachmentProcessorsBase[Part]):
+    pass
 
 
 def max_count_validator(limit: int) -> InitValidator:
