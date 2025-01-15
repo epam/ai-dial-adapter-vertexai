@@ -91,14 +91,14 @@ class GeminiGenAIChatCompletionAdapter(
         if params.stream:
             async for chunk in self.client.aio.models.generate_content_stream(
                 model=self.model_id,
-                contents=[c for c in prompt.contents],
+                contents=list(prompt.contents),
                 config=generation_config,
             ):
                 yield chunk
         else:
             yield await self.client.aio.models.generate_content(
                 model=self.model_id,
-                contents=[c for c in prompt.contents],
+                contents=list(prompt.contents),
                 config=generation_config,
             )
 
