@@ -95,5 +95,3 @@ async def get_embeddings_model(
             return await MultiModalEmbeddingsAdapter.create(storage, model_id)
         case _:
             assert_never(deployment)
-            assert_never(deployment)
-            assert_never(deployment)

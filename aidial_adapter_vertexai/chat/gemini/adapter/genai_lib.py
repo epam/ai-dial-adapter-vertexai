@@ -239,5 +239,3 @@ class GeminiGenAIChatCompletionAdapter(
                 completion += content
 
             log.debug(f"predict response: {completion!r}")
-
-            log.debug(f"predict response: {completion!r}")

@@ -63,4 +63,3 @@ for deployment in ChatCompletionDeployment:
     )
 for deployment in EmbeddingsDeployment:
     app.add_embeddings(deployment.get_model_id(), VertexAIEmbeddings())
-    app.add_embeddings(deployment.get_model_id(), VertexAIEmbeddings())

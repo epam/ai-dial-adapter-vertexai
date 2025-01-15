@@ -75,4 +75,3 @@ def genai_to_openai_finish_reason(
             )
         case _:
             assert_never(finish_reason)
-            assert_never(finish_reason)

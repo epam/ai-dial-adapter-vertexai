@@ -190,4 +190,3 @@ class VertexAIChatCompletion(ChatCompletion):
             )
         except Exception as e:
             return TruncatePromptError(error=str(e))
-            return TruncatePromptError(error=str(e))

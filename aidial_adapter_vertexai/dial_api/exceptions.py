@@ -87,4 +87,3 @@ def dial_exception_decorator(func):
             raise dial_exception from e
 
     return wrapper
-    return wrapper
