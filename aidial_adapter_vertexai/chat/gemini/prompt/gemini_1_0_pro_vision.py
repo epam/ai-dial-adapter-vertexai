@@ -8,7 +8,7 @@ from aidial_adapter_vertexai.chat.gemini.inputs import (
 )
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessors,
-    PartFactory,
+    ConversationFactory,
     exclusive_validator,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
@@ -45,8 +45,9 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
 
         exclusive = exclusive_validator()
 
+        part_factory = ConversationFactory()
         processors = AttachmentProcessors(
-            part_factory=PartFactory(),
+            part_factory=part_factory,
             processors=[
                 get_plain_text_processor(),
                 get_image_processor(16, exclusive("image")),
@@ -57,7 +58,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         )
 
         conversation = await messages_to_gemini_conversation(
-            processors, tools, messages
+            part_factory, processors, tools, messages
         )
 
         def usage_message():

@@ -8,7 +8,7 @@ from aidial_adapter_vertexai.chat.gemini.inputs import (
 )
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessorsGenAI,
-    GenAIPartFactory,
+    GenAIConversationFactory,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
     get_audio_processor,
@@ -40,8 +40,9 @@ class Gemini_2_Prompt(GeminiGenAIPrompt):
                 "The chat history must have at least one message"
             )
 
+        part_factory = GenAIConversationFactory()
         processors = AttachmentProcessorsGenAI(
-            part_factory=GenAIPartFactory(),
+            part_factory=part_factory,
             processors=[
                 get_plain_text_processor(),
                 get_image_processor(3000),
@@ -53,7 +54,7 @@ class Gemini_2_Prompt(GeminiGenAIPrompt):
         )
 
         conversation = await messages_to_gemini_genai_conversation(
-            processors, tools, messages
+            part_factory, processors, tools, messages
         )
 
         if error_message := processors.get_error_message():

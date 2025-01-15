@@ -1,20 +1,20 @@
-import json
-from typing import Callable, List, Tuple, TypeVar, assert_never
+from typing import Callable, List, Tuple, assert_never
 
 from aidial_sdk.chat_completion import Message, Role
-from google.genai.types import Content as GenAiContent
-from google.genai.types import Part as GenAiPart
-from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessors,
     AttachmentProcessorsBase,
     AttachmentProcessorsGenAI,
+    ConversationFactory,
+    ConversationFactoryBase,
+    GenAIConversationFactory,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import (
     ContentT,
     GeminiConversation,
+    GeminiConversationT,
     GeminiGenAIConversation,
     PartT,
 )
@@ -24,47 +24,11 @@ FunctionName = str
 FunctionArgs = str
 
 
-def _to_gemini_role(role: Role) -> str:
-    match role:
-        case Role.SYSTEM:
-            raise ValidationError(
-                "System messages other than the first system message are not allowed"
-            )
-        case Role.USER | Role.FUNCTION | Role.TOOL:
-            return ChatSession._USER_ROLE
-        case Role.ASSISTANT:
-            return ChatSession._MODEL_ROLE
-        case _:
-            assert_never(role)
-
-
-def _to_gemini_genai_role(role: Role) -> str:
-    match role:
-        case Role.SYSTEM:
-            raise ValidationError(
-                "System messages other than the first system message are not allowed"
-            )
-        case Role.USER | Role.FUNCTION | Role.TOOL:
-            return "user"
-        case Role.ASSISTANT:
-            return "model"
-        case _:
-            assert_never(role)
-
-
-GeminiConversationT = TypeVar("GeminiConversationT")
-
-
 async def messages_to_gemini_conversation_base(
+    part_factory: ConversationFactoryBase[PartT, ContentT, GeminiConversationT],
     processors: AttachmentProcessorsBase[PartT],
     tools: ToolsConfig,
     messages: List[Message],
-    content_factory: Callable[[Role, List[PartT]], ContentT],
-    conversation_factory: Callable[
-        [List[PartT] | None, List[ContentT]], GeminiConversationT
-    ],
-    function_call_factory: Callable[[FunctionName, FunctionArgs], PartT],
-    function_result_factory: Callable[[FunctionName, str], PartT],
 ) -> GeminiConversationT:
     gemini_messages = [
         (
@@ -72,8 +36,8 @@ async def messages_to_gemini_conversation_base(
                 processors,
                 tools,
                 message,
-                function_call_factory,
-                function_result_factory,
+                part_factory.create_function_call_part,
+                part_factory.create_function_result_part,
             ),
             message.role,
         )
@@ -84,106 +48,44 @@ async def messages_to_gemini_conversation_base(
         gemini_messages
     )
 
-    contents = [content_factory(role, parts) for parts, role in gemini_messages]
+    contents = [
+        part_factory.create_content(role, parts)
+        for parts, role in gemini_messages
+    ]
 
-    return conversation_factory(
+    return part_factory.create_conversation(
         system_instruction,
         contents,
     )
 
 
 async def messages_to_gemini_conversation(
+    part_factory: ConversationFactory,
     processors: AttachmentProcessors,
     tools: ToolsConfig,
     messages: List[Message],
 ) -> GeminiConversation:
-    def _content_factory(role: Role, parts: List[Part]) -> Content:
-        return Content(role=_to_gemini_role(role), parts=parts)
-
-    def _conversation_factory(
-        system_instruction: List[Part] | None, contents: List[Content]
-    ) -> GeminiConversation:
-        return GeminiConversation(
-            system_instruction=system_instruction, contents=contents
-        )
-
-    def _function_call_factory(name: FunctionName, args: FunctionArgs) -> Part:
-        try:
-            args = json.loads(args)
-            return Part.from_dict(
-                {"function_call": {"name": name, "args": args}}
-            )
-        except Exception:
-            raise ValidationError(
-                "Function call arguments must be a valid JSON"
-            )
-
-    def _function_result_factory(name: str, args: str) -> Part:
-        try:
-            args = json.loads(args)
-        except Exception:
-            args = args
-
-        if isinstance(args, dict):
-            return Part.from_function_response(name, args)
-
-        return Part.from_function_response(name, {"content": args})
 
     return await messages_to_gemini_conversation_base(
+        part_factory,
         processors,
         tools,
         messages,
-        _content_factory,
-        _conversation_factory,
-        _function_call_factory,
-        _function_result_factory,
     )
 
 
 async def messages_to_gemini_genai_conversation(
+    part_factory: GenAIConversationFactory,
     processors: AttachmentProcessorsGenAI,
     tools: ToolsConfig,
     messages: List[Message],
 ) -> GeminiGenAIConversation:
-    def _content_factory(role: Role, parts: List[GenAiPart]) -> GenAiContent:
-        return GenAiContent(role=_to_gemini_genai_role(role), parts=parts)
-
-    def _conversation_factory(
-        system_instruction: List[GenAiPart] | None, contents: List[GenAiContent]
-    ) -> GeminiGenAIConversation:
-        return GeminiGenAIConversation(
-            system_instruction=system_instruction, contents=contents
-        )
-
-    def _function_call_factory(
-        name: FunctionName, args: FunctionArgs
-    ) -> GenAiPart:
-        try:
-            return GenAiPart.from_function_call(name, json.loads(args))
-        except Exception:
-            raise ValidationError(
-                "Function call arguments must be a valid JSON"
-            )
-
-    def _function_result_factory(name: str, content: str) -> GenAiPart:
-        try:
-            args = json.loads(content)
-        except Exception:
-            args = content
-
-        if isinstance(args, dict):
-            return GenAiPart.from_function_response(name, args)
-
-        return GenAiPart.from_function_response(name, {"output": args})
 
     return await messages_to_gemini_conversation_base(
+        part_factory,
         processors,
         tools,
         messages,
-        _content_factory,
-        _conversation_factory,
-        _function_call_factory,
-        _function_result_factory,
     )
 
 

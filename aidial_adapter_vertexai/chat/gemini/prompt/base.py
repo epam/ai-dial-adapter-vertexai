@@ -13,6 +13,7 @@ from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 
 PartT = TypeVar("PartT")
 ContentT = TypeVar("ContentT")
+GeminiConversationT = TypeVar("GeminiConversationT")
 
 
 class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):

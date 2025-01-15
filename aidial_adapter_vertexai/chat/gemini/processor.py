@@ -1,7 +1,9 @@
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from logging import DEBUG
 from typing import (
+    Any,
     Callable,
     Coroutine,
     Dict,
@@ -19,12 +21,20 @@ from aidial_sdk.chat_completion import (
     MessageContentImagePart,
     MessageContentTextPart,
 )
+from aidial_sdk.chat_completion.request import Role
+from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
-from vertexai.preview.generative_models import Part
+from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.prompt.base import PartT
+from aidial_adapter_vertexai.chat.gemini.prompt.base import (
+    ContentT,
+    GeminiConversation,
+    GeminiConversationT,
+    GeminiGenAIConversation,
+    PartT,
+)
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
     AttachmentResource,
@@ -101,28 +111,143 @@ class ProcessingError:
     message: str
 
 
-class PartFactoryBase(ABC, Generic[PartT]):
+class ConversationFactoryBase(
+    ABC, Generic[PartT, ContentT, GeminiConversationT]
+):
     @abstractmethod
     def create_multi_modal_part(self, data: bytes, mime_type: str) -> PartT: ...
 
     @abstractmethod
     def create_text_part(self, text: str) -> PartT: ...
 
+    @abstractmethod
+    def create_function_call_part(self, name: str, args: str) -> PartT: ...
 
-class PartFactory(PartFactoryBase[Part]):
+    @abstractmethod
+    def create_function_result_part(self, name: str, args: str) -> PartT: ...
+
+    @abstractmethod
+    def create_content(self, role: Role, parts: List[PartT]) -> ContentT: ...
+
+    @abstractmethod
+    def create_conversation(
+        self, system_instruction: List[PartT] | None, contents: List[ContentT]
+    ) -> GeminiConversationT: ...
+
+
+class ConversationFactory(
+    ConversationFactoryBase[Part, Content, GeminiConversation]
+):
+    @staticmethod
+    def _to_gemini_role(role: Role) -> str:
+        match role:
+            case Role.SYSTEM:
+                raise ValidationError(
+                    "System messages other than the first system message are not allowed"
+                )
+            case Role.USER | Role.FUNCTION | Role.TOOL:
+                return ChatSession._USER_ROLE
+            case Role.ASSISTANT:
+                return ChatSession._MODEL_ROLE
+            case _:
+                assert_never(role)
+
     def create_multi_modal_part(self, data: bytes, mime_type: str) -> Part:
         return Part.from_data(data=data, mime_type=mime_type)
 
     def create_text_part(self, text: str) -> Part:
         return Part.from_text(text)
 
+    def create_function_call_part(self, name: str, args: str) -> Part:
+        try:
+            args = json.loads(args)
+            return Part.from_dict(
+                {"function_call": {"name": name, "args": args}}
+            )
+        except Exception:
+            raise ValidationError(
+                "Function call arguments must be a valid JSON"
+            )
 
-class GenAIPartFactory(PartFactoryBase[GenAIPart]):
+    def create_function_result_part(self, name: str, args: str) -> Part:
+        try:
+            args = json.loads(args)
+        except Exception:
+            args = args
+
+        if isinstance(args, dict):
+            return Part.from_function_response(name, args)
+
+        return Part.from_function_response(name, {"content": args})
+
+    def create_content(self, role: Role, parts: List[Part]) -> Content:
+        return Content(role=self._to_gemini_role(role), parts=parts)
+
+    def create_conversation(
+        self, system_instruction: List[Part] | None, contents: List[Content]
+    ) -> GeminiConversation:
+        return GeminiConversation(
+            system_instruction=system_instruction, contents=contents
+        )
+
+
+class GenAIConversationFactory(
+    ConversationFactoryBase[GenAIPart, GenAIContent, GeminiGenAIConversation]
+):
+    @staticmethod
+    def to_gemini_genai_role(role: Role) -> str:
+        match role:
+            case Role.SYSTEM:
+                raise ValidationError(
+                    "System messages other than the first system message are not allowed"
+                )
+            case Role.USER | Role.FUNCTION | Role.TOOL:
+                return "user"
+            case Role.ASSISTANT:
+                return "model"
+            case _:
+                assert_never(role)
+
     def create_multi_modal_part(self, data: bytes, mime_type: str) -> GenAIPart:
         return GenAIPart.from_bytes(data=data, mime_type=mime_type)
 
     def create_text_part(self, text: str) -> GenAIPart:
         return GenAIPart.from_text(text)
+
+    def create_function_call_part(self, name: str, args: str) -> GenAIPart:
+        try:
+            return GenAIPart.from_function_call(name, json.loads(args))
+        except Exception:
+            raise ValidationError(
+                "Function call arguments must be a valid JSON"
+            )
+
+    def create_function_result_part(self, name: str, args: str) -> GenAIPart:
+        try:
+            processed_args = json.loads(args)
+        except Exception:
+            processed_args = args
+
+        if isinstance(processed_args, dict):
+            return GenAIPart.from_function_response(name, processed_args)
+
+        return GenAIPart.from_function_response(
+            name, {"output": processed_args}
+        )
+
+    def create_content(
+        self, role: Role, parts: List[GenAIPart]
+    ) -> GenAIContent:
+        return GenAIContent(role=self.to_gemini_genai_role(role), parts=parts)
+
+    def create_conversation(
+        self,
+        system_instruction: List[GenAIPart] | None,
+        contents: List[GenAIContent],
+    ) -> GeminiGenAIConversation:
+        return GeminiGenAIConversation(
+            system_instruction=system_instruction, contents=contents
+        )
 
 
 class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
@@ -131,7 +256,7 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
 
     processors: List[AttachmentProcessor]
     file_storage: FileStorage | None
-    part_factory: PartFactoryBase[PartT]
+    part_factory: ConversationFactoryBase[PartT, Any, Any]
 
     errors: Set[ProcessingError] = Field(default_factory=set)
     resource_count: int = 0
