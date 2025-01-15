@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Generic, List, Self, Set, TypeVar, Union
+from typing import Generic, List, Self, Set, TypeVar
 
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
@@ -11,8 +11,8 @@ from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 
-PartT = TypeVar("PartT", bound=Union[Part, GenAIPart])
-ContentT = TypeVar("ContentT", bound=Union[Content, GenAIContent])
+PartT = TypeVar("PartT")
+ContentT = TypeVar("ContentT")
 
 
 class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):

@@ -1,5 +1,5 @@
 import json
-from typing import Callable, List, Tuple, TypeVar, Union, assert_never
+from typing import Callable, List, Tuple, TypeVar, assert_never
 
 from aidial_sdk.chat_completion import Message, Role
 from google.genai.types import Content as GenAiContent
@@ -52,10 +52,7 @@ def _to_gemini_genai_role(role: Role) -> str:
             assert_never(role)
 
 
-GeminiConversationT = TypeVar(
-    "GeminiConversationT",
-    bound=Union[GeminiConversation, GeminiGenAIConversation],
-)
+GeminiConversationT = TypeVar("GeminiConversationT")
 
 
 async def messages_to_gemini_conversation_base(

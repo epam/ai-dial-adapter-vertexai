@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Generic, List, Literal, NoReturn, Self, TypeVar, Union
+from typing import Generic, List, Literal, NoReturn, Self, TypeVar
 
 from aidial_sdk.chat_completion.request import (
     AzureChatCompletionRequest,
@@ -22,7 +22,7 @@ class ToolName(str, Enum):
     GOOGLE_SEARCH = "google_search"
 
 
-ToolT = TypeVar("ToolT", bound=Union[GeminiTool, GenAITool])
+ToolT = TypeVar("ToolT")
 
 
 class StaticToolProcessor(ABC, Generic[ToolT]):
