@@ -82,4 +82,3 @@ async def create_grounding(
             )
             grounding_added = True
     return grounding_added
-    return grounding_added

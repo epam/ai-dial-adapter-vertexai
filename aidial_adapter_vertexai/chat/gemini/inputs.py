@@ -284,5 +284,3 @@ def separate_system_messages(
             break
 
     return system_messages or None, messages
-    return system_messages or None, messages
-    return system_messages or None, messages
