@@ -156,6 +156,9 @@ def sanitize_test_name(name: str) -> str:
 
 
 class ChatCompletionResult(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
     response: ChatCompletion
 
     @property
