@@ -51,6 +51,8 @@ class VertexAIChatCompletion(ChatCompletion):
 
     @dial_exception_decorator
     async def chat_completion(self, request: Request, response: Response):
+        response.set_model(request.deployment_id)
+
         model = await self._get_model(request)
         tools = ToolsConfig.from_request(request)
         static_tools = StaticToolsConfig.from_request(request)
