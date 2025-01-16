@@ -190,7 +190,7 @@ class GeminiGenAIChatCompletionAdapter(
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self.client.aio.models.count_tokens(
                 model=self.model_id,
-                contents=[c for c in prompt.contents],
+                contents=list(prompt.contents),
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             if resp.total_tokens is None:

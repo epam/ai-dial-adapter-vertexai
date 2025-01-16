@@ -28,11 +28,7 @@ from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
     ConversationFactoryBase,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.base import (
-    ContentT,
-    GeminiConversationT,
-    PartT,
-)
+from aidial_adapter_vertexai.chat.gemini.prompt.base import PartT
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
     AttachmentResource,

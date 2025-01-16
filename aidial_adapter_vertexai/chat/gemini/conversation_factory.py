@@ -1,10 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import (
-    Generic,
-    List,
-    assert_never,
-)
+from typing import Generic, List, assert_never
 
 from aidial_sdk.chat_completion.request import Role
 from google.genai.types import Content as GenAIContent
