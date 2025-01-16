@@ -36,7 +36,7 @@ from openai.types.chat.chat_completion_message_tool_call_param import (
 )
 from openai.types.chat.completion_create_params import Function
 from openai.types.shared_params.function_definition import FunctionDefinition
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource

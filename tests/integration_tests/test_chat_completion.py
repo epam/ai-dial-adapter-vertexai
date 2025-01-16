@@ -14,7 +14,7 @@ from openai.types.chat import (
 )
 from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.chat.completion_create_params import Function
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment

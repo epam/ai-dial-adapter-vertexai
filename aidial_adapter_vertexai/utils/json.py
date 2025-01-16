@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any
 
 import proto
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
