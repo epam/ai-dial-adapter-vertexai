@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings.request import EmbeddingsRequest
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 
 class EmbeddingsAdapter(ABC, BaseModel):
