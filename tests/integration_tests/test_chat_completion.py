@@ -208,6 +208,13 @@ def get_test_cases(
         )
 
         test_case(
+            name="model field",
+            messages=[user("test")],
+            max_tokens=1,
+            expected=lambda s: s.response.model == deployment.value,
+        )
+
+        test_case(
             name="hello",
             messages=[user('Reply with "Hello"')],
             expected=for_all_choices(lambda s: "hello" in s.lower()),

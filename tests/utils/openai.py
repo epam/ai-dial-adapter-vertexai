@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, AsyncGenerator, Callable, List, Optional, TypeVar
+from typing import Any, Callable, List, Optional, TypeVar
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, StaticTool
@@ -10,7 +10,10 @@ from aidial_sdk.deployment.tokenize import (
     TokenizeResponse,
     TokenizeSuccess,
 )
-from aidial_sdk.utils.streaming import merge_chunks
+from aidial_sdk.utils.merge_chunks import (
+    cleanup_indices,
+    merge_chat_completion_chunks,
+)
 from openai import AsyncAzureOpenAI, AsyncStream
 from openai._types import NOT_GIVEN
 from openai.types import CompletionUsage
@@ -215,7 +218,6 @@ async def tokenize(
     tokenize_response = await http_client.post(
         f"openai/deployments/{model_id}/tokenize",
         json=tokenize_request,
-        headers={"api-key": "dummy_key"},
     )
 
     tokenize_response.raise_for_status()
@@ -250,7 +252,7 @@ async def chat_completion(
             merged_tools += tools
 
         response = await client.chat.completions.create(
-            model="dummy_model",
+            model="dummy-model",
             messages=messages,
             stream=stream,
             stop=stop,
@@ -267,14 +269,17 @@ async def chat_completion(
         )
 
         if isinstance(response, AsyncStream):
+            chunks: List[dict] = []
+            async for chunk in response:
+                chunks.append(chunk.dict())
 
-            async def generator() -> AsyncGenerator[dict, None]:
-                async for chunk in response:
-                    yield chunk.dict()
+            response_dict = merge_chat_completion_chunks(*chunks)
 
-            response_dict = await merge_chunks(generator())
+            for choice in response_dict["choices"]:
+                choice["message"] = cleanup_indices(choice["delta"])
+                del choice["delta"]
+
             response_dict["object"] = "chat.completion"
-            response_dict["model"] = "dummy_model"
 
             return ChatCompletion.parse_obj(response_dict)
         else:
