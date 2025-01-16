@@ -52,14 +52,15 @@ async def models():
     return ModelsResponse(data=models)
 
 
+genai_client = GenAIClient(
+    vertexai=True, project=GCP_PROJECT_ID, location=DEFAULT_REGION
+)
+
+
 for deployment in ChatCompletionDeployment:
     app.add_chat_completion(
         deployment.get_model_id(),
-        VertexAIChatCompletion(
-            GenAIClient(
-                vertexai=True, project=GCP_PROJECT_ID, location=DEFAULT_REGION
-            )
-        ),
+        VertexAIChatCompletion(client=genai_client),
     )
 for deployment in EmbeddingsDeployment:
     app.add_embeddings(deployment.get_model_id(), VertexAIEmbeddings())

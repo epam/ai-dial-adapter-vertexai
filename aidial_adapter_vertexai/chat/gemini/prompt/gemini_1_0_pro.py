@@ -28,13 +28,15 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
                 "The chat history must have at least one message"
             )
 
-        part_factory = ConversationFactory()
+        conversation_factory = ConversationFactory()
         processors = AttachmentProcessors(
-            part_factory=part_factory, processors=[], file_storage=None
+            conversation_factory=conversation_factory,
+            processors=[],
+            file_storage=None,
         )
 
         conversation = await messages_to_gemini_conversation(
-            part_factory, processors, tools, messages
+            conversation_factory, processors, tools, messages
         )
 
         if error_message := processors.get_error_message():

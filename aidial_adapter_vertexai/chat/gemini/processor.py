@@ -256,7 +256,7 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
 
     processors: List[AttachmentProcessor]
     file_storage: FileStorage | None
-    part_factory: ConversationFactoryBase[PartT, Any, Any]
+    conversation_factory: ConversationFactoryBase[PartT, Any, Any]
 
     errors: Set[ProcessingError] = Field(default_factory=set)
     resource_count: int = 0
@@ -317,13 +317,13 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
             resource = await self.process_resource(dial_resource)
             if resource is not None:
                 ret.append(
-                    self.part_factory.create_multi_modal_part(
+                    self.conversation_factory.create_multi_modal_part(
                         resource.data, resource.type
                     )
                 )
 
         def collect_text(text: str):
-            ret.append(self.part_factory.create_text_part(text))
+            ret.append(self.conversation_factory.create_text_part(text))
 
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices

@@ -201,7 +201,7 @@ class ToolsConfig(BaseModel):
                     GenAIFunctionDeclaration(
                         name=func.name,
                         parameters=(
-                            convert_genai_function_parameters(func.parameters)
+                            _convert_genai_function_parameters(func.parameters)
                             if func.parameters
                             else GenAISchema(type="OBJECT", properties={})
                         ),
@@ -276,17 +276,7 @@ def collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
     return ret
 
 
-def convert_genai_function_parameters(function_schema: dict) -> GenAISchema:
-    # GenAI function parameters should have types in uppercase
-    type_mapping = {
-        "string": "STRING",
-        "number": "NUMBER",
-        "integer": "INTEGER",
-        "boolean": "BOOLEAN",
-        "array": "ARRAY",
-        "object": "OBJECT",
-    }
-
+def _convert_genai_function_parameters(function_schema: dict) -> GenAISchema:
     def _convert_schema(schema: dict | str | list):
         if not isinstance(schema, dict):
             return schema
@@ -295,7 +285,8 @@ def convert_genai_function_parameters(function_schema: dict) -> GenAISchema:
 
         for field, value in schema.items():
             if field == "type":
-                genai_schema[field] = type_mapping[value.lower()]
+                # GenAI function parameters should have types in uppercase
+                genai_schema[field] = value.upper()
             elif isinstance(value, str):
                 genai_schema[field] = value
             elif isinstance(value, list):

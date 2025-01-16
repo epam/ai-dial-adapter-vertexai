@@ -40,9 +40,10 @@ class Gemini_2_Prompt(GeminiGenAIPrompt):
                 "The chat history must have at least one message"
             )
 
-        part_factory = GenAIConversationFactory()
+        conversation_factory = GenAIConversationFactory()
+        # TODO: update limits, when they are published
         processors = AttachmentProcessorsGenAI(
-            part_factory=part_factory,
+            conversation_factory=conversation_factory,
             processors=[
                 get_plain_text_processor(),
                 get_image_processor(3000),
@@ -54,7 +55,7 @@ class Gemini_2_Prompt(GeminiGenAIPrompt):
         )
 
         conversation = await messages_to_gemini_genai_conversation(
-            part_factory, processors, tools, messages
+            conversation_factory, processors, tools, messages
         )
 
         if error_message := processors.get_error_message():

@@ -2,6 +2,7 @@ from logging import DEBUG
 from typing import AsyncIterator, Callable, List, Optional, assert_never
 
 from aidial_sdk.chat_completion import FinishReason, Message, Stage
+from aidial_sdk.exceptions import RuntimeServerError
 from google.genai.client import Client as GenAIClient
 from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
@@ -40,6 +41,8 @@ from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
+
+_COUNT_TOKENS_ERROR = RuntimeServerError("Failed to count tokens for prompt")
 
 
 class GeminiGenAIChatCompletionAdapter(
@@ -160,10 +163,10 @@ class GeminiGenAIChatCompletionAdapter(
         finally:
             if thinking_stage:
                 thinking_stage.close()
-            # For thinking model there is possible, that max tokens will be reached on thinking stage,
+            # It's possible that max tokens will be reached during the thinking stage
             # and there will be no content in response.
             # And set_usage will fail with 'Trying to set "usage" before generating all choices' error.
-            # So we append empty content, so that at least one choice is generated.
+            # Append empty content, so at least one choice is generated.
             await consumer.append_content("")
 
         if usage_metadata:
@@ -190,11 +193,8 @@ class GeminiGenAIChatCompletionAdapter(
                 contents=[c for c in prompt.contents],
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
-            if not resp.total_tokens:
-                raise RuntimeError(
-                    "Failed to count tokens for prompt",
-                    "count_tokens_failed",
-                )
+            if resp.total_tokens is None:
+                raise _COUNT_TOKENS_ERROR
             return resp.total_tokens
 
     @override
@@ -205,11 +205,8 @@ class GeminiGenAIChatCompletionAdapter(
                 contents=string,
             )
             log.debug(f"count_tokens[completion] response: {json_dumps(resp)}")
-            if not resp.total_tokens:
-                raise RuntimeError(
-                    "Failed to count tokens for prompt",
-                    "count_tokens_failed",
-                )
+            if resp.total_tokens is None:
+                raise _COUNT_TOKENS_ERROR
             return resp.total_tokens
 
     @override

@@ -1,5 +1,6 @@
 from typing import List
 
+from aidial_sdk.exceptions import InvalidRequestError
 from google.genai.types import (
     GenerateContentConfigDict as GenAIGenerationConfig,
 )
@@ -38,8 +39,8 @@ def create_genai_generation_config(
     validate_n_parameter(params)
     genai_tools = None
     if not static_tools.is_empty() and not tools.is_empty():
-        raise ValueError(
-            "Currently both tools and static_tools are not allowed"
+        raise InvalidRequestError(
+            "Using both 'tools' and 'static_tools' simultaneously is not supported."
         )
     elif not tools.is_empty():
         genai_tools = tools.to_gemini_genai_tools()
@@ -48,12 +49,12 @@ def create_genai_generation_config(
 
     return GenAIGenerationConfig(
         system_instruction=(
-            [p for p in system_instruction] if system_instruction else None
+            list(system_instruction) if system_instruction else None
         ),
         max_output_tokens=params.max_tokens,
         temperature=params.temperature,
         stop_sequences=params.stop,
         top_p=params.top_p,
         candidate_count=params.n,
-        tools=[t for t in genai_tools] if genai_tools else None,
+        tools=list(genai_tools) if genai_tools else None,
     )
