@@ -487,7 +487,7 @@ def get_test_cases(
             name="thinking",
             messages=[user("2+2=?")],
             expected=lambda s: s.stages is not None
-            and len(s.stages) == 0
+            and len(s.stages) == 1
             and s.stages[0].name == "Thought Process"
             and "4" in s.content,
         )
@@ -508,7 +508,7 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
     client = get_openai_client(test.deployment.value)
 
     async def run_chat_completion() -> ChatCompletionResult:
-        retries = 5
+        retries = 7
         delay = 5
 
         async def _retry_wait(
