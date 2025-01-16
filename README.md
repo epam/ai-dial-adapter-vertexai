@@ -8,8 +8,8 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
 |---|---|---|---|---|---|
-|Gemini 2.0 Flash|gemini-2.0-flash-exp-1219|text-to-text|✅|✅|✅|
-|Gemini 2.0 Experimental|gemini-exp-1206|text-to-text|✅|✅|✅|
+|Gemini 2.0 Flash|gemini-2.0-flash-exp-1219|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
+|Gemini 2.0 Experimental|gemini-exp-1206|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
 |Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-1219|text-to-text|✅|✅|❌|
 |Gemini 1.5 Pro|gemini-1.5-pro-[preview-0409\|001\|002]|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
 |Gemini 1.5 Flash|gemini-1.5-flash-[001\|002]|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
