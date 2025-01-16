@@ -3,7 +3,7 @@ import re
 from typing import Any, Callable, List, Optional, TypeVar
 
 import httpx
-from aidial_sdk.chat_completion.request import Attachment, StaticTool
+from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
 from aidial_sdk.deployment.tokenize import (
     TokenizeError,
     TokenizeOutput,
@@ -39,7 +39,7 @@ from openai.types.chat.chat_completion_message_tool_call_param import (
 )
 from openai.types.chat.completion_create_params import Function
 from openai.types.shared_params.function_definition import FunctionDefinition
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
@@ -156,6 +156,9 @@ def sanitize_test_name(name: str) -> str:
 
 
 class ChatCompletionResult(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
     response: ChatCompletion
 
     @property
@@ -192,6 +195,17 @@ class ChatCompletionResult(BaseModel):
             Attachment.parse_obj(attachment)
             for attachment in self.message.custom_content.get(  # type: ignore
                 "attachments", []
+            )
+        ] or None
+
+    @property
+    def stages(self) -> List[Stage] | None:
+        if not hasattr(self.message, "custom_content"):
+            return None
+        return [
+            Stage.parse_obj(stage)
+            for stage in self.message.custom_content.get(  # type: ignore
+                "stages", []
             )
         ] or None
 

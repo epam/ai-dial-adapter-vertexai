@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Self, Tuple, assert_never
+from typing import Dict, List, Literal, Self, Tuple, assert_never, cast
 
 from aidial_sdk.chat_completion import (
     Function,
@@ -8,6 +8,15 @@ from aidial_sdk.chat_completion import (
     ToolChoice,
 )
 from aidial_sdk.chat_completion.request import AzureChatCompletionRequest, Tool
+from google.genai.types import (
+    FunctionCallingConfigDict as GenAIFunctionCallingConfig,
+)
+from google.genai.types import (
+    FunctionDeclarationDict as GenAIFunctionDeclaration,
+)
+from google.genai.types import SchemaDict as GenAISchema
+from google.genai.types import ToolConfigDict as GenAIToolConfig
+from google.genai.types import ToolDict as GenAITool
 from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import (
     FunctionDeclaration as GeminiFunction,
@@ -107,6 +116,9 @@ class ToolsConfig(BaseModel):
     def noop(cls) -> Self:
         return cls(functions=[], required=False, tool_ids=None)
 
+    def is_empty(self) -> bool:
+        return not self.functions
+
     @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
         validate_messages(request)
@@ -179,6 +191,47 @@ class ToolsConfig(BaseModel):
                 )
             )
 
+    def to_gemini_genai_tools(self) -> List[GenAITool]:
+        if not self.functions:
+            return []
+
+        return [
+            GenAITool(
+                function_declarations=[
+                    GenAIFunctionDeclaration(
+                        name=func.name,
+                        parameters=(
+                            _convert_genai_function_parameters(func.parameters)
+                            if func.parameters
+                            else GenAISchema(type="OBJECT", properties={})
+                        ),
+                        description=func.description,
+                    )
+                    for func in self.functions
+                ]
+            )
+        ]
+
+    def to_gemini_genai_tool_config(self) -> GenAIToolConfig | None:
+        if not self.functions:
+            return None
+
+        if self.required:
+            return GenAIToolConfig(
+                function_calling_config=GenAIFunctionCallingConfig(
+                    mode="ANY",
+                    allowed_function_names=[
+                        func.name for func in self.functions
+                    ],
+                )
+            )
+        else:
+            return GenAIToolConfig(
+                function_calling_config=GenAIFunctionCallingConfig(
+                    mode="AUTO",
+                )
+            )
+
 
 def validate_messages(request: AzureChatCompletionRequest) -> None:
     decl_tools = request.tools is not None
@@ -221,3 +274,32 @@ def collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
                 ret[tool_call.id] = tool_call.function.name
 
     return ret
+
+
+def _convert_genai_function_parameters(function_schema: dict) -> GenAISchema:
+    def _convert_schema(schema: dict | str | list):
+        if not isinstance(schema, dict):
+            return schema
+
+        genai_schema = {}
+
+        for field, value in schema.items():
+            if field == "type":
+                # GenAI function parameters should have types in uppercase
+                genai_schema[field] = value.upper()
+            elif isinstance(value, str):
+                genai_schema[field] = value
+            elif isinstance(value, list):
+                genai_schema[field] = [_convert_schema(item) for item in value]
+            elif isinstance(value, dict):
+                genai_schema[field] = {
+                    key: _convert_schema(value) for key, value in value.items()
+                }
+            else:
+                raise ValueError(
+                    f"Failed to convert function declaration to Vertex format: {schema}"
+                )
+
+        return genai_schema
+
+    return cast(GenAISchema, _convert_schema(function_schema))

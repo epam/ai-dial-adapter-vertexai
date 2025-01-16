@@ -21,6 +21,7 @@ from aidial_sdk.deployment.truncate_prompt import (
     TruncatePromptSuccess,
 )
 from aidial_sdk.exceptions import ResourceNotFoundError
+from google.genai.client import Client as GenAIClient
 from typing_extensions import override
 
 from aidial_adapter_vertexai.adapters import get_chat_completion_model
@@ -41,12 +42,16 @@ from aidial_adapter_vertexai.utils.not_implemented import is_implemented
 
 
 class VertexAIChatCompletion(ChatCompletion):
+    def __init__(self, client: GenAIClient):
+        self.client = client
+
     async def _get_model(
         self, request: FromRequestDeploymentMixin
     ) -> ChatCompletionAdapter:
         return await get_chat_completion_model(
             deployment=ChatCompletionDeployment(request.deployment_id),
             api_key=request.api_key,
+            client=self.client,
         )
 
     @dial_exception_decorator
