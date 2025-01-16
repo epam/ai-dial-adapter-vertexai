@@ -6,18 +6,16 @@ from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
     ConversationFactory,
     ConversationFactoryBase,
+    GeminiConversation,
+    GeminiConversationT,
+    GeminiGenAIConversation,
     GenAIConversationFactory,
+    PartT,
 )
-from aidial_adapter_vertexai.chat.gemini.generic import GeminiConversationT
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessors,
     AttachmentProcessorsBase,
     AttachmentProcessorsGenAI,
-)
-from aidial_adapter_vertexai.chat.gemini.prompt.base import (
-    GeminiConversation,
-    GeminiGenAIConversation,
-    PartT,
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 

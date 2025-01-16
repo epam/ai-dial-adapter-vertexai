@@ -1,22 +1,18 @@
 import json
 from abc import ABC, abstractmethod
-from typing import Generic, List, assert_never
+from typing import Generic, List, TypeVar, assert_never
 
 from aidial_sdk.chat_completion.request import Role
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
+from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.generic import (
-    ContentT,
-    GeminiConversationT,
-    PartT,
-)
-from aidial_adapter_vertexai.chat.gemini.prompt.base import (
-    GeminiConversation,
-    GeminiGenAIConversation,
-)
+
+PartT = TypeVar("PartT")
+ContentT = TypeVar("ContentT")
+GeminiConversationT = TypeVar("GeminiConversationT")
 
 
 class ConversationFactoryBase(
@@ -41,6 +37,18 @@ class ConversationFactoryBase(
     def create_conversation(
         self, system_instruction: List[PartT] | None, contents: List[ContentT]
     ) -> GeminiConversationT: ...
+
+
+class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):
+    system_instruction: List[PartT] | None = None
+    contents: List[ContentT]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class GeminiConversation(GeminiConversationBase[Part, Content]):
+    pass
 
 
 class ConversationFactory(
@@ -97,6 +105,10 @@ class ConversationFactory(
         return GeminiConversation(
             system_instruction=system_instruction, contents=contents
         )
+
+
+class GeminiGenAIConversation(GeminiConversationBase[GenAIPart, GenAIContent]):
+    pass
 
 
 class GenAIConversationFactory(

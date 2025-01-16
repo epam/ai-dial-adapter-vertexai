@@ -7,26 +7,13 @@ from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 from vertexai.preview.generative_models import Tool as GeminiTool
 
-from aidial_adapter_vertexai.chat.gemini.generic import ContentT, PartT
+from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
+    ContentT,
+    PartT,
+)
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
-
-
-class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):
-    system_instruction: List[PartT] | None = None
-    contents: List[ContentT]
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class GeminiConversation(GeminiConversationBase[Part, Content]):
-    pass
-
-
-class GeminiGenAIConversation(GeminiConversationBase[GenAIPart, GenAIContent]):
-    pass
 
 
 class GeminiBasePrompt(
