@@ -3,12 +3,14 @@ from typing import List, Optional, Self
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
+    GenAIConversationFactory,
+)
 from aidial_adapter_vertexai.chat.gemini.inputs import (
     messages_to_gemini_genai_conversation,
 )
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessorsGenAI,
-    GenAIConversationFactory,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
     get_audio_processor,

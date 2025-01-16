@@ -3,13 +3,15 @@ from typing import Any, List, Tuple, assert_never
 from aidial_sdk.chat_completion import Message, Role
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
+    ConversationFactory,
+    ConversationFactoryBase,
+    GenAIConversationFactory,
+)
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessors,
     AttachmentProcessorsBase,
     AttachmentProcessorsGenAI,
-    ConversationFactory,
-    ConversationFactoryBase,
-    GenAIConversationFactory,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import (
     GeminiConversation,
