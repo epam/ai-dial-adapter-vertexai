@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Generic, List, Self, Set, TypeVar
+from typing import Generic, List, Self, Set
 
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
@@ -7,13 +7,10 @@ from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 from vertexai.preview.generative_models import Tool as GeminiTool
 
+from aidial_adapter_vertexai.chat.gemini.generic import ContentT, PartT
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
-
-PartT = TypeVar("PartT")
-ContentT = TypeVar("ContentT")
-GeminiConversationT = TypeVar("GeminiConversationT")
 
 
 class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):

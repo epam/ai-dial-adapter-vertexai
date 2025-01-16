@@ -42,8 +42,6 @@ from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
 
-_COUNT_TOKENS_ERROR = RuntimeServerError("Failed to count tokens for prompt")
-
 
 class GeminiGenAIChatCompletionAdapter(
     ChatCompletionAdapter[GeminiGenAIPrompt]
@@ -194,7 +192,7 @@ class GeminiGenAIChatCompletionAdapter(
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             if resp.total_tokens is None:
-                raise _COUNT_TOKENS_ERROR
+                raise RuntimeServerError("Failed to count tokens for prompt")
             return resp.total_tokens
 
     @override
@@ -206,7 +204,9 @@ class GeminiGenAIChatCompletionAdapter(
             )
             log.debug(f"count_tokens[completion] response: {json_dumps(resp)}")
             if resp.total_tokens is None:
-                raise _COUNT_TOKENS_ERROR
+                raise RuntimeServerError(
+                    "Failed to count tokens for completion"
+                )
             return resp.total_tokens
 
     @override

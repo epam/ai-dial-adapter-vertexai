@@ -8,12 +8,14 @@ from google.genai.types import Part as GenAIPart
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.prompt.base import (
+from aidial_adapter_vertexai.chat.gemini.generic import (
     ContentT,
-    GeminiConversation,
     GeminiConversationT,
-    GeminiGenAIConversation,
     PartT,
+)
+from aidial_adapter_vertexai.chat.gemini.prompt.base import (
+    GeminiConversation,
+    GeminiGenAIConversation,
 )
 
 

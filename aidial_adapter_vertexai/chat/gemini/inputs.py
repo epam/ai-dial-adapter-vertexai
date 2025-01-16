@@ -8,6 +8,7 @@ from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
     ConversationFactoryBase,
     GenAIConversationFactory,
 )
+from aidial_adapter_vertexai.chat.gemini.generic import GeminiConversationT
 from aidial_adapter_vertexai.chat.gemini.processor import (
     AttachmentProcessors,
     AttachmentProcessorsBase,
@@ -15,7 +16,6 @@ from aidial_adapter_vertexai.chat.gemini.processor import (
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import (
     GeminiConversation,
-    GeminiConversationT,
     GeminiGenAIConversation,
     PartT,
 )
