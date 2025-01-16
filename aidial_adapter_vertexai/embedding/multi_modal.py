@@ -4,7 +4,7 @@ from typing import AsyncIterator, Callable, List, Tuple
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings.request import EmbeddingsRequest
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from vertexai.vision_models import (
     Image,
     MultiModalEmbeddingModel,

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aidial-adapter-vertexai"
-version = "0.15.0rc"
+version = "0.16.0rc"
 description = "DIAL adapter for Google Vertex AI"
 authors = ["EPAM RAIL <SpecialEPM-DIALDevTeam@epam.com>"]
 homepage = "https://epam-rail.com"
@@ -19,6 +19,7 @@ aidial-sdk = {version = "0.16.0", extras = ["telemetry"]}
 fastapi = "0.115.2"
 google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
+google-genai = "0.4.0"
 openai = "1.13.3"
 pydantic = "^2.10.4"
 uvicorn = "0.22.0"

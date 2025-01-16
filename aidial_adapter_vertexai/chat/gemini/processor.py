@@ -1,7 +1,8 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass
 from logging import DEBUG
 from typing import (
+    Any,
     Callable,
     Coroutine,
     Dict,
@@ -19,11 +20,15 @@ from aidial_sdk.chat_completion import (
     MessageContentImagePart,
     MessageContentTextPart,
 )
+from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Part
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.prompt.base import PartT
+from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
+    ConversationFactoryBase,
+    PartT,
+)
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
     AttachmentResource,
@@ -100,29 +105,13 @@ class ProcessingError:
     message: str
 
 
-class PartFactoryBase(ABC, Generic[PartT]):
-    @abstractmethod
-    def create_multi_modal_part(self, data: bytes, mime_type: str) -> PartT: ...
-
-    @abstractmethod
-    def create_text_part(self, text: str) -> PartT: ...
-
-
-class PartFactory(PartFactoryBase[Part]):
-    def create_multi_modal_part(self, data: bytes, mime_type: str) -> Part:
-        return Part.from_data(data=data, mime_type=mime_type)
-
-    def create_text_part(self, text: str) -> Part:
-        return Part.from_text(text)
-
-
 class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
     class Config:
         arbitrary_types_allowed = True  # for errors
 
     processors: List[AttachmentProcessor]
     file_storage: FileStorage | None
-    part_factory: PartFactoryBase[PartT]
+    conversation_factory: ConversationFactoryBase[PartT, Any, Any]
 
     errors: Set[ProcessingError] = Field(default_factory=set)
     resource_count: int = 0
@@ -183,13 +172,13 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
             resource = await self.process_resource(dial_resource)
             if resource is not None:
                 ret.append(
-                    self.part_factory.create_multi_modal_part(
+                    self.conversation_factory.create_multi_modal_part(
                         resource.data, resource.type
                     )
                 )
 
         def collect_text(text: str):
-            ret.append(self.part_factory.create_text_part(text))
+            ret.append(self.conversation_factory.create_text_part(text))
 
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
@@ -222,6 +211,10 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
 
 
 class AttachmentProcessors(AttachmentProcessorsBase[Part]):
+    pass
+
+
+class AttachmentProcessorsGenAI(AttachmentProcessorsBase[GenAIPart]):
     pass
 
 

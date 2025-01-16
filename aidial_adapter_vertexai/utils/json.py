@@ -11,6 +11,7 @@ from typing import Any
 
 import proto
 from pydantic import BaseModel
+from pydantic.v1 import BaseModel as BaseModelV1
 
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
@@ -58,8 +59,11 @@ def _to_dict(obj: Any, **kwargs) -> Any:
     if isinstance(obj, tuple):
         return tuple(rec(element) for element in obj)
 
-    if isinstance(obj, BaseModel):
+    if isinstance(obj, BaseModelV1):
         return rec(obj.dict())
+
+    if isinstance(obj, BaseModel):
+        return rec(obj.model_dump())
 
     if isinstance(obj, proto.Message):
         return rec(message_to_dict(obj))

@@ -7,6 +7,7 @@ from aidial_sdk.chat_completion import (
     Choice,
     FinishReason,
     Response,
+    Stage,
 )
 
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
@@ -39,6 +40,10 @@ class Consumer(ABC):
 
     @abstractmethod
     def is_empty(self) -> bool:
+        pass
+
+    @abstractmethod
+    async def create_stage(self, name: str) -> Stage:
         pass
 
 
@@ -132,3 +137,6 @@ class ChoiceConsumer(Consumer):
             )
 
         self.finish_reason = finish_reason
+
+    async def create_stage(self, name) -> Stage:
+        return self.choice.create_stage(name)

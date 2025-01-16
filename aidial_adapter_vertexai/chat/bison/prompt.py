@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional, Set, Tuple
 
 from aidial_sdk.chat_completion import Message, Role
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from vertexai.preview.language_models import ChatMessage, ChatSession
 
 from aidial_adapter_vertexai.chat.errors import ValidationError

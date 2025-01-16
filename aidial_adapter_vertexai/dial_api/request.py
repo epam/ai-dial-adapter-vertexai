@@ -8,7 +8,7 @@ from aidial_sdk.chat_completion import (
     MessageContentTextPart,
     Request,
 )
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 
