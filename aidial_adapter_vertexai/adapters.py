@@ -1,13 +1,14 @@
 from typing import assert_never
 
-from google.genai.client import Client as GenAIClient
-
 from aidial_adapter_vertexai.chat.bison.adapter import (
     BisonChatAdapter,
     BisonCodeChatAdapter,
 )
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
+)
+from aidial_adapter_vertexai.chat.claude.adapter import (
+    ClaudeChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.gemini.adapter import (
     GeminiChatCompletionAdapter,
@@ -31,7 +32,7 @@ from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
 
 
 async def get_chat_completion_model(
-    api_key: str, deployment: ChatCompletionDeployment, client: GenAIClient
+    api_key: str, deployment: ChatCompletionDeployment
 ) -> ChatCompletionAdapter:
     model_id = deployment.get_model_id()
 
@@ -68,11 +69,23 @@ async def get_chat_completion_model(
         ):
             storage = create_file_storage(api_key)
             return GeminiGenAIChatCompletionAdapter(
-                client, storage, model_id, deployment
+                storage, model_id, deployment
             )
         case ChatCompletionDeployment.IMAGEN_005:
             storage = create_file_storage(api_key)
             return await ImagenChatCompletionAdapter.create(storage, model_id)
+        case (
+            ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2
+            | ChatCompletionDeployment.CLAUDE_3_5_HAIKU
+            | ChatCompletionDeployment.CLAUDE_3_OPUS
+            | ChatCompletionDeployment.CLAUDE_3_5_SONNET
+            | ChatCompletionDeployment.CLAUDE_3_HAIKU
+            | ChatCompletionDeployment.CLAUDE_3_SONNET
+        ):
+            storage = create_file_storage(api_key)
+            return await ClaudeChatCompletionAdapter.create(
+                storage, model_id, deployment
+            )
         case _:
             assert_never(deployment)
 

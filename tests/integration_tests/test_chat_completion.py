@@ -122,6 +122,7 @@ deployments = [
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
     ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
 ]
 
 
@@ -139,6 +140,12 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
         ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_OPUS,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+        ChatCompletionDeployment.CLAUDE_3_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_SONNET,
     ]
 
 
@@ -171,6 +178,12 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_VISION_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_OPUS,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+        ChatCompletionDeployment.CLAUDE_3_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_SONNET,
     ]
 
 

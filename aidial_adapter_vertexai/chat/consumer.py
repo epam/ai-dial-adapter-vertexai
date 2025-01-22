@@ -46,6 +46,11 @@ class Consumer(ABC):
     async def create_stage(self, name: str) -> Stage:
         pass
 
+    @property
+    @abstractmethod
+    def has_function_call(self) -> bool:
+        pass
+
 
 class ChoiceConsumer(Consumer):
     response: Response
@@ -140,3 +145,7 @@ class ChoiceConsumer(Consumer):
 
     async def create_stage(self, name) -> Stage:
         return self.choice.create_stage(name)
+
+    @property
+    def has_function_call(self) -> bool:
+        return self.choice.has_function_call

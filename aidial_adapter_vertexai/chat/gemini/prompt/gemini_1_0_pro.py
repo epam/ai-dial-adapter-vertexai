@@ -2,12 +2,12 @@ from typing import List, Self
 
 from aidial_sdk.chat_completion import Message
 
+from aidial_adapter_vertexai.chat.conversation.inputs import (
+    messages_to_conversation,
+)
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
     ConversationFactory,
-)
-from aidial_adapter_vertexai.chat.gemini.inputs import (
-    messages_to_gemini_conversation,
 )
 from aidial_adapter_vertexai.chat.gemini.processor import AttachmentProcessors
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
@@ -35,7 +35,7 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
             file_storage=None,
         )
 
-        conversation = await messages_to_gemini_conversation(
+        conversation = await messages_to_conversation(
             conversation_factory, processors, tools, messages
         )
 
