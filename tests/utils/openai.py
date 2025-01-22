@@ -43,6 +43,7 @@ from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
+from tests.utils.json import match_objects
 
 blue_pic = Resource.from_base64(
     type="image/png",
@@ -186,6 +187,11 @@ class ChatCompletionResult(BaseModel):
     @property
     def tool_calls(self) -> List[ChatCompletionMessageToolCall] | None:
         return self.message.tool_calls
+
+    def content_contains_all(self, matches: List[Any]) -> bool:
+        return all(
+            str(match).lower() in self.content.lower() for match in matches
+        )
 
     @property
     def attachments(self) -> List[Attachment] | None:
@@ -365,3 +371,33 @@ GET_WEATHER_FUNCTION: Function = {
 GET_WEATHER_TOOL: ChatCompletionToolParam = function_to_tool(
     GET_WEATHER_FUNCTION
 )
+
+
+def is_valid_function_call(
+    call: FunctionCall | None, expected_name: str, expected_args: Any
+) -> bool:
+    assert call is not None
+    assert call.name == expected_name
+    obj = json.loads(call.arguments)
+    match_objects(expected_args, obj)
+    return True
+
+
+def is_valid_tool_call(
+    calls: List[ChatCompletionMessageToolCall] | None,
+    tool_call_idx: int,
+    check_tool_id: Callable[[str], bool],
+    expected_name: str,
+    expected_args: dict,
+) -> bool:
+    assert calls is not None
+
+    call = calls[tool_call_idx]
+
+    function = call.function
+    assert check_tool_id(call.id)
+    assert expected_name == function.name
+
+    actual_args = json.loads(function.arguments)
+    match_objects(expected_args, actual_args)
+    return True

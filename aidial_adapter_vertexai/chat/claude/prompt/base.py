@@ -73,10 +73,7 @@ class ClaudePrompt(TruncatablePrompt):
             raise RuntimeError("The last user prompt must not be omitted.")
 
         return self.__class__(
-            conversation=ClaudeConversation(
-                system=system,
-                messages=messages,
-            ),
+            conversation=ClaudeConversation(system=system, messages=messages),
             tools=self.tools,
         )
 
