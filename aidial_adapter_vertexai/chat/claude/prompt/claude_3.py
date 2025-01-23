@@ -7,7 +7,6 @@ from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessor,
     AttachmentProcessorsBase,
     max_count_validator,
-    seq_validators,
 )
 from aidial_adapter_vertexai.chat.claude.conversation_factory import (
     SUPPORTED_IMAGE_TYPES,
@@ -96,7 +95,7 @@ def _create_image_processor(max_count: int) -> AttachmentProcessor:
     # NOTE: not checked condition: The maximum allowed image file size is 5 MB
     return AttachmentProcessor(
         file_types=SUPPORTED_IMAGE_TYPES,
-        init_validator=seq_validators(None, max_count_validator(max_count)),
+        init_validator=max_count_validator(max_count),
     )
 
 

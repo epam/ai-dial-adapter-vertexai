@@ -1,5 +1,4 @@
 import asyncio
-import json
 import re
 from dataclasses import dataclass
 from typing import Callable, List, Mapping
@@ -16,13 +15,14 @@ from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from tests.integration_tests.constants import BLUE_PNG_PICTURE
+from tests.utils.dial import get_extra_headers
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
     ChatCompletionResult,
     ai,
     ai_function,
     ai_tools,
-    blue_pic,
     chat_completion,
     for_all_choices,
     function_request,
@@ -310,18 +310,22 @@ def get_test_cases(
             ),
         )
 
+        def _check_max_tokens_1(r: ChatCompletionResult) -> bool:
+            expected_tokens = 0 if support_thinking(deployment) else 1
+            assert for_all_choices(
+                lambda text: len(text.split()) == expected_tokens
+            )(r)
+            assert r.usage is not None
+            assert r.usage.completion_tokens == expected_tokens
+            return True
+
         test_case(
             name="max tokens 1",
             max_tokens=1,
             messages=[user("tell me the full story of Pinocchio")],
-            expected=for_all_choices(
-                lambda s: (
-                    len(s.split()) == 1
-                    if not support_thinking(deployment)
-                    else len(s.split()) == 0
-                )
-            ),
+            expected=_check_max_tokens_1,
         )
+
         # Gemini 2.0 rate-limits always fail on such concurrency
         candidates_count = 5 if not is_gemini_2(deployment) else 2
         test_case(
@@ -357,9 +361,9 @@ def get_test_cases(
         content = "describe the image"
         for idx, user_message in enumerate(
             [
-                user_with_attachment_data(content, blue_pic),
-                user_with_attachment_url(content, blue_pic),
-                user_with_image_url(content, blue_pic),
+                user_with_attachment_data(content, BLUE_PNG_PICTURE),
+                user_with_attachment_url(content, BLUE_PNG_PICTURE),
+                user_with_image_url(content, BLUE_PNG_PICTURE),
             ]
         ):
             test_case(
@@ -610,14 +614,6 @@ def get_test_cases(
             and "4" in s.content,
         )
     return test_cases
-
-
-def get_extra_headers(region: str | None) -> Mapping[str, str]:
-    return (
-        {"x-upstream-extra-data": json.dumps({"region": region})}
-        if region is not None
-        else {}
-    )
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Callable, List, Optional, TypeVar
+from typing import Any, Callable, List, Mapping, Optional, TypeVar
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
@@ -44,11 +44,6 @@ from pydantic.v1 import BaseModel
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
 from tests.utils.json import match_objects
-
-blue_pic = Resource.from_base64(
-    type="image/png",
-    data_base64="iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGNkYPjPwMDAwMDAxAADCBYAG10BBdmz9y8AAAAASUVORK5CYII=",
-)
 
 
 def sys(content: str) -> ChatCompletionSystemMessageParam:
@@ -218,12 +213,13 @@ class ChatCompletionResult(BaseModel):
         ] or None
 
 
-async def tokenize(
+async def tokenize_request(
     http_client: httpx.AsyncClient,
     model_id: str,
     messages: List[ChatCompletionMessageParam],
     functions: List[Function] | None,
     tools: List[ChatCompletionToolParam] | None,
+    extra_headers: Mapping[str, str] = {},
 ) -> TokenizeResponse:
 
     chat_completion_request = {
@@ -233,18 +229,19 @@ async def tokenize(
         "functions": functions,
     }
 
-    tokenize_request = {
+    request = {
         "inputs": [{"type": "request", "value": chat_completion_request}],
     }
 
-    tokenize_response = await http_client.post(
+    resp = await http_client.post(
         f"openai/deployments/{model_id}/tokenize",
-        json=tokenize_request,
+        json=request,
+        headers=extra_headers,
     )
 
-    tokenize_response.raise_for_status()
+    resp.raise_for_status()
 
-    return TokenizeResponse.parse_obj(tokenize_response.json())
+    return TokenizeResponse.parse_obj(resp.json())
 
 
 async def chat_completion(

@@ -2,6 +2,7 @@ from logging import DEBUG
 from typing import List, assert_never
 
 from aidial_sdk.chat_completion import Message
+from aidial_sdk.exceptions import InternalServerError
 from anthropic import AsyncAnthropicVertex, MessageStopEvent
 from anthropic.lib.streaming import (
     ContentBlockStopEvent,
@@ -12,9 +13,10 @@ from anthropic.types import (
     ContentBlockDeltaEvent,
     ContentBlockStartEvent,
     MessageDeltaEvent,
+    MessageStartEvent,
+    TextBlock,
+    ToolUseBlock,
 )
-from anthropic.types import MessageParam as ClaudeMessage
-from anthropic.types import MessageStartEvent, TextBlock, ToolUseBlock
 from typing_extensions import override
 
 from aidial_adapter_vertexai.app_config import get_anthropic_client
@@ -28,10 +30,7 @@ from aidial_adapter_vertexai.chat.claude.params import (
     create_chat_params,
     none_to_not_given,
 )
-from aidial_adapter_vertexai.chat.claude.prompt.base import (
-    ClaudeConversation,
-    ClaudePrompt,
-)
+from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.chat.claude.prompt.claude_3 import (
     parse_claude_3_prompt,
 )
@@ -49,7 +48,6 @@ from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps_short
-from aidial_adapter_vertexai.utils.list_projection import ListProjection
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 
 
@@ -164,7 +162,6 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                             case _:
                                 assert_never(content_block)
                     case MessageStopEvent(message=message):
-                        completion_tokens += message.usage.output_tokens
                         stop_reason = message.stop_reason
                     case (
                         InputJsonEvent()
@@ -247,16 +244,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
 
     @override
     async def count_completion_tokens(self, string: str) -> int:
-        # FIXME: figure out if it's correct - add an integration test for it
-        message: ClaudeMessage = {"role": "user", "content": string}
-        return await self.count_prompt_tokens(
-            ClaudePrompt(
-                conversation=ClaudeConversation(
-                    system=None,
-                    messages=ListProjection.create([message]),
-                )
-            )
-        )
+        raise InternalServerError("Tokenization of strings is not supported")
 
 
 def _project_to_original_indices(
