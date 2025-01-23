@@ -18,7 +18,6 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 |Claude 3 Opus|claude-3-opus@20240229|(text/image)-to-text|✅|✅|✅|
 |Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022|(text/image)-to-text|✅|✅|✅|
 |Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(text/image)-to-text|✅|✅|✅|
-|Claude 3 Sonnet|claude-3-sonnet@20240229|(text/image)-to-text|✅|✅|✅|
 |Claude 3.5 Haiku|claude-3-5-haiku@20241022|text-to-text|✅|✅|✅|
 |Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|

@@ -28,7 +28,6 @@ test_cases: List[Tuple[ChatCompletionDeployment, bool, bool]] = [
     (ChatCompletionDeployment.CLAUDE_3_OPUS, True, True),
     (ChatCompletionDeployment.CLAUDE_3_5_SONNET, True, True),
     (ChatCompletionDeployment.CLAUDE_3_HAIKU, True, True),
-    (ChatCompletionDeployment.CLAUDE_3_SONNET, True, True),
 ]
 
 

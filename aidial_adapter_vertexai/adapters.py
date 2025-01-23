@@ -83,7 +83,6 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.CLAUDE_3_OPUS
             | ChatCompletionDeployment.CLAUDE_3_5_SONNET
             | ChatCompletionDeployment.CLAUDE_3_HAIKU
-            | ChatCompletionDeployment.CLAUDE_3_SONNET
         ):
             return await ClaudeChatCompletionAdapter.create(
                 storage, model_id, deployment, region=upstream_config.region

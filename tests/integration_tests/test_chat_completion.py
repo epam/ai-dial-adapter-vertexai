@@ -96,7 +96,6 @@ deployments = [
     ChatCompletionDeployment.CLAUDE_3_OPUS,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET,
     ChatCompletionDeployment.CLAUDE_3_HAIKU,
-    # ChatCompletionDeployment.CLAUDE_3_SONNET, # Turn on, not available yet
 ]
 
 
@@ -119,7 +118,6 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         ChatCompletionDeployment.CLAUDE_3_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_SONNET,
     ]
 
 
@@ -130,7 +128,6 @@ def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
-        ChatCompletionDeployment.CLAUDE_3_SONNET,
     ]
 
 
@@ -141,7 +138,6 @@ def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         ChatCompletionDeployment.CLAUDE_3_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_SONNET,
     ]
 
 
@@ -181,7 +177,6 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         # ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         ChatCompletionDeployment.CLAUDE_3_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_SONNET,
     ]
 
 
