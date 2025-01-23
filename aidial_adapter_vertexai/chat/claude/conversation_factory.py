@@ -15,11 +15,11 @@ from anthropic.types import (
 )
 from anthropic.types.image_block_param import Source
 
+from aidial_adapter_vertexai.chat.attachment_processor import FileTypes
 from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudeConversation
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
 )
-from aidial_adapter_vertexai.chat.gemini.processor import FileTypes
 
 ClaudePart = (
     str

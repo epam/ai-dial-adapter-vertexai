@@ -3,25 +3,22 @@ from typing import List, Set, Tuple
 from aidial_sdk.chat_completion import Message
 from anthropic.types import MessageParam, TextBlockParam
 
+from aidial_adapter_vertexai.chat.attachment_processor import (
+    AttachmentProcessor,
+    AttachmentProcessorsBase,
+    max_count_validator,
+    seq_validators,
+)
 from aidial_adapter_vertexai.chat.claude.conversation_factory import (
     SUPPORTED_IMAGE_TYPES,
     ClaudeConversationFactory,
     ClaudePart,
 )
 from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
-from aidial_adapter_vertexai.chat.conversation.inputs import (
+from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
-from aidial_adapter_vertexai.chat.gemini.processor import (
-    AttachmentProcessor,
-    AttachmentProcessorsBase,
-    max_count_validator,
-    seq_validators,
-)
-from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
-    get_usage_message,
-)
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.list import group_by
@@ -47,7 +44,7 @@ async def parse_claude_3_prompt(
 
     processors = AttachmentProcessorsClaude(
         conversation_factory=conversation_factory,
-        processors=[create_image_processor(20)] if supports_vision else [],
+        processors=[_create_image_processor(20)] if supports_vision else [],
         file_storage=file_storage,
     )
 
@@ -95,9 +92,22 @@ def _merge_messages_with_same_role(
     return ListProjection(group_by(messages.list, _key, lambda x: x, _merge))
 
 
-def create_image_processor(max_count: int) -> AttachmentProcessor:
+def _create_image_processor(max_count: int) -> AttachmentProcessor:
     # NOTE: not checked condition: The maximum allowed image file size is 5 MB
     return AttachmentProcessor(
         file_types=SUPPORTED_IMAGE_TYPES,
         init_validator=seq_validators(None, max_count_validator(max_count)),
     )
+
+
+def get_usage_message(exts: List[str]) -> str:
+    return f"""
+The application answers queries about attached images.
+Attach images and ask questions about them in the same message.
+
+Supported document extensions: {', '.join(exts)}.
+
+Examples of queries:
+- "Describe the picture" for one image,
+- "What is depicted in these images?", "Compare the images" for multiple images.
+""".strip()

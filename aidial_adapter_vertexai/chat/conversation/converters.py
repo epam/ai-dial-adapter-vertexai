@@ -2,15 +2,15 @@ from typing import Any, List, Tuple, assert_never
 
 from aidial_sdk.chat_completion import Message, Role
 
+from aidial_adapter_vertexai.chat.attachment_processor import (
+    AttachmentProcessorsBase,
+)
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
     ConversationT,
     PartT,
 )
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.processor import (
-    AttachmentProcessorsBase,
-)
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 
 FunctionName = str
