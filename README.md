@@ -92,6 +92,31 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 
+## Load balancing
+
+If you use DIAL Core load balancing mechanism, you can provide `extraData` upstream setting the region to use for a particular upstream:
+
+```json
+{
+  "upstreams": [
+    {
+      "extraData": {
+        "region": "us-central1"
+      }
+    },
+    {
+      "extraData": {
+        "region": "us-east5"
+      }
+    }
+  ]
+}
+```
+
+When the `region` isn't provided the default region from the environment variable `DEFAULT_REGION` is used.
+
+Limitation: the region configuration is only supported for Gemini 2.0 and Anthropic models.
+
 ### Docker
 
 Run the server in Docker:

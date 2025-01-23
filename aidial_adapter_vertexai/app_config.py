@@ -6,12 +6,12 @@ from google.genai.client import Client as GenAIClient
 
 from aidial_adapter_vertexai.utils.env import get_env
 
-LOCATION = get_env("DEFAULT_REGION")
+DEFAULT_REGION = get_env("DEFAULT_REGION")
 PROJECT_ID = get_env("GCP_PROJECT_ID")
 
 
 def init_vertex_ai():
-    vertexai.init(project=PROJECT_ID, location=LOCATION)
+    vertexai.init(project=PROJECT_ID, location=DEFAULT_REGION)
 
 
 @lru_cache(None)
@@ -20,5 +20,5 @@ def get_genai_client(location: str) -> GenAIClient:
 
 
 @lru_cache(None)
-def get_anthropic_client(location: str) -> AsyncAnthropicVertex:
-    return AsyncAnthropicVertex(project_id=PROJECT_ID, region=location)
+def get_anthropic_client(region: str) -> AsyncAnthropicVertex:
+    return AsyncAnthropicVertex(project_id=PROJECT_ID, region=region)

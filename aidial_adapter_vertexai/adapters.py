@@ -29,12 +29,17 @@ from aidial_adapter_vertexai.embedding.multi_modal import (
     MultiModalEmbeddingsAdapter,
 )
 from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
+from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 
 
 async def get_chat_completion_model(
-    api_key: str, deployment: ChatCompletionDeployment
+    api_key: str,
+    upstream_config: UpstreamConfig,
+    deployment: ChatCompletionDeployment,
 ) -> ChatCompletionAdapter:
+
     model_id = deployment.get_model_id()
+    storage = create_file_storage(api_key)
 
     match deployment:
         case (
@@ -42,12 +47,14 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.CHAT_BISON_2
             | ChatCompletionDeployment.CHAT_BISON_2_32K
         ):
+            upstream_config.dynamic_region_not_supported()
             return await BisonChatAdapter.create(model_id)
         case (
             ChatCompletionDeployment.CODECHAT_BISON_1
             | ChatCompletionDeployment.CODECHAT_BISON_2
             | ChatCompletionDeployment.CODECHAT_BISON_2_32K
         ):
+            upstream_config.dynamic_region_not_supported()
             return await BisonCodeChatAdapter.create(model_id)
         case (
             ChatCompletionDeployment.GEMINI_PRO_1
@@ -58,7 +65,7 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
             | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
         ):
-            storage = create_file_storage(api_key)
+            upstream_config.dynamic_region_not_supported()
             return await GeminiChatCompletionAdapter.create(
                 storage, model_id, deployment
             )
@@ -67,13 +74,9 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219
             | ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206
         ):
-            storage = create_file_storage(api_key)
             return await GeminiGenAIChatCompletionAdapter.create(
-                storage, model_id, deployment, location="us-central1"
+                storage, model_id, deployment, location=upstream_config.region
             )
-        case ChatCompletionDeployment.IMAGEN_005:
-            storage = create_file_storage(api_key)
-            return await ImagenChatCompletionAdapter.create(storage, model_id)
         case (
             ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2
             | ChatCompletionDeployment.CLAUDE_3_5_HAIKU
@@ -82,10 +85,12 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.CLAUDE_3_HAIKU
             | ChatCompletionDeployment.CLAUDE_3_SONNET
         ):
-            storage = create_file_storage(api_key)
             return await ClaudeChatCompletionAdapter.create(
-                storage, model_id, deployment, location="us-east5"
+                storage, model_id, deployment, region=upstream_config.region
             )
+        case ChatCompletionDeployment.IMAGEN_005:
+            upstream_config.dynamic_region_not_supported()
+            return await ImagenChatCompletionAdapter.create(storage, model_id)
         case _:
             assert_never(deployment)
 

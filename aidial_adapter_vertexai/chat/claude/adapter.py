@@ -75,10 +75,10 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         file_storage: FileStorage | None,
         model_id: str,
         deployment: ClaudeDeployment,
-        location: str,
+        region: str,
     ) -> "ClaudeChatCompletionAdapter":
         return cls(
-            file_storage, model_id, deployment, get_anthropic_client(location)
+            file_storage, model_id, deployment, get_anthropic_client(region)
         )
 
     @override
