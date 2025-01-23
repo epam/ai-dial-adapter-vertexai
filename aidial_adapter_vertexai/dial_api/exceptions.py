@@ -60,20 +60,17 @@ def to_dial_exception(e: Exception) -> DialException:
         )
 
     if isinstance(e, anthropic.APIStatusError):
-        code = e.status_code
         try:
-            response = e.response.json()["error"]
-            return DialException(
-                status_code=code,
-                type=response["type"],
-                message=response["message"],
-            )
+            message = e.body["error"]["message"]  # type: ignore
         except Exception:
-            return DialException(
-                status_code=code,
-                type=_get_exception_type(code),
-                message=e.message,
-            )
+            message = e.message
+
+        code = e.status_code
+        return DialException(
+            status_code=code,
+            type=_get_exception_type(code),
+            message=message,
+        )
 
     if isinstance(e, ValidationError):
         return e.to_dial_exception()

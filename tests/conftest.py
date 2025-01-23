@@ -1,5 +1,5 @@
 import os
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Mapping
 
 import httpx
 import pytest
@@ -49,7 +49,10 @@ async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
 
 @pytest.fixture
 def get_openai_client(test_http_client: httpx.AsyncClient):
-    def _get_client(deployment_id: str | None = None) -> AsyncAzureOpenAI:
+    def _get_client(
+        deployment_id: str | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> AsyncAzureOpenAI:
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
             azure_deployment=deployment_id,
@@ -58,6 +61,7 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
             max_retries=2,
             timeout=30,
             http_client=test_http_client,
+            default_headers=extra_headers,
         )
 
     yield _get_client

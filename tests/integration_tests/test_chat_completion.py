@@ -1,7 +1,8 @@
 import asyncio
+import json
 import re
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import Callable, List, Mapping
 
 import pytest
 from aidial_sdk.chat_completion.request import StaticFunction
@@ -55,6 +56,7 @@ class TestCase:
     __test__ = False
 
     name: str
+    region: str | None
     deployment: ChatCompletionDeployment
     streaming: bool
 
@@ -71,32 +73,45 @@ class TestCase:
     static_tools: StaticToolsConfig | None
 
     def get_id(self):
-        max_tokens_str = f"maxt={self.max_tokens}" if self.max_tokens else ""
-        stop_sequence_str = f"stop={self.stop}" if self.stop else ""
-        n_str = f"n={self.n}" if self.n else ""
+        max_tokens_str = f"maxt:{self.max_tokens}" if self.max_tokens else None
+        stop_sequence_str = f"stop:{self.stop}" if self.stop else None
+        n_str = f"n:{self.n}" if self.n else None
         return sanitize_test_name(
-            f"{self.deployment.value} {self.streaming} {max_tokens_str} "
-            f"{stop_sequence_str} {n_str} {self.name}"
+            "/".join(
+                str(part)
+                for part in [
+                    self.deployment.value,
+                    self.streaming,
+                    max_tokens_str,
+                    stop_sequence_str,
+                    n_str,
+                    self.name,
+                ]
+                if part is not None
+            )
         )
 
 
-deployments = [
-    ChatCompletionDeployment.CHAT_BISON_1,
-    ChatCompletionDeployment.CHAT_BISON_2_32K,
-    ChatCompletionDeployment.CODECHAT_BISON_1,
-    ChatCompletionDeployment.GEMINI_PRO_1,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
-    ChatCompletionDeployment.GEMINI_PRO_VISION_1,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-    ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219,
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
-    ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
-    ChatCompletionDeployment.CLAUDE_3_OPUS,
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET,
-    ChatCompletionDeployment.CLAUDE_3_HAIKU,
-]
+_CENTRAL = "us-central1"
+_EAST = "us-east5"
+
+chat_deployments: Mapping[ChatCompletionDeployment, str] = {
+    ChatCompletionDeployment.CHAT_BISON_1: _CENTRAL,
+    ChatCompletionDeployment.CHAT_BISON_2_32K: _CENTRAL,
+    ChatCompletionDeployment.CODECHAT_BISON_1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_VISION_1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219: _CENTRAL,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
+}
 
 
 def is_codechat(deployment: ChatCompletionDeployment) -> bool:
@@ -195,7 +210,7 @@ def is_gemini_2(deployment: ChatCompletionDeployment) -> bool:
 
 
 def get_test_cases(
-    deployment: ChatCompletionDeployment, streaming: bool
+    deployment: ChatCompletionDeployment, region: str, streaming: bool
 ) -> List[TestCase]:
     test_cases: List[TestCase] = []
 
@@ -215,6 +230,7 @@ def get_test_cases(
         test_cases.append(
             TestCase(
                 name,
+                region,
                 deployment,
                 streaming,
                 messages,
@@ -596,18 +612,28 @@ def get_test_cases(
     return test_cases
 
 
+def get_extra_headers(region: str | None) -> Mapping[str, str]:
+    return (
+        {"x-upstream-extra-data": json.dumps({"region": region})}
+        if region is not None
+        else {}
+    )
+
+
 @pytest.mark.parametrize(
     "test",
     [
         test
-        for deployment in deployments
+        for deployment, region in chat_deployments.items()
         for streaming in [False, True]
-        for test in get_test_cases(deployment, streaming)
+        for test in get_test_cases(deployment, region, streaming)
     ],
     ids=lambda test: test.get_id(),
 )
 async def test_chat_completion_openai(get_openai_client, test: TestCase):
-    client = get_openai_client(test.deployment.value)
+    client = get_openai_client(
+        test.deployment.value, get_extra_headers(test.region)
+    )
 
     async def run_chat_completion() -> ChatCompletionResult:
         retries = 7
