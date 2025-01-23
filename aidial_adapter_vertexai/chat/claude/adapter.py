@@ -17,7 +17,7 @@ from anthropic.types import MessageParam as ClaudeMessage
 from anthropic.types import MessageStartEvent, TextBlock, ToolUseBlock
 from typing_extensions import override
 
-from aidial_adapter_vertexai.app_config import ANTHROPIC_CLIENT
+from aidial_adapter_vertexai.app_config import get_anthropic_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -62,11 +62,24 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         file_storage: FileStorage | None,
         model_id: str,
         deployment: ClaudeDeployment,
+        client: AsyncAnthropicVertex,
     ):
         self.file_storage = file_storage
         self.model_id = model_id
         self.deployment = deployment
-        self.client = ANTHROPIC_CLIENT
+        self.client = client
+
+    @classmethod
+    async def create(
+        cls,
+        file_storage: FileStorage | None,
+        model_id: str,
+        deployment: ClaudeDeployment,
+        location: str,
+    ) -> "ClaudeChatCompletionAdapter":
+        return cls(
+            file_storage, model_id, deployment, get_anthropic_client(location)
+        )
 
     @override
     async def parse_prompt(
@@ -245,15 +258,6 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                 )
             )
         )
-
-    @classmethod
-    async def create(
-        cls,
-        file_storage: FileStorage | None,
-        model_id: str,
-        deployment: ClaudeDeployment,
-    ) -> "ClaudeChatCompletionAdapter":
-        return cls(file_storage, model_id, deployment)
 
 
 def _project_to_original_indices(

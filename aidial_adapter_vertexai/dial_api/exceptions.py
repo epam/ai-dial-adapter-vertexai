@@ -50,15 +50,7 @@ def to_dial_exception(e: Exception) -> DialException:
 
         return InvalidRequestError(str(e))
 
-    if isinstance(e, GoogleAPICallError):
-        code = e.code or 500
-        return DialException(
-            status_code=code,
-            type=_get_exception_type(code),
-            message=str(e),
-        )
-
-    if isinstance(e, APIError):
+    if isinstance(e, (GoogleAPICallError, APIError)):
         code = e.code or 500
         message = e.message or str(e)
         return DialException(

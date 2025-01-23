@@ -68,8 +68,8 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206
         ):
             storage = create_file_storage(api_key)
-            return GeminiGenAIChatCompletionAdapter(
-                storage, model_id, deployment
+            return await GeminiGenAIChatCompletionAdapter.create(
+                storage, model_id, deployment, location="us-central1"
             )
         case ChatCompletionDeployment.IMAGEN_005:
             storage = create_file_storage(api_key)
@@ -84,7 +84,7 @@ async def get_chat_completion_model(
         ):
             storage = create_file_storage(api_key)
             return await ClaudeChatCompletionAdapter.create(
-                storage, model_id, deployment
+                storage, model_id, deployment, location="us-east5"
             )
         case _:
             assert_never(deployment)
