@@ -632,19 +632,21 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
     )
 
     async def run_chat_completion() -> ChatCompletionResult:
-        retries = 7
-        delay = 5
+        attempts = 7
+        delay = 1
 
         async def _retry_wait(
-            retries: int, delay: int, e: APIError | RateLimitError
+            is_last_attempt: bool, e: APIError | RateLimitError
         ):
-            if attempt < retries - 1:
-                delay *= 2
-                await asyncio.sleep(delay)
-            else:
+            if is_last_attempt:
                 raise e
 
-        for attempt in range(retries):
+            nonlocal delay
+            await asyncio.sleep(delay)
+            delay *= 2
+
+        for attempt in range(attempts):
+            is_last_attempt = attempt == attempts - 1
             try:
                 return await chat_completion(
                     client,
@@ -658,10 +660,10 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
                     test.static_tools,
                 )
             except RateLimitError as e:
-                await _retry_wait(retries, delay, e)
+                await _retry_wait(is_last_attempt, e)
             except APIError as e:
                 if e.code == "429":
-                    await _retry_wait(retries, delay, e)
+                    await _retry_wait(is_last_attempt, e)
                 else:
                     raise e
         raise RuntimeError("Failed to get a valid response")

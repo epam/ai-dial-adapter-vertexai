@@ -17,12 +17,12 @@ class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
 
     @abstractmethod
     def create_function_call_part(
-        self, name: str, args: str, *, tool_call_id: str | None = None
+        self, name: str, args: str, tool_call_id: str
     ) -> PartT: ...
 
     @abstractmethod
     def create_function_result_part(
-        self, name: str, args: str, *, tool_call_id: str | None = None
+        self, name: str, args: str, tool_call_id: str
     ) -> PartT: ...
 
     @abstractmethod

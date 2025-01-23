@@ -51,7 +51,7 @@ class ConversationFactory(
         return Part.from_text(text)
 
     def create_function_call_part(
-        self, name: str, args: str, *, tool_call_id: str | None = None
+        self, name: str, args: str, tool_call_id: str
     ) -> Part:
         try:
             args = json.loads(args)
@@ -64,7 +64,7 @@ class ConversationFactory(
             )
 
     def create_function_result_part(
-        self, name: str, args: str, *, tool_call_id: str | None = None
+        self, name: str, args: str, tool_call_id: str
     ) -> Part:
         try:
             args = json.loads(args)
@@ -115,7 +115,7 @@ class GenAIConversationFactory(
         return GenAIPart.from_text(text)
 
     def create_function_call_part(
-        self, name: str, args: str, *, tool_call_id: str | None = None
+        self, name: str, args: str, tool_call_id: str
     ) -> GenAIPart:
         try:
             return GenAIPart.from_function_call(name, json.loads(args))
@@ -125,7 +125,7 @@ class GenAIConversationFactory(
             )
 
     def create_function_result_part(
-        self, name: str, args: str, *, tool_call_id: str | None = None
+        self, name: str, args: str, tool_call_id: str
     ) -> GenAIPart:
         try:
             processed_args = json.loads(args)

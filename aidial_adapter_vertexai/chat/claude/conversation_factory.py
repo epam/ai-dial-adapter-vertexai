@@ -65,11 +65,8 @@ class ClaudeConversationFactory(
         return TextBlockParam(type="text", text=text)
 
     def create_function_call_part(
-        self, name: str, args: str, *, tool_call_id: str | None = None
+        self, name: str, args: str, tool_call_id: str
     ) -> ClaudePart:
-        if tool_call_id is None:
-            raise InvalidRequestError("tool_call_id field must be present")
-
         return ToolUseBlockParam(
             id=tool_call_id,
             input=json.loads(args),
@@ -78,15 +75,12 @@ class ClaudeConversationFactory(
         )
 
     def create_function_result_part(
-        self, name: str, args: str, *, tool_call_id: str | None = None
+        self, name: str, args: str, tool_call_id: str
     ) -> ClaudePart:
-        if tool_call_id is None:
-            raise InvalidRequestError("tool_call_id field must be present")
-
         return ToolResultBlockParam(
             tool_use_id=tool_call_id,
             type="tool_result",
-            content=[{"type": "text", "text": args}],
+            content=[TextBlockParam(type="text", text=args)],
         )
 
     def create_content(

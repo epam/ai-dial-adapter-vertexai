@@ -17,17 +17,32 @@ FunctionName = str
 FunctionArgs = str
 
 
+class Counter:
+    count: int = 0
+
+    def post_inc(self):
+        old_count = self.count
+        self.count += 1
+        return old_count
+
+
 async def messages_to_conversation(
     conversation_factory: ConversationFactoryBase[PartT, Any, ConversationT],
     processors: AttachmentProcessorsBase[PartT],
     tools: ToolsConfig,
     messages: List[Message],
 ) -> ConversationT:
+    function_call_idx = Counter()
+
     message_parts = [
         (
             message.role,
             await _message_to_parts(
-                processors, tools, message, conversation_factory
+                processors,
+                tools,
+                message,
+                conversation_factory,
+                function_call_idx,
             ),
         )
         for message in messages
@@ -48,8 +63,8 @@ async def _message_to_parts(
     tools: ToolsConfig,
     message: Message,
     conversation_factory: ConversationFactoryBase,
+    function_call_idx: Counter,
 ) -> List[PartT]:
-
     content = message.content
 
     match message.role:
@@ -65,10 +80,12 @@ async def _message_to_parts(
 
         case Role.ASSISTANT:
             if message.function_call is not None:
+                tool_call_id = f"function_call_{function_call_idx.count}"
                 return [
                     conversation_factory.create_function_call_part(
                         message.function_call.name,
                         message.function_call.arguments,
+                        tool_call_id,
                     )
                 ]
             elif message.tool_calls is not None:
@@ -76,7 +93,7 @@ async def _message_to_parts(
                     conversation_factory.create_function_call_part(
                         call.function.name,
                         call.function.arguments,
-                        tool_call_id=call.id,
+                        call.id,
                     )
                     for call in message.tool_calls
                 ]
@@ -99,8 +116,11 @@ async def _message_to_parts(
             name = message.name
             if name is None:
                 raise ValidationError("Function message name must be present")
+            tool_call_id = f"function_call_{function_call_idx.post_inc()}"
             return [
-                conversation_factory.create_function_result_part(name, content)
+                conversation_factory.create_function_result_part(
+                    name, content, tool_call_id
+                )
             ]
 
         case Role.TOOL:
@@ -116,7 +136,7 @@ async def _message_to_parts(
             name = tools.get_tool_name(tool_call_id)
             return [
                 conversation_factory.create_function_result_part(
-                    name, content, tool_call_id=tool_call_id
+                    name, content, tool_call_id
                 )
             ]
 
