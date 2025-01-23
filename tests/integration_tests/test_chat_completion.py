@@ -125,11 +125,11 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
 
 def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
-        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        # ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        # ChatCompletionDeployment.CLAUDE_3_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
-        ChatCompletionDeployment.CLAUDE_3_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_SONNET,
     ]
 

@@ -12,11 +12,9 @@ from anthropic.types import (
     ContentBlockDeltaEvent,
     ContentBlockStartEvent,
     MessageDeltaEvent,
-    MessageStartEvent,
-    TextBlock,
-    ToolUseBlock,
 )
 from anthropic.types import MessageParam as ClaudeMessage
+from anthropic.types import MessageStartEvent, TextBlock, ToolUseBlock
 from typing_extensions import override
 
 from aidial_adapter_vertexai.app_config import ANTHROPIC_CLIENT

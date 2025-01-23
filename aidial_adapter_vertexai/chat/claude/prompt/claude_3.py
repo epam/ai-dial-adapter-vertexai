@@ -1,4 +1,4 @@
-from typing import List, Self, Set, Tuple
+from typing import List, Set, Tuple
 
 from aidial_sdk.chat_completion import Message
 from anthropic.types import MessageParam, TextBlockParam
