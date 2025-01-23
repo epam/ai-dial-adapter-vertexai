@@ -19,6 +19,7 @@ from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudeConversation
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
 )
+from aidial_adapter_vertexai.chat.gemini.processor import FileTypes
 
 ClaudePart = (
     str
@@ -30,6 +31,23 @@ ClaudePart = (
     | ContentBlock
 )
 
+SUPPORTED_IMAGE_TYPES: FileTypes = {
+    "image/jpeg": ["jpg", "jpeg"],
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
+
+
+def _parse_image_type(
+    mime_type: str,
+) -> Literal["image/jpeg", "image/png", "image/gif", "image/webp"]:
+    match mime_type:
+        case "image/jpeg" | "image/png" | "image/gif" | "image/webp":
+            return mime_type
+        case _:
+            raise InvalidRequestError("Unsupported image format")
+
 
 class ClaudeConversationFactory(
     ConversationFactoryBase[ClaudePart, MessageParam, ClaudeConversation]
@@ -37,22 +55,10 @@ class ClaudeConversationFactory(
     def create_multi_modal_part(
         self, data: bytes, mime_type: str
     ) -> ImageBlockParam:
-        if mime_type not in {
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-        }:
-            raise InvalidRequestError("Unsupported image format")
-
-        media_type: Literal[
-            "image/jpeg", "image/png", "image/gif", "image/webp"
-        ] = mime_type  # type: ignore
-
         source = Source(
             type="base64",
             data=base64.b64encode(data).decode(),
-            media_type=media_type,
+            media_type=_parse_image_type(mime_type),
         )
         return ImageBlockParam(type="image", source=source)
 
@@ -98,7 +104,7 @@ class ClaudeConversationFactory(
         system_instruction: List[ClaudePart] | None,
         contents: List[MessageParam],
     ) -> ClaudeConversation:
-        return ClaudeConversation(
-            system=system_instruction,  # type: ignore
-            messages=contents,
+        return ClaudeConversation.create(
+            system_instruction,  # type: ignore # FIXME
+            contents,
         )

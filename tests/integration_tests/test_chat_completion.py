@@ -92,6 +92,11 @@ deployments = [
     ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+    ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+    ChatCompletionDeployment.CLAUDE_3_OPUS,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+    ChatCompletionDeployment.CLAUDE_3_HAIKU,
+    # ChatCompletionDeployment.CLAUDE_3_SONNET, # Turn on, not available yet
 ]
 
 
@@ -163,8 +168,10 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
-        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_OPUS,
+        # Upstream returns 'claude-3-5-haiku-20241022 does not support images.'
+        # ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        # This model hallucinates on a the test image
+        # ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         ChatCompletionDeployment.CLAUDE_3_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_SONNET,

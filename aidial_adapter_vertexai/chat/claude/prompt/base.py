@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Self, Set
+from typing import Callable, List, Self, Set
 
 from anthropic.types import MessageParam, TextBlockParam
 from anthropic.types import ToolParam as ClaudeTool
 
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
+from aidial_adapter_vertexai.utils.list_projection import ListProjection
 
 
 # NOTE: it's not pydantic BaseModel, because
@@ -16,7 +19,28 @@ from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 @dataclass
 class ClaudeConversation:
     system: str | List[TextBlockParam] | None
-    messages: List[MessageParam]
+    messages: ListProjection[MessageParam]
+
+    @classmethod
+    def create(
+        cls,
+        system: str | List[TextBlockParam] | None,
+        messages: List[MessageParam],
+    ) -> Self:
+        return cls(
+            system=system,
+            messages=ListProjection.create(
+                messages, idx_offset=int(system is not None)
+            ),
+        )
+
+    def on_messages(
+        self,
+        func: Callable[
+            [ListProjection[MessageParam]], ListProjection[MessageParam]
+        ],
+    ) -> ClaudeConversation:
+        return ClaudeConversation(self.system, func(self.messages))
 
 
 @dataclass
@@ -29,7 +53,7 @@ class ClaudePrompt(TruncatablePrompt):
         return self.conversation.system
 
     @property
-    def messages(self) -> List[MessageParam]:
+    def messages(self) -> ListProjection[MessageParam]:
         return self.conversation.messages
 
     @property
@@ -57,17 +81,23 @@ class ClaudePrompt(TruncatablePrompt):
         )
 
     def select(self, indices: Set[int]) -> Self:
-        system: str | List[TextBlockParam] | None = None
-        messages: List[MessageParam] = []
 
-        offset = 0
         if self.has_system_instruction and 0 in indices:
             system = self.system
-            offset += 1
+        else:
+            system = None
+
+        offset = int(self.has_system_instruction)
+
+        message_indices: Set[int] = set()
 
         for idx in range(len(self.messages)):
             if idx + offset in indices:
-                messages.append(self.messages[idx])
+                message_indices.add(idx)
+
+        messages: ListProjection[MessageParam] = (
+            self.conversation.messages.select(message_indices)
+        )
 
         if len(self.messages) - 1 + offset not in indices:
             raise RuntimeError("The last user prompt must not be omitted.")

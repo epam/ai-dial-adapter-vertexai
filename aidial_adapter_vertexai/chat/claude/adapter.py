@@ -12,9 +12,11 @@ from anthropic.types import (
     ContentBlockDeltaEvent,
     ContentBlockStartEvent,
     MessageDeltaEvent,
+    MessageStartEvent,
+    TextBlock,
+    ToolUseBlock,
 )
 from anthropic.types import MessageParam as ClaudeMessage
-from anthropic.types import MessageStartEvent, TextBlock, ToolUseBlock
 from typing_extensions import override
 
 from aidial_adapter_vertexai.app_config import ANTHROPIC_CLIENT
@@ -32,7 +34,9 @@ from aidial_adapter_vertexai.chat.claude.prompt.base import (
     ClaudeConversation,
     ClaudePrompt,
 )
-from aidial_adapter_vertexai.chat.claude.prompt.claude_3 import Claude_3_Prompt
+from aidial_adapter_vertexai.chat.claude.prompt.claude_3 import (
+    parse_claude_3_prompt,
+)
 from aidial_adapter_vertexai.chat.claude.tools import process_tools_block
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
@@ -47,6 +51,7 @@ from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps_short
+from aidial_adapter_vertexai.utils.list_projection import ListProjection
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 
 
@@ -77,14 +82,17 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         match self.deployment:
             case (
                 ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2
-                | ChatCompletionDeployment.CLAUDE_3_5_HAIKU
                 | ChatCompletionDeployment.CLAUDE_3_OPUS
                 | ChatCompletionDeployment.CLAUDE_3_5_SONNET
                 | ChatCompletionDeployment.CLAUDE_3_HAIKU
                 | ChatCompletionDeployment.CLAUDE_3_SONNET
             ):
-                return await Claude_3_Prompt.parse(
-                    self.file_storage, tools, messages
+                return await parse_claude_3_prompt(
+                    self.file_storage, tools, messages, supports_vision=True
+                )
+            case ChatCompletionDeployment.CLAUDE_3_5_HAIKU:
+                return await parse_claude_3_prompt(
+                    self.file_storage, tools, messages, supports_vision=False
                 )
             case _:
                 assert_never(self.deployment)
@@ -116,7 +124,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         claude_params = create_chat_params(params, prompt)
 
         async with self.client.messages.stream(
-            messages=prompt.messages,
+            messages=prompt.messages.raw_list,
             model=self.model_id,
             **claude_params,
         ) as stream:
@@ -169,16 +177,13 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
             )
 
     async def _invoke_non_streaming(
-        self,
-        params: ModelParameters,
-        consumer: Consumer,
-        prompt: ClaudePrompt,
+        self, params: ModelParameters, consumer: Consumer, prompt: ClaudePrompt
     ):
         tools_mode = prompt.tools.tools_mode
         claude_params = create_chat_params(params, prompt)
 
         message = await self.client.messages.create(
-            messages=prompt.messages,
+            messages=prompt.messages.raw_list,
             model=self.model_id,
             **claude_params,
             stream=False,
@@ -211,16 +216,17 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     async def truncate_prompt(
         self, prompt: ClaudePrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[ClaudePrompt]:
-        return await prompt.truncate(
+        truncated_prompt = await prompt.truncate(
             tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
+        return _project_to_original_indices(prompt, truncated_prompt)
 
     @override
     async def count_prompt_tokens(self, prompt: ClaudePrompt) -> int:
         return (
             await self.client.messages.count_tokens(
                 model=self.model_id,
-                messages=prompt.messages,
+                messages=prompt.messages.raw_list,
                 system=none_to_not_given(prompt.system),
                 tools=none_to_not_given(prompt.tools.to_claude_tools()),
                 tool_choice=none_to_not_given(
@@ -235,7 +241,10 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         message: ClaudeMessage = {"role": "user", "content": string}
         return await self.count_prompt_tokens(
             ClaudePrompt(
-                conversation=ClaudeConversation(system=None, messages=[message])
+                conversation=ClaudeConversation(
+                    system=None,
+                    messages=ListProjection.create([message]),
+                )
             )
         )
 
@@ -247,3 +256,18 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         deployment: ClaudeDeployment,
     ) -> "ClaudeChatCompletionAdapter":
         return cls(file_storage, model_id, deployment)
+
+
+def _project_to_original_indices(
+    prompt: ClaudePrompt,
+    truncated_prompt: TruncatedPrompt[ClaudePrompt],
+) -> TruncatedPrompt[ClaudePrompt]:
+    discarded_messages = list(
+        prompt.conversation.messages.to_original_indices(
+            truncated_prompt.discarded_messages
+        )
+    )
+    return TruncatedPrompt(
+        prompt=truncated_prompt.prompt,
+        discarded_messages=discarded_messages,
+    )
