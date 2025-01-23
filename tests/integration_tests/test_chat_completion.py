@@ -124,7 +124,14 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
 
 
 def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
-    return False
+    return deployment in [
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_OPUS,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+        ChatCompletionDeployment.CLAUDE_3_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_SONNET,
+    ]
 
 
 def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
@@ -353,7 +360,11 @@ def get_test_cases(
 
     if supports_tools(deployment):
 
-        city_config = [[("Glasgow", 15)], [("Glasgow", 15), ("London", 20)]]
+        city_config = (
+            [[("Glasgow", 15)], [("Glasgow", 15), ("London", 20)]]
+            if supports_parallel_tool_calls(deployment)
+            else [[("Glasgow", 15)]]
+        )
 
         for cities in city_config:
             function = GET_WEATHER_FUNCTION
