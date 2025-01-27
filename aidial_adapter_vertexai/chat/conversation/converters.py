@@ -2,97 +2,69 @@ from typing import Any, List, Tuple, assert_never
 
 from aidial_sdk.chat_completion import Message, Role
 
-from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
-    ConversationFactory,
+from aidial_adapter_vertexai.chat.attachment_processor import (
+    AttachmentProcessorsBase,
+)
+from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
-    GeminiConversation,
-    GeminiConversationT,
-    GeminiGenAIConversation,
-    GenAIConversationFactory,
+    ConversationT,
     PartT,
 )
-from aidial_adapter_vertexai.chat.gemini.processor import (
-    AttachmentProcessors,
-    AttachmentProcessorsBase,
-    AttachmentProcessorsGenAI,
-)
+from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 
 FunctionName = str
 FunctionArgs = str
 
 
-async def messages_to_gemini_conversation_base(
-    conversation_factory: ConversationFactoryBase[
-        PartT, Any, GeminiConversationT
-    ],
+class Counter:
+    count: int = 0
+
+    def post_inc(self):
+        old_count = self.count
+        self.count += 1
+        return old_count
+
+
+async def messages_to_conversation(
+    conversation_factory: ConversationFactoryBase[PartT, Any, ConversationT],
     processors: AttachmentProcessorsBase[PartT],
     tools: ToolsConfig,
     messages: List[Message],
-) -> GeminiConversationT:
-    gemini_messages = [
+) -> ConversationT:
+    function_call_idx = Counter()
+
+    message_parts = [
         (
             message.role,
-            await _message_to_gemini_parts(
-                processors, tools, message, conversation_factory
+            await _message_to_parts(
+                processors,
+                tools,
+                message,
+                conversation_factory,
+                function_call_idx,
             ),
         )
         for message in messages
     ]
 
-    system_instruction, gemini_messages = separate_system_messages(
-        gemini_messages
-    )
+    system, message_parts = _separate_system_messages(message_parts)
 
     contents = [
         conversation_factory.create_content(role, parts)
-        for role, parts in gemini_messages
+        for role, parts in message_parts
     ]
 
-    return conversation_factory.create_conversation(
-        system_instruction,
-        contents,
-    )
+    return conversation_factory.create_conversation(system, contents)
 
 
-async def messages_to_gemini_conversation(
-    conversation_factory: ConversationFactory,
-    processors: AttachmentProcessors,
-    tools: ToolsConfig,
-    messages: List[Message],
-) -> GeminiConversation:
-
-    return await messages_to_gemini_conversation_base(
-        conversation_factory,
-        processors,
-        tools,
-        messages,
-    )
-
-
-async def messages_to_gemini_genai_conversation(
-    conversation_factory: GenAIConversationFactory,
-    processors: AttachmentProcessorsGenAI,
-    tools: ToolsConfig,
-    messages: List[Message],
-) -> GeminiGenAIConversation:
-
-    return await messages_to_gemini_conversation_base(
-        conversation_factory,
-        processors,
-        tools,
-        messages,
-    )
-
-
-async def _message_to_gemini_parts(
+async def _message_to_parts(
     processors: AttachmentProcessorsBase[PartT],
     tools: ToolsConfig,
     message: Message,
     conversation_factory: ConversationFactoryBase,
+    function_call_idx: Counter,
 ) -> List[PartT]:
-
     content = message.content
 
     match message.role:
@@ -108,16 +80,20 @@ async def _message_to_gemini_parts(
 
         case Role.ASSISTANT:
             if message.function_call is not None:
+                tool_call_id = f"function_call_{function_call_idx.count}"
                 return [
                     conversation_factory.create_function_call_part(
                         message.function_call.name,
                         message.function_call.arguments,
+                        tool_call_id,
                     )
                 ]
             elif message.tool_calls is not None:
                 return [
                     conversation_factory.create_function_call_part(
-                        call.function.name, call.function.arguments
+                        call.function.name,
+                        call.function.arguments,
+                        call.id,
                     )
                     for call in message.tool_calls
                 ]
@@ -140,8 +116,11 @@ async def _message_to_gemini_parts(
             name = message.name
             if name is None:
                 raise ValidationError("Function message name must be present")
+            tool_call_id = f"function_call_{function_call_idx.post_inc()}"
             return [
-                conversation_factory.create_function_result_part(name, content)
+                conversation_factory.create_function_result_part(
+                    name, content, tool_call_id
+                )
             ]
 
         case Role.TOOL:
@@ -156,14 +135,16 @@ async def _message_to_gemini_parts(
                 )
             name = tools.get_tool_name(tool_call_id)
             return [
-                conversation_factory.create_function_result_part(name, content)
+                conversation_factory.create_function_result_part(
+                    name, content, tool_call_id
+                )
             ]
 
         case _:
             assert_never(message.role)
 
 
-def separate_system_messages(
+def _separate_system_messages(
     messages: List[Tuple[Role, List[PartT]]]
 ) -> Tuple[List[PartT] | None, List[Tuple[Role, List[PartT]]]]:
     """

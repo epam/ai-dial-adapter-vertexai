@@ -9,6 +9,7 @@ from google.genai.types import (
 )
 from typing_extensions import override
 
+from aidial_adapter_vertexai.app_config import get_genai_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -47,18 +48,31 @@ class GeminiGenAIChatCompletionAdapter(
     ChatCompletionAdapter[GeminiGenAIPrompt]
 ):
     deployment: Gemini2Deployment
+    client: GenAIClient
 
     def __init__(
         self,
-        client: GenAIClient,
         file_storage: Optional[FileStorage],
         model_id: str,
         deployment: Gemini2Deployment,
+        client: GenAIClient,
     ):
         self.file_storage = file_storage
         self.model_id = model_id
         self.deployment = deployment
         self.client = client
+
+    @classmethod
+    async def create(
+        cls,
+        file_storage: FileStorage | None,
+        model_id: str,
+        deployment: Gemini2Deployment,
+        location: str,
+    ) -> "GeminiGenAIChatCompletionAdapter":
+        return cls(
+            file_storage, model_id, deployment, get_genai_client(location)
+        )
 
     @override
     async def parse_prompt(

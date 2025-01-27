@@ -24,9 +24,23 @@ class ChatCompletionDeployment(str, Enum):
 
     IMAGEN_005 = "imagegeneration@005"
 
+    CLAUDE_3_5_SONNET_V2 = "claude-3-5-sonnet-v2@20241022"
+    CLAUDE_3_5_HAIKU = "claude-3-5-haiku@20241022"
+    CLAUDE_3_OPUS = "claude-3-opus@20240229"
+    CLAUDE_3_5_SONNET = "claude-3-5-sonnet@20240620"
+    CLAUDE_3_HAIKU = "claude-3-haiku@20240307"
+
     def get_model_id(self) -> str:
         return self.value
 
+
+ClaudeDeployment = Literal[
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+    ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+    ChatCompletionDeployment.CLAUDE_3_OPUS,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+    ChatCompletionDeployment.CLAUDE_3_HAIKU,
+]
 
 GeminiDeployment = Literal[
     ChatCompletionDeployment.GEMINI_PRO_1,

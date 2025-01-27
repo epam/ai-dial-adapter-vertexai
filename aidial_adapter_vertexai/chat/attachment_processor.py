@@ -24,11 +24,11 @@ from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Part
 
-from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
+from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
-    PartT,
 )
+from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.gemini.conversation_factory import PartT
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
     AttachmentResource,

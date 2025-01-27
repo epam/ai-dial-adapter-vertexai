@@ -2,16 +2,16 @@ from typing import List, Self, Union
 
 from aidial_sdk.chat_completion import Message, Role
 
+from aidial_adapter_vertexai.chat.attachment_processor import (
+    AttachmentProcessors,
+    exclusive_validator,
+)
+from aidial_adapter_vertexai.chat.conversation.converters import (
+    messages_to_conversation,
+)
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
     ConversationFactory,
-)
-from aidial_adapter_vertexai.chat.gemini.inputs import (
-    messages_to_gemini_conversation,
-)
-from aidial_adapter_vertexai.chat.gemini.processor import (
-    AttachmentProcessors,
-    exclusive_validator,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
     get_image_processor,
@@ -59,7 +59,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
             file_storage=file_storage,
         )
 
-        conversation = await messages_to_gemini_conversation(
+        conversation = await messages_to_conversation(
             conversation_factory, processors, tools, messages
         )
 

@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Callable, List, Optional, TypeVar
+from typing import Any, Callable, List, Mapping, Optional, TypeVar
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
@@ -43,11 +43,7 @@ from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
-
-blue_pic = Resource.from_base64(
-    type="image/png",
-    data_base64="iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGNkYPjPwMDAwMDAxAADCBYAG10BBdmz9y8AAAAASUVORK5CYII=",
-)
+from tests.utils.json import match_objects
 
 
 def sys(content: str) -> ChatCompletionSystemMessageParam:
@@ -151,8 +147,10 @@ def function_to_tool(function: FunctionDefinition) -> ChatCompletionToolParam:
 
 
 def sanitize_test_name(name: str) -> str:
-    name2 = "".join(c if c.isalnum() else "_" for c in name.lower())
-    return re.sub("_+", "_", name2)
+    name = "".join(
+        c if (c.isalnum() or c in "/:") else "_" for c in name.lower()
+    )
+    return re.sub("_+", "_", name)
 
 
 class ChatCompletionResult(BaseModel):
@@ -187,6 +185,11 @@ class ChatCompletionResult(BaseModel):
     def tool_calls(self) -> List[ChatCompletionMessageToolCall] | None:
         return self.message.tool_calls
 
+    def content_contains_all(self, matches: List[Any]) -> bool:
+        return all(
+            str(match).lower() in self.content.lower() for match in matches
+        )
+
     @property
     def attachments(self) -> List[Attachment] | None:
         if not hasattr(self.message, "custom_content"):
@@ -210,12 +213,13 @@ class ChatCompletionResult(BaseModel):
         ] or None
 
 
-async def tokenize(
+async def tokenize_request(
     http_client: httpx.AsyncClient,
     model_id: str,
     messages: List[ChatCompletionMessageParam],
     functions: List[Function] | None,
     tools: List[ChatCompletionToolParam] | None,
+    extra_headers: Mapping[str, str] = {},
 ) -> TokenizeResponse:
 
     chat_completion_request = {
@@ -225,18 +229,19 @@ async def tokenize(
         "functions": functions,
     }
 
-    tokenize_request = {
+    request = {
         "inputs": [{"type": "request", "value": chat_completion_request}],
     }
 
-    tokenize_response = await http_client.post(
+    resp = await http_client.post(
         f"openai/deployments/{model_id}/tokenize",
-        json=tokenize_request,
+        json=request,
+        headers=extra_headers,
     )
 
-    tokenize_response.raise_for_status()
+    resp.raise_for_status()
 
-    return TokenizeResponse.parse_obj(tokenize_response.json())
+    return TokenizeResponse.parse_obj(resp.json())
 
 
 async def chat_completion(
@@ -365,3 +370,34 @@ GET_WEATHER_FUNCTION: Function = {
 GET_WEATHER_TOOL: ChatCompletionToolParam = function_to_tool(
     GET_WEATHER_FUNCTION
 )
+
+
+def is_valid_function_call(
+    call: FunctionCall | None, expected_name: str, expected_args: Any
+) -> bool:
+    assert call is not None
+    assert call.name == expected_name
+    obj = json.loads(call.arguments)
+    match_objects(expected_args, obj)
+    return True
+
+
+def is_valid_tool_call(
+    calls: List[ChatCompletionMessageToolCall] | None,
+    tool_call_idx: int,
+    check_tool_id: Callable[[str], bool],
+    expected_name: str,
+    expected_args: dict,
+) -> bool:
+    assert calls is not None, "Tool calls are missing"
+    assert tool_call_idx < len(calls), f"Tool call #{tool_call_idx} is missing"
+
+    call = calls[tool_call_idx]
+
+    function = call.function
+    assert check_tool_id(call.id)
+    assert expected_name == function.name
+
+    actual_args = json.loads(function.arguments)
+    match_objects(expected_args, actual_args)
+    return True

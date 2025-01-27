@@ -1,10 +1,9 @@
 from contextlib import asynccontextmanager
 
-import vertexai
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
-from google.genai.client import Client as GenAIClient
 
+from aidial_adapter_vertexai.app_config import init_vertex_ai
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
@@ -16,16 +15,12 @@ from aidial_adapter_vertexai.dial_api.response import (
     ModelsResponse,
 )
 from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
-from aidial_adapter_vertexai.utils.env import get_env
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
-
-DEFAULT_REGION = get_env("DEFAULT_REGION")
-GCP_PROJECT_ID = get_env("GCP_PROJECT_ID")
 
 
 @asynccontextmanager
 async def lifespan(app: DIALApp):
-    vertexai.init(project=GCP_PROJECT_ID, location=DEFAULT_REGION)
+    init_vertex_ai()
     yield
 
 
@@ -52,15 +47,7 @@ async def models():
     return ModelsResponse(data=models)
 
 
-genai_client = GenAIClient(
-    vertexai=True, project=GCP_PROJECT_ID, location=DEFAULT_REGION
-)
-
-
 for deployment in ChatCompletionDeployment:
-    app.add_chat_completion(
-        deployment.get_model_id(),
-        VertexAIChatCompletion(client=genai_client),
-    )
+    app.add_chat_completion(deployment.get_model_id(), VertexAIChatCompletion())
 for deployment in EmbeddingsDeployment:
     app.add_embeddings(deployment.get_model_id(), VertexAIEmbeddings())

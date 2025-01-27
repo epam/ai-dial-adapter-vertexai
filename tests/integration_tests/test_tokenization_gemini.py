@@ -11,7 +11,8 @@ from openai.types.chat import (
 from openai.types.chat.completion_create_params import Function
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from aidial_adapter_vertexai.utils.resource import Resource
+from tests.integration_tests.constants import BLUE_PNG_PICTURE
+from tests.utils.dial import get_extra_headers
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
     GET_WEATHER_TOOL,
@@ -23,7 +24,7 @@ from tests.utils.openai import (
     function_response,
     sanitize_test_name,
     sys,
-    tokenize,
+    tokenize_request,
     tool_request,
     tool_response,
     user,
@@ -47,10 +48,10 @@ class TestCase:
     tools: List[ChatCompletionToolParam] | None
 
     def get_id(self):
-        return sanitize_test_name(f"{self.deployment.value} {self.name}")
+        return sanitize_test_name(f"{self.deployment.value}/{self.name}")
 
 
-deployments = [
+chat_deployments = [
     ChatCompletionDeployment.GEMINI_PRO_1,
     ChatCompletionDeployment.GEMINI_PRO_VISION_1,
     ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
@@ -72,11 +73,6 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
 def is_text_model(deployment: ChatCompletionDeployment) -> bool:
     return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
 
-
-blue_pic = Resource.from_base64(
-    type="image/png",
-    data_base64="iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGNkYPjPwMDAwMDAxAADCBYAG10BBdmz9y8AAAAASUVORK5CYII=",
-)
 
 # https://ai.google.dev/gemini-api/docs/tokens?lang=python#images
 GEMINI_TOKENS_PER_IMAGE = 258
@@ -151,9 +147,9 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
 
         for idx, user_message in enumerate(
             [
-                user_with_attachment_data(content, blue_pic),
-                user_with_attachment_url(content, blue_pic),
-                user_with_image_url(content, blue_pic),
+                user_with_attachment_data(content, BLUE_PNG_PICTURE),
+                user_with_attachment_url(content, BLUE_PNG_PICTURE),
+                user_with_image_url(content, BLUE_PNG_PICTURE),
             ]
         ):
             test_case(
@@ -218,17 +214,22 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
 
 @pytest.mark.parametrize(
     "test",
-    [test for deployment in deployments for test in get_test_cases(deployment)],
+    [
+        test
+        for deployment in chat_deployments
+        for test in get_test_cases(deployment)
+    ],
     ids=TestCase.get_id,
 )
 async def test_tokenize(test_http_client: httpx.AsyncClient, test: TestCase):
 
-    actual_output = await tokenize(
+    actual_output = await tokenize_request(
         test_http_client,
         test.deployment.value,
         test.messages,
         test.functions,
         test.tools,
+        extra_headers=get_extra_headers("us-central1"),
     )
 
     assert test.expected(

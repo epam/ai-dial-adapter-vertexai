@@ -1,6 +1,5 @@
 import json
-from abc import ABC, abstractmethod
-from typing import Generic, List, TypeVar, assert_never
+from typing import Generic, List, assert_never
 
 from aidial_sdk.chat_completion.request import Role
 from google.genai.types import Content as GenAIContent
@@ -8,35 +7,12 @@ from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
+from aidial_adapter_vertexai.chat.conversation.factory import (
+    ContentT,
+    ConversationFactoryBase,
+    PartT,
+)
 from aidial_adapter_vertexai.chat.errors import ValidationError
-
-PartT = TypeVar("PartT")
-ContentT = TypeVar("ContentT")
-GeminiConversationT = TypeVar("GeminiConversationT")
-
-
-class ConversationFactoryBase(
-    ABC, Generic[PartT, ContentT, GeminiConversationT]
-):
-    @abstractmethod
-    def create_multi_modal_part(self, data: bytes, mime_type: str) -> PartT: ...
-
-    @abstractmethod
-    def create_text_part(self, text: str) -> PartT: ...
-
-    @abstractmethod
-    def create_function_call_part(self, name: str, args: str) -> PartT: ...
-
-    @abstractmethod
-    def create_function_result_part(self, name: str, args: str) -> PartT: ...
-
-    @abstractmethod
-    def create_content(self, role: Role, parts: List[PartT]) -> ContentT: ...
-
-    @abstractmethod
-    def create_conversation(
-        self, system_instruction: List[PartT] | None, contents: List[ContentT]
-    ) -> GeminiConversationT: ...
 
 
 class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):
@@ -52,7 +28,7 @@ class GeminiConversation(GeminiConversationBase[Part, Content]):
 
 
 class ConversationFactory(
-    ConversationFactoryBase[Part, Content, GeminiConversation]
+    ConversationFactoryBase[Part, Content, GeminiConversation],
 ):
     @staticmethod
     def _to_gemini_role(role: Role) -> str:
@@ -74,7 +50,9 @@ class ConversationFactory(
     def create_text_part(self, text: str) -> Part:
         return Part.from_text(text)
 
-    def create_function_call_part(self, name: str, args: str) -> Part:
+    def create_function_call_part(
+        self, name: str, args: str, tool_call_id: str
+    ) -> Part:
         try:
             args = json.loads(args)
             return Part.from_dict(
@@ -85,7 +63,9 @@ class ConversationFactory(
                 "Function call arguments must be a valid JSON"
             )
 
-    def create_function_result_part(self, name: str, args: str) -> Part:
+    def create_function_result_part(
+        self, name: str, args: str, tool_call_id: str
+    ) -> Part:
         try:
             args = json.loads(args)
         except Exception:
@@ -112,7 +92,7 @@ class GeminiGenAIConversation(GeminiConversationBase[GenAIPart, GenAIContent]):
 
 
 class GenAIConversationFactory(
-    ConversationFactoryBase[GenAIPart, GenAIContent, GeminiGenAIConversation]
+    ConversationFactoryBase[GenAIPart, GenAIContent, GeminiGenAIConversation],
 ):
     @staticmethod
     def to_gemini_genai_role(role: Role) -> str:
@@ -134,7 +114,9 @@ class GenAIConversationFactory(
     def create_text_part(self, text: str) -> GenAIPart:
         return GenAIPart.from_text(text)
 
-    def create_function_call_part(self, name: str, args: str) -> GenAIPart:
+    def create_function_call_part(
+        self, name: str, args: str, tool_call_id: str
+    ) -> GenAIPart:
         try:
             return GenAIPart.from_function_call(name, json.loads(args))
         except Exception:
@@ -142,7 +124,9 @@ class GenAIConversationFactory(
                 "Function call arguments must be a valid JSON"
             )
 
-    def create_function_result_part(self, name: str, args: str) -> GenAIPart:
+    def create_function_result_part(
+        self, name: str, args: str, tool_call_id: str
+    ) -> GenAIPart:
         try:
             processed_args = json.loads(args)
         except Exception:

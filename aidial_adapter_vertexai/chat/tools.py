@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Dict, List, Literal, Self, Tuple, assert_never, cast
 
 from aidial_sdk.chat_completion import (
@@ -8,6 +9,8 @@ from aidial_sdk.chat_completion import (
     ToolChoice,
 )
 from aidial_sdk.chat_completion.request import AzureChatCompletionRequest, Tool
+from anthropic.types import ToolChoiceParam as ClaudeToolConfig
+from anthropic.types import ToolParam as ClaudeTool
 from google.genai.types import (
     FunctionCallingConfigDict as GenAIFunctionCallingConfig,
 )
@@ -29,6 +32,11 @@ from aidial_adapter_vertexai.chat.errors import ValidationError
 FunctionCallingConfig = GeminiToolConfig.FunctionCallingConfig
 
 
+class ToolsMode(Enum):
+    TOOLS = "TOOLS"
+    FUNCTIONS = "FUNCTIONS"
+
+
 class ToolsConfig(BaseModel):
     functions: List[Function]
     """
@@ -47,6 +55,13 @@ class ToolsConfig(BaseModel):
     Mapping from tool call IDs to corresponding tool names.
     None means that functions are used, not tools.
     """
+
+    @property
+    def tools_mode(self) -> ToolsMode:
+        if self.tool_ids is not None:
+            return ToolsMode.TOOLS
+        else:
+            return ToolsMode.FUNCTIONS
 
     @property
     def is_tool(self) -> bool:
@@ -152,6 +167,31 @@ class ToolsConfig(BaseModel):
         )
 
         return cls(functions=selected, required=required, tool_ids=tool_ids)
+
+    def to_claude_tools(self) -> List[ClaudeTool] | None:
+        if not self.functions:
+            return None
+
+        def _create_tool(func: Function) -> ClaudeTool:
+            tool: ClaudeTool = {
+                "name": func.name,
+                "input_schema": func.parameters
+                or {"type": "object", "properties": {}},
+            }
+            if func.description:
+                tool["description"] = func.description
+            return tool
+
+        return [_create_tool(func) for func in self.functions]
+
+    def to_claude_tool_config(self) -> ClaudeToolConfig | None:
+        if not self.functions:
+            return None
+
+        if self.required:
+            return {"type": "any"}
+        else:
+            return {"type": "auto"}
 
     def to_gemini_tools(self) -> List[GeminiTool]:
         if not self.functions:

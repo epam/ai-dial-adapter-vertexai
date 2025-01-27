@@ -1,36 +1,35 @@
 import asyncio
-import json
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, List
+from typing import Callable, List, Mapping
 
 import pytest
 from aidial_sdk.chat_completion.request import StaticFunction
 from openai import APIError, RateLimitError, UnprocessableEntityError
 from openai.types.chat import (
     ChatCompletionMessageParam,
-    ChatCompletionMessageToolCall,
     ChatCompletionToolParam,
 )
-from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.chat.completion_create_params import Function
 from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from tests.utils.json import match_objects
+from tests.integration_tests.constants import BLUE_PNG_PICTURE
+from tests.utils.dial import get_extra_headers
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
-    GET_WEATHER_TOOL,
     ChatCompletionResult,
     ai,
     ai_function,
     ai_tools,
-    blue_pic,
     chat_completion,
     for_all_choices,
     function_request,
     function_response,
+    function_to_tool,
+    is_valid_function_call,
+    is_valid_tool_call,
     sanitize_test_name,
     sys,
     tool_request,
@@ -40,35 +39,6 @@ from tests.utils.openai import (
     user_with_attachment_url,
     user_with_image_url,
 )
-
-
-def is_valid_function_call(
-    call: FunctionCall | None, expected_name: str, expected_args: Any
-) -> bool:
-    assert call is not None
-    assert call.name == expected_name
-    obj = json.loads(call.arguments)
-    match_objects(expected_args, obj)
-    return True
-
-
-def is_valid_tool_calls(
-    calls: List[ChatCompletionMessageToolCall] | None,
-    expected_id: str,
-    expected_name: str,
-    expected_args: Any,
-) -> bool:
-    assert calls is not None
-    assert len(calls) == 1
-    call = calls[0]
-
-    function_call = call.function
-    assert call.id == expected_id
-    assert function_call.name == expected_name
-
-    obj = json.loads(function_call.arguments)
-    match_objects(expected_args, obj)
-    return True
 
 
 class ExpectedException(BaseModel):
@@ -86,6 +56,7 @@ class TestCase:
     __test__ = False
 
     name: str
+    region: str | None
     deployment: ChatCompletionDeployment
     streaming: bool
 
@@ -102,27 +73,45 @@ class TestCase:
     static_tools: StaticToolsConfig | None
 
     def get_id(self):
-        max_tokens_str = f"maxt={self.max_tokens}" if self.max_tokens else ""
-        stop_sequence_str = f"stop={self.stop}" if self.stop else ""
-        n_str = f"n={self.n}" if self.n else ""
+        max_tokens_str = f"maxt:{self.max_tokens}" if self.max_tokens else None
+        stop_sequence_str = f"stop:{self.stop}" if self.stop else None
+        n_str = f"n:{self.n}" if self.n else None
         return sanitize_test_name(
-            f"{self.deployment.value} {self.streaming} {max_tokens_str} "
-            f"{stop_sequence_str} {n_str} {self.name}"
+            "/".join(
+                str(part)
+                for part in [
+                    self.deployment.value,
+                    self.streaming,
+                    max_tokens_str,
+                    stop_sequence_str,
+                    n_str,
+                    self.name,
+                ]
+                if part is not None
+            )
         )
 
 
-deployments = [
-    ChatCompletionDeployment.CHAT_BISON_1,
-    ChatCompletionDeployment.CHAT_BISON_2_32K,
-    ChatCompletionDeployment.CODECHAT_BISON_1,
-    ChatCompletionDeployment.GEMINI_PRO_1,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
-    ChatCompletionDeployment.GEMINI_PRO_VISION_1,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-    ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219,
-]
+_CENTRAL = "us-central1"
+_EAST = "us-east5"
+
+chat_deployments: Mapping[ChatCompletionDeployment, str] = {
+    ChatCompletionDeployment.CHAT_BISON_1: _CENTRAL,
+    ChatCompletionDeployment.CHAT_BISON_2_32K: _CENTRAL,
+    ChatCompletionDeployment.CODECHAT_BISON_1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_VISION_1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219: _CENTRAL,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
+}
 
 
 def is_codechat(deployment: ChatCompletionDeployment) -> bool:
@@ -139,6 +128,31 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
         ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_OPUS,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+        ChatCompletionDeployment.CLAUDE_3_HAIKU,
+    ]
+
+
+def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
+    return deployment in [
+        # ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        # ChatCompletionDeployment.CLAUDE_3_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_OPUS,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+    ]
+
+
+def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
+    return deployment in [
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_OPUS,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+        ChatCompletionDeployment.CLAUDE_3_HAIKU,
     ]
 
 
@@ -171,6 +185,13 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_VISION_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        # Upstream returns 'claude-3-5-haiku-20241022 does not support images.'
+        # ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        # This model hallucinates on a the test image
+        # ChatCompletionDeployment.CLAUDE_3_OPUS,
+        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+        ChatCompletionDeployment.CLAUDE_3_HAIKU,
     ]
 
 
@@ -189,7 +210,7 @@ def is_gemini_2(deployment: ChatCompletionDeployment) -> bool:
 
 
 def get_test_cases(
-    deployment: ChatCompletionDeployment, streaming: bool
+    deployment: ChatCompletionDeployment, region: str, streaming: bool
 ) -> List[TestCase]:
     test_cases: List[TestCase] = []
 
@@ -209,6 +230,7 @@ def get_test_cases(
         test_cases.append(
             TestCase(
                 name,
+                region,
                 deployment,
                 streaming,
                 messages,
@@ -288,18 +310,22 @@ def get_test_cases(
             ),
         )
 
+        def _check_max_tokens_1(r: ChatCompletionResult) -> bool:
+            expected_tokens = 0 if support_thinking(deployment) else 1
+            assert for_all_choices(
+                lambda text: len(text.split()) == expected_tokens
+            )(r)
+            assert r.usage is not None
+            assert r.usage.completion_tokens == expected_tokens
+            return True
+
         test_case(
             name="max tokens 1",
             max_tokens=1,
             messages=[user("tell me the full story of Pinocchio")],
-            expected=for_all_choices(
-                lambda s: (
-                    len(s.split()) == 1
-                    if not support_thinking(deployment)
-                    else len(s.split()) == 0
-                )
-            ),
+            expected=_check_max_tokens_1,
         )
+
         # Gemini 2.0 rate-limits always fail on such concurrency
         candidates_count = 5 if not is_gemini_2(deployment) else 2
         test_case(
@@ -335,9 +361,9 @@ def get_test_cases(
         content = "describe the image"
         for idx, user_message in enumerate(
             [
-                user_with_attachment_data(content, blue_pic),
-                user_with_attachment_url(content, blue_pic),
-                user_with_image_url(content, blue_pic),
+                user_with_attachment_data(content, BLUE_PNG_PICTURE),
+                user_with_attachment_url(content, BLUE_PNG_PICTURE),
+                user_with_image_url(content, BLUE_PNG_PICTURE),
             ]
         ):
             test_case(
@@ -348,57 +374,146 @@ def get_test_cases(
             )
 
     if supports_tools(deployment):
-        content = "What's the temperature in Glasgow in celsius?"
 
-        function_args_checker = {
-            "location": lambda s: "glasgow" in s.lower(),
-            "format": "celsius",
-        }
-
-        function_args = {"location": "Glasgow", "format": "celsius"}
-
-        name = GET_WEATHER_FUNCTION["name"]
-
-        # Functions
-        test_case(
-            name="weather function",
-            messages=[user(content)],
-            functions=[GET_WEATHER_FUNCTION],
-            expected=lambda s: is_valid_function_call(
-                s.function_call, name, function_args_checker
-            ),
+        city_config = (
+            [[("Glasgow", 15)], [("Glasgow", 15), ("London", 20)]]
+            if supports_parallel_tool_calls(deployment)
+            else [[("Glasgow", 15)]]
         )
 
-        function_req = ai_function(function_request(name, function_args))
-        function_resp = function_response(name, "15 celsius")
+        for cities in city_config:
+            function = GET_WEATHER_FUNCTION
+            tool = function_to_tool(function)
+            fun_name = function["name"]
 
-        test_case(
-            name="weather function followup",
-            messages=[user(content), function_req, function_resp],
-            functions=[GET_WEATHER_FUNCTION],
-            expected=lambda s: "15" in s.content.lower(),
-        )
+            city_names = [name for name, _ in cities]
+            city_temps = [temp for _, temp in cities]
 
-        # Tools
-        tool_call_id = f"{name}_1"
-        test_case(
-            name="weather tool",
-            messages=[user(content)],
-            tools=[GET_WEATHER_TOOL],
-            expected=lambda s: is_valid_tool_calls(
-                s.tool_calls, tool_call_id, name, function_args_checker
-            ),
-        )
+            query = f"What's the temperature in {' and in '.join(city_names)} in celsius?"
 
-        tool_req = ai_tools([tool_request(tool_call_id, name, function_args)])
-        tool_resp = tool_response(tool_call_id, "15 celsius")
+            init_messages = [
+                user("2+3=?"),
+                ai("5"),
+                user(query),
+            ]
 
-        test_case(
-            name="weather tool followup",
-            messages=[user(content), tool_req, tool_resp],
-            tools=[GET_WEATHER_TOOL],
-            expected=lambda s: "15" in s.content.lower(),
-        )
+            init_messages.insert(0, sys("act as a helpful assistant"))
+
+            def create_fun_args(city: str):
+                return {
+                    "location": city,
+                    "format": "celsius",
+                }
+
+            def check_fun_args(city: str):
+                return {
+                    "location": lambda s: city.lower() in s.lower(),
+                    "format": "celsius",
+                }
+
+            test_name_suffix = " ".join(city_names)
+
+            # Functions
+            test_case(
+                name=f"weather function {test_name_suffix}",
+                messages=init_messages,
+                functions=[function],
+                expected=lambda s, n=city_names[0]: is_valid_function_call(
+                    s.function_call, fun_name, check_fun_args(n)
+                ),
+            )
+
+            function_req = ai_function(
+                function_request(fun_name, create_fun_args(city_names[0]))
+            )
+            function_resp = function_response(
+                fun_name, f"{city_temps[0]} celsius"
+            )
+
+            if len(cities) == 1:
+                test_case(
+                    name=f"weather function followup {test_name_suffix}",
+                    messages=[
+                        *init_messages,
+                        function_req,
+                        function_resp,
+                    ],
+                    functions=[function],
+                    expected=lambda s, t=city_temps[0]: s.content_contains_all(
+                        [t]
+                    ),
+                )
+            else:
+                test_case(
+                    name=f"weather function followup {test_name_suffix}",
+                    messages=[
+                        *init_messages,
+                        function_req,
+                        function_resp,
+                    ],
+                    functions=[function],
+                    expected=lambda s, n=city_names[1]: is_valid_function_call(
+                        s.function_call, fun_name, check_fun_args(n)
+                    ),
+                )
+
+            # Tools
+            def create_tool_call_id(idx: int):
+                return f"{fun_name}_{idx+1}"
+
+            def check_tool_call_id(idx: int):
+                def _check(id: str) -> bool:
+                    return (
+                        f"{fun_name}_{idx+1}" == id
+                        if not supports_tool_call_ids(deployment)
+                        else True
+                    )
+
+                return _check
+
+            expected_city_names = (
+                city_names
+                if supports_parallel_tool_calls(deployment)
+                else city_names[:1]
+            )
+
+            test_case(
+                name=f"weather tool {test_name_suffix}",
+                messages=init_messages,
+                tools=[tool],
+                expected=lambda s, n=expected_city_names: all(
+                    is_valid_tool_call(
+                        s.tool_calls,
+                        idx,
+                        check_tool_call_id(idx),
+                        fun_name,
+                        check_fun_args(n[idx]),
+                    )
+                    for idx in range(len(n))
+                ),
+            )
+
+            tool_reqs = ai_tools(
+                [
+                    tool_request(
+                        create_tool_call_id(idx),
+                        fun_name,
+                        create_fun_args(name),
+                    )
+                    for idx, (name, _) in enumerate(cities)
+                ]
+            )
+            tool_resps = [
+                tool_response(create_tool_call_id(idx), f"{temp} celsius")
+                for idx, (_, temp) in enumerate(cities)
+            ]
+
+            test_case(
+                name=f"weather tool followup {test_name_suffix}",
+                messages=[*init_messages, tool_reqs, *tool_resps],
+                tools=[tool],
+                expected=lambda s, t=city_temps: s.content_contains_all(t),
+            )
 
     if supports_static_tools(deployment):
         test_case(
@@ -505,29 +620,33 @@ def get_test_cases(
     "test",
     [
         test
-        for deployment in deployments
+        for deployment, region in chat_deployments.items()
         for streaming in [False, True]
-        for test in get_test_cases(deployment, streaming)
+        for test in get_test_cases(deployment, region, streaming)
     ],
     ids=lambda test: test.get_id(),
 )
 async def test_chat_completion_openai(get_openai_client, test: TestCase):
-    client = get_openai_client(test.deployment.value)
+    client = get_openai_client(
+        test.deployment.value, get_extra_headers(test.region)
+    )
 
     async def run_chat_completion() -> ChatCompletionResult:
-        retries = 7
-        delay = 5
+        attempts = 7
+        delay = 1
 
         async def _retry_wait(
-            retries: int, delay: int, e: APIError | RateLimitError
+            is_last_attempt: bool, e: APIError | RateLimitError
         ):
-            if attempt < retries - 1:
-                delay *= 2
-                await asyncio.sleep(delay)
-            else:
+            if is_last_attempt:
                 raise e
 
-        for attempt in range(retries):
+            nonlocal delay
+            await asyncio.sleep(delay)
+            delay *= 2
+
+        for attempt in range(attempts):
+            is_last_attempt = attempt == attempts - 1
             try:
                 return await chat_completion(
                     client,
@@ -541,10 +660,10 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
                     test.static_tools,
                 )
             except RateLimitError as e:
-                await _retry_wait(retries, delay, e)
+                await _retry_wait(is_last_attempt, e)
             except APIError as e:
                 if e.code == "429":
-                    await _retry_wait(retries, delay, e)
+                    await _retry_wait(is_last_attempt, e)
                 else:
                     raise e
         raise RuntimeError("Failed to get a valid response")

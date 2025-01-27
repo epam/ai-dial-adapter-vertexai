@@ -1,5 +1,6 @@
 from functools import wraps
 
+import anthropic
 from aidial_sdk.exceptions import HTTPException as DialException
 from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
 from google.api_core.exceptions import (
@@ -12,6 +13,10 @@ from google.genai.errors import APIError
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
+
+
+def _get_exception_type(code: int) -> str:
+    return "invalid_request_error" if code < 500 else "internal_server_error"
 
 
 def to_dial_exception(e: Exception) -> DialException:
@@ -43,20 +48,28 @@ def to_dial_exception(e: Exception) -> DialException:
                 param="prompt",
             )
 
-        return InvalidRequestError(
-            f"Invalid argument: {str(e)}",
-        )
+        return InvalidRequestError(str(e))
 
     if isinstance(e, (GoogleAPICallError, APIError)):
         code = e.code or 500
+        message = e.message or str(e)
         return DialException(
             status_code=code,
-            type=(
-                "invalid_request_error"
-                if code < 500
-                else "internal_server_error"
-            ),
-            message=str(e),
+            type=_get_exception_type(code),
+            message=message,
+        )
+
+    if isinstance(e, anthropic.APIStatusError):
+        try:
+            message = e.body["error"]["message"]  # type: ignore
+        except Exception:
+            message = e.message
+
+        code = e.status_code
+        return DialException(
+            status_code=code,
+            type=_get_exception_type(code),
+            message=message,
         )
 
     if isinstance(e, ValidationError):

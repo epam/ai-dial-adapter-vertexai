@@ -7,10 +7,7 @@ from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 from vertexai.preview.generative_models import Tool as GeminiTool
 
-from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
-    ContentT,
-    PartT,
-)
+from aidial_adapter_vertexai.chat.conversation.factory import ContentT, PartT
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt

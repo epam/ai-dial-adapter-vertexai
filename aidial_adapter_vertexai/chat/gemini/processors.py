@@ -1,4 +1,4 @@
-from aidial_adapter_vertexai.chat.gemini.processor import (
+from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessor,
     InitValidator,
     max_count_validator,

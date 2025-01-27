@@ -15,6 +15,11 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 |Gemini 1.5 Flash|gemini-1.5-flash-[001\|002]|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
 |Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|
 |Gemini 1.0 Pro|gemini-pro|text-to-text|✅|✅|✅|
+|Claude 3 Opus|claude-3-opus@20240229|(text/image)-to-text|✅|✅|✅|
+|Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022|(text/image)-to-text|✅|✅|✅|
+|Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(text/image)-to-text|✅|✅|✅|
+|Claude 3.5 Haiku|claude-3-5-haiku@20241022|text-to-text|✅|✅|✅|
+|Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|
 |PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|
 |PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|
@@ -85,6 +90,31 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
+
+## Load balancing
+
+If you use DIAL Core load balancing mechanism, you can provide `extraData` upstream setting the region to use for a particular upstream:
+
+```json
+{
+  "upstreams": [
+    {
+      "extraData": {
+        "region": "us-central1"
+      }
+    },
+    {
+      "extraData": {
+        "region": "us-east5"
+      }
+    }
+  ]
+}
+```
+
+When the `region` isn't provided the default region from the environment variable `DEFAULT_REGION` is used.
+
+Limitation: the region configuration is only supported for Gemini 2.0 and Anthropic models.
 
 ### Docker
 
