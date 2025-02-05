@@ -5,6 +5,7 @@ from google.genai.types import (
     GenerateContentConfigDict as GenAIGenerationConfig,
 )
 from google.genai.types import Part as GenAIPart
+from typing_extensions import assert_never
 from vertexai.preview.generative_models import GenerationConfig
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
@@ -27,6 +28,9 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
         stop_sequences=params.stop,
         top_p=params.top_p,
         candidate_count=params.n,
+        seed=params.seed,
+        response_mime_type=_get_response_format(params),
+        response_schema=None,
     )
 
 
@@ -57,4 +61,19 @@ def create_genai_generation_config(
         top_p=params.top_p,
         candidate_count=params.n,
         tools=list(genai_tools) if genai_tools else None,
+        seed=params.seed,
+        response_mime_type=_get_response_format(params),
+        response_schema=None,
     )
+
+
+def _get_response_format(params: ModelParameters) -> str | None:
+    if resp_format := params.response_format:
+        match resp_format.type:
+            case "json_object":
+                return "application/json"
+            case "text":
+                return "text/plain"
+            case _:
+                assert_never(resp_format.type)
+    return None

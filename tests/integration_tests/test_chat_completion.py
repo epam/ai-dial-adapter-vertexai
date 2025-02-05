@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 from dataclasses import dataclass
 from typing import Callable, List, Mapping
@@ -71,6 +72,7 @@ class TestCase:
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
     static_tools: StaticToolsConfig | None
+    extra_body: dict | None
 
     def get_id(self):
         max_tokens_str = f"maxt:{self.max_tokens}" if self.max_tokens else None
@@ -119,6 +121,19 @@ def is_codechat(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CODECHAT_BISON_1,
         ChatCompletionDeployment.CODECHAT_BISON_2,
         ChatCompletionDeployment.CODECHAT_BISON_2_32K,
+    ]
+
+
+def supports_json_response_format(deployment: ChatCompletionDeployment) -> bool:
+    return deployment in [
+        ChatCompletionDeployment.GEMINI_PRO_1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
+        ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
+        ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+        ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
     ]
 
 
@@ -226,6 +241,7 @@ def get_test_cases(
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
         static_tools: StaticToolsConfig | None = None,
+        extra_body: dict | None = None,
     ) -> None:
         test_cases.append(
             TestCase(
@@ -241,6 +257,7 @@ def get_test_cases(
                 functions,
                 tools,
                 static_tools,
+                extra_body,
             )
         )
 
@@ -604,6 +621,7 @@ def get_test_cases(
                         and s.usage.total_tokens > 7000
                     ),
                 )
+
     if support_thinking(deployment):
         test_case(
             name="thinking",
@@ -613,6 +631,15 @@ def get_test_cases(
             and s.stages[0].name == "Thought Process"
             and "4" in s.content,
         )
+
+    if supports_json_response_format(deployment):
+        test_case(
+            name="json response format",
+            messages=[user("extract name and surname from 'John Doe'")],
+            extra_body={"response_format": {"type": "json_object"}},
+            expected=lambda s: isinstance(json.loads(s.content), dict),
+        )
+
     return test_cases
 
 
@@ -658,6 +685,7 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
                     test.functions,
                     test.tools,
                     test.static_tools,
+                    test.extra_body,
                 )
             except RateLimitError as e:
                 await _retry_wait(is_last_attempt, e)

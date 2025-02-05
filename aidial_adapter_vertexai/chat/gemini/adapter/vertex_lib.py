@@ -111,7 +111,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         params: ModelParameters | None = None,
         prompt: GeminiPrompt | None = None,
     ) -> GenerativeModel:
-        parameters = create_generation_config(params) if params else None
+        generation_config = create_generation_config(params) if params else None
 
         if prompt is not None:
             tools = prompt.to_gemini_tools() or None
@@ -127,7 +127,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
         return GenerativeModel(
             self.model_id,
-            generation_config=parameters,
+            generation_config=generation_config,
             tools=tools,
             tool_config=tool_config,
             system_instruction=system_instruction,
