@@ -104,16 +104,6 @@ class GeminiGenAIChatCompletionAdapter(
             prompt.system_instruction,
         )
 
-        if log.isEnabledFor(DEBUG):
-            msg = json_dumps_short(
-                {
-                    "model": self.model_id,
-                    "contents": list(prompt.contents),
-                    "config": generation_config,
-                }
-            )
-            log.debug(f"request: {msg}")
-
         if params.stream:
             async for chunk in self.client.aio.models.generate_content_stream(
                 model=self.model_id,
