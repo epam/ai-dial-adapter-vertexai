@@ -33,10 +33,11 @@ aiohttp = "^3.10.11"
 [tool.poetry.group.test.dependencies]
 pytest = "7.4.0"
 pytest-asyncio = "0.21.1"
-python-dotenv = "1.0.0"
-requests = "^2.32.2"
 pytest-dotenv = "^0.5.2"
 pytest-xdist = "^3.5.0"
+pytest-html = "^4.1.1"
+python-dotenv = "1.0.0"
+requests = "^2.32.2"
 asgi-lifespan = "^2.1.0"
 httpx = "^0.25.2"
 
