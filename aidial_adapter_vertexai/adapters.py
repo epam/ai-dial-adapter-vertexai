@@ -71,8 +71,7 @@ async def get_chat_completion_model(
             )
         case (
             ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
-            | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219
-            | ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206
+            | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
         ):
             return await GeminiGenAIChatCompletionAdapter.create(
                 storage, model_id, deployment, location=upstream_config.region

@@ -106,8 +106,7 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_PRO_VISION_1: _CENTRAL,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
@@ -132,7 +131,6 @@ def supports_json_response_format(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
-        ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
     ]
 
@@ -142,7 +140,6 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
         ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_OPUS,
@@ -179,7 +176,6 @@ def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
     ]
 
 
@@ -212,15 +208,14 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
 
 def support_thinking(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
     ]
 
 
 def is_gemini_2(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
     ]
 
 
