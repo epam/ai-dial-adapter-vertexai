@@ -2,13 +2,13 @@
 
 [[package]]
 name = "aidial-sdk"
-version = "0.16.0"
+version = "0.18.0"
 description = "Framework to create applications and model adapters for AI DIAL"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "aidial_sdk-0.16.0-py3-none-any.whl", hash = "sha256:76bfa50fd08bfabedd572f06974c68cca9dc18b5c38a8d00bf5d59e1f61cb2d9"},
-    {file = "aidial_sdk-0.16.0.tar.gz", hash = "sha256:eddb1f00949bd0e4263c18be03df7b80093ce8caf7e4ed46a550f3a790e01875"},
+    {file = "aidial_sdk-0.18.0-py3-none-any.whl", hash = "sha256:283a0c3c94af6c3ecd7dec31c5198199dc6276088fd85f68414fb37d2a1db12e"},
+    {file = "aidial_sdk-0.18.0.tar.gz", hash = "sha256:aedc73580f71a880146da732580faaa7a034db0038cc2c71be3c9254143aa7a4"},
 ]
 
 [package.dependencies]
@@ -2602,21 +2602,23 @@ image = ["Pillow (>=8.0.0)"]
 
 [[package]]
 name = "pyright"
-version = "1.1.324"
+version = "1.1.389"
 description = "Command line wrapper for pyright"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyright-1.1.324-py3-none-any.whl", hash = "sha256:0edb712afbbad474e347de12ca1bd9368aa85d3365a1c7b795012e48e6a65111"},
-    {file = "pyright-1.1.324.tar.gz", hash = "sha256:0c48e3bca3d081bba0dddd0c1f075aaa965c59bba691f7b9bd9d73a98e44e0cf"},
+    {file = "pyright-1.1.389-py3-none-any.whl", hash = "sha256:41e9620bba9254406dc1f621a88ceab5a88af4c826feb4f614d95691ed243a60"},
+    {file = "pyright-1.1.389.tar.gz", hash = "sha256:716bf8cc174ab8b4dcf6828c3298cac05c5ed775dda9910106a5dcfe4c7fe220"},
 ]
 
 [package.dependencies]
 nodeenv = ">=1.6.0"
+typing-extensions = ">=4.1"
 
 [package.extras]
-all = ["twine (>=3.4.1)"]
+all = ["nodejs-wheel-binaries", "twine (>=3.4.1)"]
 dev = ["twine (>=3.4.1)"]
+nodejs = ["nodejs-wheel-binaries"]
 
 [[package]]
 name = "pytest"
@@ -3276,4 +3278,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "4ca5563e65e5778014bb760c10e8ce9f99192698b27b5afa18b27c1780754778"
+content-hash = "0b98f938070d0f13cf199f547051cc46092fcfc52645609010ae8ed85ea94b42"
