@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List, Tuple
 
 from aidial_sdk.exceptions import InvalidRequestError
 from google.genai.types import (
@@ -22,6 +22,9 @@ def validate_n_parameter(params: ModelParameters) -> None:
 
 def create_generation_config(params: ModelParameters) -> GenerationConfig:
     validate_n_parameter(params)
+
+    response_mime_type, response_schema = _get_response_format(params)
+
     return GenerationConfig(
         max_output_tokens=params.max_tokens,
         temperature=params.temperature,
@@ -29,7 +32,8 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
         top_p=params.top_p,
         candidate_count=params.n,
         seed=params.seed,
-        response_mime_type=_get_response_format(params),
+        response_mime_type=response_mime_type,
+        response_schema=response_schema,
     )
 
 
@@ -50,6 +54,8 @@ def create_genai_generation_config(
     elif not static_tools.is_empty():
         genai_tools = static_tools.to_gemini_genai_tools()
 
+    response_mime_type, response_schema = _get_response_format(params)
+
     return GenAIGenerationConfig(
         system_instruction=(
             list(system_instruction) if system_instruction else None
@@ -61,17 +67,22 @@ def create_genai_generation_config(
         candidate_count=params.n,
         tools=list(genai_tools) if genai_tools else None,
         seed=params.seed,
-        response_mime_type=_get_response_format(params),
+        response_mime_type=response_mime_type,
+        response_schema=response_schema,
     )
 
 
-def _get_response_format(params: ModelParameters) -> str | None:
+def _get_response_format(
+    params: ModelParameters,
+) -> Tuple[str | None, Dict[str, Any] | None]:
     if resp_format := params.response_format:
         match resp_format.type:
-            case "json_object":
-                return "application/json"
             case "text":
-                return "text/plain"
+                return ("text/plain", None)
+            case "json_object":
+                return ("application/json", None)
+            case "json_schema":
+                return ("application/json", resp_format.json_schema.schema_)
             case _:
                 assert_never(resp_format.type)
-    return None
+    return (None, None)
