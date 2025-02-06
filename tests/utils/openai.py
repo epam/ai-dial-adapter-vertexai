@@ -254,6 +254,7 @@ async def chat_completion(
     functions: List[Function] | None,
     tools: List[ChatCompletionToolParam] | None,
     static_tools: StaticToolsConfig | None,
+    extra_body: dict | None = None,
 ) -> ChatCompletionResult:
     async def get_response() -> ChatCompletion:
         merged_tools = (
@@ -284,7 +285,8 @@ async def chat_completion(
             tools=tools or NOT_GIVEN,
             # Using extra_body to override tools, since openai
             # doesn't support static tools
-            extra_body=({"tools": merged_tools} if merged_tools else None),
+            extra_body=({"tools": merged_tools} if merged_tools else {})
+            | (extra_body or {}),
         )
 
         if isinstance(response, AsyncStream):

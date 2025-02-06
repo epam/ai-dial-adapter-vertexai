@@ -7,6 +7,7 @@ from aidial_sdk.chat_completion import (
     MessageContentPart,
     MessageContentTextPart,
     Request,
+    ResponseFormat,
 )
 from pydantic.v1 import BaseModel
 
@@ -24,6 +25,8 @@ class ModelParameters(BaseModel):
     logit_bias: Optional[Mapping[int, float]] = None
     max_prompt_tokens: Optional[int] = None
     stream: bool = False
+    response_format: Optional[ResponseFormat] = None
+    seed: Optional[int] = None
 
     @classmethod
     def create(cls, request: Request) -> "ModelParameters":
@@ -40,6 +43,8 @@ class ModelParameters(BaseModel):
             logit_bias=request.logit_bias,
             max_prompt_tokens=request.max_prompt_tokens,
             stream=request.stream,
+            response_format=request.response_format,
+            seed=request.seed,
         )
 
 

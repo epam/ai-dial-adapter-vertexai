@@ -103,6 +103,7 @@ class GeminiGenAIChatCompletionAdapter(
             prompt.static_tools,
             prompt.system_instruction,
         )
+
         if params.stream:
             async for chunk in self.client.aio.models.generate_content_stream(
                 model=self.model_id,
