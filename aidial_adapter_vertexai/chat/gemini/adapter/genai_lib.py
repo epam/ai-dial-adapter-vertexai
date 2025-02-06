@@ -83,9 +83,8 @@ class GeminiGenAIChatCompletionAdapter(
     ) -> GeminiGenAIPrompt | UserError:
         match self.deployment:
             case (
-                ChatCompletionDeployment.GEMINI_2_0_EXPERIMENTAL_1206
-                | ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
-                | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_1219
+                ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
+                | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
             ):
                 return await Gemini_2_Prompt.parse(
                     self.file_storage, tools, static_tools, messages
