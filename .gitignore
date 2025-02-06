@@ -8,4 +8,5 @@ secret
 dist
 .vscode/launch.json
 ~*
-.idea/
+*.html
+.idea
