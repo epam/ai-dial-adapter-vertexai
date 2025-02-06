@@ -123,7 +123,9 @@ def is_codechat(deployment: ChatCompletionDeployment) -> bool:
     ]
 
 
-def supports_json_response_format(deployment: ChatCompletionDeployment) -> bool:
+def supports_json_object_response_format(
+    deployment: ChatCompletionDeployment,
+) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
@@ -132,6 +134,16 @@ def supports_json_response_format(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+    ]
+
+
+def supports_json_schema_response_format(
+    deployment: ChatCompletionDeployment,
+) -> bool:
+    return supports_json_object_response_format(
+        deployment
+    ) and deployment not in [
+        ChatCompletionDeployment.GEMINI_PRO_1,
     ]
 
 
@@ -627,12 +639,38 @@ def get_test_cases(
             and "4" in s.content,
         )
 
-    if supports_json_response_format(deployment):
+    if supports_json_object_response_format(deployment):
         test_case(
-            name="json response format",
+            name="response format json object",
             messages=[user("extract name and surname from 'John Doe'")],
             extra_body={"response_format": {"type": "json_object"}},
             expected=lambda s: isinstance(json.loads(s.content), dict),
+        )
+
+    if supports_json_schema_response_format(deployment):
+        test_case(
+            name="response format json schema",
+            messages=[user("extract name and surname from 'John Doe'")],
+            extra_body={
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "Schema name",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "NameField": {"type": "string"},
+                                "SurnameField": {"type": "string"},
+                            },
+                        },
+                    },
+                }
+            },
+            expected=lambda s: json.loads(s.content)
+            == {
+                "NameField": "John",
+                "SurnameField": "Doe",
+            },
         )
 
     return test_cases

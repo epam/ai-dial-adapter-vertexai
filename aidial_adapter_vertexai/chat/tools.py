@@ -97,7 +97,7 @@ class ToolsConfig(BaseModel):
 
     @staticmethod
     def filter_functions(
-        function_call: Literal["auto", "none"] | FunctionChoice,
+        function_call: Literal["auto", "none", "required"] | FunctionChoice,
         functions: List[Function],
     ) -> Tuple[bool, List[Function]]:
         match function_call:
@@ -105,6 +105,8 @@ class ToolsConfig(BaseModel):
                 return False, []
             case "auto":
                 return False, functions
+            case "required":
+                return True, functions
             case FunctionChoice(name=name):
                 new_functions = [
                     func for func in functions if func.name == name
@@ -119,8 +121,8 @@ class ToolsConfig(BaseModel):
 
     @staticmethod
     def tool_choice_to_function_call(
-        tool_choice: Literal["auto", "none"] | ToolChoice | None,
-    ) -> Literal["auto", "none"] | FunctionChoice | None:
+        tool_choice: Literal["auto", "none", "required"] | ToolChoice | None,
+    ) -> Literal["auto", "none", "required"] | FunctionChoice | None:
         match tool_choice:
             case ToolChoice(function=FunctionChoice(name=name)):
                 return FunctionChoice(name=name)
