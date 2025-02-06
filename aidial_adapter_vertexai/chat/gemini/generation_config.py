@@ -30,7 +30,6 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
         candidate_count=params.n,
         seed=params.seed,
         response_mime_type=_get_response_format(params),
-        response_schema=None,
     )
 
 
@@ -63,7 +62,6 @@ def create_genai_generation_config(
         tools=list(genai_tools) if genai_tools else None,
         seed=params.seed,
         response_mime_type=_get_response_format(params),
-        response_schema=None,
     )
 
 
