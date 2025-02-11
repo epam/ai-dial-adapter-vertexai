@@ -85,6 +85,8 @@ class GeminiGenAIChatCompletionAdapter(
             case (
                 ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
                 | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
+                | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
+                | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
             ):
                 return await Gemini_2_Prompt.parse(
                     self.file_storage, tools, static_tools, messages
