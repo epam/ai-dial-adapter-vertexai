@@ -36,13 +36,17 @@ def google_search_grounding_tokens(
             #  $1.50 / 1 million tokens
             # So 0.035$ = (0.035 / 1.5) * 1M tokens = 23,333 tokens
             return 23_333
-        case ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP:
+        case (
+            ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
+            | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
+        ):
             # TODO: Add pricing, when it will be available.
             # Currently, while this models are in experimental mode, there is no pricing information.
             return 0
         case (
             ChatCompletionDeployment.GEMINI_PRO_VISION_1
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
+            | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
         ):
             raise RuntimeError("Gemini Pro Vision 1 does not support grounding")
 
