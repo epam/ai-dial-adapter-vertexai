@@ -62,7 +62,7 @@ def get_image_processor(
             "image/heif": "heif",
         },
         init_validator=seq_validators(
-            init_validator, max_count_validator(max_count)
+            init_validator, max_count_validator("image", max_count)
         ),
     )
 
@@ -134,6 +134,6 @@ def get_video_processor(
             "video/3gpp": "3gpp",
         },
         init_validator=seq_validators(
-            init_validator, max_count_validator(max_count)
+            init_validator, max_count_validator("video", max_count)
         ),
     )
