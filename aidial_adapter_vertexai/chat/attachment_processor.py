@@ -95,10 +95,10 @@ class AttachmentProcessor(BaseModel):
                 f"Failed to process {dial_resource.entity_name}: {str(e)}"
             )
             if isinstance(e, ResourceValidationError):
-                # Errors specific for a particular resource
+                # Errors specific to a particular resource
                 return e.message
             elif isinstance(e, UserError):
-                # Errors not specific for any particular resource
+                # Errors not specific to any particular resource
                 # typically raised by validators
                 raise e
             else:
