@@ -189,7 +189,7 @@ async def test_gemini_pdf_page_overflow_for_document(get_openai_client):
     assert isinstance(exc_info.value, UnprocessableEntityError)
 
     error = exc_info.value.response.json()["error"]
-    expected_message = "The following files failed to process:\n1. data attachment: the number of pages in the document exceeds the limit (1000)"
+    expected_message = "The following files failed to process:\n1. data attachment: the number of pages in the document (2000) exceeds the limit (1000)"
     assert error["message"] == expected_message
     assert error["display_message"] == expected_message
 

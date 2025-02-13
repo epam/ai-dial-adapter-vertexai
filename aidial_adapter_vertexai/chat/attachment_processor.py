@@ -260,7 +260,7 @@ def max_pdf_page_count_validator(
 
         if limit_per_document is not None and pages > limit_per_document:
             raise ResourceValidationError(
-                f"The number of pages in the document exceeds the limit ({limit_per_document})"
+                f"The number of pages in the document ({pages}) exceeds the limit ({limit_per_document})"
             )
 
         if limit_per_request is not None and total_pages > limit_per_request:
