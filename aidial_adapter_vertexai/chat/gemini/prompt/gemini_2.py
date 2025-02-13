@@ -49,7 +49,10 @@ class Gemini_2_Prompt(GeminiGenAIPrompt):
             processors=[
                 get_plain_text_processor(),
                 get_image_processor(3000),
-                get_pdf_processor(300),
+                get_pdf_processor(
+                    page_limit_per_request=3000,
+                    page_limit_per_document=1000,
+                ),
                 get_video_processor(10),
                 get_audio_processor(),
             ],

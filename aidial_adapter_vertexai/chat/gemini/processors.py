@@ -91,16 +91,22 @@ def get_audio_processor(
 
 # PDF processing
 # 1.0: max number of PDF pages: 16
-# 1.5: max number of PDF pages: 300
+# 1.5: max number of PDF pages: 1000
 # The maximum file size for a PDF is 50MB (not checked).
 # PDF pages are treated as individual images.
 def get_pdf_processor(
-    max_page_count: int, init_validator: InitValidator | None = None
+    *,
+    page_limit_per_document: int | None = None,
+    page_limit_per_request: int | None = None,
+    init_validator: InitValidator | None = None,
 ) -> AttachmentProcessor:
     return AttachmentProcessor(
         file_types={"application/pdf": "pdf"},
         init_validator=init_validator,
-        post_validator=max_pdf_page_count_validator(max_page_count),
+        post_validator=max_pdf_page_count_validator(
+            limit_per_request=page_limit_per_request,
+            limit_per_document=page_limit_per_document,
+        ),
     )
 
 

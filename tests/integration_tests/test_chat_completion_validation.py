@@ -172,17 +172,13 @@ async def test_imagen_content_filtering(get_openai_client):
     )
 
 
-async def test_gemini_pdf_page_overflow(get_openai_client):
+async def test_gemini_pdf_page_overflow_for_document(get_openai_client):
     client = get_openai_client(ChatCompletionDeployment.GEMINI_PRO_1_5_V2.value)
 
-    pdf_document = Resource(
-        type="application/pdf", data=gen_pdf(["a"] * 10_000)
-    )
+    doc = Resource(type="application/pdf", data=gen_pdf(["a"] * 2_000))
 
     messages: List[ChatCompletionMessageParam] = [
-        user_with_attachment_data(
-            "describe the content of the attached PDF", pdf_document
-        )
+        user_with_attachment_data("test", doc)
     ]
 
     with pytest.raises(Exception) as exc_info:
@@ -193,6 +189,30 @@ async def test_gemini_pdf_page_overflow(get_openai_client):
     assert isinstance(exc_info.value, UnprocessableEntityError)
 
     error = exc_info.value.response.json()["error"]
-    expected_message = "The total number of PDF pages exceeds the limit (300)"
+    expected_message = "The following files failed to process:\n1. data attachment: the number of pages in the document exceeds the limit (1000)"
+    assert error["message"] == expected_message
+    assert error["display_message"] == expected_message
+
+
+async def test_gemini_pdf_page_overflow_for_request(get_openai_client):
+    client = get_openai_client(ChatCompletionDeployment.GEMINI_PRO_1_5_V2.value)
+
+    doc = Resource(type="application/pdf", data=gen_pdf(["a"] * 1_000))
+
+    messages: List[ChatCompletionMessageParam] = [
+        user_with_attachment_data("test", doc, doc, doc, doc)
+    ]
+
+    with pytest.raises(Exception) as exc_info:
+        await chat_completion(
+            client, messages, False, None, None, None, None, None, None
+        )
+
+    assert isinstance(exc_info.value, UnprocessableEntityError)
+
+    error = exc_info.value.response.json()["error"]
+    expected_message = (
+        "The total number of pages in PDF documents exceeds the limit (3000)"
+    )
     assert error["message"] == expected_message
     assert error["display_message"] == expected_message

@@ -239,22 +239,33 @@ def max_count_validator(category: str, limit: int) -> InitValidator:
     return validator
 
 
-def max_pdf_page_count_validator(limit: int) -> PostValidator:
-    count = 0
+def max_pdf_page_count_validator(
+    limit_per_request: int | None,
+    limit_per_document: int | None,
+) -> PostValidator:
+    total_pages = 0
 
     async def validator(resource: Resource):
-        nonlocal count
+        if limit_per_document is None and limit_per_request is None:
+            return
+
+        nonlocal total_pages
         try:
             pages = await get_pdf_page_count(resource.data)
             log.debug(f"PDF page count: {pages}")
-            count += pages
+            total_pages += pages
         except Exception:
             log.exception("Failed to get PDF page count")
             raise ResourceValidationError("Failed to get PDF page count")
 
-        if count > limit:
+        if limit_per_document is not None and pages > limit_per_document:
+            raise ResourceValidationError(
+                f"The number of pages in the document exceeds the limit ({limit_per_document})"
+            )
+
+        if limit_per_request is not None and total_pages > limit_per_request:
             raise UserError(
-                f"The total number of PDF pages exceeds the limit ({limit})"
+                f"The total number of pages in PDF documents exceeds the limit ({limit_per_request})"
             )
 
     return validator
