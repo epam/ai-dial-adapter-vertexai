@@ -53,7 +53,11 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
             processors=[
                 get_plain_text_processor(),
                 get_image_processor(16, exclusive("image")),
-                get_pdf_processor(16, exclusive("pdf")),
+                get_pdf_processor(
+                    page_limit_per_request=16,
+                    page_limit_per_document=16,
+                    init_validator=exclusive("pdf"),
+                ),
                 get_video_processor(1, exclusive("video")),
             ],
             file_storage=file_storage,
