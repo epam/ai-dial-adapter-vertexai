@@ -73,14 +73,14 @@ def user(
 
 
 def user_with_attachment_data(
-    content: str, resource: Resource
+    content: str, *resource: Resource
 ) -> ChatCompletionUserMessageParam:
     return {
         "role": "user",
         "content": content,
         "custom_content": {  # type: ignore
             "attachments": [
-                {"type": resource.type, "data": resource.data_base64}
+                {"type": r.type, "data": r.data_base64} for r in resource
             ]
         },
     }

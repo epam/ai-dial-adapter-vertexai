@@ -27,7 +27,7 @@ from vertexai.preview.generative_models import Part
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
 )
-from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import PartT
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
@@ -92,11 +92,18 @@ class AttachmentProcessor(BaseModel):
 
         except Exception as e:
             log.error(
-                f"Failed to download {dial_resource.entity_name}: {str(e)}"
+                f"Failed to process {dial_resource.entity_name}: {str(e)}"
             )
             if isinstance(e, ResourceValidationError):
+                # Errors specific to a particular resource
                 return e.message
-            return f"Failed to download {dial_resource.entity_name}"
+            elif isinstance(e, UserError):
+                # Errors not specific to any particular resource
+                # typically raised by validators
+                raise e
+            else:
+                # Unexpected runtime exceptions
+                return f"Failed to process {dial_resource.entity_name}"
 
 
 @dataclass(order=True, frozen=True)
@@ -153,7 +160,7 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
         self, dial_resource: DialResource
     ) -> Resource | None:
         if not self.processors:
-            raise ValidationError("The attachments aren't supported")
+            raise UserError("The attachments aren't supported")
 
         for processor in self.processors:
             resource = await processor.process(self.file_storage, dial_resource)
@@ -218,36 +225,47 @@ class AttachmentProcessorsGenAI(AttachmentProcessorsBase[GenAIPart]):
     pass
 
 
-def max_count_validator(limit: int) -> InitValidator:
+def max_count_validator(category: str, limit: int) -> InitValidator:
     count = 0
 
     async def validator():
         nonlocal count
         count += 1
         if count > limit:
-            raise ValidationError(
-                f"The number of files exceeds the limit ({limit})"
+            raise UserError(
+                f"The number of {category} files exceeds the limit ({limit})"
             )
 
     return validator
 
 
-def max_pdf_page_count_validator(limit: int) -> PostValidator:
-    count = 0
+def max_pdf_page_count_validator(
+    limit_per_request: int | None,
+    limit_per_document: int | None,
+) -> PostValidator:
+    total_pages = 0
 
     async def validator(resource: Resource):
-        nonlocal count
+        if limit_per_document is None and limit_per_request is None:
+            return
+
+        nonlocal total_pages
         try:
             pages = await get_pdf_page_count(resource.data)
             log.debug(f"PDF page count: {pages}")
-            count += pages
+            total_pages += pages
         except Exception:
             log.exception("Failed to get PDF page count")
-            raise ValidationError("Failed to get PDF page count")
+            raise ResourceValidationError("Failed to get PDF page count")
 
-        if count > limit:
-            raise ValidationError(
-                f"The total number of PDF pages exceeds the limit ({limit})"
+        if limit_per_document is not None and pages > limit_per_document:
+            raise ResourceValidationError(
+                f"The number of pages in the document ({pages}) exceeds the limit ({limit_per_document})"
+            )
+
+        if limit_per_request is not None and total_pages > limit_per_request:
+            raise UserError(
+                f"The total number of pages in PDF documents exceeds the limit ({limit_per_request})"
             )
 
     return validator
@@ -274,9 +292,8 @@ def exclusive_validator() -> Callable[[str], InitValidator]:
             if first is None:
                 first = name
             elif first != name:
-                raise ValidationError(
-                    f"The document type is {name!r}. "
-                    f"However, one of the documents processed earlier was of {first!r} type. "
+                raise UserError(
+                    f"Found documents of types {name!r} and {first!r}. "
                     "Only one type of document is supported at a time."
                 )
 
