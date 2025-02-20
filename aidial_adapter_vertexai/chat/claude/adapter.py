@@ -19,6 +19,7 @@ from anthropic.types import (
 )
 from typing_extensions import override
 
+from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.app_config import get_anthropic_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
@@ -52,32 +53,31 @@ from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 
 
 class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
-    deployment: ClaudeDeployment
+    deployment: AdapterDeployment[ClaudeDeployment]
     client: AsyncAnthropicVertex
 
     def __init__(
         self,
         file_storage: FileStorage | None,
-        model_id: str,
-        deployment: ClaudeDeployment,
+        deployment: AdapterDeployment[ClaudeDeployment],
         client: AsyncAnthropicVertex,
     ):
         self.file_storage = file_storage
-        self.model_id = model_id
         self.deployment = deployment
         self.client = client
+
+    @property
+    def model_id(self) -> str:
+        return self.deployment.upstream_deployment_id
 
     @classmethod
     async def create(
         cls,
         file_storage: FileStorage | None,
-        model_id: str,
-        deployment: ClaudeDeployment,
+        deployment: AdapterDeployment[ClaudeDeployment],
         region: str,
     ) -> "ClaudeChatCompletionAdapter":
-        return cls(
-            file_storage, model_id, deployment, get_anthropic_client(region)
-        )
+        return cls(file_storage, deployment, get_anthropic_client(region))
 
     @override
     async def parse_prompt(
@@ -88,7 +88,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     ) -> ClaudePrompt | UserError:
 
         static_tools.not_supported()
-        match self.deployment:
+        match self.deployment.reference_deployment_id:
             case (
                 ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2
                 | ChatCompletionDeployment.CLAUDE_3_OPUS

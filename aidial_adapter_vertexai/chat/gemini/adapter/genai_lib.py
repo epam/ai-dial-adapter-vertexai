@@ -9,6 +9,7 @@ from google.genai.types import (
 )
 from typing_extensions import override
 
+from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.app_config import get_genai_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
@@ -47,18 +48,16 @@ from aidial_adapter_vertexai.utils.timer import Timer
 class GeminiGenAIChatCompletionAdapter(
     ChatCompletionAdapter[GeminiGenAIPrompt]
 ):
-    deployment: Gemini2Deployment
+    deployment: AdapterDeployment[Gemini2Deployment]
     client: GenAIClient
 
     def __init__(
         self,
         file_storage: Optional[FileStorage],
-        model_id: str,
-        deployment: Gemini2Deployment,
+        deployment: AdapterDeployment[Gemini2Deployment],
         client: GenAIClient,
     ):
         self.file_storage = file_storage
-        self.model_id = model_id
         self.deployment = deployment
         self.client = client
 
@@ -66,13 +65,14 @@ class GeminiGenAIChatCompletionAdapter(
     async def create(
         cls,
         file_storage: FileStorage | None,
-        model_id: str,
-        deployment: Gemini2Deployment,
+        deployment: AdapterDeployment[Gemini2Deployment],
         location: str,
     ) -> "GeminiGenAIChatCompletionAdapter":
-        return cls(
-            file_storage, model_id, deployment, get_genai_client(location)
-        )
+        return cls(file_storage, deployment, get_genai_client(location))
+
+    @property
+    def model_id(self) -> str:
+        return self.deployment.upstream_deployment_id
 
     @override
     async def parse_prompt(
@@ -81,7 +81,7 @@ class GeminiGenAIChatCompletionAdapter(
         static_tools: StaticToolsConfig,
         messages: List[Message],
     ) -> GeminiGenAIPrompt | UserError:
-        match self.deployment:
+        match self.deployment.reference_deployment_id:
             case (
                 ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
                 | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
@@ -187,7 +187,7 @@ class GeminiGenAIChatCompletionAdapter(
             await set_usage(
                 usage_metadata,
                 consumer,
-                self.deployment,
+                self.deployment.reference_deployment_id,
                 is_grounding_added,
             )
 

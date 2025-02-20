@@ -11,6 +11,7 @@ from vertexai.preview.generative_models import (
     Part,
 )
 
+from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -64,17 +65,19 @@ def _get_candidate_text_safe(candidate: Candidate) -> str | None:
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
-    deployment: GeminiDeployment
+    deployment: AdapterDeployment[GeminiDeployment]
 
     def __init__(
         self,
         file_storage: Optional[FileStorage],
-        model_id: str,
-        deployment: GeminiDeployment,
+        deployment: AdapterDeployment[GeminiDeployment],
     ):
         self.file_storage = file_storage
-        self.model_id = model_id
         self.deployment = deployment
+
+    @property
+    def model_id(self) -> str:
+        return self.deployment.upstream_deployment_id
 
     @override
     async def parse_prompt(
@@ -83,7 +86,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         static_tools: StaticToolsConfig,
         messages: List[Message],
     ) -> GeminiPrompt | UserError:
-        match self.deployment:
+        match self.deployment.reference_deployment_id:
             case ChatCompletionDeployment.GEMINI_PRO_1:
                 return await Gemini_1_0_Pro_Prompt.parse(
                     tools, static_tools, messages
@@ -190,7 +193,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             await set_usage(
                 usage_metadata,
                 consumer,
-                self.deployment,
+                self.deployment.reference_deployment_id,
                 is_grounding_added,
             )
 
@@ -246,7 +249,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def create(
         cls,
         file_storage: Optional[FileStorage],
-        model_id: str,
-        deployment: GeminiDeployment,
+        deployment: AdapterDeployment[GeminiDeployment],
     ) -> "GeminiChatCompletionAdapter":
-        return cls(file_storage, model_id, deployment)
+        return cls(file_storage, deployment)
