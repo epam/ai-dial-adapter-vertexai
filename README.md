@@ -91,6 +91,46 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
+|COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#running-unsupported-vertexai-models-in-the-compatibility-mode) section.|
+
+## Running unsupported VertexAI models in the compatibility mode
+
+The Adapter supports a predefined list of VertexAI deployments. The [Supported models](#supported-models) section lists the models. These models could be accessed via `/openai/deployments/{deployment_name}/(chat_completions|embeddings)` endpoints. The Adapter won't recognize any other deployment name and will result in 404 error.
+
+Now, suppose VertexAI has just released a new version of a model, e.g. `gemini-2.0-flash-006` which is a better version of an older `gemini-2.0-flash-001` model.
+
+Immediately after the release, the former model is **unsupported** by the Adapter, but the latter is **supported**.
+Therefore, the request to `openai/deployments/gemini-2.0-flash-006/chat/completions` will result in 404 error.
+
+It will take some time for the Adapter to catch up with VertexAI - support the v6 model and publish the release with the fix.
+
+What to do in the meantime? Presumably, the v6 model is backward compatible with v1, so we may try to run v6 in **the compatibility mode** - that is to convince the Adapter to process v6 request as if it's v1 request with the only difference that the final upstream request to AWS Bedrock will be to v6 and not v1.
+
+The `COMPATIBILITY_MAPPING` env variable enables exactly this scenario.
+
+When it's defined like this:
+
+```json
+COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "gemini-2.0-flash-001"}
+```
+
+the Adapter will be able to handle requests to the `gemini-2.0-flash-006` deployment.
+The requests will be processed by the same pipeline as `gemini-2.0-flash-001`, but the call to AWS Bedrock will be done to `gemini-2.0-flash-006` deployment name.
+
+Naturally, this will only work if the APIs of v1 and v6 deployments are compatible:
+
+1. The requests utilizing the modalities supported by both v1 and v6 will work just fine.
+2. However, the requests with modalities that are supported by v6 and aren't supported by v1, won't be processed correctly. You will have to wait until the Adapter supports the v6 deployment natively.
+
+When a version of the Adapter supporting the v6 model is released, you may migrate to it and safely remove the entry from the `COMPATIBILITY_MAPPING` dictionary.
+
+Note that a mapping such as this one would be ineffectual:
+
+```json
+COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "imagegeneration@005"}
+```
+
+since the APIs and capabilities of these two models are drastically different.
 
 ## Load balancing
 
@@ -113,9 +153,10 @@ If you use DIAL Core load balancing mechanism, you can provide `extraData` upstr
 }
 ```
 
-When the `region` isn't provided the default region from the environment variable `DEFAULT_REGION` is used.
+The default region from defined by the environment variable `DEFAULT_REGION` is used when the `extraData.region` isn't provided.
 
-Limitation: the region configuration is only supported for Gemini 2.0 and Anthropic models.
+> [!NOTE]
+> The region configuration is only supported for Gemini 2.0 and Anthropic models.
 
 ### Docker
 
