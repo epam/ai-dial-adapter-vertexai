@@ -106,6 +106,7 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_PRO_VISION_1: _CENTRAL,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_001: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
@@ -136,6 +137,7 @@ def supports_json_object_response_format(
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
     ]
 
 
@@ -154,6 +156,7 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
         ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
@@ -191,6 +194,7 @@ def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
     ]
 
 
@@ -215,6 +219,7 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
         # Upstream returns 'claude-3-5-haiku-20241022 does not support images.'
         # ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
@@ -234,7 +239,10 @@ def support_thinking(deployment: ChatCompletionDeployment) -> bool:
 def is_gemini_2(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
+        ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
     ]
 
 
@@ -407,9 +415,12 @@ def get_test_cases(
     if supports_tools(deployment):
 
         city_config = (
-            [[("Glasgow", 15)], [("Glasgow", 15), ("London", 20)]]
+            [
+                [("Glasgow", "Scotland", 15)],
+                [("Glasgow", "Scotland", 15), ("London", "England", 20)],
+            ]
             if supports_parallel_tool_calls(deployment)
-            else [[("Glasgow", 15)]]
+            else [[("Glasgow", "Scotland", 15)]]
         )
 
         for cities in city_config:
@@ -417,10 +428,16 @@ def get_test_cases(
             tool = function_to_tool(function)
             fun_name = function["name"]
 
-            city_names = [name for name, _ in cities]
-            city_temps = [temp for _, temp in cities]
+            city_names = [name for name, _, _ in cities]
+            city_countries = [country for _, country, _ in cities]
+            city_temps = [temp for _, _, temp in cities]
 
-            query = f"What's the temperature in {' and in '.join(city_names)} in celsius?"
+            location_queries = [
+                f"{name} in {country}"
+                for name, country in zip(city_names, city_countries)
+            ]
+
+            query = f"What's the temperature in city of {' and in '.join(location_queries)} in celsius?"
 
             init_messages = [
                 user("2+3=?"),
@@ -531,12 +548,12 @@ def get_test_cases(
                         fun_name,
                         create_fun_args(name),
                     )
-                    for idx, (name, _) in enumerate(cities)
+                    for idx, (name, _, _) in enumerate(cities)
                 ]
             )
             tool_resps = [
                 tool_response(create_tool_call_id(idx), f"{temp} celsius")
-                for idx, (_, temp) in enumerate(cities)
+                for idx, (_, _, temp) in enumerate(cities)
             ]
 
             test_case(

@@ -38,6 +38,7 @@ def google_search_grounding_tokens(
             return 23_333
         case (
             ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
+            | ChatCompletionDeployment.GEMINI_2_0_FLASH_001
             | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
         ):
             # TODO: Add pricing, when it will be available.
