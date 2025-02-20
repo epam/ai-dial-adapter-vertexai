@@ -82,7 +82,3 @@ TextEmbeddingDeployment = Literal[
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
     EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
 ]
-
-MultiModelEmbeddingDeployment = Literal[
-    EmbeddingsDeployment.MULTI_MODAL_EMBEDDING_1
-]
