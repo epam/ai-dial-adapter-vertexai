@@ -76,6 +76,7 @@ async def get_chat_completion_model(
             )
         case (
             ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
+            | ChatCompletionDeployment.GEMINI_2_0_FLASH_001
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
             | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
