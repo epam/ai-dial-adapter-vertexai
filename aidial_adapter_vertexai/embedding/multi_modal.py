@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from logging import DEBUG
 from typing import AsyncIterator, Callable, List, Tuple
 
@@ -174,6 +175,7 @@ async def get_requests(
     )
 
 
+@dataclass
 class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
     model_id: str
     model: MultiModalEmbeddingModel

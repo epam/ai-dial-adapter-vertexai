@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from logging import DEBUG
 from typing import Dict, List, Optional, Tuple
 
@@ -156,6 +157,7 @@ async def get_embedding_inputs(
     return [input async for input in iterator]
 
 
+@dataclass
 class TextEmbeddingsAdapter(EmbeddingsAdapter):
     deployment: AdapterDeployment[TextEmbeddingDeployment]
     model: TextEmbeddingModel
