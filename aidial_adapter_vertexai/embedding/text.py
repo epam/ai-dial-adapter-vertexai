@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from logging import DEBUG
 from typing import Dict, List, Optional, Tuple
 
@@ -6,8 +7,12 @@ from aidial_sdk.embeddings.request import EmbeddingsRequest
 from pydantic.v1 import BaseModel
 from vertexai.language_models import TextEmbeddingInput
 
+from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
+from aidial_adapter_vertexai.deployments import (
+    EmbeddingsDeployment,
+    TextEmbeddingDeployment,
+)
 from aidial_adapter_vertexai.dial_api.embedding_inputs import (
     EMPTY_INPUT_LIST_ERROR,
     collect_embedding_inputs_without_attachments,
@@ -39,7 +44,7 @@ class ModelSpec(BaseModel):
     supports_dimensions: bool
 
 
-specs: Dict[str, ModelSpec] = {
+specs: Dict[TextEmbeddingDeployment, ModelSpec] = {
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1: ModelSpec(
         supports_type=False,
         supports_instr=False,
@@ -152,22 +157,27 @@ async def get_embedding_inputs(
     return [input async for input in iterator]
 
 
+@dataclass
 class TextEmbeddingsAdapter(EmbeddingsAdapter):
-    model_id: str
+    deployment: AdapterDeployment[TextEmbeddingDeployment]
     model: TextEmbeddingModel
 
     @classmethod
-    async def create(cls, model_id: str) -> "EmbeddingsAdapter":
-        model = await get_text_embedding_model(model_id)
-        return cls(model_id=model_id, model=model)
+    async def create(
+        cls, deployment: AdapterDeployment[TextEmbeddingDeployment]
+    ) -> "EmbeddingsAdapter":
+        model = await get_text_embedding_model(
+            deployment.upstream_deployment_id
+        )
+        return cls(deployment=deployment, model=model)
 
     async def embeddings(
         self, request: EmbeddingsRequest
     ) -> EmbeddingsResponse:
-        spec = specs.get(self.model_id)
+        spec = specs.get(self.deployment.reference_deployment_id)
         if spec is None:
             raise RuntimeError(
-                f"Can't find the model {self.model_id!r} in the specs"
+                f"Can't find the model {self.deployment!r} in the specs"
             )
 
         validate_request(spec, request)
@@ -185,7 +195,7 @@ class TextEmbeddingsAdapter(EmbeddingsAdapter):
         )
 
         return make_embeddings_response(
-            model=self.model_id,
+            model=self.deployment.upstream_deployment_id,
             embeddings=embeddings,
             tokens=tokens,
         )

@@ -23,6 +23,9 @@ from aidial_sdk.deployment.truncate_prompt import (
 from aidial_sdk.exceptions import ResourceNotFoundError
 from typing_extensions import override
 
+from aidial_adapter_vertexai.adapter_deployments import (
+    AdapterChatCompletionDeployment,
+)
 from aidial_adapter_vertexai.adapters import get_chat_completion_model
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
@@ -32,7 +35,6 @@ from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
@@ -42,13 +44,17 @@ from aidial_adapter_vertexai.utils.not_implemented import is_implemented
 
 
 class VertexAIChatCompletion(ChatCompletion):
+    deployment: AdapterChatCompletionDeployment
+
+    def __init__(self, deployment: AdapterChatCompletionDeployment) -> None:
+        self.deployment = deployment
 
     async def _get_model(
         self, request: FromRequestDeploymentMixin
     ) -> ChatCompletionAdapter:
         return await get_chat_completion_model(
-            deployment=ChatCompletionDeployment(request.deployment_id),
             api_key=request.api_key,
+            deployment=self.deployment,
             upstream_config=UpstreamConfig.from_request(request),
         )
 

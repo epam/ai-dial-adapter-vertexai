@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Literal
 
 
-class ChatCompletionDeployment(str, Enum):
+class ChatCompletionDeployment(Enum):
     CHAT_BISON_1 = "chat-bison@001"
     CHAT_BISON_2 = "chat-bison@002"
     CHAT_BISON_2_32K = "chat-bison-32k@002"
@@ -33,9 +33,6 @@ class ChatCompletionDeployment(str, Enum):
     CLAUDE_3_5_SONNET = "claude-3-5-sonnet@20240620"
     CLAUDE_3_HAIKU = "claude-3-haiku@20240307"
 
-    def get_model_id(self) -> str:
-        return self.value
-
 
 ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
@@ -65,7 +62,7 @@ Gemini2Deployment = Literal[
 ]
 
 
-class EmbeddingsDeployment(str, Enum):
+class EmbeddingsDeployment(Enum):
     # English models
     TEXT_EMBEDDING_GECKO_1 = "textembedding-gecko@001"
     TEXT_EMBEDDING_GECKO_3 = "textembedding-gecko@003"
@@ -77,5 +74,11 @@ class EmbeddingsDeployment(str, Enum):
 
     MULTI_MODAL_EMBEDDING_1 = "multimodalembedding@001"
 
-    def get_model_id(self) -> str:
-        return self.value
+
+TextEmbeddingDeployment = Literal[
+    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1,
+    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
+    EmbeddingsDeployment.TEXT_EMBEDDING_4,
+    EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
+    EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
+]
