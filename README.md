@@ -153,7 +153,7 @@ If you use DIAL Core load balancing mechanism, you can provide `extraData` upstr
 }
 ```
 
-The default region from defined by the environment variable `DEFAULT_REGION` is used when the `extraData.region` isn't provided.
+The default region defined by the environment variable `DEFAULT_REGION` is used when the `extraData.region` isn't provided.
 
 > [!NOTE]
 > The region configuration is only supported for Gemini 2.0 and Anthropic models.

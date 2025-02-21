@@ -120,13 +120,13 @@ def _create_deployments(
 ) -> Tuple[Dict[str, str], Dict[str, AdapterDeployment[_D]]]:
     compat_mapping = compat_mapping.copy()
 
-    supported: Dict[str, AdapterDeployment[_D]] = {}
-    for upstream in upstream_deployments:
-        deployment_id = upstream.value
-        supported[deployment_id] = AdapterDeployment.supported(
-            deployment_id=deployment_id,
+    supported: Dict[str, AdapterDeployment[_D]] = {
+        upstream.value: AdapterDeployment.supported(
+            deployment_id=upstream.value,
             upstream=upstream,
         )
+        for upstream in upstream_deployments
+    }
 
     compat: Dict[str, AdapterDeployment[_D]] = {}
     for deployment_id, supported_deployment_id in list(compat_mapping.items()):
