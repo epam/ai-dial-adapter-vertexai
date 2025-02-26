@@ -3,9 +3,13 @@ from contextlib import asynccontextmanager
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
 
-from aidial_adapter_vertexai.adapter_deployments import AdapterDeployments
+from aidial_adapter_vertexai.adapter_deployments import (
+    AdapterDeployment,
+    AdapterDeployments,
+)
 from aidial_adapter_vertexai.app_config import init_vertex_ai
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.response import (
     ModelObject,
@@ -49,8 +53,15 @@ async def models():
     )
 
 
-for deployment_id, deployment in deployments.chat_completions.items():
-    app.add_chat_completion(deployment_id, VertexAIChatCompletion(deployment))
+deployment = AdapterDeployment(
+    adapter_deployment_id="gemini-1.5-pro-001",
+    upstream_deployment_id=ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP.value,
+    reference_deployment_id=ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+)
+
+app.add_chat_completion(
+    "gemini-1.5-pro-001", VertexAIChatCompletion(deployment)
+)
 
 for deployment_id, deployment in deployments.embeddings.items():
     app.add_embeddings(deployment_id, VertexAIEmbeddings(deployment))
