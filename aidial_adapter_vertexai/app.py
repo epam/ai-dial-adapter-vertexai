@@ -54,13 +54,13 @@ async def models():
 
 
 deployment = AdapterDeployment(
-    adapter_deployment_id="gemini-1.5-pro-001",
+    adapter_deployment_id="gemini-1.5-flash-001",
     upstream_deployment_id=ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP.value,
     reference_deployment_id=ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
 )
 
 app.add_chat_completion(
-    "gemini-1.5-pro-001", VertexAIChatCompletion(deployment)
+    "gemini-1.5-flash-001", VertexAIChatCompletion(deployment)
 )
 
 for deployment_id, deployment in deployments.embeddings.items():
