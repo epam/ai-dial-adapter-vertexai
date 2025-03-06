@@ -12,6 +12,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
+requires-poetry = "1.8.5"
 
 [tool.poetry.dependencies]
 python = "~3.11"
