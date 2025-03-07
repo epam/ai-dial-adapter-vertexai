@@ -81,7 +81,7 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         config = _prepare_generation_config(params)
 
         with Timer("predict timing: {time}", log.debug):
-            response = self.client.models.generate_image(
+            response = await self.client.aio.models.generate_image(
                 model=self.model_id, prompt=prompt, config=config
             )
 
