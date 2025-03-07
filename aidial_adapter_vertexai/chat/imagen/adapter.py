@@ -1,14 +1,18 @@
+import base64
 from typing import List, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message
+from google.genai.client import Client as GenAIClient
+from google.genai.types import (
+    GeneratedImage,
+    GenerateImageConfigDict,
+    GenerateImageResponse,
+    Image,
+)
 from PIL import Image as PIL_Image
 from typing_extensions import override
-from vertexai.preview.vision_models import (
-    GeneratedImage,
-    ImageGenerationModel,
-    ImageGenerationResponse,
-)
 
+from aidial_adapter_vertexai.app_config import get_genai_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -28,19 +32,24 @@ from aidial_adapter_vertexai.dial_api.storage import (
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
-from aidial_adapter_vertexai.vertex_ai import get_image_generation_model
 
 ImagenPrompt = str
 
 
 class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
+    file_storage: Optional[FileStorage]
+    client: GenAIClient
+    model_id: str
+
     def __init__(
         self,
         file_storage: Optional[FileStorage],
-        model: ImageGenerationModel,
+        client: GenAIClient,
+        model_id: str,
     ):
         self.file_storage = file_storage
-        self.model = model
+        self.client = client
+        self.model_id = model_id
 
     @override
     async def parse_prompt(
@@ -76,25 +85,40 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
             case _:
                 raise ValueError(f"Unknown image format: {image.format}")
 
+    def _prepare_generation_config(
+        self, params: ModelParameters
+    ) -> GenerateImageConfigDict:
+        return {"seed": params.seed}
+
     @override
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: ImagenPrompt
     ) -> None:
         prompt_tokens = await self.count_prompt_tokens(prompt)
 
+        config = self._prepare_generation_config(params)
+
         with Timer("predict timing: {time}", log.debug):
-            response: ImageGenerationResponse = self.model.generate_images(
-                prompt, number_of_images=1, seed=None
+            response: GenerateImageResponse = self.client.models.generate_image(
+                model=self.model_id, prompt=prompt, config=config
             )
 
-        if len(response.images) == 0:
-            raise RuntimeError("Expected 1 image in response, but got none")
+        if (images := response.generated_images) is None or len(images) == 0:
+            raise RuntimeError("Expected image in response, but got none")
 
-        image: GeneratedImage = response[0]
+        gen_image: GeneratedImage = images[0]
+        image: Image | None = gen_image.image
+
+        if image is None:
+            raise RuntimeError("Expected image in response, but got none")
 
         type: str = self.get_image_type(image._pil_image)
-        data: bytes = image._image_bytes
-        base64_data: str = image._as_base64_string()
+        image_data: bytes | None = image.image_bytes
+
+        if image_data is None:
+            raise RuntimeError("Expected image data in response, but got none")
+
+        base64_data: str = base64.b64encode(image_data).decode()
 
         attachment: Attachment = Attachment(
             title="Image", type=type, data=base64_data
@@ -104,7 +128,7 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
             with Timer("upload to file storage: {time}", log.debug):
                 filename = "images/" + compute_hash_digest(base64_data)
                 meta = await self.file_storage.upload(
-                    filename=filename, content_type=type, content=data
+                    filename=filename, content_type=type, content=image_data
                 )
 
             attachment.data = None
@@ -134,9 +158,6 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
 
     @classmethod
     async def create(
-        cls,
-        file_storage: Optional[FileStorage],
-        model_id: str,
+        cls, file_storage: Optional[FileStorage], model_id: str, location: str
     ) -> "ImagenChatCompletionAdapter":
-        model = await get_image_generation_model(model_id)
-        return cls(file_storage, model)
+        return cls(file_storage, get_genai_client(location), model_id)

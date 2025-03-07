@@ -2,12 +2,8 @@ from functools import wraps
 
 import anthropic
 from aidial_sdk.exceptions import HTTPException as DialException
-from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
-from google.api_core.exceptions import (
-    GoogleAPICallError,
-    InvalidArgument,
-    PermissionDenied,
-)
+from aidial_sdk.exceptions import InternalServerError
+from google.api_core.exceptions import GoogleAPICallError, PermissionDenied
 from google.auth.exceptions import GoogleAuthError
 from google.genai.errors import APIError
 
@@ -17,6 +13,9 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 def _get_exception_type(code: int) -> str:
     return "invalid_request_error" if code < 500 else "internal_server_error"
+
+
+_CONTENT_FILTER_MSG = "The response is blocked, as it may violate our policies."
 
 
 def to_dial_exception(e: Exception) -> DialException:
@@ -36,26 +35,19 @@ def to_dial_exception(e: Exception) -> DialException:
             code="permission_denied",
         )
 
-    if isinstance(e, InvalidArgument):
-        # Imagen content filtering message
-        content_filter_msg = (
-            "The response is blocked, as it may violate our policies."
-        )
-        if content_filter_msg in str(e):
-            return InvalidRequestError(
-                message=content_filter_msg,
-                code="content_filter",
-                param="prompt",
-            )
-
-        return InvalidRequestError(str(e))
-
     if isinstance(e, (GoogleAPICallError, APIError)):
-        code = e.code or 500
+        status_code = e.code or 500
         message = e.message or str(e)
+
+        code = None
+        if _CONTENT_FILTER_MSG in message:
+            message = _CONTENT_FILTER_MSG
+            code = "content_filter"
+
         return DialException(
-            status_code=code,
-            type=_get_exception_type(code),
+            status_code=status_code,
+            type=_get_exception_type(status_code),
+            code=code,
             message=message,
         )
 
