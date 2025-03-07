@@ -127,8 +127,8 @@ async def download_file(url: str, headers: Mapping[str, str] = {}) -> bytes:
             return await response.read()
 
 
-def compute_hash_digest(file_content: str) -> str:
-    return hashlib.sha256(file_content.encode()).hexdigest()
+def compute_hash_digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 DIAL_URL = os.getenv("DIAL_URL")
