@@ -5,6 +5,41 @@ import sys
 from aidial_sdk import logger as aidial_logger
 from uvicorn.logging import DefaultFormatter
 
+
+def _instrument_requests():
+    import requests
+    import wrapt
+
+    from aidial_adapter_vertexai.utils.json import json_dumps_short
+
+    def instrumented_send(wrapped, instance, args, kwargs):
+        request = args[0]
+        logging.getLogger("app.debug").debug(
+            f"request: {request.method} | {request.url} | {request.headers} | {request.body}"
+        )
+        response = wrapped(*args, **kwargs)
+
+        response_content = response.text
+        try:
+            response_json = response.json()
+        except Exception:
+            pass
+        else:
+            response_content = json_dumps_short(
+                response_json, string_limit=1000
+            )
+
+        logging.getLogger("app.debug").debug(
+            f"response: {response.status_code} | {response.headers} | {response_content}"
+        )
+        return response
+
+    wrapt.wrap_function_wrapper(requests.Session, "send", instrumented_send)
+
+
+# FIXME: for debug only; remove
+_instrument_requests()
+
 # By default (in prod) we don't want to print debug messages,
 # because they typically contain prompts.
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
