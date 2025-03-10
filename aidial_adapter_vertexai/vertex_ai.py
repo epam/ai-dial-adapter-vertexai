@@ -4,7 +4,6 @@ from vertexai.preview.language_models import (
     CodeChatModel,
     TextEmbeddingModel,
 )
-from vertexai.preview.vision_models import ImageGenerationModel
 from vertexai.vision_models import MultiModalEmbeddingModel
 
 from aidial_adapter_vertexai.utils.concurrency import make_single_thread_async
@@ -39,11 +38,4 @@ async def get_multi_modal_embedding_model(
 ) -> MultiModalEmbeddingModel:
     return await make_single_thread_async(
         MultiModalEmbeddingModel.from_pretrained, model_id
-    )
-
-
-@cached()
-async def get_image_generation_model(model_id: str) -> ImageGenerationModel:
-    return await make_single_thread_async(
-        ImageGenerationModel.from_pretrained, model_id
     )
