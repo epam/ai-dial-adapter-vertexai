@@ -1,14 +1,16 @@
 from typing import List, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message
+from google.genai.client import Client as GenAIClient
+from google.genai.types import (
+    GenerateImageConfigDict,
+    GenerateImageResponse,
+    Image,
+)
 from PIL import Image as PIL_Image
 from typing_extensions import override
-from vertexai.preview.vision_models import (
-    GeneratedImage,
-    ImageGenerationModel,
-    ImageGenerationResponse,
-)
 
+from aidial_adapter_vertexai.app_config import get_genai_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -27,20 +29,26 @@ from aidial_adapter_vertexai.dial_api.storage import (
 )
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.timer import Timer
-from aidial_adapter_vertexai.vertex_ai import get_image_generation_model
 
 ImagenPrompt = str
 
 
 class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
+    file_storage: FileStorage | None
+    client: GenAIClient
+    model_id: str
+
     def __init__(
         self,
-        file_storage: Optional[FileStorage],
-        model: ImageGenerationModel,
+        file_storage: FileStorage | None,
+        client: GenAIClient,
+        model_id: str,
     ):
         self.file_storage = file_storage
-        self.model = model
+        self.client = client
+        self.model_id = model_id
 
     @override
     async def parse_prompt(
@@ -66,45 +74,33 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     ) -> TruncatedPrompt[ImagenPrompt]:
         return TruncatedPrompt(discarded_messages=[], prompt=prompt)
 
-    @staticmethod
-    def get_image_type(image: PIL_Image.Image) -> str:
-        match image.format:
-            case "JPEG":
-                return "image/jpeg"
-            case "PNG":
-                return "image/png"
-            case _:
-                raise ValueError(f"Unknown image format: {image.format}")
-
     @override
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: ImagenPrompt
     ) -> None:
-        prompt_tokens = await self.count_prompt_tokens(prompt)
+        config = _prepare_generation_config(params)
 
         with Timer("predict timing: {time}", log.debug):
-            response: ImageGenerationResponse = self.model.generate_images(
-                prompt, number_of_images=1, seed=None
+            response = await self.client.aio.models.generate_image(
+                model=self.model_id, prompt=prompt, config=config
             )
 
-        if len(response.images) == 0:
-            raise RuntimeError("Expected 1 image in response, but got none")
+        if (resource := _extract_image(response)) is None:
+            raise RuntimeError("Expected image in response, but got none")
 
-        image: GeneratedImage = response[0]
-
-        type: str = self.get_image_type(image._pil_image)
-        data: bytes = image._image_bytes
-        base64_data: str = image._as_base64_string()
-
-        attachment: Attachment = Attachment(
-            title="Image", type=type, data=base64_data
+        attachment = Attachment(
+            title="Image",
+            type=resource.type,
+            data=resource.data_base64,
         )
 
         if self.file_storage is not None:
             with Timer("upload to file storage: {time}", log.debug):
-                filename = "images/" + compute_hash_digest(base64_data)
+                filename = "images/" + compute_hash_digest(resource.data)
                 meta = await self.file_storage.upload(
-                    filename=filename, content_type=type, content=data
+                    filename=filename,
+                    content_type=resource.type,
+                    content=resource.data,
                 )
 
             attachment.data = None
@@ -116,11 +112,12 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         completion = " "
         await consumer.append_content(completion)
 
-        completion_tokens = await self.count_completion_tokens(completion)
         await consumer.set_usage(
             TokenUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
+                prompt_tokens=await self.count_prompt_tokens(prompt),
+                completion_tokens=await self.count_completion_tokens(
+                    completion
+                ),
             )
         )
 
@@ -134,9 +131,41 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
 
     @classmethod
     async def create(
-        cls,
-        file_storage: Optional[FileStorage],
-        model_id: str,
+        cls, file_storage: Optional[FileStorage], model_id: str, location: str
     ) -> "ImagenChatCompletionAdapter":
-        model = await get_image_generation_model(model_id)
-        return cls(file_storage, model)
+        return cls(file_storage, get_genai_client(location), model_id)
+
+
+def _prepare_generation_config(
+    params: ModelParameters,
+) -> GenerateImageConfigDict:
+    return {"seed": params.seed}
+
+
+def _extract_image(
+    response: GenerateImageResponse,
+) -> Resource | None:
+    images = response.generated_images
+    if images is None or len(images) == 0:
+        return None
+
+    image: Image | None = images[0].image
+    if image is None:
+        return None
+
+    image_data: bytes | None = image.image_bytes
+    if image_data is None:
+        return None
+
+    media_type: str = _get_image_type(image._pil_image)
+    return Resource(type=media_type, data=image_data)
+
+
+def _get_image_type(image: PIL_Image.Image) -> str:
+    match image.format:
+        case "JPEG":
+            return "image/jpeg"
+        case "PNG":
+            return "image/png"
+        case _:
+            raise ValueError(f"Unknown image format: {image.format}")

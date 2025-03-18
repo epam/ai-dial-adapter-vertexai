@@ -99,8 +99,9 @@ async def get_chat_completion_model(
                 region=upstream_config.region,
             )
         case ChatCompletionDeployment.IMAGEN_005:
-            upstream_config.dynamic_region_not_supported()
-            return await ImagenChatCompletionAdapter.create(storage, model_id)
+            return await ImagenChatCompletionAdapter.create(
+                storage, model_id, upstream_config.region
+            )
         case _:
             assert_never(deployment)
 
