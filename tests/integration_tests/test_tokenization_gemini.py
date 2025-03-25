@@ -52,7 +52,7 @@ class TestCase:
 
 
 chat_deployments = [
-    ChatCompletionDeployment.GEMINI_PRO_1,
+    ChatCompletionDeployment.GEMINI_PRO,
     ChatCompletionDeployment.GEMINI_PRO_VISION_1,
     ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
@@ -67,7 +67,7 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
 
 
 def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
-    return deployment != ChatCompletionDeployment.GEMINI_PRO_1
+    return deployment != ChatCompletionDeployment.GEMINI_PRO
 
 
 def is_text_model(deployment: ChatCompletionDeployment) -> bool:

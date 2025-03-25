@@ -88,8 +88,8 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     ) -> GeminiPrompt | UserError:
         match self.deployment.reference_deployment_id:
             case (
-                ChatCompletionDeployment.GEMINI_PRO_1
-                | ChatCompletionDeployment.GEMINI_PRO_1_LATEST
+                ChatCompletionDeployment.GEMINI_PRO
+                | ChatCompletionDeployment.GEMINI_PRO_1
             ):
                 return await Gemini_1_0_Pro_Prompt.parse(
                     tools, static_tools, messages
