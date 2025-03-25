@@ -101,7 +101,7 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.CHAT_BISON_1: _CENTRAL,
     ChatCompletionDeployment.CHAT_BISON_2_32K: _CENTRAL,
     ChatCompletionDeployment.CODECHAT_BISON_1: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_PRO: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_1: _CENTRAL,
     ChatCompletionDeployment.GEMINI_FLASH_1_5_V2: _CENTRAL,
     ChatCompletionDeployment.GEMINI_PRO_VISION_1: _CENTRAL,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
@@ -130,7 +130,7 @@ def supports_json_object_response_format(
     deployment: ChatCompletionDeployment,
 ) -> bool:
     return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO,
+        ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
@@ -147,13 +147,13 @@ def supports_json_schema_response_format(
     return supports_json_object_response_format(
         deployment
     ) and deployment not in [
-        ChatCompletionDeployment.GEMINI_PRO,
+        ChatCompletionDeployment.GEMINI_PRO_1,
     ]
 
 
 def supports_tools(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO,
+        ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
@@ -188,7 +188,7 @@ def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
 
 def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO,
+        ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
