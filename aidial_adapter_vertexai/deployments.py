@@ -11,7 +11,8 @@ class ChatCompletionDeployment(Enum):
     CODECHAT_BISON_2 = "codechat-bison@002"
     CODECHAT_BISON_2_32K = "codechat-bison-32k@002"
 
-    GEMINI_PRO_1 = "gemini-pro"
+    GEMINI_PRO = "gemini-pro"
+    GEMINI_PRO_1 = "gemini-1.0-pro"
     GEMINI_PRO_VISION_1 = "gemini-pro-vision"
     GEMINI_PRO_1_5_PREVIEW = "gemini-1.5-pro-preview-0409"
     GEMINI_PRO_1_5_V1 = "gemini-1.5-pro-001"
@@ -35,6 +36,12 @@ class ChatCompletionDeployment(Enum):
     CLAUDE_3_7_SONNET = "claude-3-7-sonnet@20250219"
 
 
+# Redirect deprecated 'gemini-pro' alias to 'gemini-1.0-pro'
+CHAT_COMPLETION_REDIRECTS = {
+    ChatCompletionDeployment.GEMINI_PRO: ChatCompletionDeployment.GEMINI_PRO_1
+}
+
+
 ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
@@ -45,6 +52,7 @@ ClaudeDeployment = Literal[
 ]
 
 GeminiDeployment = Literal[
+    ChatCompletionDeployment.GEMINI_PRO,
     ChatCompletionDeployment.GEMINI_PRO_1,
     ChatCompletionDeployment.GEMINI_PRO_VISION_1,
     ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,

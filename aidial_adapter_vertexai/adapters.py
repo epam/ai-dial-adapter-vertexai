@@ -61,7 +61,8 @@ async def get_chat_completion_model(
             upstream_config.dynamic_region_not_supported()
             return await BisonCodeChatAdapter.create(model_id)
         case (
-            ChatCompletionDeployment.GEMINI_PRO_1
+            ChatCompletionDeployment.GEMINI_PRO
+            | ChatCompletionDeployment.GEMINI_PRO_1
             | ChatCompletionDeployment.GEMINI_PRO_VISION_1
             | ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
             | ChatCompletionDeployment.GEMINI_PRO_1_5_V1

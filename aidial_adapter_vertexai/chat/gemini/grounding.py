@@ -32,7 +32,10 @@ def google_search_grounding_tokens(
             # $5.00 / 1 million tokens
             # So 0.035$ = (0.035 / 5) * 1M tokens = 7,000 tokens
             return 7_000
-        case ChatCompletionDeployment.GEMINI_PRO_1:
+        case (
+            ChatCompletionDeployment.GEMINI_PRO
+            | ChatCompletionDeployment.GEMINI_PRO_1
+        ):
             #  $1.50 / 1 million tokens
             # So 0.035$ = (0.035 / 1.5) * 1M tokens = 23,333 tokens
             return 23_333
