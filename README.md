@@ -16,6 +16,7 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 |Gemini 1.5 Flash|gemini-1.5-flash-(001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
 |Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|
 |Gemini 1.0 Pro|gemini-pro|text-to-text|✅|✅|✅|
+|Claude 3.7 Sonnet|claude-3-7-sonnet@20250219|(text/image)-to-text|✅|✅|✅|
 |Claude 3 Opus|claude-3-opus@20240229|(text/image)-to-text|✅|✅|✅|
 |Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022|(text/image)-to-text|✅|✅|✅|
 |Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(text/image)-to-text|✅|✅|✅|
