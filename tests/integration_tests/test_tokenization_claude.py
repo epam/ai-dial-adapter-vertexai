@@ -71,6 +71,7 @@ chat_deployments = [
     ChatCompletionDeployment.CLAUDE_3_OPUS,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET,
     ChatCompletionDeployment.CLAUDE_3_HAIKU,
+    ChatCompletionDeployment.CLAUDE_3_7_SONNET,
 ]
 
 
@@ -130,15 +131,10 @@ def get_test_cases(
         max_tokens=1,
     )
 
-    # NOTE: for some reason Claude makes one-off error on this test case
-    def _exceptional_check(actual: int, expected: int):
-        assert actual + 1 == expected
-
     test_case(
         name="long completion",
         messages=[user("tell me the full story of Pinocchio")],
         max_tokens=1,
-        check=_exceptional_check,
     )
 
     if is_vision_model(deployment):

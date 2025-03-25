@@ -94,6 +94,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                 | ChatCompletionDeployment.CLAUDE_3_OPUS
                 | ChatCompletionDeployment.CLAUDE_3_5_SONNET
                 | ChatCompletionDeployment.CLAUDE_3_HAIKU
+                | ChatCompletionDeployment.CLAUDE_3_7_SONNET
             ):
                 return await parse_claude_3_prompt(
                     self.file_storage, tools, messages, supports_vision=True

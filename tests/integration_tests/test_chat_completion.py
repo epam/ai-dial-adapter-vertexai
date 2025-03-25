@@ -115,6 +115,7 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
 }
 
 
@@ -151,18 +152,24 @@ def supports_json_schema_response_format(
     ]
 
 
-def supports_tools(deployment: ChatCompletionDeployment) -> bool:
+def is_claude(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO_1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
-        ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
         ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         ChatCompletionDeployment.CLAUDE_3_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_7_SONNET,
+    ]
+
+
+def supports_tools(deployment: ChatCompletionDeployment) -> bool:
+    return is_claude(deployment) or deployment in [
+        ChatCompletionDeployment.GEMINI_PRO_1,
+        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
+        ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
     ]
 
 
@@ -173,17 +180,12 @@ def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
+        # ChatCompletionDeployment.CLAUDE_3_7_SONNET,
     ]
 
 
 def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
-    return deployment in [
-        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
-        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_OPUS,
-        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
-        ChatCompletionDeployment.CLAUDE_3_HAIKU,
-    ]
+    return is_claude(deployment)
 
 
 def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
@@ -227,6 +229,7 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         # ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         ChatCompletionDeployment.CLAUDE_3_HAIKU,
+        ChatCompletionDeployment.CLAUDE_3_7_SONNET,
     ]
 
 
