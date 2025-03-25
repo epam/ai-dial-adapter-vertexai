@@ -5,6 +5,7 @@ from typing import Dict, Generic, Iterable, Self, Tuple, TypeVar
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.deployments import (
+    CHAT_COMPLETION_REDIRECTS,
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
@@ -96,7 +97,9 @@ class AdapterDeployments(BaseModel):
                     )
 
         compat_mapping, chat_completions = _create_deployments(
-            compat_mapping, ChatCompletionDeployment
+            compat_mapping,
+            ChatCompletionDeployment,
+            redirects=CHAT_COMPLETION_REDIRECTS,
         )
         compat_mapping, embeddings = _create_deployments(
             compat_mapping, EmbeddingsDeployment
@@ -116,17 +119,21 @@ class AdapterDeployments(BaseModel):
 
 
 def _create_deployments(
-    compat_mapping: Dict[str, str], upstream_deployments: Iterable[_D]
+    compat_mapping: Dict[str, str],
+    upstream_deployments: Iterable[_D],
+    *,
+    redirects: Dict[_D, _D] | None = None,
 ) -> Tuple[Dict[str, str], Dict[str, AdapterDeployment[_D]]]:
     compat_mapping = compat_mapping.copy()
+    redirects = redirects or {}
 
-    supported: Dict[str, AdapterDeployment[_D]] = {
-        upstream.value: AdapterDeployment.supported(
-            deployment_id=upstream.value,
-            upstream=upstream,
+    supported: Dict[str, AdapterDeployment[_D]] = {}
+    for upstream in upstream_deployments:
+        deployment_id = upstream.value
+        supported[deployment_id] = AdapterDeployment.supported(
+            deployment_id=deployment_id,
+            upstream=redirects.get(upstream, upstream),
         )
-        for upstream in upstream_deployments
-    }
 
     compat: Dict[str, AdapterDeployment[_D]] = {}
     for deployment_id, supported_deployment_id in list(compat_mapping.items()):
