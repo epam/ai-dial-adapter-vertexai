@@ -51,14 +51,14 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.CHAT_BISON_2
             | ChatCompletionDeployment.CHAT_BISON_2_32K
         ):
-            upstream_config.dynamic_region_not_supported()
+            upstream_config.dynamic_configuration_not_supported()
             return await BisonChatAdapter.create(model_id)
         case (
             ChatCompletionDeployment.CODECHAT_BISON_1
             | ChatCompletionDeployment.CODECHAT_BISON_2
             | ChatCompletionDeployment.CODECHAT_BISON_2_32K
         ):
-            upstream_config.dynamic_region_not_supported()
+            upstream_config.dynamic_configuration_not_supported()
             return await BisonCodeChatAdapter.create(model_id)
         case (
             ChatCompletionDeployment.GEMINI_PRO
@@ -70,7 +70,7 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
             | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
         ):
-            upstream_config.dynamic_region_not_supported()
+            upstream_config.dynamic_configuration_not_supported()
             return await GeminiChatCompletionAdapter.create(
                 storage,
                 deployment.clone(deployment.reference_deployment_id),
@@ -85,7 +85,7 @@ async def get_chat_completion_model(
             return await GeminiGenAIChatCompletionAdapter.create(
                 storage,
                 deployment.clone(deployment.reference_deployment_id),
-                location=upstream_config.region,
+                config=upstream_config,
             )
         case (
             ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2
@@ -98,11 +98,11 @@ async def get_chat_completion_model(
             return await ClaudeChatCompletionAdapter.create(
                 storage,
                 deployment.clone(deployment.reference_deployment_id),
-                region=upstream_config.region,
+                config=upstream_config,
             )
         case ChatCompletionDeployment.IMAGEN_005:
             return await ImagenChatCompletionAdapter.create(
-                storage, model_id, upstream_config.region
+                storage, model_id, upstream_config
             )
         case _:
             assert_never(deployment)

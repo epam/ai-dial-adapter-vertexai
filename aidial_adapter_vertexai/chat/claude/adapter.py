@@ -48,6 +48,7 @@ from aidial_adapter_vertexai.deployments import (
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 
@@ -75,9 +76,13 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         cls,
         file_storage: FileStorage | None,
         deployment: AdapterDeployment[ClaudeDeployment],
-        region: str,
+        config: UpstreamConfig,
     ) -> "ClaudeChatCompletionAdapter":
-        return cls(file_storage, deployment, get_anthropic_client(region))
+        return cls(
+            file_storage,
+            deployment,
+            get_anthropic_client(config.project, config.region),
+        )
 
     @override
     async def parse_prompt(

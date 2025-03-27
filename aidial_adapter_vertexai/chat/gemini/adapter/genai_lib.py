@@ -40,6 +40,7 @@ from aidial_adapter_vertexai.deployments import (
 )
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
+from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
@@ -66,9 +67,13 @@ class GeminiGenAIChatCompletionAdapter(
         cls,
         file_storage: FileStorage | None,
         deployment: AdapterDeployment[Gemini2Deployment],
-        location: str,
+        config: UpstreamConfig,
     ) -> "GeminiGenAIChatCompletionAdapter":
-        return cls(file_storage, deployment, get_genai_client(location))
+        return cls(
+            file_storage,
+            deployment,
+            get_genai_client(config.project, config.region),
+        )
 
     @property
     def model_id(self) -> str:

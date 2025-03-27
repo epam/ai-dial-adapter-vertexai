@@ -719,7 +719,7 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
     )
 
     async def run_chat_completion() -> ChatCompletionResult:
-        attempts = 7
+        attempts = 1
         delay = 1
 
         async def _retry_wait(
