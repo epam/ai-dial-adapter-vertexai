@@ -135,29 +135,41 @@ since the APIs and capabilities of these two models are drastically different.
 
 ## Load balancing
 
-If you use DIAL Core load balancing mechanism, you can provide `extraData` upstream setting the region to use for a particular upstream:
+If you use DIAL Core load balancing mechanism, you can provide `extraData` upstream setting the region and the project to use for a particular upstream:
 
 ```json
 {
   "upstreams": [
     {
       "extraData": {
+        "project": "project1",
         "region": "us-central1"
       }
     },
     {
       "extraData": {
+        "project": "project1",
         "region": "us-east5"
+      }
+    },
+    {
+      "extraData": {
+        "project": "project2"
       }
     }
   ]
 }
 ```
 
-The default region defined by the environment variable `DEFAULT_REGION` is used when the `extraData.region` isn't provided.
+The fields in the extra data override the corresponding environment variables:
+
+|`extraData` field|Env variable|
+|---|---|
+|`region`|`DEFAULT_REGION`|
+|`project`|`GCP_PROJECT_ID`|
 
 > [!NOTE]
-> The region configuration is only supported for Gemini 2.0 and Anthropic models.
+> The region and project configuration is only supported for Gemini 2.0 and Anthropic models.
 
 ### Docker
 

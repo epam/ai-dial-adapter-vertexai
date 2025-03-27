@@ -28,6 +28,7 @@ from aidial_adapter_vertexai.dial_api.storage import (
     compute_hash_digest,
 )
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.timer import Timer
@@ -131,9 +132,16 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
 
     @classmethod
     async def create(
-        cls, file_storage: Optional[FileStorage], model_id: str, location: str
+        cls,
+        file_storage: Optional[FileStorage],
+        model_id: str,
+        config: UpstreamConfig,
     ) -> "ImagenChatCompletionAdapter":
-        return cls(file_storage, get_genai_client(location), model_id)
+        return cls(
+            file_storage,
+            get_genai_client(config.project, config.region),
+            model_id,
+        )
 
 
 def _prepare_generation_config(
