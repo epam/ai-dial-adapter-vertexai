@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urlparse
 
 from aidial_sdk.chat_completion import Attachment
 from google.cloud.aiplatform_v1beta1.types.prediction_service import (
@@ -26,23 +27,28 @@ from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 
 
+def _is_absolute_url(uri: str) -> bool:
+    parsed = urlparse(uri)
+    return bool(parsed.scheme and parsed.netloc)
+
+
 async def create_attachments_from_citations(
     candidate: Candidate | GenAICandidate, consumer: Consumer
 ) -> None:
     citation_metadata = candidate.citation_metadata
 
-    if (
-        citation_metadata is None
-        or citation_metadata.citations is None
-        or not len(citation_metadata.citations)
-    ):
+    if citation_metadata is None or not citation_metadata.citations:
         return None
 
     for citation in citation_metadata.citations:
-        if citation.uri:
-            await consumer.add_attachment(
-                Attachment(url=citation.uri, title=citation.title)
-            )
+        uri = citation.uri
+        if uri:
+            if _is_absolute_url(uri):
+                await consumer.add_attachment(
+                    Attachment(url=uri, title=citation.title)
+                )
+            else:
+                log.error(f"Gemini provided invalid citation URI: {uri!r}.")
 
 
 async def set_usage(
