@@ -20,6 +20,7 @@ from aidial_sdk.chat_completion import (
     MessageContentImagePart,
     MessageContentTextPart,
 )
+from aidial_sdk.chat_completion.request import MessageContentRefusalPart
 from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Part
@@ -27,7 +28,7 @@ from vertexai.preview.generative_models import Part
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
 )
-from aidial_adapter_vertexai.chat.errors import UserError
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import PartT
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
@@ -211,6 +212,12 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
                                     url=image_url.url, entity_name="image_url"
                                 )
                             )
+                        case MessageContentRefusalPart():
+                            raise ValidationError(
+                                "Refusal messages aren't supported"
+                            )
+                        case _:
+                            assert_never(content)
             case _:
                 assert_never(content)
 

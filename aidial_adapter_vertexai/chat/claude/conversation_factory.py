@@ -91,9 +91,9 @@ class ClaudeConversationFactory(
                 return MessageParam(content=parts, role="user")
             case Role.ASSISTANT:
                 return MessageParam(content=parts, role="assistant")
-            case Role.SYSTEM:
+            case Role.SYSTEM | Role.DEVELOPER:
                 raise InvalidRequestError(
-                    "System message is only allowed as the first message"
+                    "System or developer message is only allowed as the first message"
                 )
             case _:
                 assert_never(role)

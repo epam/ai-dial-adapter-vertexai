@@ -37,6 +37,10 @@ class ConversationFactory(
                 raise ValidationError(
                     "System messages other than the first system message are not allowed"
                 )
+            case Role.DEVELOPER:
+                raise ValidationError(
+                    "Developer messages other than the first developer message are not allowed"
+                )
             case Role.USER | Role.FUNCTION | Role.TOOL:
                 return ChatSession._USER_ROLE
             case Role.ASSISTANT:
@@ -100,6 +104,10 @@ class GenAIConversationFactory(
             case Role.SYSTEM:
                 raise ValidationError(
                     "System messages other than the first system message are not allowed"
+                )
+            case Role.DEVELOPER:
+                raise ValidationError(
+                    "Developer messages other than the first developer message are not allowed"
                 )
             case Role.USER | Role.FUNCTION | Role.TOOL:
                 return "user"

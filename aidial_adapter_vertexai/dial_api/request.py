@@ -9,6 +9,7 @@ from aidial_sdk.chat_completion import (
     Request,
     ResponseFormat,
 )
+from aidial_sdk.chat_completion.request import MessageContentRefusalPart
 from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
@@ -72,6 +73,10 @@ def collect_text_content(
                     case MessageContentImagePart():
                         raise ValidationError(
                             "Can't extract text from an image content part"
+                        )
+                    case MessageContentRefusalPart():
+                        raise ValidationError(
+                            "Can't extract text from a refusal content part"
                         )
                     case _:
                         assert_never(part)

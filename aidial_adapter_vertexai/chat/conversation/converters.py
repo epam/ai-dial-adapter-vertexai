@@ -72,7 +72,12 @@ async def _message_to_parts(
             if content is None:
                 raise ValidationError("System message content must be present")
             return await processors.process_message(message)
-
+        case Role.DEVELOPER:
+            if content is None:
+                raise ValidationError(
+                    "Developer message content must be present"
+                )
+            return await processors.process_message(message)
         case Role.USER:
             if not content:
                 raise ValidationError("User message content must be present")
@@ -145,7 +150,7 @@ async def _message_to_parts(
 
 
 def _separate_system_messages(
-    messages: List[Tuple[Role, List[PartT]]]
+    messages: List[Tuple[Role, List[PartT]]],
 ) -> Tuple[List[PartT] | None, List[Tuple[Role, List[PartT]]]]:
     """
     Extract the leading system messages from the list of messages.
