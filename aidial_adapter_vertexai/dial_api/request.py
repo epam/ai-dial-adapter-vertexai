@@ -1,4 +1,4 @@
-from typing import List, Mapping, Optional, assert_never
+from typing import List, Literal, Mapping, Optional, TypeGuard, assert_never
 
 from aidial_sdk.chat_completion import (
     Attachment,
@@ -8,7 +8,9 @@ from aidial_sdk.chat_completion import (
     MessageContentTextPart,
     Request,
     ResponseFormat,
+    Role,
 )
+from aidial_sdk.chat_completion.request import MessageContentRefusalPart
 from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
@@ -73,8 +75,18 @@ def collect_text_content(
                         raise ValidationError(
                             "Can't extract text from an image content part"
                         )
+                    case MessageContentRefusalPart():
+                        raise ValidationError(
+                            "Can't extract text from a refusal content part"
+                        )
                     case _:
                         assert_never(part)
             return delimiter.join(texts)
         case _:
             assert_never(content)
+
+
+def is_system_role(
+    role: Role,
+) -> TypeGuard[Literal[Role.SYSTEM, Role.DEVELOPER]]:
+    return role in [Role.SYSTEM, Role.DEVELOPER]

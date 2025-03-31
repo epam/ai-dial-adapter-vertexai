@@ -7,7 +7,10 @@ from vertexai.preview.language_models import ChatMessage, ChatSession
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
-from aidial_adapter_vertexai.dial_api.request import collect_text_content
+from aidial_adapter_vertexai.dial_api.request import (
+    collect_text_content,
+    is_system_role,
+)
 
 
 class ChatAuthor(str, Enum):
@@ -86,7 +89,7 @@ class BisonPrompt(BaseModel, TruncatablePrompt):
         )
 
 
-_SUPPORTED_ROLES = {Role.SYSTEM, Role.USER, Role.ASSISTANT}
+_SUPPORTED_ROLES = {Role.SYSTEM, Role.DEVELOPER, Role.USER, Role.ASSISTANT}
 
 
 def _validate_and_split_messages(
@@ -104,7 +107,7 @@ def _validate_and_split_messages(
                 f"Message role must be one of {_SUPPORTED_ROLES}"
             )
 
-    if len(messages) > 0 and messages[0].role == Role.SYSTEM:
+    if len(messages) > 0 and is_system_role(messages[0].role):
         system_message, *history = messages
         system_instruction = collect_text_content(system_message.content)
         system_instruction = (
@@ -120,9 +123,9 @@ def _validate_and_split_messages(
 
     role: Optional[Role] = None
     for message in history:
-        if message.role == Role.SYSTEM:
+        if is_system_role(message.role):
             raise ValidationError(
-                "System messages other than the initial system message are not allowed"
+                "System and developer messages other than the initial system message are not allowed"
             )
 
         # Bison doesn't support empty messages,

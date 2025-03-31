@@ -2,13 +2,13 @@
 
 [[package]]
 name = "aidial-sdk"
-version = "0.18.0"
+version = "0.20.0"
 description = "Framework to create applications and model adapters for AI DIAL"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "aidial_sdk-0.18.0-py3-none-any.whl", hash = "sha256:283a0c3c94af6c3ecd7dec31c5198199dc6276088fd85f68414fb37d2a1db12e"},
-    {file = "aidial_sdk-0.18.0.tar.gz", hash = "sha256:aedc73580f71a880146da732580faaa7a034db0038cc2c71be3c9254143aa7a4"},
+    {file = "aidial_sdk-0.20.0-py3-none-any.whl", hash = "sha256:9fe9715a994b3f486a2b93d6c3545d01f486eb11dc5e4cb53cf2f7683c606372"},
+    {file = "aidial_sdk-0.20.0.tar.gz", hash = "sha256:8bb7a065d9f25d9bf68b78279a02a63252a5688cb8f2887cc9c5d2c92d1b02f4"},
 ]
 
 [package.dependencies]
@@ -30,6 +30,7 @@ uvicorn = ">=0.19,<1.0"
 wrapt = ">=1.10,<2"
 
 [package.extras]
+httpx = ["httpx (>=0.25.0,<1)"]
 telemetry = ["opentelemetry-api (>=1.22.0,<2.0.0)", "opentelemetry-exporter-otlp-proto-grpc (>=1.22.0,<2.0.0)", "opentelemetry-exporter-prometheus (>=0.43b0)", "opentelemetry-instrumentation-aiohttp-client (>=0.43b0)", "opentelemetry-instrumentation-fastapi (>=0.43b0)", "opentelemetry-instrumentation-httpx (>=0.43b0)", "opentelemetry-instrumentation-logging (>=0.43b0)", "opentelemetry-instrumentation-requests (>=0.43b0)", "opentelemetry-instrumentation-system-metrics (>=0.43b0)", "opentelemetry-instrumentation-urllib (>=0.43b0)", "opentelemetry-sdk (>=1.22.0,<2.0.0)", "prometheus-client (>=0.17.1,<=0.21)"]
 
 [[package]]
@@ -3282,4 +3283,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "0b98f938070d0f13cf199f547051cc46092fcfc52645609010ae8ed85ea94b42"
+content-hash = "5c384f45cee578122048c605093b04b7e398a56fb525f35bed86edcd8537bc32"
