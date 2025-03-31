@@ -11,3 +11,4 @@ dist
 *.html
 .idea
 .python-version
+allure-results
