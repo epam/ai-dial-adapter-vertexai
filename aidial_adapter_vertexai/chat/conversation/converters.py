@@ -12,6 +12,7 @@ from aidial_adapter_vertexai.chat.conversation.factory import (
 )
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.dial_api.request import is_system_role
 
 FunctionName = str
 FunctionArgs = str
@@ -162,7 +163,7 @@ def _separate_system_messages(
 
     while messages:
         role, message = messages[0]
-        if role == Role.SYSTEM:
+        if is_system_role(role):
             system_messages.extend(message)
             messages = messages[1:]
         else:

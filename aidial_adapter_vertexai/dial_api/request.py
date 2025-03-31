@@ -1,4 +1,4 @@
-from typing import List, Mapping, Optional, assert_never
+from typing import List, Literal, Mapping, Optional, TypeGuard, assert_never
 
 from aidial_sdk.chat_completion import (
     Attachment,
@@ -8,6 +8,7 @@ from aidial_sdk.chat_completion import (
     MessageContentTextPart,
     Request,
     ResponseFormat,
+    Role,
 )
 from aidial_sdk.chat_completion.request import MessageContentRefusalPart
 from pydantic.v1 import BaseModel
@@ -83,3 +84,9 @@ def collect_text_content(
             return delimiter.join(texts)
         case _:
             assert_never(content)
+
+
+def is_system_role(
+    role: Role,
+) -> TypeGuard[Literal[Role.SYSTEM, Role.DEVELOPER]]:
+    return role in [Role.SYSTEM, Role.DEVELOPER]
