@@ -36,6 +36,8 @@ pytest-asyncio = "0.21.1"
 pytest-dotenv = "^0.5.2"
 pytest-xdist = "^3.5.0"
 pytest-html = "^4.1.1"
+pytest-sugar = "^1.0.0"
+allure-pytest = "^2.13.5"
 python-dotenv = "1.0.0"
 requests = "^2.32.2"
 asgi-lifespan = "^2.1.0"
@@ -53,7 +55,7 @@ nox = "^2023.4.22"
 google-auth-oauthlib = "1.0.0"
 
 [tool.pytest.ini_options]
-addopts = "-n=auto --asyncio-mode=auto --self-contained-html --html=pytest.html"
+addopts = "-n=auto --asyncio-mode=auto --self-contained-html --html=pytest.html --alluredir=allure-results"
 env_override_existing_values = 1
 filterwarnings = [
     # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
