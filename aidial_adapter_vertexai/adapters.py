@@ -64,11 +64,6 @@ async def get_chat_completion_model(
             ChatCompletionDeployment.GEMINI_PRO
             | ChatCompletionDeployment.GEMINI_PRO_1
             | ChatCompletionDeployment.GEMINI_PRO_VISION_1
-            | ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
-            | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
-            | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
-            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
-            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
         ):
             upstream_config.dynamic_configuration_not_supported()
             return await GeminiChatCompletionAdapter.create(
@@ -76,7 +71,12 @@ async def get_chat_completion_model(
                 deployment.clone(deployment.reference_deployment_id),
             )
         case (
-            ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
+            ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
+            | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
+            | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
+            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
+            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
+            | ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_001
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
             | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05

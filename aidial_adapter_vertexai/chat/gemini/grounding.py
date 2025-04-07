@@ -7,13 +7,13 @@ from vertexai.preview.generative_models import Candidate
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
-    Gemini2Deployment,
     GeminiDeployment,
+    GeminiLegacyDeployment,
 )
 
 
 def google_search_grounding_tokens(
-    deployment: GeminiDeployment | Gemini2Deployment,
+    deployment: GeminiLegacyDeployment | GeminiDeployment,
 ) -> int:
     # Grounding is $35 / 1K requests, so it's 0.035$ / 1 request
     match deployment:

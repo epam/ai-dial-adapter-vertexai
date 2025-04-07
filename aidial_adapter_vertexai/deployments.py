@@ -51,19 +51,19 @@ ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_3_7_SONNET,
 ]
 
-GeminiDeployment = Literal[
+GeminiLegacyDeployment = Literal[
     ChatCompletionDeployment.GEMINI_PRO,
     ChatCompletionDeployment.GEMINI_PRO_1,
     ChatCompletionDeployment.GEMINI_PRO_VISION_1,
+]
+
+
+GeminiDeployment = Literal[
     ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
     ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
     ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
-]
-
-
-Gemini2Deployment = Literal[
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,

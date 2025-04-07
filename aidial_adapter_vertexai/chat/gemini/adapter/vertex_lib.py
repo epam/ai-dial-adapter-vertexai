@@ -37,15 +37,12 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro_vision import (
     Gemini_1_0_Pro_Vision_Prompt,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
-    Gemini_1_5_Prompt,
-)
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
-    GeminiDeployment,
+    GeminiLegacyDeployment,
 )
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
@@ -65,12 +62,12 @@ def _get_candidate_text_safe(candidate: Candidate) -> str | None:
 
 
 class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
-    deployment: AdapterDeployment[GeminiDeployment]
+    deployment: AdapterDeployment[GeminiLegacyDeployment]
 
     def __init__(
         self,
         file_storage: Optional[FileStorage],
-        deployment: AdapterDeployment[GeminiDeployment],
+        deployment: AdapterDeployment[GeminiLegacyDeployment],
     ):
         self.file_storage = file_storage
         self.deployment = deployment
@@ -96,16 +93,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                 )
             case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
                 return await Gemini_1_0_Pro_Vision_Prompt.parse(
-                    self.file_storage, tools, static_tools, messages
-                )
-            case (
-                ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
-                | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
-                | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
-                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
-                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
-            ):
-                return await Gemini_1_5_Prompt.parse(
                     self.file_storage, tools, static_tools, messages
                 )
             case _:
@@ -252,6 +239,6 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def create(
         cls,
         file_storage: Optional[FileStorage],
-        deployment: AdapterDeployment[GeminiDeployment],
+        deployment: AdapterDeployment[GeminiLegacyDeployment],
     ) -> "GeminiChatCompletionAdapter":
         return cls(file_storage, deployment)

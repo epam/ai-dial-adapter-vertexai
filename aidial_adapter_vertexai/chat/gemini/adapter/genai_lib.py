@@ -30,13 +30,16 @@ from aidial_adapter_vertexai.chat.gemini.output import (
     set_usage,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiGenAIPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
+    Gemini_1_5_Prompt,
+)
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
-    Gemini2Deployment,
+    GeminiDeployment,
 )
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
@@ -49,13 +52,13 @@ from aidial_adapter_vertexai.utils.timer import Timer
 class GeminiGenAIChatCompletionAdapter(
     ChatCompletionAdapter[GeminiGenAIPrompt]
 ):
-    deployment: AdapterDeployment[Gemini2Deployment]
+    deployment: AdapterDeployment[GeminiDeployment]
     client: GenAIClient
 
     def __init__(
         self,
         file_storage: Optional[FileStorage],
-        deployment: AdapterDeployment[Gemini2Deployment],
+        deployment: AdapterDeployment[GeminiDeployment],
         client: GenAIClient,
     ):
         self.file_storage = file_storage
@@ -66,7 +69,7 @@ class GeminiGenAIChatCompletionAdapter(
     async def create(
         cls,
         file_storage: FileStorage | None,
-        deployment: AdapterDeployment[Gemini2Deployment],
+        deployment: AdapterDeployment[GeminiDeployment],
         config: UpstreamConfig,
     ) -> "GeminiGenAIChatCompletionAdapter":
         return cls(
@@ -87,6 +90,16 @@ class GeminiGenAIChatCompletionAdapter(
         messages: List[Message],
     ) -> GeminiGenAIPrompt | UserError:
         match self.deployment.reference_deployment_id:
+            case (
+                ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
+                | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
+                | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
+                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
+                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
+            ):
+                return await Gemini_1_5_Prompt.parse(
+                    self.file_storage, tools, static_tools, messages
+                )
             case (
                 ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
                 | ChatCompletionDeployment.GEMINI_2_0_FLASH_001

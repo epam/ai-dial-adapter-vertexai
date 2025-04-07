@@ -3,20 +3,24 @@ from unittest.mock import AsyncMock, call
 
 import pytest
 from aidial_sdk.exceptions import HTTPException as DialException
-from vertexai.preview.generative_models import ChatSession, Content, Part
+from google.genai.types import Content, Part
 
-from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiGenAIPrompt
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
     Gemini_1_5_Prompt,
 )
 from tests.unit_tests.prompt_truncation.utils import get_discarded_messages
 
 
-async def tokenize_by_words(prompt: GeminiPrompt) -> int:
+async def tokenize_by_words(prompt: GeminiGenAIPrompt) -> int:
     text = " ".join(
         [
-            *[part.text for part in prompt.system_instruction or []],
-            *[msg.text for msg in prompt.contents],
+            *[part.text or "" for part in prompt.system_instruction or []],
+            *[
+                part.text or ""
+                for content in prompt.contents
+                for part in (content.parts or [])
+            ],
         ]
     )
     return len(text.split())
@@ -31,11 +35,11 @@ def sys(s: str) -> List[Part]:
 
 
 def user(s: str) -> Content:
-    return Content(role=ChatSession._USER_ROLE, parts=text_parts(s))
+    return Content(role="user", parts=text_parts(s))
 
 
 def bot(s: str) -> Content:
-    return Content(role=ChatSession._MODEL_ROLE, parts=text_parts(s))
+    return Content(role="model", parts=text_parts(s))
 
 
 @pytest.fixture
