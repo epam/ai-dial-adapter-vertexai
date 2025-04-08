@@ -18,8 +18,8 @@ from aidial_adapter_vertexai.chat.gemini.grounding import (
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import (
-    Gemini2Deployment,
     GeminiDeployment,
+    GeminiLegacyDeployment,
 )
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps
@@ -54,7 +54,7 @@ async def create_attachments_from_citations(
 async def set_usage(
     usage: GenerateContentResponse.UsageMetadata | GenAIUsageMetadata,
     consumer: Consumer,
-    deployment: GeminiDeployment | Gemini2Deployment,
+    deployment: GeminiLegacyDeployment | GeminiDeployment,
     is_grounding_added: bool = False,
 ) -> None:
     log.debug(f"usage: {json_dumps(usage)}")
