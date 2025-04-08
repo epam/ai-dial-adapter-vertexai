@@ -6,6 +6,7 @@ from aidial_sdk.chat_completion.request import (
     StaticFunction,
     StaticTool,
 )
+from google.genai.types import GoogleSearchDict as GenAIGoogleSearch
 from google.genai.types import ToolDict as GenAITool
 from pydantic.v1 import BaseModel, ConstrainedFloat, Field
 from pydantic.v1 import ValidationError as PydanticValidationError
@@ -96,15 +97,15 @@ class GenAIGoogleSearchTool:
         static_function: StaticFunction,
     ) -> List[GenAITool] | None:
         if static_function.name == ToolName.GOOGLE_SEARCH:
-            config = static_function.configuration or {}
+            config = static_function.configuration
             if is_gemini_1_5:
                 return [GenAITool(google_search_retrieval=config)]  # type: ignore
             else:
                 if config:
                     raise ValidationError(
-                        "Google search tool configuration is not supported"
+                        "Model doesn't support configuration for Google search tool"
                     )
-                return [GenAITool(google_search={})]
+                return [GenAITool(google_search=GenAIGoogleSearch())]
         return None
 
 
