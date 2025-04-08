@@ -39,6 +39,7 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
 
 def create_genai_generation_config(
     params: ModelParameters,
+    is_gemini_1_5: bool,
     tools: ToolsConfig,
     static_tools: StaticToolsConfig,
     system_instruction: List[GenAIPart] | None = None,
@@ -52,7 +53,7 @@ def create_genai_generation_config(
     elif not tools.is_empty():
         genai_tools = tools.to_gemini_genai_tools()
     elif not static_tools.is_empty():
-        genai_tools = static_tools.to_gemini_genai_tools()
+        genai_tools = static_tools.to_gemini_genai_tools(is_gemini_1_5)
 
     response_mime_type, response_schema = _get_response_format(params)
 
