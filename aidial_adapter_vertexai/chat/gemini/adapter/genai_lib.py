@@ -116,9 +116,11 @@ class GeminiGenAIChatCompletionAdapter(
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiGenAIPrompt
     ) -> AsyncIterator[GenAIGenerateContentResponse]:
+        is_gemini_1_5 = isinstance(prompt, Gemini_1_5_Prompt)
 
         generation_config = create_genai_generation_config(
             params,
+            is_gemini_1_5,
             prompt.tools,
             prompt.static_tools,
             prompt.system_instruction,

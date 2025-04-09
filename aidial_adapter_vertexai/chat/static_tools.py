@@ -1,6 +1,5 @@
-from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Generic, List, Literal, NoReturn, Self, TypeVar
+from typing import List, Literal, NoReturn, Self
 
 from aidial_sdk.chat_completion.request import (
     AzureChatCompletionRequest,
@@ -19,18 +18,8 @@ from aidial_adapter_vertexai.chat.errors import ValidationError
 
 class ToolName(str, Enum):
     # https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/grounding
+    # https://ai.google.dev/gemini-api/docs/grounding?lang=python#google-search-retrieval
     GOOGLE_SEARCH = "google_search"
-
-
-ToolT = TypeVar("ToolT")
-
-
-class StaticToolProcessor(ABC, Generic[ToolT]):
-    @staticmethod
-    @abstractmethod
-    def parse_gemini_tools(
-        static_function: StaticFunction,
-    ) -> List[ToolT] | None: ...
 
 
 class DynamicThreshold(ConstrainedFloat):
@@ -70,7 +59,7 @@ class GoogleSearchConfig(BaseModel):
     )
 
 
-class GoogleSearchGroundingTool(StaticToolProcessor[GeminiTool]):
+class GoogleSearchGroundingTool:
     @staticmethod
     def parse_gemini_tools(
         static_function: StaticFunction,
@@ -101,18 +90,22 @@ class GoogleSearchGroundingTool(StaticToolProcessor[GeminiTool]):
         return None
 
 
-class GenAIGoogleSearchTool(StaticToolProcessor[GenAITool]):
+class GenAIGoogleSearchTool:
     @staticmethod
     def parse_gemini_tools(
+        is_gemini_1_5: bool,
         static_function: StaticFunction,
     ) -> List[GenAITool] | None:
         if static_function.name == ToolName.GOOGLE_SEARCH:
-            if static_function.configuration:
-                raise ValidationError(
-                    "Model doesn't support configuration for Google search tool"
-                )
-            return [GenAITool(google_search=GenAIGoogleSearch())]
-
+            config = static_function.configuration
+            if is_gemini_1_5:
+                return [GenAITool(google_search_retrieval=config)]  # type: ignore
+            else:
+                if config:
+                    raise ValidationError(
+                        "Model doesn't support configuration for Google search tool"
+                    )
+                return [GenAITool(google_search=GenAIGoogleSearch())]
         return None
 
 
@@ -153,11 +146,11 @@ class StaticToolsConfig(BaseModel):
             )
         return ret
 
-    def to_gemini_genai_tools(self) -> List[GenAITool]:
+    def to_gemini_genai_tools(self, is_gemini_1_5: bool) -> List[GenAITool]:
         ret: List[GenAITool] = []
         for tool in self.functions:
             ret.extend(
-                GenAIGoogleSearchTool.parse_gemini_tools(tool)
+                GenAIGoogleSearchTool.parse_gemini_tools(is_gemini_1_5, tool)
                 or unknown_tool_name(tool)
             )
         return ret
