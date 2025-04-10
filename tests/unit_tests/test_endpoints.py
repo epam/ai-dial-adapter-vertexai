@@ -25,6 +25,8 @@ test_cases: List[Tuple[ChatCompletionDeployment, bool, bool]] = [
     (ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21, True, True),
     (ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05, True, True),
     (ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05, True, True),
+    (ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25, True, True),
+    (ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25, True, True),
     (ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2, True, True),
     (ChatCompletionDeployment.CLAUDE_3_5_HAIKU, True, True),
     (ChatCompletionDeployment.CLAUDE_3_OPUS, True, True),
