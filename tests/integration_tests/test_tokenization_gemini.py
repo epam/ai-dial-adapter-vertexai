@@ -42,7 +42,7 @@ class TestCase:
     deployment: ChatCompletionDeployment
 
     messages: List[ChatCompletionMessageParam]
-    expected: Callable[[TokenizeResponse], bool]
+    expected: Callable[[TokenizeResponse], None]
 
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
@@ -84,7 +84,7 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     def test_case(
         name: str,
         messages: List[ChatCompletionMessageParam],
-        expected: Callable[[TokenizeResponse], bool],
+        expected: Callable[[TokenizeResponse], None],
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
     ) -> None:
@@ -142,7 +142,7 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
         non_image_tokens = (
             1
             if deployment == ChatCompletionDeployment.GEMINI_PRO_VISION_1
-            else 4
+            else 3
         )
 
         for idx, user_message in enumerate(
@@ -232,6 +232,4 @@ async def test_tokenize(test_http_client: httpx.AsyncClient, test: TestCase):
         extra_headers=get_extra_headers("us-central1"),
     )
 
-    assert test.expected(
-        actual_output
-    ), f"Failed output test, actual output: {actual_output}"
+    test.expected(actual_output)

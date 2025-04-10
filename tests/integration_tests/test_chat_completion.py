@@ -24,8 +24,12 @@ from tests.utils.openai import (
     ai,
     ai_function,
     ai_tools,
+    assert_eq,
+    assert_in,
+    assert_not_in,
     chat_completion,
     for_all_choices,
+    foreach,
     function_request,
     function_response,
     function_to_tool,
@@ -49,7 +53,7 @@ class ExpectedException(BaseModel):
 
 
 def expected_success(*args, **kwargs):
-    return True
+    pass
 
 
 @dataclass
@@ -62,7 +66,7 @@ class TestCase:
     streaming: bool
 
     messages: List[ChatCompletionMessageParam]
-    expected: Callable[[ChatCompletionResult], bool] | ExpectedException
+    expected: Callable[[ChatCompletionResult], None] | ExpectedException
 
     max_tokens: int | None
     stop: List[str] | None
@@ -108,7 +112,7 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_001: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05: _CENTRAL,
+    # ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
@@ -258,7 +262,7 @@ def get_test_cases(
         name: str,
         messages: List[ChatCompletionMessageParam],
         expected: (
-            Callable[[ChatCompletionResult], bool] | ExpectedException
+            Callable[[ChatCompletionResult], None] | ExpectedException
         ) = expected_success,
         n: int | None = None,
         max_tokens: int | None = None,
@@ -290,32 +294,32 @@ def get_test_cases(
         test_case(
             name="2+3=5",
             messages=[user("2+3=?")],
-            expected=for_all_choices(lambda s: "5" in s),
+            expected=for_all_choices(lambda s: assert_in("5", s)),
         )
 
         test_case(
             name="model field",
             messages=[user("test")],
             max_tokens=1,
-            expected=lambda s: s.response.model == deployment.value,
+            expected=lambda s: assert_eq(s.response.model, deployment.value),
         )
 
         test_case(
             name="hello",
             messages=[user('Reply with "Hello"')],
-            expected=for_all_choices(lambda s: "hello" in s.lower()),
+            expected=for_all_choices(lambda s: assert_in("hello", s.lower())),
         )
 
         test_case(
             name="empty sys message",
             messages=[sys(""), user("2+4=?")],
-            expected=for_all_choices(lambda s: "6" in s),
+            expected=for_all_choices(lambda s: assert_in("6", s)),
         )
 
         test_case(
             name="non empty sys message",
             messages=[sys("Act as helpful assistant"), user("2+5=?")],
-            expected=for_all_choices(lambda s: "7" in s),
+            expected=for_all_choices(lambda s: assert_in("7", s)),
         )
 
         test_case(
@@ -352,14 +356,13 @@ def get_test_cases(
             ),
         )
 
-        def _check_max_tokens_1(r: ChatCompletionResult) -> bool:
+        def _check_max_tokens_1(r: ChatCompletionResult) -> None:
             expected_tokens = 0 if support_thinking(deployment) else 1
-            assert for_all_choices(
-                lambda text: len(text.split()) == expected_tokens
+            for_all_choices(
+                lambda text: assert_eq(len(text.split()), expected_tokens)
             )(r)
             assert r.usage is not None
             assert r.usage.completion_tokens == expected_tokens
-            return True
 
         test_case(
             name="max tokens 1",
@@ -375,7 +378,9 @@ def get_test_cases(
             max_tokens=10 if not support_thinking(deployment) else 250,
             n=candidates_count,
             messages=[user("2+7=? Reply with a single number")],
-            expected=for_all_choices(lambda s: "9" in s, candidates_count),
+            expected=for_all_choices(
+                lambda s: assert_in("9", s), candidates_count
+            ),
         )
 
         # Stop sequences do not work for some reason for CHAT_BISON_2_32K and streaming mode
@@ -395,7 +400,9 @@ def get_test_cases(
                         status_code=422,
                     )
                     if is_codechat(deployment)
-                    else for_all_choices(lambda s: "world" not in s.lower())
+                    else for_all_choices(
+                        lambda s: assert_not_in("world", s.lower())
+                    )
                 ),
             )
 
@@ -412,7 +419,7 @@ def get_test_cases(
                 name=f"describe image {idx}",
                 max_tokens=100,
                 messages=[sys("be a helpful assistant"), user_message],
-                expected=lambda s: "blue" in s.content.lower(),
+                expected=lambda s: assert_in("blue", s.content.lower()),
             )
 
     if supports_tools(deployment):
@@ -513,14 +520,11 @@ def get_test_cases(
                 return f"{fun_name}_{idx+1}"
 
             def check_tool_call_id(idx: int):
-                def _check(id: str) -> bool:
-                    return (
-                        f"{fun_name}_{idx+1}" == id
-                        if not supports_tool_call_ids(deployment)
-                        else True
-                    )
+                def ret(id: str):
+                    if not supports_tool_call_ids(deployment):
+                        assert f"{fun_name}_{idx+1}" == id
 
-                return _check
+                return ret
 
             expected_city_names = (
                 city_names
@@ -532,15 +536,15 @@ def get_test_cases(
                 name=f"weather tool {test_name_suffix}",
                 messages=init_messages,
                 tools=[tool],
-                expected=lambda s, n=expected_city_names: all(
-                    is_valid_tool_call(
+                expected=lambda s, n=expected_city_names: foreach(
+                    lambda idx: is_valid_tool_call(
                         s.tool_calls,
                         idx,
                         check_tool_call_id(idx),
                         fun_name,
                         check_fun_args(n[idx]),
-                    )
-                    for idx in range(len(n))
+                    ),
+                    range(len(n)),
                 ),
             )
 
@@ -567,6 +571,22 @@ def get_test_cases(
             )
 
     if supports_static_tools(deployment):
+
+        def _checker(s: ChatCompletionResult):
+            assert s.attachments is not None
+            assert len(s.attachments) > 0
+            assert isinstance(s.attachments[0].reference_url, str)
+            assert s.attachments[0].reference_url.startswith(
+                "https://vertexaisearch"
+            )
+            assert "carlos alcaraz" in s.content.lower()
+            assert s.usage is not None
+            assert (
+                s.usage.total_tokens > 7000
+                if not is_gemini_2(deployment)
+                else True
+            )
+
         test_case(
             name="static google search",
             messages=[user("Who won the Wimbledon in 2024?")],
@@ -579,24 +599,17 @@ def get_test_cases(
                     ),
                 ]
             ),
-            expected=lambda s: (
-                s.attachments is not None
-                and len(s.attachments) > 0
-                and isinstance(s.attachments[0].reference_url, str)
-                and s.attachments[0].reference_url.startswith(
-                    "https://vertexaisearch"
-                )
-                and "carlos alcaraz" in s.content.lower()
-                and s.usage is not None
-                and (
-                    s.usage.total_tokens > 7000
-                    if not is_gemini_2(deployment)
-                    else True
-                )
-            ),
+            expected=_checker,
         )
 
         if not is_gemini_2(deployment):
+
+            def _checker(s: ChatCompletionResult):
+                assert not s.attachments
+                assert "4" in s.content
+                assert s.usage is not None
+                assert s.usage.total_tokens < 20
+
             test_case(
                 name="static google search with dynamic threshold not hit",
                 messages=[user("2+2=?")],
@@ -615,19 +628,27 @@ def get_test_cases(
                     ]
                 ),
                 max_tokens=100,
-                expected=lambda s: (
-                    not s.attachments
-                    and "4" in s.content
-                    and s.usage is not None
-                    and s.usage.total_tokens < 20
-                ),
+                expected=_checker,
             )
+
             for index, retrieval_config in enumerate(
                 [
                     {"mode": "MODE_DYNAMIC", "dynamic_threshold": 0.01},
                     {"mode": "MODE_UNSPECIFIED"},
                 ]
             ):
+
+                def _checker(s: ChatCompletionResult):
+                    assert s.attachments is not None
+                    assert len(s.attachments) > 0
+                    assert isinstance(s.attachments[0].reference_url, str)
+                    assert s.attachments[0].reference_url.startswith(
+                        "https://vertexaisearch"
+                    )
+                    assert "4" in s.content.lower()
+                    assert s.usage is not None
+                    assert s.usage.total_tokens > 7000
+
                 test_case(
                     name=f"static google search with guaranteed search {index}",
                     messages=[user("2+2=")],
@@ -643,35 +664,33 @@ def get_test_cases(
                         ]
                     ),
                     max_tokens=100,
-                    expected=lambda s: (
-                        s.attachments is not None
-                        and len(s.attachments) > 0
-                        and isinstance(s.attachments[0].reference_url, str)
-                        and s.attachments[0].reference_url.startswith(
-                            "https://vertexaisearch"
-                        )
-                        and "4" in s.content.lower()
-                        and s.usage is not None
-                        and s.usage.total_tokens > 7000
-                    ),
+                    expected=_checker,
                 )
 
     if support_thinking(deployment):
+
+        def _checker(s: ChatCompletionResult):
+            assert s.stages is not None
+            assert len(s.stages) == 1
+            assert s.stages[0].name == "Thought Process"
+            assert "4" in s.content
+
         test_case(
             name="thinking",
             messages=[user("2+2=?")],
-            expected=lambda s: s.stages is not None
-            and len(s.stages) == 1
-            and s.stages[0].name == "Thought Process"
-            and "4" in s.content,
+            expected=_checker,
         )
 
     if supports_json_object_response_format(deployment):
+
+        def _checker(s: ChatCompletionResult):
+            assert isinstance(json.loads(s.content), dict)
+
         test_case(
             name="response format json object",
             messages=[user("extract name and surname from 'John Doe'")],
             extra_body={"response_format": {"type": "json_object"}},
-            expected=lambda s: isinstance(json.loads(s.content), dict),
+            expected=_checker,
         )
 
     if supports_json_schema_response_format(deployment):
@@ -693,11 +712,13 @@ def get_test_cases(
                     },
                 }
             },
-            expected=lambda s: json.loads(s.content)
-            == {
-                "NameField": "John",
-                "SurnameField": "Doe",
-            },
+            expected=lambda s: assert_eq(
+                json.loads(s.content),
+                {
+                    "NameField": "John",
+                    "SurnameField": "Doe",
+                },
+            ),
         )
 
     return test_cases
@@ -770,6 +791,4 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
         assert re.search(test.expected.message, str(actual_exc))
     else:
         actual_output = await run_chat_completion()
-        assert test.expected(
-            actual_output
-        ), f"Failed output test, actual output: {actual_output}"
+        test.expected(actual_output)

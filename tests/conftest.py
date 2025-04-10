@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import AsyncGenerator, Mapping
 
@@ -7,6 +8,13 @@ from asgi_lifespan import LifespanManager
 from google.cloud.aiplatform.constants.base import DEFAULT_REGION
 from httpx import ASGITransport
 from openai import AsyncAzureOpenAI
+
+
+def pytest_configure(config):
+    # Filter out logs containing "Adapter deployments" because they are too verbose
+    logging.getLogger("app").addFilter(
+        lambda record: "Adapter deployments" not in record.getMessage()
+    )
 
 
 @pytest.fixture(autouse=True)
