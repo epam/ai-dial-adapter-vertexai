@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable, List, Mapping
 
+import openai
 import pytest
 from aidial_sdk.chat_completion.request import StaticFunction
 from openai import APIError, RateLimitError, UnprocessableEntityError
@@ -108,7 +109,7 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_001: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
@@ -170,6 +171,7 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -181,6 +183,7 @@ def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         # ChatCompletionDeployment.CLAUDE_3_7_SONNET,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -188,7 +191,7 @@ def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
     return is_claude(deployment)
 
 
-def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
+def supports_grounding(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
@@ -197,6 +200,7 @@ def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -217,6 +221,7 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_VISION_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
@@ -233,9 +238,17 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
     ]
 
 
-def support_thinking(deployment: ChatCompletionDeployment) -> bool:
+def support_explicit_thinking(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+    ]
+
+
+def support_thinking(deployment: ChatCompletionDeployment) -> bool:
+    return support_explicit_thinking(deployment) or deployment in [
+        # Gemini 2.5 doesn't emit thinking tokens into a separate output,
+        # it's all the part of the completion tokens.
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -246,6 +259,7 @@ def is_gemini_2(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -410,7 +424,7 @@ def get_test_cases(
         ):
             test_case(
                 name=f"describe image {idx}",
-                max_tokens=100,
+                max_tokens=1000 if support_thinking(deployment) else 100,
                 messages=[sys("be a helpful assistant"), user_message],
                 expected=lambda s: "blue" in s.content.lower(),
             )
@@ -566,7 +580,7 @@ def get_test_cases(
                 expected=lambda s, t=city_temps: s.content_contains_all(t),
             )
 
-    if supports_static_tools(deployment):
+    if supports_grounding(deployment):
         test_case(
             name="static google search",
             messages=[user("Who won the Wimbledon in 2024?")],
@@ -656,7 +670,7 @@ def get_test_cases(
                     ),
                 )
 
-    if support_thinking(deployment):
+    if support_explicit_thinking(deployment):
         test_case(
             name="thinking",
             messages=[user("2+2=?")],
@@ -769,7 +783,11 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
         assert actual_status_code == test.expected.status_code
         assert re.search(test.expected.message, str(actual_exc))
     else:
-        actual_output = await run_chat_completion()
-        assert test.expected(
-            actual_output
-        ), f"Failed output test, actual output: {actual_output}"
+        try:
+            actual_output = await run_chat_completion()
+        except openai.APIError as e:
+            assert False, str(e.body)
+        else:
+            assert test.expected(
+                actual_output
+            ), f"Failed output test, actual output: {actual_output}"
