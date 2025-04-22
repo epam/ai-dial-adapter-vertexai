@@ -4,7 +4,12 @@ The project implements [AI DIAL API](https://epam-rail.com/dial_api) for languag
 
 ## Supported models
 
-The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME/chat/completions` endpoint along with optional support of `/tokenize` and `/truncate_prompt` endpoints:
+### Chat completion models
+
+The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/chat/completions` endpoint along with an optional support of the feature endpoints:
+
+* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/tokenize`
+* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
 |---|---|---|---|---|---|
@@ -31,9 +36,11 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 |Codey for Code Chat|codechat-bison@002|text-to-text|✅|✅|❌|
 |Codey for Code Chat|codechat-bison-32k@002|text-to-text|✅|✅|❌|
 
-The models that support `/truncate_prompt` do also support `max_prompt_tokens` request parameter.
+The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
-The following models support `SERVER_URL/openai/deployments/DEPLOYMENT_NAME/embeddings` endpoint:
+### Embedding models
+
+The following models support `$SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:
 
 |Model|Deployment name|Language support|Modality|
 |---|---|---|---|
@@ -44,43 +51,7 @@ The following models support `SERVER_URL/openai/deployments/DEPLOYMENT_NAME/embe
 |Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
 |Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
 
-## Developer environment
-
-This project uses [Python>=3.11](https://www.python.org/downloads/) and [Poetry>=1.6.1](https://python-poetry.org/) as a dependency manager.
-
-Check out Poetry's [documentation on how to install it](https://python-poetry.org/docs/#installation) on your system before proceeding.
-
-To install requirements:
-
-```sh
-poetry install
-```
-
-This will install all requirements for running the package, linting, formatting and tests.
-
-### IDE configuration
-
-The recommended IDE is [VSCode](https://code.visualstudio.com/).
-Open the project in VSCode and install the recommended extensions.
-
-The VSCode is configured to use PEP-8 compatible formatter [Black](https://black.readthedocs.io/en/stable/index.html).
-
-Alternatively you can use [PyCharm](https://www.jetbrains.com/pycharm/).
-
-Set-up the Black formatter for PyCharm [manually](https://black.readthedocs.io/en/stable/integrations/editors.html#pycharm-intellij-idea) or
-install PyCharm>=2023.2 with [built-in Black support](https://blog.jetbrains.com/pycharm/2023/07/2023-2/#black).
-
-## Run
-
-Run the development server:
-
-```sh
-make serve
-```
-
-Open `localhost:5001/docs` to make sure the server is up and running.
-
-## Environment Variables
+## Environment variables
 
 Copy `.env.example` to `.env` and customize it for your environment:
 
@@ -93,11 +64,11 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
-|COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#running-unsupported-vertexai-models-in-the-compatibility-mode) section.|
+|COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
 
-## Running unsupported VertexAI models in the compatibility mode
+## Compatibility mode
 
-The Adapter supports a predefined list of VertexAI deployments. The [Supported models](#supported-models) section lists the models. These models could be accessed via `/openai/deployments/{deployment_name}/(chat_completions|embeddings)` endpoints. The Adapter won't recognize any other deployment name and will result in 404 error.
+The Adapter supports a predefined list of VertexAI deployments. The [Supported models](#supported-models) section lists the models. These models could be accessed via `/openai/deployments/{deployment_name}/(chat_completions|embeddings)` endpoints. The Adapter won't recognize any other deployment name and will result in `404` error.
 
 Now, suppose VertexAI has just released a new version of a model, e.g. `gemini-2.0-flash-006` which is a better version of an older `gemini-2.0-flash-001` model.
 
@@ -112,7 +83,7 @@ The `COMPATIBILITY_MAPPING` env variable enables exactly this scenario.
 
 When it's defined like this:
 
-```json
+```
 COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "gemini-2.0-flash-001"}
 ```
 
@@ -128,7 +99,7 @@ When a version of the Adapter supporting the v6 model is released, you may migra
 
 Note that a mapping such as this one would be ineffectual:
 
-```json
+```
 COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "imagegeneration@005"}
 ```
 
@@ -172,17 +143,58 @@ The fields in the extra data override the corresponding environment variables:
 > [!NOTE]
 > The region and project configuration is only supported for Gemini 2.0 and Anthropic models.
 
-### Docker
+### Global endpoint
 
-Run the server in Docker:
+Use the `global` region to enable the [global endpoint](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#global-endpoint):
+
+```json
+{
+  "upstreams": [
+    {
+      "extraData": {
+        "project": "global"
+      }
+    }
+  ]
+}
+```
+
+> [!NOTE]
+> The global endpoint is supported only for [certain models](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#supported_models) and has a few other [limitations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#limitations).
+
+## Development
+
+Frequently used actions are automated via `make` targets.
+
+### Install
+
+To install the project dependencies required for running the server, linting and formatting the source code, and running the tests:
+
+```sh
+make install
+```
+
+### Serve locally
+
+To run the development server:
+
+```sh
+make serve
+```
+
+Open `localhost:5001/docs` to make sure the server is up and running.
+
+### Serve from the Docker container
+
+To run the server from the Docker container:
 
 ```sh
 make docker_serve
 ```
 
-## Lint
+### Lint
 
-Run the linting before committing:
+Don't forget to run the linting before committing:
 
 ```sh
 make lint
@@ -194,30 +206,42 @@ To auto-fix formatting issues run:
 make format
 ```
 
-## Test
+### Test
 
-Run unit tests locally:
+To run the unit tests locally:
 
 ```sh
 make test
 ```
 
-Run unit tests in Docker:
+To run the unit tests from the Docker container:
 
 ```sh
 make docker_test
 ```
 
-Run integration tests locally:
+To run the integration tests locally:
 
 ```sh
 make integration_tests
 ```
 
-## Clean
+### Clean
 
 To remove the virtual environment and build artifacts:
 
 ```sh
 make clean
 ```
+
+### IDE
+
+The recommended IDE is [VSCode](https://code.visualstudio.com/).
+Open the project in VSCode and install the recommended extensions.
+
+The VSCode is configured to use PEP-8 compatible formatter [Black](https://black.readthedocs.io/en/stable/index.html).
+
+Alternatively you can use [PyCharm](https://www.jetbrains.com/pycharm/).
+
+Set-up the Black formatter for PyCharm [manually](https://black.readthedocs.io/en/stable/integrations/editors.html#pycharm-intellij-idea) or
+install PyCharm>=2023.2 with [built-in Black support](https://blog.jetbrains.com/pycharm/2023/07/2023-2/#black).
