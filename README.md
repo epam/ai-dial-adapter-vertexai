@@ -44,43 +44,7 @@ The following models support `SERVER_URL/openai/deployments/DEPLOYMENT_NAME/embe
 |Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
 |Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
 
-## Developer environment
-
-This project uses [Python>=3.11](https://www.python.org/downloads/) and [Poetry>=1.6.1](https://python-poetry.org/) as a dependency manager.
-
-Check out Poetry's [documentation on how to install it](https://python-poetry.org/docs/#installation) on your system before proceeding.
-
-To install requirements:
-
-```sh
-poetry install
-```
-
-This will install all requirements for running the package, linting, formatting and tests.
-
-### IDE configuration
-
-The recommended IDE is [VSCode](https://code.visualstudio.com/).
-Open the project in VSCode and install the recommended extensions.
-
-The VSCode is configured to use PEP-8 compatible formatter [Black](https://black.readthedocs.io/en/stable/index.html).
-
-Alternatively you can use [PyCharm](https://www.jetbrains.com/pycharm/).
-
-Set-up the Black formatter for PyCharm [manually](https://black.readthedocs.io/en/stable/integrations/editors.html#pycharm-intellij-idea) or
-install PyCharm>=2023.2 with [built-in Black support](https://blog.jetbrains.com/pycharm/2023/07/2023-2/#black).
-
-## Run
-
-Run the development server:
-
-```sh
-make serve
-```
-
-Open `localhost:5001/docs` to make sure the server is up and running.
-
-## Environment Variables
+## Environment variables
 
 Copy `.env.example` to `.env` and customize it for your environment:
 
@@ -95,9 +59,9 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 |COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#running-unsupported-vertexai-models-in-the-compatibility-mode) section.|
 
-## Running unsupported VertexAI models in the compatibility mode
+## Compatibility mode
 
-The Adapter supports a predefined list of VertexAI deployments. The [Supported models](#supported-models) section lists the models. These models could be accessed via `/openai/deployments/{deployment_name}/(chat_completions|embeddings)` endpoints. The Adapter won't recognize any other deployment name and will result in 404 error.
+The Adapter supports a predefined list of VertexAI deployments. The [Supported models](#supported-models) section lists the models. These models could be accessed via `/openai/deployments/{deployment_name}/(chat_completions|embeddings)` endpoints. The Adapter won't recognize any other deployment name and will result in `404` error.
 
 Now, suppose VertexAI has just released a new version of a model, e.g. `gemini-2.0-flash-006` which is a better version of an older `gemini-2.0-flash-001` model.
 
@@ -172,17 +136,58 @@ The fields in the extra data override the corresponding environment variables:
 > [!NOTE]
 > The region and project configuration is only supported for Gemini 2.0 and Anthropic models.
 
-### Docker
+### Global endpoint
 
-Run the server in Docker:
+Use `global` region to enable the [global endpoint](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#global-endpoint):
+
+```json
+{
+  "upstreams": [
+    {
+      "extraData": {
+        "project": "global"
+      }
+    }
+  ]
+}
+```
+
+> [!NOTE]
+> The global endpoint is supported only for [certain models](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#supported_models) and has a few other [limitations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#limitations).
+
+## Development
+
+Frequently used actions are automated via `make` targets.
+
+### Install
+
+To install the project dependencies required for running the server, linting and formatting the source code, and running the tests:
+
+```sh
+make install
+```
+
+### Serve locally
+
+To run the development server:
+
+```sh
+make serve
+```
+
+Open `localhost:5001/docs` to make sure the server is up and running.
+
+### Serve from the Docker container
+
+To run the server from the Docker container:
 
 ```sh
 make docker_serve
 ```
 
-## Lint
+### Lint
 
-Run the linting before committing:
+Don't forget to run the linting before committing:
 
 ```sh
 make lint
@@ -194,30 +199,42 @@ To auto-fix formatting issues run:
 make format
 ```
 
-## Test
+### Test
 
-Run unit tests locally:
+To run the unit tests locally:
 
 ```sh
 make test
 ```
 
-Run unit tests in Docker:
+To run the unit tests from the Docker container:
 
 ```sh
 make docker_test
 ```
 
-Run integration tests locally:
+To run the integration tests locally:
 
 ```sh
 make integration_tests
 ```
 
-## Clean
+### Clean
 
 To remove the virtual environment and build artifacts:
 
 ```sh
 make clean
 ```
+
+### IDE
+
+The recommended IDE is [VSCode](https://code.visualstudio.com/).
+Open the project in VSCode and install the recommended extensions.
+
+The VSCode is configured to use PEP-8 compatible formatter [Black](https://black.readthedocs.io/en/stable/index.html).
+
+Alternatively you can use [PyCharm](https://www.jetbrains.com/pycharm/).
+
+Set-up the Black formatter for PyCharm [manually](https://black.readthedocs.io/en/stable/integrations/editors.html#pycharm-intellij-idea) or
+install PyCharm>=2023.2 with [built-in Black support](https://blog.jetbrains.com/pycharm/2023/07/2023-2/#black).
