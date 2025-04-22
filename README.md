@@ -57,7 +57,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
-|COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#running-unsupported-vertexai-models-in-the-compatibility-mode) section.|
+|COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
 
 ## Compatibility mode
 
@@ -76,7 +76,7 @@ The `COMPATIBILITY_MAPPING` env variable enables exactly this scenario.
 
 When it's defined like this:
 
-```json
+```
 COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "gemini-2.0-flash-001"}
 ```
 
@@ -92,7 +92,7 @@ When a version of the Adapter supporting the v6 model is released, you may migra
 
 Note that a mapping such as this one would be ineffectual:
 
-```json
+```
 COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "imagegeneration@005"}
 ```
 
@@ -138,7 +138,7 @@ The fields in the extra data override the corresponding environment variables:
 
 ### Global endpoint
 
-Use `global` region to enable the [global endpoint](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#global-endpoint):
+Use the `global` region to enable the [global endpoint](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#global-endpoint):
 
 ```json
 {
