@@ -4,7 +4,12 @@ The project implements [AI DIAL API](https://epam-rail.com/dial_api) for languag
 
 ## Supported models
 
-The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME/chat/completions` endpoint along with optional support of `/tokenize` and `/truncate_prompt` endpoints:
+### Chat completion models
+
+The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/chat/completions` endpoint along with an optional support of the feature endpoints:
+
+* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/tokenize`
+* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
 |---|---|---|---|---|---|
@@ -31,9 +36,11 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 |Codey for Code Chat|codechat-bison@002|text-to-text|✅|✅|❌|
 |Codey for Code Chat|codechat-bison-32k@002|text-to-text|✅|✅|❌|
 
-The models that support `/truncate_prompt` do also support `max_prompt_tokens` request parameter.
+The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
-The following models support `SERVER_URL/openai/deployments/DEPLOYMENT_NAME/embeddings` endpoint:
+### Embedding models
+
+The following models support `$SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:
 
 |Model|Deployment name|Language support|Modality|
 |---|---|---|---|
