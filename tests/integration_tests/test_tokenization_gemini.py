@@ -52,7 +52,6 @@ class TestCase:
 
 
 chat_deployments = [
-    ChatCompletionDeployment.GEMINI_PRO_1,
     ChatCompletionDeployment.GEMINI_PRO_VISION_1,
     ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
@@ -64,10 +63,6 @@ chat_deployments = [
 
 def supports_tools(deployment: ChatCompletionDeployment) -> bool:
     return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
-
-
-def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
-    return deployment != ChatCompletionDeployment.GEMINI_PRO_1
 
 
 def is_text_model(deployment: ChatCompletionDeployment) -> bool:
@@ -135,35 +130,30 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
         ),
     )
 
-    if is_vision_model(deployment):
-        content = "user"
+    # Gemini Vision cuts the dialog down to the last message
+    non_image_tokens = (
+        1 if deployment == ChatCompletionDeployment.GEMINI_PRO_VISION_1 else 4
+    )
 
-        # Gemini Vision cuts the dialog down to the last message
-        non_image_tokens = (
-            1
-            if deployment == ChatCompletionDeployment.GEMINI_PRO_VISION_1
-            else 4
+    for idx, user_message in enumerate(
+        [
+            user_with_attachment_data("user", BLUE_PNG_PICTURE),
+            user_with_attachment_url("user", BLUE_PNG_PICTURE),
+            user_with_image_url("user", BLUE_PNG_PICTURE),
+        ]
+    ):
+        test_case(
+            name=f"describe image {idx}",
+            messages=[
+                sys("system"),
+                user("ping"),
+                ai("pong"),
+                user_message,
+            ],
+            expected=check_tokenize_response(
+                non_image_tokens + GEMINI_TOKENS_PER_IMAGE
+            ),
         )
-
-        for idx, user_message in enumerate(
-            [
-                user_with_attachment_data(content, BLUE_PNG_PICTURE),
-                user_with_attachment_url(content, BLUE_PNG_PICTURE),
-                user_with_image_url(content, BLUE_PNG_PICTURE),
-            ]
-        ):
-            test_case(
-                name=f"describe image {idx}",
-                messages=[
-                    sys("system"),
-                    user("ping"),
-                    ai("pong"),
-                    user_message,
-                ],
-                expected=check_tokenize_response(
-                    non_image_tokens + GEMINI_TOKENS_PER_IMAGE
-                ),
-            )
 
     if supports_tools(deployment):
         content = "What's the temperature in Glasgow in celsius?"

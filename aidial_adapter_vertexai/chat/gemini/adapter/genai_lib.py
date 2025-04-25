@@ -134,7 +134,7 @@ class GeminiGenAIChatCompletionAdapter(
                 contents=list(prompt.contents),
                 config=generation_config,
             )
-            async for chunk in await gen:
+            async for chunk in gen:  # type: ignore
                 yield chunk
         else:
             yield await self.client.aio.models.generate_content(
