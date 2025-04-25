@@ -19,7 +19,7 @@ aidial-sdk = {version = "0.20.0", extras = ["telemetry"]}
 fastapi = "0.115.2"
 google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
-google-genai = "0.8.0"
+google-genai = "1.0.0"
 openai = "1.13.3"
 anthropic = {extras = ["vertex"], version = "^0.43.1"}
 pydantic = "^2.10.4"
@@ -58,6 +58,7 @@ google-auth-oauthlib = "1.0.0"
 addopts = "-n=auto --asyncio-mode=auto --self-contained-html --html=pytest.html --alluredir=allure-results"
 env_override_existing_values = 1
 filterwarnings = [
+    "error",
     # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
     "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
     "ignore::DeprecationWarning:google.rpc",

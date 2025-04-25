@@ -3,8 +3,8 @@ from typing import List, Optional
 from aidial_sdk.chat_completion import Attachment, Message
 from google.genai.client import Client as GenAIClient
 from google.genai.types import (
-    GenerateImageConfigDict,
-    GenerateImageResponse,
+    GenerateImagesConfigDict,
+    GenerateImagesResponse,
     Image,
 )
 from PIL import Image as PIL_Image
@@ -82,7 +82,7 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         config = _prepare_generation_config(params)
 
         with Timer("predict timing: {time}", log.debug):
-            response = await self.client.aio.models.generate_image(
+            response = await self.client.aio.models.generate_images(
                 model=self.model_id, prompt=prompt, config=config
             )
 
@@ -146,12 +146,12 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
 
 def _prepare_generation_config(
     params: ModelParameters,
-) -> GenerateImageConfigDict:
+) -> GenerateImagesConfigDict:
     return {"seed": params.seed}
 
 
 def _extract_image(
-    response: GenerateImageResponse,
+    response: GenerateImagesResponse,
 ) -> Resource | None:
     images = response.generated_images
     if images is None or len(images) == 0:

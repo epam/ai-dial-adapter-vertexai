@@ -129,11 +129,12 @@ class GeminiGenAIChatCompletionAdapter(
         )
 
         if params.stream:
-            async for chunk in self.client.aio.models.generate_content_stream(
+            gen = await self.client.aio.models.generate_content_stream(
                 model=self.model_id,
                 contents=list(prompt.contents),
                 config=generation_config,
-            ):
+            )
+            async for chunk in await gen:
                 yield chunk
         else:
             yield await self.client.aio.models.generate_content(
