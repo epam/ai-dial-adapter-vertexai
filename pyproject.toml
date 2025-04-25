@@ -19,7 +19,7 @@ aidial-sdk = {version = "0.20.0", extras = ["telemetry"]}
 fastapi = "0.115.2"
 google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
-google-genai = "0.4.0"
+google-genai = "0.8.0"
 openai = "1.13.3"
 anthropic = {extras = ["vertex"], version = "^0.43.1"}
 pydantic = "^2.10.4"
