@@ -120,6 +120,15 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
 }
 
 
+def is_retired(deployment: ChatCompletionDeployment) -> bool:
+    # Keep at least one model in the list to test how the adapter handles retired models
+    return deployment in [
+        ChatCompletionDeployment.GEMINI_PRO_1,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+    ]
+
+
 def is_codechat(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.CODECHAT_BISON_1,
@@ -299,6 +308,19 @@ def get_test_cases(
                 extra_body,
             )
         )
+
+    if is_retired(deployment):
+        test_case(
+            name="retired",
+            messages=[user("test")],
+            max_tokens=1,
+            expected=ExpectedException(
+                type=openai.NotFoundError,
+                status_code=404,
+                message="not found",
+            ),
+        )
+        return test_cases
 
     if supports_text_input(deployment):
         test_case(

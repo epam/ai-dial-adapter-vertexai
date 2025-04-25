@@ -204,7 +204,8 @@ class GeminiGenAIChatCompletionAdapter(
             # and there will be no content in response.
             # And set_usage will fail with 'Trying to set "usage" before generating all choices' error.
             # Append empty content, so at least one choice is generated.
-            await consumer.append_content("")
+            if consumer.get_finish_reason() == FinishReason.LENGTH:
+                await consumer.append_content("")
 
         if usage_metadata:
             await set_usage(
