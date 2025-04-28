@@ -76,22 +76,8 @@ class TestCase:
     extra_body: dict | None
 
     def get_id(self):
-        max_tokens_str = f"maxt:{self.max_tokens}" if self.max_tokens else None
-        stop_sequence_str = f"stop:{self.stop}" if self.stop else None
-        n_str = f"n:{self.n}" if self.n else None
         return sanitize_test_name(
-            "/".join(
-                str(part)
-                for part in [
-                    self.deployment.value,
-                    self.streaming,
-                    max_tokens_str,
-                    stop_sequence_str,
-                    n_str,
-                    self.name,
-                ]
-                if part is not None
-            )
+            f"{self.deployment.value}/{self.streaming}/{self.name}"
         )
 
 
@@ -749,7 +735,7 @@ def get_test_cases(
     ],
     ids=lambda test: test.get_id(),
 )
-async def test_chat_completion_openai(get_openai_client, test: TestCase):
+async def test_chat_completion(get_openai_client, test: TestCase):
     client = get_openai_client(
         test.deployment.value, get_extra_headers(test.region)
     )
