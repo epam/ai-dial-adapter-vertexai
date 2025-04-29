@@ -155,7 +155,9 @@ class GeminiGenAIChatCompletionAdapter(
         try:
             async for chunk in generator():
                 if log.isEnabledFor(DEBUG):
-                    chunk_str = json_dumps(chunk)
+                    chunk_str = json_dumps(
+                        chunk, exclude_none=True, exclude_empty_dict=True
+                    )
                     log.debug(f"response chunk: {chunk_str}")
 
                 if chunk.prompt_feedback:
@@ -197,9 +199,18 @@ class GeminiGenAIChatCompletionAdapter(
                     consumer.is_empty(),
                 ):
                     await consumer.set_finish_reason(openai_reason)
+
+                # NOTE: need to flush manually the SDK queue of chat completion chunks
+                # since google-genai<1.3.0 is based on synchronous `requests` HTTP client.
+                # Therefore, `requests` didn't release the async event loop on receiving chunks from the upstream.
+                # This led to the adapter responding with all generated chunks at once,
+                # which defeats the purpose of streaming.
+                # Could be removed once migrated to google-genai>=1.3.0
+                await consumer.aflush()
         finally:
             if thinking_stage:
                 thinking_stage.close()
+
             # It's possible that max tokens will be reached during the thinking stage
             # and there will be no content in response.
             # And set_usage will fail with 'Trying to set "usage" before generating all choices' error.
