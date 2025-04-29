@@ -15,45 +15,40 @@ from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 class Consumer(ABC):
     @abstractmethod
-    async def append_content(self, content: str):
-        pass
+    async def append_content(self, content: str): ...
 
     @abstractmethod
-    async def create_function_call(self, name: str, arguments: str | None):
-        pass
+    async def create_function_call(self, name: str, arguments: str | None): ...
 
     @abstractmethod
-    async def create_tool_call(self, id: str, name: str, arguments: str | None):
-        pass
+    async def create_tool_call(
+        self, id: str, name: str, arguments: str | None
+    ): ...
 
     @abstractmethod
-    async def add_attachment(self, attachment: Attachment):
-        pass
+    async def add_attachment(self, attachment: Attachment): ...
 
     @abstractmethod
-    async def set_usage(self, usage: TokenUsage):
-        pass
+    async def set_usage(self, usage: TokenUsage): ...
 
     @abstractmethod
-    async def set_finish_reason(self, finish_reason: FinishReason):
-        pass
+    async def set_finish_reason(self, finish_reason: FinishReason): ...
 
     @abstractmethod
-    def get_finish_reason(self) -> FinishReason | None:
-        pass
+    def get_finish_reason(self) -> FinishReason | None: ...
 
     @abstractmethod
-    def is_empty(self) -> bool:
-        pass
+    def is_empty(self) -> bool: ...
 
     @abstractmethod
-    async def create_stage(self, name: str) -> Stage:
-        pass
+    async def aflush(self): ...
+
+    @abstractmethod
+    async def create_stage(self, name: str) -> Stage: ...
 
     @property
     @abstractmethod
-    def has_function_call(self) -> bool:
-        pass
+    def has_function_call(self) -> bool: ...
 
 
 class ChoiceConsumer(Consumer):
@@ -104,6 +99,9 @@ class ChoiceConsumer(Consumer):
         if exc is None and self._choice is not None:
             self._choice.close()
         return False
+
+    async def aflush(self):
+        await self.response.aflush()
 
     def is_empty(self) -> bool:
         return self.empty
