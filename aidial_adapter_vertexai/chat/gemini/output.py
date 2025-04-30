@@ -1,4 +1,5 @@
 import json
+from logging import DEBUG
 from urllib.parse import urlparse
 
 from aidial_sdk.chat_completion import Attachment
@@ -57,7 +58,9 @@ async def set_usage(
     deployment: GeminiLegacyDeployment | GeminiDeployment,
     is_grounding_added: bool = False,
 ) -> None:
-    log.debug(f"usage: {json_dumps(usage)}")
+    if log.isEnabledFor(DEBUG):
+        log.debug(f"usage: {json_dumps(usage)}")
+
     completion_tokens = usage.candidates_token_count or 0
     if is_grounding_added:
         completion_tokens += google_search_grounding_tokens(deployment)
@@ -77,14 +80,16 @@ async def create_function_calls(
 
         if tools.is_tool:
             id = tools.create_fresh_tool_call_id(call.name)
-            log.debug(f"tool call: id={id}, {json_dumps(call)}")
+            if log.isEnabledFor(DEBUG):
+                log.debug(f"tool call: id={id}, {json_dumps(call)}")
             await consumer.create_tool_call(
                 id=id,
                 name=call.name,
                 arguments=arguments,
             )
         else:
-            log.debug(f"function call: {json_dumps(call)}")
+            if log.isEnabledFor(DEBUG):
+                log.debug(f"function call: {json_dumps(call)}")
             await consumer.create_function_call(
                 name=call.name,
                 arguments=arguments,

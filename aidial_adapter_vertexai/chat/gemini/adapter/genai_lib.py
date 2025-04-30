@@ -200,14 +200,6 @@ class GeminiGenAIChatCompletionAdapter(
                     consumer.is_empty(),
                 ):
                     await consumer.set_finish_reason(openai_reason)
-
-                # NOTE: need to flush manually the SDK queue of chat completion chunks
-                # since google-genai<1.3.0 is based on synchronous `requests` HTTP client.
-                # Therefore, `requests` didn't release the async event loop on receiving chunks from the upstream.
-                # This led to the adapter responding with all generated chunks at once,
-                # which defeats the purpose of streaming.
-                # Could be removed once migrated to google-genai>=1.3.0
-                await consumer.aflush()
         finally:
             if thinking_stage:
                 thinking_stage.close()

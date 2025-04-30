@@ -2,11 +2,7 @@ from typing import List, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message
 from google.genai.client import Client as GenAIClient
-from google.genai.types import (
-    GenerateImagesConfigDict,
-    GenerateImagesResponse,
-    Image,
-)
+from google.genai.types import GenerateImagesConfigDict, GenerateImagesResponse
 from PIL import Image as PIL_Image
 from typing_extensions import override
 
@@ -157,15 +153,16 @@ def _extract_image(
     if images is None or len(images) == 0:
         return None
 
-    image: Image | None = images[0].image
-    if image is None:
+    if (image := images[0].image) is None:
         return None
 
-    image_data: bytes | None = image.image_bytes
-    if image_data is None:
+    if (image_data := image.image_bytes) is None:
         return None
 
-    media_type: str = _get_image_type(image._pil_image)
+    if (pil_image := image._pil_image) is None:
+        return None
+
+    media_type = _get_image_type(pil_image)
     return Resource(type=media_type, data=image_data)
 
 
