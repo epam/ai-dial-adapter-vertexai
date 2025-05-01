@@ -105,13 +105,15 @@ class GenAIConversationFactory(
         return GenAIPart.from_bytes(data=data, mime_type=mime_type)
 
     def create_text_part(self, text: str) -> GenAIPart:
-        return GenAIPart.from_text(text)
+        return GenAIPart.from_text(text=text)
 
     def create_function_call_part(
         self, name: str, args: str, tool_call_id: str
     ) -> GenAIPart:
         try:
-            return GenAIPart.from_function_call(name, json.loads(args))
+            return GenAIPart.from_function_call(
+                name=name, args=json.loads(args)
+            )
         except Exception:
             raise ValidationError(
                 "Function call arguments must be a valid JSON"
@@ -126,10 +128,12 @@ class GenAIConversationFactory(
             processed_args = args
 
         if isinstance(processed_args, dict):
-            return GenAIPart.from_function_response(name, processed_args)
+            return GenAIPart.from_function_response(
+                name=name, response=processed_args
+            )
 
         return GenAIPart.from_function_response(
-            name, {"output": processed_args}
+            name=name, response={"output": processed_args}
         )
 
     def create_content(

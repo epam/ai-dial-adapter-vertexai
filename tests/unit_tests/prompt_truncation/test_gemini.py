@@ -28,7 +28,7 @@ async def tokenize_by_words(prompt: GeminiGenAIPrompt) -> int:
 
 
 def text_parts(s: str) -> List[Part]:
-    return [Part.from_text(s)]
+    return [Part.from_text(text=s)]
 
 
 def sys(s: str) -> List[Part]:

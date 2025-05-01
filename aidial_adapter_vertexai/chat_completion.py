@@ -141,6 +141,7 @@ class VertexAIChatCompletion(ChatCompletion):
             tokens = await model.count_completion_tokens(value)
             return TokenizeSuccess(token_count=tokens)
         except Exception as e:
+            log.exception("Error tokenizing a string")
             return TokenizeError(error=str(e))
 
     async def _tokenize_request(
@@ -158,6 +159,7 @@ class VertexAIChatCompletion(ChatCompletion):
             token_count = await model.count_prompt_tokens(prompt)
             return TokenizeSuccess(token_count=token_count)
         except Exception as e:
+            log.exception("Error tokenizing a request")
             return TokenizeError(error=str(e))
 
     @override
