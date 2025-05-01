@@ -23,13 +23,6 @@ class ListProjection(Generic[_T]):
     def raw_list(self) -> List[_T]:
         return [msg for msg, _ in self.list]
 
-    def to_original_indices(self, idx: int | Iterable[int]) -> Set[int]:
-        return {
-            orig_index
-            for index in _to_set(idx)
-            for orig_index in self.list[index][1]
-        }
-
     def _get_remaining_indices(self) -> Set[int]:
         return {idx for (_, st) in self.list for idx in st}
 

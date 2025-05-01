@@ -130,6 +130,26 @@ class TruncatablePrompt(ABC, Sized):
         tokenize: Callable[[Self], Awaitable[int]],
         model_limit: Optional[int] = None,
         user_limit: Optional[int] = None,
+    ) -> Self:
+
+        result = await _compute_discarded_messages(
+            prompt=self,
+            tokenize=tokenize,
+            model_limit=model_limit,
+            user_limit=user_limit,
+        )
+
+        if isinstance(result, TruncatePromptError):
+            raise result.to_dial_exception()
+
+        return self.omit(set(result))
+
+    async def get_truncated_prompt(
+        self,
+        *,
+        tokenize: Callable[[Self], Awaitable[int]],
+        model_limit: Optional[int] = None,
+        user_limit: Optional[int] = None,
     ) -> TruncatedPrompt[Self]:
         """
         Returns a list of indices of discarded messages and

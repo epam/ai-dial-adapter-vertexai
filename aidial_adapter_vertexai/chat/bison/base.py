@@ -50,7 +50,7 @@ class BisonChatCompletionAdapter(ChatCompletionAdapter[BisonPrompt]):
     async def truncate_prompt(
         self, prompt: BisonPrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[BisonPrompt]:
-        return await prompt.truncate(
+        return await prompt.get_truncated_prompt(
             tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
 

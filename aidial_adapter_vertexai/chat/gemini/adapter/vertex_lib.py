@@ -215,10 +215,14 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def truncate_prompt(
         self, prompt: GeminiPrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[GeminiPrompt]:
-        truncated_prompt = await prompt.truncate(
+        prompt = await prompt.truncate(
             tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
-        return _project_to_original_indices(prompt, truncated_prompt)
+
+        return TruncatedPrompt(
+            prompt=prompt,
+            discarded_messages=list(prompt.messages.get_removed_indices()),
+        )
 
     @override
     async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
@@ -243,18 +247,3 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         deployment: AdapterDeployment[GeminiLegacyDeployment],
     ) -> "GeminiChatCompletionAdapter":
         return cls(file_storage, deployment)
-
-
-def _project_to_original_indices(
-    original_prompt: GeminiPrompt,
-    truncated_prompt: TruncatedPrompt[GeminiPrompt],
-) -> TruncatedPrompt[GeminiPrompt]:
-    discarded_messages = list(
-        original_prompt.conversation.messages.to_original_indices(
-            truncated_prompt.discarded_messages
-        )
-    )
-    return TruncatedPrompt(
-        prompt=truncated_prompt.prompt,
-        discarded_messages=discarded_messages,
-    )

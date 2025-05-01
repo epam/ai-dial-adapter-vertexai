@@ -33,10 +33,10 @@ def group_by(
 
 
 class MessageMergeStrategy(Generic[_T], ABC):
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def role(_T) -> Any: ...
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def merge(a: _T, b: _T) -> _T: ...

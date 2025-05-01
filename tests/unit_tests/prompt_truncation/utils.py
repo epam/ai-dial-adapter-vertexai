@@ -14,5 +14,7 @@ async def get_discarded_messages(
     max_prompt_tokens: int,
 ) -> DiscardedMessages:
     return (
-        await prompt.truncate(tokenize=tokenize, user_limit=max_prompt_tokens)
+        await prompt.get_truncated_prompt(
+            tokenize=tokenize, user_limit=max_prompt_tokens
+        )
     ).discarded_messages
