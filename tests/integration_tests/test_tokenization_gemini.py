@@ -218,9 +218,9 @@ async def test_tokenize(
             client=get_openai_client(deployment_id, extra_headers),
             messages=test.messages,
             stream=False,
+            max_tokens=1,
             functions=test.functions,
             tools=test.tools,
-            max_tokens=1,
         )
 
         assert isinstance(output, TokenizeSuccess)

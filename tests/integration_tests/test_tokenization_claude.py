@@ -42,7 +42,6 @@ class TestCase:
 
     messages: List[ChatCompletionMessageParam]
 
-    max_tokens: int | None
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
 
@@ -74,7 +73,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     def test_case(
         name: str,
         messages: List[ChatCompletionMessageParam],
-        max_tokens: int | None = None,
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
     ) -> None:
@@ -83,7 +81,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
                 name,
                 deployment,
                 messages,
-                max_tokens,
                 functions,
                 tools,
             )
@@ -92,25 +89,21 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     test_case(
         name="single user message",
         messages=[user("user")],
-        max_tokens=1,
     )
 
     test_case(
         name="empty sys message + user",
         messages=[sys(""), user("user")],
-        max_tokens=1,
     )
 
     test_case(
         name="non-empty sys message + user",
         messages=[sys("system"), user("user")],
-        max_tokens=1,
     )
 
     test_case(
         name="long completion",
         messages=[user("tell me the full story of Pinocchio")],
-        max_tokens=1,
     )
 
     if is_vision_model(deployment):
@@ -131,7 +124,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
                     ai("pong"),
                     user_message,
                 ],
-                max_tokens=1,
             )
 
     if supports_tools(deployment):
@@ -198,7 +190,7 @@ async def test_tokenize(
         client=client,
         messages=test.messages,
         stream=False,
-        max_tokens=test.max_tokens,
+        max_tokens=1,
         functions=test.functions,
         tools=test.tools,
     )
