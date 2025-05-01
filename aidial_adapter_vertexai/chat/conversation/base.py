@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Generic, List, Self, TypeVar
+from typing import Generic, List, Self, Set, Tuple, Type, TypeVar
 
+from aidial_adapter_vertexai.utils.list import MessageMergeStrategy, group_by
 from aidial_adapter_vertexai.utils.list_projection import ListProjection
 
 SystemT = TypeVar("SystemT")
@@ -30,10 +31,28 @@ class BaseConversation(Generic[SystemT, MessageT]):
             ),
         )
 
-    def on_messages(
-        self,
-        func: Callable[[ListProjection[MessageT]], ListProjection[MessageT]],
-    ) -> BaseConversation[SystemT, MessageT]:
-        return BaseConversation(
-            system=self.system, messages=func(self.messages)
+    def merge_messages_with_same_role(
+        self, merger: Type[MessageMergeStrategy[MessageT]]
+    ) -> Self:
+        def _key(a: Tuple[MessageT, Set[int]]) -> str:
+            return merger.role(a[0])
+
+        def _merge(
+            a: Tuple[MessageT, Set[int]],
+            b: Tuple[MessageT, Set[int]],
+        ) -> Tuple[MessageT, Set[int]]:
+            (msg1, set1), (msg2, set2) = a, b
+            return (merger.merge(msg1, msg2), set1 | set2)
+
+        self.messages = ListProjection(
+            self.messages.start_index,
+            self.messages.end_index,
+            group_by(
+                lst=self.messages.list,
+                key=_key,
+                init=lambda x: x,
+                merge=_merge,
+            ),
         )
+
+        return self

@@ -13,6 +13,9 @@ from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
     ConversationFactory,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.message import (
+    LegacyMessageMerger,
+)
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 
@@ -39,6 +42,9 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
 
         conversation = await messages_to_conversation(
             conversation_factory, processors, tools, messages
+        )
+        conversation = conversation.merge_messages_with_same_role(
+            LegacyMessageMerger
         )
 
         if error_message := processors.get_error_message():

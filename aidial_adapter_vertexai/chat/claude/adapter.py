@@ -254,11 +254,11 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
 
 
 def _project_to_original_indices(
-    prompt: ClaudePrompt,
+    original_prompt: ClaudePrompt,
     truncated_prompt: TruncatedPrompt[ClaudePrompt],
 ) -> TruncatedPrompt[ClaudePrompt]:
     discarded_messages = list(
-        prompt.conversation.messages.to_original_indices(
+        original_prompt.conversation.messages.to_original_indices(
             truncated_prompt.discarded_messages
         )
     )
