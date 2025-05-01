@@ -157,7 +157,7 @@ def get_test_cases(
     no_messages_error = (
         "contents are required."
         if is_gemini(deployment)
-        else "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages: at least one message is required'}}"
+        else "messages: at least one message is required"
     )
 
     test_case(
