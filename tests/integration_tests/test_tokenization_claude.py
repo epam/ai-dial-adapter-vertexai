@@ -3,6 +3,7 @@ from typing import List
 
 import httpx
 import pytest
+from aidial_sdk.deployment.tokenize import TokenizeError, TokenizeSuccess
 from openai.types.chat import (
     ChatCompletionMessageParam,
     ChatCompletionToolParam,
@@ -41,6 +42,7 @@ class TestCase:
     deployment: ChatCompletionDeployment
 
     messages: List[ChatCompletionMessageParam]
+    expected_error: str | None
 
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
@@ -73,6 +75,7 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     def test_case(
         name: str,
         messages: List[ChatCompletionMessageParam],
+        error: str | None = None,
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
     ) -> None:
@@ -81,6 +84,7 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
                 name,
                 deployment,
                 messages,
+                error,
                 functions,
                 tools,
             )
@@ -104,6 +108,12 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     test_case(
         name="long completion",
         messages=[user("tell me the full story of Pinocchio")],
+    )
+
+    test_case(
+        name="sys message",
+        messages=[sys("system")],
+        error="Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages: at least one message is required'}}",
     )
 
     if is_vision_model(deployment):
@@ -184,23 +194,7 @@ async def test_tokenize(
     extra_headers = get_extra_headers("us-east5")
     deployment_id = test.deployment.value
 
-    client = get_openai_client(deployment_id, extra_headers)
-
-    response = await chat_completion(
-        client=client,
-        messages=test.messages,
-        stream=False,
-        max_tokens=1,
-        functions=test.functions,
-        tools=test.tools,
-    )
-
-    usage = response.usage
-    assert usage is not None, "Usage is missing"
-
-    expected_prompt_tokens = usage.prompt_tokens
-
-    resp = await tokenize_request(
+    actual_output = await tokenize_request(
         test_http_client,
         deployment_id,
         test.messages,
@@ -209,7 +203,27 @@ async def test_tokenize(
         extra_headers=extra_headers,
     )
 
-    output = resp.outputs[0]
-    assert output.status == "success"
-    actual_prompt_tokens = output.token_count
-    assert actual_prompt_tokens == expected_prompt_tokens
+    outputs = actual_output.outputs
+    assert len(outputs) == 1
+    output = outputs[0]
+
+    if isinstance(test.expected_error, str):
+        assert isinstance(output, TokenizeError)
+        assert output.status == "error"
+        assert output.error == test.expected_error
+    else:
+
+        chat_completion_response = await chat_completion(
+            client=get_openai_client(deployment_id, extra_headers),
+            messages=test.messages,
+            stream=False,
+            max_tokens=1,
+            functions=test.functions,
+            tools=test.tools,
+        )
+
+        assert isinstance(output, TokenizeSuccess)
+        assert output.status == "success"
+        usage = chat_completion_response.usage
+        assert usage is not None, "Usage is missing"
+        assert output.token_count == usage.prompt_tokens

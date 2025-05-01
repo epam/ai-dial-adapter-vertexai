@@ -111,6 +111,12 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     )
 
     test_case(
+        name="long completion",
+        messages=[user("tell me the full story of Pinocchio")],
+        error=None if text_model else "No documents were found",
+    )
+
+    test_case(
         name="sys message",
         messages=[sys("system")],
         error=(
