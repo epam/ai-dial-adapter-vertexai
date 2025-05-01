@@ -9,10 +9,10 @@ _P = TypeVar("_P", bound=TruncatablePrompt)
 
 
 async def get_discarded_messages(
-    tokenizer: Callable[[_P], Awaitable[int]],
+    tokenize: Callable[[_P], Awaitable[int]],
     prompt: _P,
     max_prompt_tokens: int,
 ) -> DiscardedMessages:
     return (
-        await prompt.truncate(tokenizer=tokenizer, user_limit=max_prompt_tokens)
+        await prompt.truncate(tokenize=tokenize, user_limit=max_prompt_tokens)
     ).discarded_messages

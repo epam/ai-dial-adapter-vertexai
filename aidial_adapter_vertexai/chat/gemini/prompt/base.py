@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Generic, List, Self, Set
 
 from google.genai.types import Content as GenAIContent
@@ -13,9 +12,7 @@ from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 
 
-class GeminiBasePrompt(
-    BaseModel, TruncatablePrompt, ABC, Generic[PartT, ContentT]
-):
+class GeminiBasePrompt(BaseModel, TruncatablePrompt, Generic[PartT, ContentT]):
     system_instruction: List[PartT] | None = None
     contents: List[ContentT]
     tools: ToolsConfig = Field(default_factory=ToolsConfig.noop)
@@ -79,9 +76,5 @@ class GeminiBasePrompt(
         return regular_tools + static_tools
 
 
-class GeminiPrompt(GeminiBasePrompt[Part, Content]):
-    pass
-
-
-class GeminiGenAIPrompt(GeminiBasePrompt[GenAIPart, GenAIContent]):
-    pass
+GeminiPrompt = GeminiBasePrompt[Part, Content]
+GeminiGenAIPrompt = GeminiBasePrompt[GenAIPart, GenAIContent]

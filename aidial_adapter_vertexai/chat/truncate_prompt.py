@@ -127,7 +127,7 @@ class TruncatablePrompt(ABC, Sized):
     async def truncate(
         self,
         *,
-        tokenizer: Callable[[Self], Awaitable[int]],
+        tokenize: Callable[[Self], Awaitable[int]],
         model_limit: Optional[int] = None,
         user_limit: Optional[int] = None,
     ) -> TruncatedPrompt[Self]:
@@ -146,8 +146,9 @@ class TruncatablePrompt(ABC, Sized):
         Throws a DIAL exception when the truncation satisfying the given limits is impossible.
         """
 
-        result = await self.compute_discarded_messages(
-            tokenizer=tokenizer,
+        result = await _compute_discarded_messages(
+            prompt=self,
+            tokenize=tokenize,
             model_limit=model_limit,
             user_limit=user_limit,
         )
@@ -160,76 +161,80 @@ class TruncatablePrompt(ABC, Sized):
             prompt=self.omit(set(result)),
         )
 
-    async def compute_discarded_messages(
-        self,
-        *,
-        tokenizer: Callable[[Self], Awaitable[int]],
-        model_limit: Optional[int],
-        user_limit: Optional[int],
-    ) -> DiscardedMessages | TruncatePromptError:
-        if (
-            user_limit is not None
-            and model_limit is not None
-            and user_limit > model_limit
-        ):
-            return InconsistentLimitsError(
-                user_limit=user_limit, model_limit=model_limit
-            )
 
-        if user_limit is None:
-            if model_limit is None:
-                return []
+_P = TypeVar("_P", bound=TruncatablePrompt)
 
-            token_count = await tokenizer(self)
-            if token_count <= model_limit:
-                return []
 
-            return ModelLimitOverflowError(
-                model_limit=model_limit, token_count=token_count
-            )
+async def _compute_discarded_messages(
+    prompt: _P,
+    *,
+    tokenize: Callable[[_P], Awaitable[int]],
+    model_limit: Optional[int],
+    user_limit: Optional[int],
+) -> DiscardedMessages | TruncatePromptError:
+    if (
+        user_limit is not None
+        and model_limit is not None
+        and user_limit > model_limit
+    ):
+        return InconsistentLimitsError(
+            user_limit=user_limit, model_limit=model_limit
+        )
 
-        if await tokenizer(self) <= user_limit:
+    if user_limit is None:
+        if model_limit is None:
             return []
 
-        partition_sizes = self.partition_messages()
-        if sum(partition_sizes) != len(self):
-            raise ValueError(
-                "Partition sizes must add up to the number of messages."
-            )
+        token_count = await tokenize(prompt)
+        if token_count <= model_limit:
+            return []
 
-        async def _tokenize_selected(indices: Set[int]) -> int:
-            return await tokenizer(self.select(indices))
+        return ModelLimitOverflowError(
+            model_limit=model_limit, token_count=token_count
+        )
 
-        get_partition_indices = _partition_indexer(partition_sizes)
+    if await tokenize(prompt) <= user_limit:
+        return []
 
-        n = len(self)
-        kept_indices: Set[int] = {
-            j
-            for i in range(n)
-            for j in get_partition_indices(i)
-            if self.is_required_message(i)
-        }
+    partition_sizes = prompt.partition_messages()
+    if sum(partition_sizes) != len(prompt):
+        raise ValueError(
+            "Partition sizes must add up to the number of messages."
+        )
 
-        token_count = await _tokenize_selected(kept_indices)
-        if token_count > user_limit:
-            return UserLimitOverflowError(
-                user_limit=user_limit, token_count=token_count
-            )
+    async def _tokenize_selected(indices: Set[int]) -> int:
+        return await tokenize(prompt.select(indices))
 
-        for idx in reversed(range(n)):
-            if idx in kept_indices:
-                continue
+    get_partition_indices = _partition_indexer(partition_sizes)
 
-            chunk_indices = get_partition_indices(idx)
-            new_kept_indices = {*kept_indices, *chunk_indices}
+    n = len(prompt)
+    kept_indices: Set[int] = {
+        j
+        for i in range(n)
+        for j in get_partition_indices(i)
+        if prompt.is_required_message(i)
+    }
 
-            if (
-                len(new_kept_indices) == n
-                or await _tokenize_selected(new_kept_indices) > user_limit
-            ):
-                break
+    token_count = await _tokenize_selected(kept_indices)
+    if token_count > user_limit:
+        return UserLimitOverflowError(
+            user_limit=user_limit, token_count=token_count
+        )
 
-            kept_indices = new_kept_indices
+    for idx in reversed(range(n)):
+        if idx in kept_indices:
+            continue
 
-        all_indices = set(range(n))
-        return sorted(list(all_indices - kept_indices))
+        chunk_indices = get_partition_indices(idx)
+        new_kept_indices = {*kept_indices, *chunk_indices}
+
+        if (
+            len(new_kept_indices) == n
+            or await _tokenize_selected(new_kept_indices) > user_limit
+        ):
+            break
+
+        kept_indices = new_kept_indices
+
+    all_indices = set(range(n))
+    return sorted(list(all_indices - kept_indices))

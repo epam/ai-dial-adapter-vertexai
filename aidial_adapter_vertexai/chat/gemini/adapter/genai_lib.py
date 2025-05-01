@@ -231,7 +231,7 @@ class GeminiGenAIChatCompletionAdapter(
         self, prompt: GeminiGenAIPrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[GeminiGenAIPrompt]:
         return await prompt.truncate(
-            tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
+            tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
 
     @override

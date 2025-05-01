@@ -230,7 +230,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         self, prompt: ClaudePrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[ClaudePrompt]:
         truncated_prompt = await prompt.truncate(
-            tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
+            tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
         return _project_to_original_indices(prompt, truncated_prompt)
 
