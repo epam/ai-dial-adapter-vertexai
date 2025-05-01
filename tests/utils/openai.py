@@ -1,15 +1,10 @@
 import json
 import re
-from typing import Any, Callable, Iterable, List, Mapping, Optional, TypeVar
+from typing import Any, Callable, Iterable, List, Mapping, TypeVar
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
-from aidial_sdk.deployment.tokenize import (
-    TokenizeError,
-    TokenizeOutput,
-    TokenizeResponse,
-    TokenizeSuccess,
-)
+from aidial_sdk.deployment.tokenize import TokenizeResponse
 from aidial_sdk.utils.merge_chunks import (
     cleanup_indices,
     merge_chat_completion_chunks,
@@ -266,13 +261,14 @@ async def tokenize_request(
 async def chat_completion(
     client: AsyncAzureOpenAI,
     messages: List[ChatCompletionMessageParam],
+    *,
     stream: bool,
-    stop: Optional[List[str]],
-    max_tokens: Optional[int],
-    n: Optional[int],
-    functions: List[Function] | None,
-    tools: List[ChatCompletionToolParam] | None,
-    static_tools: StaticToolsConfig | None,
+    stop: List[str] | None = None,
+    max_tokens: int | None = None,
+    n: int | None = None,
+    functions: List[Function] | None = None,
+    tools: List[ChatCompletionToolParam] | None = None,
+    static_tools: StaticToolsConfig | None = None,
     extra_body: dict | None = None,
 ) -> ChatCompletionResult:
     async def get_response() -> ChatCompletion:
@@ -339,35 +335,6 @@ def for_all_choices(
         ), f"Expected {n} candidates, got {len(contents)}"
         for content in contents:
             checker(content)
-
-    return ret
-
-
-_T = TypeVar("_T")
-
-
-def _make_list(tokens: List[_T] | _T) -> List[_T]:
-    if isinstance(tokens, list):
-        return tokens
-    else:
-        return [tokens]
-
-
-def _create_tokenize_output(value: int | str) -> TokenizeOutput:
-    if isinstance(value, int):
-        return TokenizeSuccess(token_count=value)
-    else:
-        return TokenizeError(error=value)
-
-
-def check_tokenize_response(
-    expected: List[int | str] | int | str,
-) -> Callable[[TokenizeResponse], None]:
-    expected_list = _make_list(expected)
-    expected_outputs = list(map(_create_tokenize_output, expected_list))
-
-    def ret(resp: TokenizeResponse):
-        assert expected_outputs == resp.outputs
 
     return ret
 

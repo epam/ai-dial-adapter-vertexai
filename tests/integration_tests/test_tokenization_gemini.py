@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import List
 
 import httpx
 import pytest
-from aidial_sdk.deployment.tokenize import TokenizeResponse
+from aidial_sdk.deployment.tokenize import TokenizeError, TokenizeSuccess
 from openai.types.chat import (
     ChatCompletionMessageParam,
     ChatCompletionToolParam,
@@ -19,7 +19,7 @@ from tests.utils.openai import (
     ai,
     ai_function,
     ai_tools,
-    check_tokenize_response,
+    chat_completion,
     function_request,
     function_response,
     sanitize_test_name,
@@ -42,7 +42,7 @@ class TestCase:
     deployment: ChatCompletionDeployment
 
     messages: List[ChatCompletionMessageParam]
-    expected: Callable[[TokenizeResponse], None]
+    expected_error: str | None
 
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
@@ -69,17 +69,13 @@ def is_text_model(deployment: ChatCompletionDeployment) -> bool:
     return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
 
 
-# https://ai.google.dev/gemini-api/docs/tokens?lang=python#images
-GEMINI_TOKENS_PER_IMAGE = 258
-
-
 def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     test_cases: List[TestCase] = []
 
     def test_case(
         name: str,
         messages: List[ChatCompletionMessageParam],
-        expected: Callable[[TokenizeResponse], None],
+        error: str | None = None,
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
     ) -> None:
@@ -88,7 +84,7 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
                 name,
                 deployment,
                 messages,
-                expected,
+                error,
                 functions,
                 tools,
             )
@@ -99,40 +95,29 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     test_case(
         name="single user message",
         messages=[user("user")],
-        expected=check_tokenize_response(
-            1 if text_model else "No documents were found"
-        ),
+        error=None if text_model else "No documents were found",
     )
 
     test_case(
         name="empty sys message + user",
         messages=[sys(""), user("user")],
-        expected=check_tokenize_response(
-            1 if text_model else "No documents were found"
-        ),
+        error=None if text_model else "No documents were found",
     )
 
     test_case(
         name="non-empty sys message + user",
         messages=[sys("system"), user("user")],
-        expected=check_tokenize_response(
-            2 if text_model else "No documents were found"
-        ),
+        error=None if text_model else "No documents were found",
     )
 
     test_case(
         name="sys message",
         messages=[sys("system")],
-        expected=check_tokenize_response(
-            "contents must not be empty"
+        error=(
+            "contents are required."
             if text_model
             else "No documents were found"
         ),
-    )
-
-    # Gemini Vision cuts the dialog down to the last message
-    non_image_tokens = (
-        1 if deployment == ChatCompletionDeployment.GEMINI_PRO_VISION_1 else 4
     )
 
     for idx, user_message in enumerate(
@@ -150,9 +135,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
                 ai("pong"),
                 user_message,
             ],
-            expected=check_tokenize_response(
-                non_image_tokens + GEMINI_TOKENS_PER_IMAGE
-            ),
         )
 
     if supports_tools(deployment):
@@ -167,7 +149,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
             name="weather function",
             messages=[user(content)],
             functions=[GET_WEATHER_FUNCTION],
-            expected=check_tokenize_response(53),
         )
 
         function_req = ai_function(function_request(name, function_args))
@@ -177,7 +158,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
             name="weather function followup",
             messages=[user(content), function_req, function_resp],
             functions=[GET_WEATHER_FUNCTION],
-            expected=check_tokenize_response(72),
         )
 
         # Tools
@@ -186,7 +166,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
             name="weather tool",
             messages=[user(content)],
             tools=[GET_WEATHER_TOOL],
-            expected=check_tokenize_response(53),
         )
 
         tool_req = ai_tools([tool_request(tool_call_id, name, function_args)])
@@ -196,7 +175,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
             name="weather tool followup",
             messages=[user(content), tool_req, tool_resp],
             tools=[GET_WEATHER_TOOL],
-            expected=check_tokenize_response(72),
         )
 
     return test_cases
@@ -211,15 +189,42 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     ],
     ids=TestCase.get_id,
 )
-async def test_tokenize(test_http_client: httpx.AsyncClient, test: TestCase):
+async def test_tokenize(
+    get_openai_client, test_http_client: httpx.AsyncClient, test: TestCase
+):
+    extra_headers = get_extra_headers("us-central1")
+    deployment_id = test.deployment.value
 
     actual_output = await tokenize_request(
         test_http_client,
-        test.deployment.value,
+        deployment_id,
         test.messages,
         test.functions,
         test.tools,
-        extra_headers=get_extra_headers("us-central1"),
+        extra_headers=extra_headers,
     )
 
-    test.expected(actual_output)
+    outputs = actual_output.outputs
+    assert len(outputs) == 1
+    output = outputs[0]
+
+    if isinstance(test.expected_error, str):
+        assert isinstance(output, TokenizeError)
+        assert output.status == "error"
+        assert output.error == test.expected_error
+    else:
+
+        chat_completion_response = await chat_completion(
+            client=get_openai_client(deployment_id, extra_headers),
+            messages=test.messages,
+            stream=False,
+            functions=test.functions,
+            tools=test.tools,
+            max_tokens=1,
+        )
+
+        assert isinstance(output, TokenizeSuccess)
+        assert output.status == "success"
+        usage = chat_completion_response.usage
+        assert usage is not None, "Usage is missing"
+        assert output.token_count == usage.prompt_tokens

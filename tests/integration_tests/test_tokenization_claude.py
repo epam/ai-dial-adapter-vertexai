@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import List
 
 import httpx
 import pytest
@@ -46,8 +46,6 @@ class TestCase:
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
 
-    check: Callable[[int, int], None]
-
     def get_id(self):
         return sanitize_test_name(f"{self.deployment.value}/{self.name}")
 
@@ -70,10 +68,6 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
     return deployment != ChatCompletionDeployment.CLAUDE_3_5_HAIKU
 
 
-def _eq_check(actual: int, expected: int):
-    assert actual == expected
-
-
 def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     test_cases: List[TestCase] = []
 
@@ -83,7 +77,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
         max_tokens: int | None = None,
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
-        check: Callable[[int, int], None] = _eq_check,
     ) -> None:
         test_cases.append(
             TestCase(
@@ -93,7 +86,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
                 max_tokens,
                 functions,
                 tools,
-                check,
             )
         )
 
@@ -197,20 +189,18 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
 async def test_tokenize(
     test_http_client: httpx.AsyncClient, get_openai_client, test: TestCase
 ):
-    region = "us-east5"
-    extra_headers = get_extra_headers(region)
-    client = get_openai_client(test.deployment.value, extra_headers)
+    extra_headers = get_extra_headers("us-east5")
+    deployment_id = test.deployment.value
+
+    client = get_openai_client(deployment_id, extra_headers)
 
     response = await chat_completion(
         client=client,
         messages=test.messages,
         stream=False,
-        stop=[],
         max_tokens=test.max_tokens,
-        n=1,
         functions=test.functions,
         tools=test.tools,
-        static_tools=None,
     )
 
     usage = response.usage
@@ -220,7 +210,7 @@ async def test_tokenize(
 
     resp = await tokenize_request(
         test_http_client,
-        test.deployment.value,
+        deployment_id,
         test.messages,
         test.functions,
         test.tools,
@@ -230,4 +220,4 @@ async def test_tokenize(
     output = resp.outputs[0]
     assert output.status == "success"
     actual_prompt_tokens = output.token_count
-    test.check(actual_prompt_tokens, expected_prompt_tokens)
+    assert actual_prompt_tokens == expected_prompt_tokens

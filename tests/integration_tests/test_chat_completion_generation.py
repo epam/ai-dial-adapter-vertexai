@@ -745,7 +745,7 @@ def get_test_cases(
     ids=lambda test: test.get_id(),
 )
 async def test_chat_completion(get_openai_client, test: TestCase):
-    client = get_openai_client(
+    client: openai.AsyncAzureOpenAI = get_openai_client(
         test.deployment.value, get_extra_headers(test.region)
     )
 
@@ -769,14 +769,14 @@ async def test_chat_completion(get_openai_client, test: TestCase):
                 return await chat_completion(
                     client,
                     test.messages,
-                    test.streaming,
-                    test.stop,
-                    test.max_tokens,
-                    test.n,
-                    test.functions,
-                    test.tools,
-                    test.static_tools,
-                    test.extra_body,
+                    stream=test.streaming,
+                    stop=test.stop,
+                    max_tokens=test.max_tokens,
+                    n=test.n,
+                    functions=test.functions,
+                    tools=test.tools,
+                    static_tools=test.static_tools,
+                    extra_body=test.extra_body,
                 )
             except RateLimitError as e:
                 await _retry_wait(is_last_attempt, e)
