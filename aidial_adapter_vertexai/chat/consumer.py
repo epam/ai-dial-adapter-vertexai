@@ -15,41 +15,37 @@ from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 class Consumer(ABC):
     @abstractmethod
-    async def append_content(self, content: str):
-        pass
+    async def append_content(self, content: str): ...
 
     @abstractmethod
-    async def create_function_call(self, name: str, arguments: str | None):
-        pass
+    async def create_function_call(self, name: str, arguments: str | None): ...
 
     @abstractmethod
-    async def create_tool_call(self, id: str, name: str, arguments: str | None):
-        pass
+    async def create_tool_call(
+        self, id: str, name: str, arguments: str | None
+    ): ...
 
     @abstractmethod
-    async def add_attachment(self, attachment: Attachment):
-        pass
+    async def add_attachment(self, attachment: Attachment): ...
 
     @abstractmethod
-    async def set_usage(self, usage: TokenUsage):
-        pass
+    async def set_usage(self, usage: TokenUsage): ...
 
     @abstractmethod
-    async def set_finish_reason(self, finish_reason: FinishReason):
-        pass
+    async def set_finish_reason(self, finish_reason: FinishReason): ...
 
     @abstractmethod
-    def is_empty(self) -> bool:
-        pass
+    def get_finish_reason(self) -> FinishReason | None: ...
 
     @abstractmethod
-    async def create_stage(self, name: str) -> Stage:
-        pass
+    def is_empty(self) -> bool: ...
+
+    @abstractmethod
+    async def create_stage(self, name: str) -> Stage: ...
 
     @property
     @abstractmethod
-    def has_function_call(self) -> bool:
-        pass
+    def has_function_call(self) -> bool: ...
 
 
 class ChoiceConsumer(Consumer):
@@ -142,6 +138,9 @@ class ChoiceConsumer(Consumer):
             )
 
         self.finish_reason = finish_reason
+
+    def get_finish_reason(self) -> FinishReason | None:
+        return self.finish_reason
 
     async def create_stage(self, name) -> Stage:
         return self.choice.create_stage(name)

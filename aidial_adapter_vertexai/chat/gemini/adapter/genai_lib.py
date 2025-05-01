@@ -111,6 +111,8 @@ class GeminiGenAIChatCompletionAdapter(
                 | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
                 | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
                 | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
+                | ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25
+                | ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25
             ):
                 return await Gemini_2_Prompt.parse(
                     self.file_storage, tools, static_tools, messages
@@ -149,11 +151,12 @@ class GeminiGenAIChatCompletionAdapter(
         generation_config = self._get_generation_config(params, prompt)
 
         if params.stream:
-            async for chunk in self.client.aio.models.generate_content_stream(
+            gen = await self.client.aio.models.generate_content_stream(
                 model=self.model_id,
                 contents=list(prompt.contents),
                 config=generation_config,
-            ):
+            )
+            async for chunk in gen:  # type: ignore
                 yield chunk
         else:
             yield await self.client.aio.models.generate_content(
@@ -175,7 +178,9 @@ class GeminiGenAIChatCompletionAdapter(
         try:
             async for chunk in generator():
                 if log.isEnabledFor(DEBUG):
-                    chunk_str = json_dumps(chunk)
+                    chunk_str = json_dumps(
+                        chunk, exclude_none=True, exclude_empty_dict=True
+                    )
                     log.debug(f"response chunk: {chunk_str}")
 
                 if chunk.prompt_feedback:
@@ -220,11 +225,13 @@ class GeminiGenAIChatCompletionAdapter(
         finally:
             if thinking_stage:
                 thinking_stage.close()
+
             # It's possible that max tokens will be reached during the thinking stage
             # and there will be no content in response.
             # And set_usage will fail with 'Trying to set "usage" before generating all choices' error.
             # Append empty content, so at least one choice is generated.
-            await consumer.append_content("")
+            if consumer.get_finish_reason() is not None:
+                await consumer.append_content("")
 
         if usage_metadata:
             await set_usage(

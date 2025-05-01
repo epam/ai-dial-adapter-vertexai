@@ -15,11 +15,15 @@ from google.genai.types import (
     FunctionCallingConfigDict as GenAIFunctionCallingConfig,
 )
 from google.genai.types import (
+    FunctionCallingConfigMode as GenAIFunctionCallingConfigMode,
+)
+from google.genai.types import (
     FunctionDeclarationDict as GenAIFunctionDeclaration,
 )
 from google.genai.types import SchemaDict as GenAISchema
 from google.genai.types import ToolConfigDict as GenAIToolConfig
 from google.genai.types import ToolDict as GenAITool
+from google.genai.types import Type as GenAIType
 from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import (
     FunctionDeclaration as GeminiFunction,
@@ -245,7 +249,9 @@ class ToolsConfig(BaseModel):
                         parameters=(
                             _convert_genai_function_parameters(func.parameters)
                             if func.parameters
-                            else GenAISchema(type="OBJECT", properties={})
+                            else GenAISchema(
+                                type=GenAIType.OBJECT, properties={}
+                            )
                         ),
                         description=func.description,
                     )
@@ -261,7 +267,7 @@ class ToolsConfig(BaseModel):
         if self.required:
             return GenAIToolConfig(
                 function_calling_config=GenAIFunctionCallingConfig(
-                    mode="ANY",
+                    mode=GenAIFunctionCallingConfigMode.ANY,
                     allowed_function_names=[
                         func.name for func in self.functions
                     ],
@@ -270,7 +276,7 @@ class ToolsConfig(BaseModel):
         else:
             return GenAIToolConfig(
                 function_calling_config=GenAIFunctionCallingConfig(
-                    mode="AUTO",
+                    mode=GenAIFunctionCallingConfigMode.AUTO,
                 )
             )
 
@@ -318,30 +324,29 @@ def collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
     return ret
 
 
+_JSON_SCHEMA_TYPES = [
+    "string",
+    "number",
+    "integer",
+    "boolean",
+    "array",
+    "object",
+]
+
+
 def _convert_genai_function_parameters(function_schema: dict) -> GenAISchema:
-    def _convert_schema(schema: dict | str | list):
-        if not isinstance(schema, dict):
-            return schema
+    def _convert(value):
+        match value:
+            case dict():
+                d = {k: _convert(v) for k, v in value.items()}
 
-        genai_schema = {}
+                # GenAI lib requires property types to be in uppercase
+                if (ty := d.get("type")) in _JSON_SCHEMA_TYPES:
+                    d["type"] = ty.upper()
+                return d
+            case list():
+                return [_convert(item) for item in value]
+            case _:
+                return value
 
-        for field, value in schema.items():
-            if field == "type":
-                # GenAI function parameters should have types in uppercase
-                genai_schema[field] = value.upper()
-            elif isinstance(value, str):
-                genai_schema[field] = value
-            elif isinstance(value, list):
-                genai_schema[field] = [_convert_schema(item) for item in value]
-            elif isinstance(value, dict):
-                genai_schema[field] = {
-                    key: _convert_schema(value) for key, value in value.items()
-                }
-            else:
-                raise ValueError(
-                    f"Failed to convert function declaration to Vertex format: {schema}"
-                )
-
-        return genai_schema
-
-    return cast(GenAISchema, _convert_schema(function_schema))
+    return cast(GenAISchema, _convert(function_schema))

@@ -13,9 +13,11 @@ import proto
 from pydantic import BaseModel
 from pydantic.v1 import BaseModel as BaseModelV1
 
+from aidial_adapter_vertexai.utils.decorator import fail_safe
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
 
+@fail_safe
 def json_dumps_short(
     obj: Any, *, string_limit: int = 100, list_len_limit: int = 10, **kwargs
 ) -> str:
@@ -31,8 +33,9 @@ def json_dumps_short(
     )
 
 
+@fail_safe
 def json_dumps(obj: Any, **kwargs) -> str:
-    return json.dumps(_to_dict(obj, **kwargs))
+    return json.dumps(_to_dict(obj, **kwargs), default=str)
 
 
 def _to_dict(obj: Any, **kwargs) -> Any:
@@ -51,7 +54,18 @@ def _to_dict(obj: Any, **kwargs) -> Any:
         return obj.value
 
     if isinstance(obj, dict):
-        return {key: rec(dict_field(key, value)) for key, value in obj.items()}
+        filters = []
+        if kwargs.get("exclude_none"):
+            filters.append(lambda x: x is not None)
+        if kwargs.get("exclude_empty_dict"):
+            filters.append(lambda x: x != {})
+
+        ret = {}
+        for k, v in obj.items():
+            v = rec(dict_field(k, v))
+            if all(f(v) for f in filters):
+                ret[k] = v
+        return ret
 
     if isinstance(obj, list):
         return [rec(element) for element in obj]

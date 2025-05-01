@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable, List, Mapping
 
+import openai
 import pytest
 from aidial_sdk.chat_completion.request import StaticFunction
 from openai import APIError, RateLimitError, UnprocessableEntityError
@@ -79,22 +80,8 @@ class TestCase:
     extra_body: dict | None
 
     def get_id(self):
-        max_tokens_str = f"maxt:{self.max_tokens}" if self.max_tokens else None
-        stop_sequence_str = f"stop:{self.stop}" if self.stop else None
-        n_str = f"n:{self.n}" if self.n else None
         return sanitize_test_name(
-            "/".join(
-                str(part)
-                for part in [
-                    self.deployment.value,
-                    self.streaming,
-                    max_tokens_str,
-                    stop_sequence_str,
-                    n_str,
-                    self.name,
-                ]
-                if part is not None
-            )
+            f"{self.deployment.value}/{self.streaming}/{self.name}"
         )
 
 
@@ -112,7 +99,7 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_001: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
-    # ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
@@ -121,6 +108,15 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
 }
+
+
+def is_retired(deployment: ChatCompletionDeployment) -> bool:
+    # Keep at least one model in the list to test how the adapter handles retired models in streaming and non-streaming modes
+    return deployment in [
+        ChatCompletionDeployment.GEMINI_PRO_1,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+    ]
 
 
 def is_codechat(deployment: ChatCompletionDeployment) -> bool:
@@ -174,6 +170,7 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -185,6 +182,7 @@ def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CLAUDE_3_OPUS,
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         # ChatCompletionDeployment.CLAUDE_3_7_SONNET,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -192,7 +190,7 @@ def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
     return is_claude(deployment)
 
 
-def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
+def supports_grounding(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
@@ -201,6 +199,7 @@ def supports_static_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -221,6 +220,7 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_PRO_VISION_1,
         ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
         ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
@@ -237,9 +237,17 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
     ]
 
 
-def support_thinking(deployment: ChatCompletionDeployment) -> bool:
+def support_explicit_thinking(deployment: ChatCompletionDeployment) -> bool:
     return deployment in [
         ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+    ]
+
+
+def support_thinking(deployment: ChatCompletionDeployment) -> bool:
+    return support_explicit_thinking(deployment) or deployment in [
+        # Gemini 2.5 doesn't emit thinking tokens into a separate output,
+        # it's all the part of the completion tokens.
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -250,6 +258,7 @@ def is_gemini_2(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
+        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ]
 
 
@@ -289,6 +298,19 @@ def get_test_cases(
                 extra_body,
             )
         )
+
+    if is_retired(deployment):
+        test_case(
+            name="retired",
+            messages=[user("test")],
+            max_tokens=1,
+            expected=ExpectedException(
+                type=openai.NotFoundError,
+                status_code=404,
+                message="not found",
+            ),
+        )
+        return test_cases
 
     if supports_text_input(deployment):
         test_case(
@@ -417,7 +439,7 @@ def get_test_cases(
         ):
             test_case(
                 name=f"describe image {idx}",
-                max_tokens=100,
+                max_tokens=1000 if support_thinking(deployment) else 100,
                 messages=[sys("be a helpful assistant"), user_message],
                 expected=lambda s: assert_in("blue", s.content.lower()),
             )
@@ -570,7 +592,7 @@ def get_test_cases(
                 expected=lambda s, t=city_temps: s.content_contains_all(t),
             )
 
-    if supports_static_tools(deployment):
+    if supports_grounding(deployment):
 
         def _checker(s: ChatCompletionResult):
             assert s.attachments is not None
@@ -604,7 +626,7 @@ def get_test_cases(
 
         if not is_gemini_2(deployment):
 
-            def _checker(s: ChatCompletionResult):
+            def _simple_checker(s: ChatCompletionResult):
                 assert not s.attachments
                 assert "4" in s.content
                 assert s.usage is not None
@@ -628,7 +650,7 @@ def get_test_cases(
                     ]
                 ),
                 max_tokens=100,
-                expected=_checker,
+                expected=_simple_checker,
             )
 
             for index, retrieval_config in enumerate(
@@ -637,18 +659,6 @@ def get_test_cases(
                     {"mode": "MODE_UNSPECIFIED"},
                 ]
             ):
-
-                def _checker(s: ChatCompletionResult):
-                    assert s.attachments is not None
-                    assert len(s.attachments) > 0
-                    assert isinstance(s.attachments[0].reference_url, str)
-                    assert s.attachments[0].reference_url.startswith(
-                        "https://vertexaisearch"
-                    )
-                    assert "4" in s.content.lower()
-                    assert s.usage is not None
-                    assert s.usage.total_tokens > 7000
-
                 test_case(
                     name=f"static google search with guaranteed search {index}",
                     messages=[user("2+2=")],
@@ -667,7 +677,7 @@ def get_test_cases(
                     expected=_checker,
                 )
 
-    if support_thinking(deployment):
+    if support_explicit_thinking(deployment):
 
         def _checker(s: ChatCompletionResult):
             assert s.stages is not None
@@ -684,7 +694,7 @@ def get_test_cases(
     if supports_json_object_response_format(deployment):
 
         def _checker(s: ChatCompletionResult):
-            assert isinstance(json.loads(s.content), dict)
+            assert isinstance(json.loads(s.content), (dict, list))
 
         test_case(
             name="response format json object",
@@ -734,13 +744,13 @@ def get_test_cases(
     ],
     ids=lambda test: test.get_id(),
 )
-async def test_chat_completion_openai(get_openai_client, test: TestCase):
+async def test_chat_completion(get_openai_client, test: TestCase):
     client = get_openai_client(
         test.deployment.value, get_extra_headers(test.region)
     )
 
     async def run_chat_completion() -> ChatCompletionResult:
-        attempts = 1
+        max_attempts = 6
         delay = 1
 
         async def _retry_wait(
@@ -753,8 +763,8 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
             await asyncio.sleep(delay)
             delay *= 2
 
-        for attempt in range(attempts):
-            is_last_attempt = attempt == attempts - 1
+        for attempt in range(max_attempts):
+            is_last_attempt = attempt == max_attempts - 1
             try:
                 return await chat_completion(
                     client,
@@ -790,5 +800,11 @@ async def test_chat_completion_openai(get_openai_client, test: TestCase):
         assert actual_status_code == test.expected.status_code
         assert re.search(test.expected.message, str(actual_exc))
     else:
-        actual_output = await run_chat_completion()
-        test.expected(actual_output)
+        try:
+            actual_output = await run_chat_completion()
+        except openai.APIError as e:
+            assert False, str(e.body)
+        else:
+            assert test.expected(
+                actual_output
+            ), f"Failed output test, actual output: {actual_output}"

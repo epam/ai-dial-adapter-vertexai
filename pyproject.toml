@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aidial-adapter-vertexai"
-version = "0.20.0rc"
+version = "0.21.0rc"
 description = "DIAL adapter for Google Vertex AI"
 authors = ["EPAM RAIL <SpecialEPM-DIALDevTeam@epam.com>"]
 homepage = "https://epam-rail.com"
@@ -19,7 +19,7 @@ aidial-sdk = {version = "0.20.0", extras = ["telemetry"]}
 fastapi = "0.115.2"
 google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
-google-genai = "0.4.0"
+google-genai = "1.12.1"
 openai = "1.13.3"
 anthropic = {extras = ["vertex"], version = "^0.43.1"}
 pydantic = "^2.10.4"
@@ -42,7 +42,7 @@ allure-pytest = "^2.13.5"
 python-dotenv = "1.0.0"
 requests = "^2.32.2"
 asgi-lifespan = "^2.1.0"
-httpx = "^0.25.2"
+httpx = "0.28.1"
 
 [tool.poetry.group.lint.dependencies]
 autoflake = "2.2.0"
