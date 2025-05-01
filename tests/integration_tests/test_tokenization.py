@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Mapping
 
 import httpx
 import pytest
@@ -40,6 +40,7 @@ class TestCase:
 
     name: str
     deployment: ChatCompletionDeployment
+    region: str
 
     messages: List[ChatCompletionMessageParam]
     expected_error: str | None
@@ -51,25 +52,60 @@ class TestCase:
         return sanitize_test_name(f"{self.deployment.value}/{self.name}")
 
 
-chat_deployments = [
-    ChatCompletionDeployment.GEMINI_PRO_VISION_1,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
-]
+_CENTRAL = "us-central1"
+_EAST = "us-east5"
+
+chat_deployments: Mapping[ChatCompletionDeployment, str] = {
+    ChatCompletionDeployment.GEMINI_PRO_VISION_1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_1_5_V1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5_V1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
+}
 
 
 def supports_tools(deployment: ChatCompletionDeployment) -> bool:
     return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
 
 
-def is_text_model(deployment: ChatCompletionDeployment) -> bool:
-    return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
+def is_gemini(deployment: ChatCompletionDeployment) -> bool:
+    return "gemini" in deployment.value
 
 
-def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
+def is_claude(deployment: ChatCompletionDeployment) -> bool:
+    return "claude" in deployment.value
+
+
+def supports_vision(deployment: ChatCompletionDeployment) -> bool:
+    if is_claude(deployment):
+        return deployment != ChatCompletionDeployment.CLAUDE_3_5_HAIKU
+    elif is_gemini(deployment):
+        return True
+    else:
+        raise ValueError(f"Unknown deployment: {deployment.value}")
+
+
+def supports_only_vision(deployment: ChatCompletionDeployment) -> bool:
+    return deployment == ChatCompletionDeployment.GEMINI_PRO_VISION_1
+
+
+# def is_text_model(deployment: ChatCompletionDeployment) -> bool:
+#     return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
+
+# def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
+#     return deployment != ChatCompletionDeployment.CLAUDE_3_5_HAIKU
+
+
+def get_test_cases(
+    deployment: ChatCompletionDeployment, region: str
+) -> List[TestCase]:
     test_cases: List[TestCase] = []
 
     def test_case(
@@ -83,6 +119,7 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
             TestCase(
                 name,
                 deployment,
+                region,
                 messages,
                 error,
                 functions,
@@ -90,58 +127,62 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
             )
         )
 
-    text_model = is_text_model(deployment)
+    vision_only = supports_only_vision(deployment)
+    no_images_error = "No documents were found" if vision_only else None
 
     test_case(
         name="single user message",
         messages=[user("user")],
-        error=None if text_model else "No documents were found",
+        error=no_images_error,
     )
 
     test_case(
         name="empty sys message + user",
         messages=[sys(""), user("user")],
-        error=None if text_model else "No documents were found",
+        error=no_images_error,
     )
 
     test_case(
         name="non-empty sys message + user",
         messages=[sys("system"), user("user")],
-        error=None if text_model else "No documents were found",
+        error=no_images_error,
     )
 
     test_case(
         name="long completion",
         messages=[user("tell me the full story of Pinocchio")],
-        error=None if text_model else "No documents were found",
+        error=no_images_error,
+    )
+
+    no_messages_error = (
+        "contents are required."
+        if is_gemini(deployment)
+        else "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages: at least one message is required'}}"
     )
 
     test_case(
         name="sys message",
         messages=[sys("system")],
-        error=(
-            "contents are required."
-            if text_model
-            else "No documents were found"
-        ),
+        error="No documents were found" if vision_only else no_messages_error,
     )
 
-    for idx, user_message in enumerate(
-        [
-            user_with_attachment_data("user", BLUE_PNG_PICTURE),
-            user_with_attachment_url("user", BLUE_PNG_PICTURE),
-            user_with_image_url("user", BLUE_PNG_PICTURE),
-        ]
-    ):
-        test_case(
-            name=f"describe image {idx}",
-            messages=[
-                sys("system"),
-                user("ping"),
-                ai("pong"),
-                user_message,
-            ],
-        )
+    if supports_vision(deployment):
+        for idx, user_message in enumerate(
+            [
+                user_with_attachment_data("user", BLUE_PNG_PICTURE),
+                user_with_attachment_url("user", BLUE_PNG_PICTURE),
+                user_with_image_url("user", BLUE_PNG_PICTURE),
+            ]
+        ):
+            test_case(
+                name=f"describe image {idx}",
+                messages=[
+                    sys("system"),
+                    user("ping"),
+                    ai("pong"),
+                    user_message,
+                ],
+            )
 
     if supports_tools(deployment):
         content = "What's the temperature in Glasgow in celsius?"
@@ -190,15 +231,15 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     "test",
     [
         test
-        for deployment in chat_deployments
-        for test in get_test_cases(deployment)
+        for deployment, region in chat_deployments.items()
+        for test in get_test_cases(deployment, region)
     ],
     ids=TestCase.get_id,
 )
 async def test_tokenize(
     get_openai_client, test_http_client: httpx.AsyncClient, test: TestCase
 ):
-    extra_headers = get_extra_headers("us-central1")
+    extra_headers = get_extra_headers(test.region)
     deployment_id = test.deployment.value
 
     actual_output = await tokenize_request(
