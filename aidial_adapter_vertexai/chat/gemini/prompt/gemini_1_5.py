@@ -65,7 +65,7 @@ class Gemini_1_5_Prompt(GeminiGenAIPrompt):
 
         return cls(
             system_instruction=conversation.system_instruction,
-            contents=conversation.contents,
+            messages=conversation.contents,
             tools=tools,
             static_tools=static_tools,
         )

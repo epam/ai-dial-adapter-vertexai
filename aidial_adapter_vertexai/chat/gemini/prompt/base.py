@@ -1,4 +1,4 @@
-from typing import Generic, List, Self, Set
+from typing import Generic, List, Self, Set, TypeVar
 
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
@@ -6,15 +6,20 @@ from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 from vertexai.preview.generative_models import Tool as GeminiTool
 
-from aidial_adapter_vertexai.chat.conversation.factory import ContentT, PartT
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 
+SystemT = TypeVar("SystemT")
+MessageT = TypeVar("MessageT")
 
-class GeminiBasePrompt(BaseModel, TruncatablePrompt, Generic[PartT, ContentT]):
-    system_instruction: List[PartT] | None = None
-    contents: List[ContentT]
+
+class GeminiBasePrompt(
+    BaseModel, TruncatablePrompt, Generic[SystemT, MessageT]
+):
+    system_instruction: SystemT | None = None
+    messages: List[MessageT]
+
     tools: ToolsConfig = Field(default_factory=ToolsConfig.noop)
     static_tools: StaticToolsConfig = Field(
         default_factory=StaticToolsConfig.noop
@@ -39,33 +44,33 @@ class GeminiBasePrompt(BaseModel, TruncatablePrompt, Generic[PartT, ContentT]):
         return False
 
     def __len__(self) -> int:
-        return int(self.has_system_instruction) + len(self.contents)
+        return int(self.has_system_instruction) + len(self.messages)
 
     def partition_messages(self) -> List[int]:
-        n = len(self.contents)
+        n = len(self.messages)
         return (
             [1] * self.has_system_instruction + [2] * (n // 2) + [1] * (n % 2)
         )
 
     def select(self, indices: Set[int]) -> Self:
-        system_instruction: List[PartT] | None = None
-        contents: List[ContentT] = []
+        system_instruction: SystemT | None = None
+        messages: List[MessageT] = []
 
         offset = 0
         if self.has_system_instruction and 0 in indices:
             system_instruction = self.system_instruction
             offset += 1
 
-        for idx in range(len(self.contents)):
+        for idx in range(len(self.messages)):
             if idx + offset in indices:
-                contents.append(self.contents[idx])
+                messages.append(self.messages[idx])
 
-        if len(self.contents) - 1 + offset not in indices:
+        if len(self.messages) - 1 + offset not in indices:
             raise RuntimeError("The last user prompt must not be omitted.")
 
         return self.__class__(
             system_instruction=system_instruction,
-            contents=contents,
+            messages=messages,
             tools=self.tools,
             static_tools=self.static_tools,
         )
@@ -76,5 +81,5 @@ class GeminiBasePrompt(BaseModel, TruncatablePrompt, Generic[PartT, ContentT]):
         return regular_tools + static_tools
 
 
-GeminiPrompt = GeminiBasePrompt[Part, Content]
-GeminiGenAIPrompt = GeminiBasePrompt[GenAIPart, GenAIContent]
+GeminiPrompt = GeminiBasePrompt[List[Part], Content]
+GeminiGenAIPrompt = GeminiBasePrompt[List[GenAIPart], GenAIContent]

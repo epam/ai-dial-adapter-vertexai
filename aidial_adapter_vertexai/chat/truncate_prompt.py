@@ -106,7 +106,7 @@ class TruncatablePrompt(ABC, Sized):
 
         Each partition is either preserved or discarded by the prompt truncation algorithm *as a whole*.
 
-        Typical partition are:
+        Typical partitions are:
         * the trivial partition that turns each message into a single-element block of messages
         * the turn-based partition that consolidates user-bot turns into two-element blocks of messages.
             This is useful for models that require the conversation to be composed of

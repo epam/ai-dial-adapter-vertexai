@@ -131,7 +131,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     ) -> AsyncIterator[GenerationResponse]:
 
         model = self._get_model(params=params, prompt=prompt)
-        contents = prompt.contents
+        contents = prompt.messages
 
         if params.stream:
             response = await model._generate_content_streaming_async(contents)
@@ -223,7 +223,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self._get_model(prompt=prompt).count_tokens_async(
-                prompt.contents
+                prompt.messages
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             return resp.total_tokens
