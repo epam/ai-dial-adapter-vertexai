@@ -125,20 +125,20 @@ class GeminiGenAIChatCompletionAdapter(
             is_gemini_1_5,
             prompt.tools,
             prompt.static_tools,
-            prompt.system_instruction,
+            prompt.system,
         )
 
         if params.stream:
             async for chunk in self.client.aio.models.generate_content_stream(
                 model=self.model_id,
-                contents=list(prompt.messages),
+                contents=list(prompt.messages.raw_list),
                 config=generation_config,
             ):
                 yield chunk
         else:
             yield await self.client.aio.models.generate_content(
                 model=self.model_id,
-                contents=list(prompt.messages),
+                contents=list(prompt.messages.raw_list),
                 config=generation_config,
             )
 
@@ -239,7 +239,7 @@ class GeminiGenAIChatCompletionAdapter(
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self.client.aio.models.count_tokens(
                 model=self.model_id,
-                contents=list(prompt.messages),
+                contents=list(prompt.messages.raw_list),
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             if resp.total_tokens is None:

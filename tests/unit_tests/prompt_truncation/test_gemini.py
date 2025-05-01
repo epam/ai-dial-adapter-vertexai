@@ -5,6 +5,7 @@ import pytest
 from aidial_sdk.exceptions import HTTPException as DialException
 from google.genai.types import Content, Part
 
+from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiGenAIPrompt
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
     Gemini_1_5_Prompt,
@@ -15,10 +16,10 @@ from tests.unit_tests.prompt_truncation.utils import get_discarded_messages
 async def tokenize_by_words(prompt: GeminiGenAIPrompt) -> int:
     text = " ".join(
         [
-            *[part.text or "" for part in prompt.system_instruction or []],
+            *[part.text or "" for part in prompt.conversation.system or []],
             *[
                 part.text or ""
-                for content in prompt.messages
+                for content in prompt.conversation.messages.raw_list
                 for part in (content.parts or [])
             ],
         ]
@@ -51,7 +52,9 @@ def mock_tokenize():
 
 async def test_history_truncation_cut_nothing_1(mock_tokenize):
 
-    prompt = Gemini_1_5_Prompt(messages=[user("hello")])
+    prompt = Gemini_1_5_Prompt(
+        conversation=BaseConversation.create(messages=[user("hello")])
+    )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 1)
 
@@ -70,8 +73,7 @@ async def test_history_truncation_cut_nothing_2(mock_tokenize):
     ]
 
     prompt = Gemini_1_5_Prompt(
-        system_instruction=None,
-        messages=contents,
+        conversation=BaseConversation.create(system=None, messages=contents)
     )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 5)
@@ -91,8 +93,7 @@ async def test_history_truncation_cut_nothing_3(mock_tokenize):
     ]
 
     prompt = Gemini_1_5_Prompt(
-        system_instruction=None,
-        messages=contents,
+        conversation=BaseConversation.create(system=None, messages=contents)
     )
 
     discarded_messages = await get_discarded_messages(
@@ -114,8 +115,7 @@ async def test_history_truncation_cut_all_turns(mock_tokenize):
     ]
 
     prompt = Gemini_1_5_Prompt(
-        system_instruction=system,
-        messages=contents,
+        conversation=BaseConversation.create(system=system, messages=contents)
     )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 2)
@@ -138,8 +138,7 @@ async def test_history_truncation_cut_mid_turn(mock_tokenize):
     ]
 
     prompt = Gemini_1_5_Prompt(
-        system_instruction=system,
-        messages=contents,
+        conversation=BaseConversation.create(system=system, messages=contents)
     )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 3)
@@ -162,8 +161,7 @@ async def test_history_truncation_cut_last_turn(mock_tokenize):
     ]
 
     prompt = Gemini_1_5_Prompt(
-        system_instruction=system,
-        messages=contents,
+        conversation=BaseConversation.create(system=system, messages=contents)
     )
 
     discarded_messages = await get_discarded_messages(mock_tokenize, prompt, 4)
@@ -188,8 +186,7 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
     ]
 
     prompt = Gemini_1_5_Prompt(
-        system_instruction=system,
-        messages=contents,
+        conversation=BaseConversation.create(system=system, messages=contents)
     )
 
     with pytest.raises(DialException) as exc_info:
@@ -202,7 +199,9 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
 
 
 async def test_history_truncation_last_message_is_too_big(mock_tokenize):
-    prompt = Gemini_1_5_Prompt(messages=[user("hello hello")])
+    prompt = Gemini_1_5_Prompt(
+        conversation=BaseConversation.create(messages=[user("hello hello")])
+    )
 
     with pytest.raises(DialException) as exc_info:
         await get_discarded_messages(mock_tokenize, prompt, 1)

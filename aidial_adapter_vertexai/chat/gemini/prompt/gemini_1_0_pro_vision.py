@@ -76,11 +76,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         if processors.resource_count == 0:
             return UserError("No documents were found", usage_message())
 
-        return cls(
-            system_instruction=conversation.system_instruction,
-            messages=conversation.contents,
-            tools=tools,
-        )
+        return cls(conversation=conversation, tools=tools)
 
 
 def truncate_messages(messages: List[Message]) -> List[Message]:

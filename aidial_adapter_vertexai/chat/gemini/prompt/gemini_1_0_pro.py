@@ -45,8 +45,5 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
             return UserError(error_message, error_message)
 
         return cls(
-            system_instruction=conversation.system_instruction,
-            messages=conversation.contents,
-            tools=tools,
-            static_tools=static_tools,
+            conversation=conversation, tools=tools, static_tools=static_tools
         )

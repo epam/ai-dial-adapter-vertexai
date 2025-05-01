@@ -6,9 +6,11 @@ from pydantic.v1 import BaseModel, Field
 from vertexai.preview.generative_models import Content, Part
 from vertexai.preview.generative_models import Tool as GeminiTool
 
+from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
+from aidial_adapter_vertexai.utils.list_projection import ListProjection
 
 SystemT = TypeVar("SystemT")
 MessageT = TypeVar("MessageT")
@@ -17,8 +19,7 @@ MessageT = TypeVar("MessageT")
 class GeminiBasePrompt(
     BaseModel, TruncatablePrompt, Generic[SystemT, MessageT]
 ):
-    system_instruction: SystemT | None = None
-    messages: List[MessageT]
+    conversation: BaseConversation[SystemT, MessageT]
 
     tools: ToolsConfig = Field(default_factory=ToolsConfig.noop)
     static_tools: StaticToolsConfig = Field(
@@ -29,8 +30,16 @@ class GeminiBasePrompt(
         arbitrary_types_allowed = True
 
     @property
+    def system(self) -> SystemT | None:
+        return self.conversation.system
+
+    @property
+    def messages(self) -> ListProjection[MessageT]:
+        return self.conversation.messages
+
+    @property
     def has_system_instruction(self) -> bool:
-        return self.system_instruction is not None
+        return self.system is not None
 
     def is_required_message(self, index: int) -> bool:
         # Keep the system message...
@@ -53,24 +62,27 @@ class GeminiBasePrompt(
         )
 
     def select(self, indices: Set[int]) -> Self:
-        system_instruction: SystemT | None = None
-        messages: List[MessageT] = []
+        system: SystemT | None = None
 
         offset = 0
         if self.has_system_instruction and 0 in indices:
-            system_instruction = self.system_instruction
+            system = self.system
             offset += 1
 
+        message_indices: Set[int] = set()
         for idx in range(len(self.messages)):
             if idx + offset in indices:
-                messages.append(self.messages[idx])
+                message_indices.add(idx)
+
+        messages: ListProjection[MessageT] = self.conversation.messages.select(
+            message_indices
+        )
 
         if len(self.messages) - 1 + offset not in indices:
             raise RuntimeError("The last user prompt must not be omitted.")
 
         return self.__class__(
-            system_instruction=system_instruction,
-            messages=messages,
+            conversation=BaseConversation(system=system, messages=messages),
             tools=self.tools,
             static_tools=self.static_tools,
         )
