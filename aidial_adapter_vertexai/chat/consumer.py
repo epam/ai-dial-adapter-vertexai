@@ -41,9 +41,6 @@ class Consumer(ABC):
     def is_empty(self) -> bool: ...
 
     @abstractmethod
-    async def aflush(self): ...
-
-    @abstractmethod
     async def create_stage(self, name: str) -> Stage: ...
 
     @property
@@ -99,9 +96,6 @@ class ChoiceConsumer(Consumer):
         if exc is None and self._choice is not None:
             self._choice.close()
         return False
-
-    async def aflush(self):
-        await self.response.aflush()
 
     def is_empty(self) -> bool:
         return self.empty

@@ -19,7 +19,7 @@ aidial-sdk = {version = "0.20.0", extras = ["telemetry"]}
 fastapi = "0.115.2"
 google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
-google-genai = "0.4.0"
+google-genai = "1.12.1"
 openai = "1.13.3"
 anthropic = {extras = ["vertex"], version = "^0.43.1"}
 pydantic = "^2.10.4"
@@ -37,11 +37,12 @@ pytest-dotenv = "^0.5.2"
 pytest-xdist = "^3.5.0"
 pytest-html = "^4.1.1"
 pytest-sugar = "^1.0.0"
+pytest-timeout = "^2.3.1"
 allure-pytest = "^2.13.5"
 python-dotenv = "1.0.0"
 requests = "^2.32.2"
 asgi-lifespan = "^2.1.0"
-httpx = "^0.25.2"
+httpx = "0.28.1"
 
 [tool.poetry.group.lint.dependencies]
 autoflake = "2.2.0"
@@ -54,10 +55,15 @@ pyright = "1.1.389"
 nox = "^2023.4.22"
 google-auth-oauthlib = "1.0.0"
 
+# -n=auto --self-contained-html --html=pytest.html --alluredir=allure-results --timeout=60
+
 [tool.pytest.ini_options]
-addopts = "-n=auto --asyncio-mode=auto --self-contained-html --html=pytest.html --alluredir=allure-results"
+addopts = "--asyncio-mode=auto"
 env_override_existing_values = 1
 filterwarnings = [
+    "error",
+    # muting warnings like this: ResourceWarning: unclosed <socket.socket fd=13...
+    "ignore::ResourceWarning:",
     # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
     "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
     "ignore::DeprecationWarning:google.rpc",
