@@ -39,10 +39,6 @@ class Consumer(ABC):
         pass
 
     @abstractmethod
-    def get_finish_reason(self) -> FinishReason | None:
-        pass
-
-    @abstractmethod
     def is_empty(self) -> bool:
         pass
 
@@ -146,9 +142,6 @@ class ChoiceConsumer(Consumer):
             )
 
         self.finish_reason = finish_reason
-
-    def get_finish_reason(self) -> FinishReason | None:
-        return self.finish_reason
 
     async def create_stage(self, name) -> Stage:
         return self.choice.create_stage(name)

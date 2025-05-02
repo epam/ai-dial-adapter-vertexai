@@ -42,7 +42,9 @@ EMPTY_HISTORY_ERROR = "The chat history must have at least one message"
 ONLY_SYS_MESSAGE_ERROR = (
     "The chat history must have at least one non-system message"
 )
-EXTRA_SYS_MESSAGE_ERROR = "System and developer messages other than the initial system message are not allowed"
+EXTRA_SYS_MESSAGE_ERROR = (
+    "System messages other than the initial system message are not allowed"
+)
 LAST_IS_NOT_HUMAN_ERROR = "The last message must be a user message"
 INCORRECT_DIALOG_STRUCTURE_LEN_ERROR = (
     "There should be odd number of messages for correct alternating turn"

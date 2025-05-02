@@ -39,6 +39,7 @@ class TestCase:
 
     name: str
     deployment: ChatCompletionDeployment
+    streaming: bool
 
     messages: List[ChatCompletionMessageParam]
 
@@ -49,7 +50,19 @@ class TestCase:
     check: Callable[[int, int], None]
 
     def get_id(self):
-        return sanitize_test_name(f"{self.deployment.value}/{self.name}")
+        max_tokens_str = f"maxt:{self.max_tokens}" if self.max_tokens else None
+        return sanitize_test_name(
+            "/".join(
+                str(part)
+                for part in [
+                    self.deployment.value,
+                    self.streaming,
+                    max_tokens_str,
+                    self.name,
+                ]
+                if part is not None
+            )
+        )
 
 
 chat_deployments = [
@@ -74,7 +87,9 @@ def _eq_check(actual: int, expected: int):
     assert actual == expected
 
 
-def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
+def get_test_cases(
+    deployment: ChatCompletionDeployment, streaming: bool
+) -> List[TestCase]:
     test_cases: List[TestCase] = []
 
     def test_case(
@@ -89,6 +104,7 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
             TestCase(
                 name,
                 deployment,
+                streaming,
                 messages,
                 max_tokens,
                 functions,
@@ -190,7 +206,8 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     [
         test
         for deployment in chat_deployments
-        for test in get_test_cases(deployment)
+        for streaming in [False, True]
+        for test in get_test_cases(deployment, streaming)
     ],
     ids=TestCase.get_id,
 )
@@ -204,7 +221,7 @@ async def test_tokenize(
     response = await chat_completion(
         client=client,
         messages=test.messages,
-        stream=False,
+        stream=test.streaming,
         stop=[],
         max_tokens=test.max_tokens,
         n=1,

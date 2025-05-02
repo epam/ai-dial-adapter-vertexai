@@ -1,4 +1,4 @@
-FROM python:3.11-alpine3.20 AS builder
+FROM python:3.11-alpine3.20 as builder
 
 RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
 # geos-dev is required for https://pypi.org/project/shapely/2.0.5/
@@ -15,7 +15,7 @@ RUN poetry install --no-interaction --no-ansi --no-cache --no-root --no-director
 COPY . .
 RUN poetry install --no-interaction --no-ansi --no-cache --only main
 
-FROM python:3.11-alpine3.20 AS server
+FROM python:3.11-alpine3.20 as server
 
 RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
 # fix CVE-2023-52425

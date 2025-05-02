@@ -2,16 +2,14 @@ import itertools
 import re
 from dataclasses import dataclass
 from itertools import product
-from typing import Any, Callable, List, Set
+from typing import Any, Callable, List, Set, Tuple
 
 import numpy as np
-import openai
 import pytest
 from aidial_sdk.chat_completion import Attachment
 from openai.types import CreateEmbeddingResponse
 
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
-from tests.utils.json import flatten_obj
 from tests.utils.openai import sanitize_test_name
 
 
@@ -75,7 +73,7 @@ specs: List[ModelSpec] = [
 
 
 @dataclass
-class EmbeddingsTestCase:
+class TestCase:
     __test__ = False
 
     deployment: EmbeddingsDeployment
@@ -85,14 +83,8 @@ class EmbeddingsTestCase:
     expected: Callable[[CreateEmbeddingResponse], None] | Exception
 
     def get_id(self):
-        body_str = "/".join(
-            [f"{path}:{val}" for path, val in flatten_obj(self.extra_body)]
-        )
-        input_str = (
-            self.input if isinstance(self.input, str) else "_".join(self.input)
-        )
         return sanitize_test_name(
-            f"{self.deployment.value}/{body_str}/{input_str}"
+            f"{self.deployment.value} {self.extra_body} {self.input}"
         )
 
 
@@ -119,7 +111,7 @@ def get_test_case(
     embedding_type: str | None,
     embedding_instr: str | None,
     dimensions: int | None,
-) -> EmbeddingsTestCase:
+) -> TestCase:
 
     has_titles = custom_input and any(isinstance(i, list) for i in custom_input)
 
@@ -156,7 +148,7 @@ def get_test_case(
             f"Unable to submit request because the model does not support the task type {embedding_type}"
         )
 
-    return EmbeddingsTestCase(
+    return TestCase(
         deployment=spec.deployment,
         input=input,
         extra_body=(
@@ -182,12 +174,12 @@ def get_image_test_cases(
     custom_input: list[Any] | None,
     dimensions: int | None,
     exception: Exception | None,
-) -> EmbeddingsTestCase:
+) -> TestCase:
     expected = exception or check_embeddings_response(
         input, custom_input, dimensions or 1408
     )
 
-    return EmbeddingsTestCase(
+    return TestCase(
         deployment=EmbeddingsDeployment.MULTI_MODAL_EMBEDDING_1,
         input=input,
         extra_body=(
@@ -240,10 +232,10 @@ def get_image_test_cases(
     ],
     ids=lambda test: test.get_id(),
 )
-async def test_embeddings(get_openai_client, test: EmbeddingsTestCase):
+async def test_embeddings(get_openai_client, test: TestCase):
     model_id = test.deployment.value
 
-    client: openai.AsyncAzureOpenAI = get_openai_client(model_id)
+    client = get_openai_client(model_id)
 
     async def run() -> CreateEmbeddingResponse:
         return await client.embeddings.create(
@@ -260,32 +252,16 @@ async def test_embeddings(get_openai_client, test: EmbeddingsTestCase):
         test.expected(embeddings)
 
 
-@dataclass
-class MultiInputTestCase:
-    deployment: EmbeddingsDeployment
-    input: List[str]
-
-    def get_id(self):
-        input_str = "/".join(self.input)
-        return sanitize_test_name(f"{self.deployment.value}/{input_str}")
-
-
+@pytest.mark.parametrize("model_id", [spec.deployment.value for spec in specs])
 @pytest.mark.parametrize(
-    "test",
-    [
-        MultiInputTestCase(deployment=spec.deployment, input=list(input))
-        for input in itertools.product(["cat", "dog"], repeat=3)
-        for spec in specs
-    ],
-    ids=lambda test: test.get_id(),
+    "input",
+    itertools.product(["cat", "dog"], repeat=4),
+    ids=lambda x: "_".join(x),
 )
 async def test_multi_input_embeddings(
-    get_openai_client, test: MultiInputTestCase
+    get_openai_client, model_id: str, input: Tuple[str]
 ):
-    model_id = test.deployment.value
-    client: openai.AsyncAzureOpenAI = get_openai_client(model_id)
-
-    input = test.input
+    client = get_openai_client(model_id)
 
     response: CreateEmbeddingResponse = await client.embeddings.create(
         model=model_id, input=input, encoding_format="float"

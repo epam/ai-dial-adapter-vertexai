@@ -76,8 +76,22 @@ class TestCase:
     extra_body: dict | None
 
     def get_id(self):
+        max_tokens_str = f"maxt:{self.max_tokens}" if self.max_tokens else None
+        stop_sequence_str = f"stop:{self.stop}" if self.stop else None
+        n_str = f"n:{self.n}" if self.n else None
         return sanitize_test_name(
-            f"{self.deployment.value}/{self.streaming}/{self.name}"
+            "/".join(
+                str(part)
+                for part in [
+                    self.deployment.value,
+                    self.streaming,
+                    max_tokens_str,
+                    stop_sequence_str,
+                    n_str,
+                    self.name,
+                ]
+                if part is not None
+            )
         )
 
 
@@ -104,15 +118,6 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
 }
-
-
-def is_retired(deployment: ChatCompletionDeployment) -> bool:
-    # Keep at least one model in the list to test how the adapter handles retired models
-    return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO_1,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-    ]
 
 
 def is_codechat(deployment: ChatCompletionDeployment) -> bool:
@@ -294,19 +299,6 @@ def get_test_cases(
                 extra_body,
             )
         )
-
-    if is_retired(deployment):
-        test_case(
-            name="retired",
-            messages=[user("test")],
-            max_tokens=1,
-            expected=ExpectedException(
-                type=openai.NotFoundError,
-                status_code=404,
-                message="not found",
-            ),
-        )
-        return test_cases
 
     if supports_text_input(deployment):
         test_case(
@@ -735,7 +727,7 @@ def get_test_cases(
     ],
     ids=lambda test: test.get_id(),
 )
-async def test_chat_completion(get_openai_client, test: TestCase):
+async def test_chat_completion_openai(get_openai_client, test: TestCase):
     client = get_openai_client(
         test.deployment.value, get_extra_headers(test.region)
     )
