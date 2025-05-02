@@ -43,15 +43,15 @@ def google_search_grounding_tokens(
             ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_001
             | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
-            | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
-            | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
-            | ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25
-            | ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25
         ):
             # TODO: Add pricing, when it will be available.
             # Currently, while this models are in experimental mode, there is no pricing information.
             return 0
-        case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
+        case (
+            ChatCompletionDeployment.GEMINI_PRO_VISION_1
+            | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
+            | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
+        ):
             raise RuntimeError("Gemini Pro Vision 1 does not support grounding")
 
         case _:

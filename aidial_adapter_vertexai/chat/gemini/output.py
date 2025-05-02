@@ -109,13 +109,7 @@ async def create_function_calls_from_genai(
             arguments=function_args,
         )
     else:
-        if consumer.has_function_call:
-            log.warning(
-                "The model generated more than one tool call. "
-                "Only the first one will be taken in to account."
-            )
-        else:
-            await consumer.create_function_call(
-                name=function_call.name,
-                arguments=function_args,
-            )
+        await consumer.create_function_call(
+            name=function_call.name,
+            arguments=function_args,
+        )

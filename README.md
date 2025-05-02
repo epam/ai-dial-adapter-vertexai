@@ -8,7 +8,6 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
 |---|---|---|---|---|---|
-|Gemini 2.5 Pro|gemini-2.5-pro-exp-03-25/gemini-2.5-pro-preview-03-25|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
 |Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
 |Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-01-21|text-to-text|✅|✅|❌|
 |Gemini 2.0 Flash|gemini-2.0-flash-(exp\|001)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
@@ -16,7 +15,7 @@ The following models support `POST SERVER_URL/openai/deployments/DEPLOYMENT_NAME
 |Gemini 1.5 Pro|gemini-1.5-pro-(preview-0409\|001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
 |Gemini 1.5 Flash|gemini-1.5-flash-(001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
 |Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|
-|Gemini 1.0 Pro|gemini-1.0-pro|text-to-text|✅|✅|✅|
+|Gemini 1.0 Pro|gemini-pro|text-to-text|✅|✅|✅|
 |Claude 3.7 Sonnet|claude-3-7-sonnet@20250219|(text/image)-to-text|✅|✅|✅|
 |Claude 3 Opus|claude-3-opus@20240229|(text/image)-to-text|✅|✅|✅|
 |Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022|(text/image)-to-text|✅|✅|✅|
