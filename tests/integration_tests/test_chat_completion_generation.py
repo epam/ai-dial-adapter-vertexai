@@ -97,6 +97,8 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17: _CENTRAL,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
@@ -149,14 +151,7 @@ def supports_json_schema_response_format(
 
 
 def is_claude(deployment: ChatCompletionDeployment) -> bool:
-    return deployment in [
-        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
-        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_OPUS,
-        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
-        ChatCompletionDeployment.CLAUDE_3_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_7_SONNET,
-    ]
+    return "claude" in deployment.value
 
 
 def supports_tools(deployment: ChatCompletionDeployment) -> bool:
@@ -167,6 +162,8 @@ def supports_tools(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
         ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
         ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1,
+        ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
@@ -179,6 +176,8 @@ def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         # ChatCompletionDeployment.CLAUDE_3_7_SONNET,
         ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
+        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1,
+        ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
@@ -187,16 +186,10 @@ def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
 
 
 def supports_grounding(deployment: ChatCompletionDeployment) -> bool:
-    return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO_1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
-        ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
-        ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
-        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
-    ]
+    return (
+        "gemini" in deployment.value
+        and deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
+    )
 
 
 def supports_text_input(deployment: ChatCompletionDeployment) -> bool:
@@ -244,18 +237,12 @@ def support_thinking(deployment: ChatCompletionDeployment) -> bool:
         # Gemini 2.5 doesn't emit thinking tokens into a separate output,
         # it's all the part of the completion tokens.
         ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
+        ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
 def is_gemini_2(deployment: ChatCompletionDeployment) -> bool:
-    return deployment in [
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
-        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
-    ]
+    return "gemini-2." in deployment.value
 
 
 def get_test_cases(
