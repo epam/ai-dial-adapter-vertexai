@@ -318,29 +318,30 @@ def collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
     return ret
 
 
-_JSON_SCHEMA_TYPES = [
-    "string",
-    "number",
-    "integer",
-    "boolean",
-    "array",
-    "object",
-]
-
-
 def _convert_genai_function_parameters(function_schema: dict) -> GenAISchema:
-    def _convert(value):
-        match value:
-            case dict():
-                d = {k: _convert(v) for k, v in value.items()}
+    def _convert_schema(schema: dict | str | list):
+        if not isinstance(schema, dict):
+            return schema
 
-                # GenAI lib requires property types to be in uppercase
-                if (ty := d.get("type")) in _JSON_SCHEMA_TYPES:
-                    d["type"] = ty.upper()
-                return d
-            case list():
-                return [_convert(item) for item in value]
-            case _:
-                return value
+        genai_schema = {}
 
-    return cast(GenAISchema, _convert(function_schema))
+        for field, value in schema.items():
+            if field == "type":
+                # GenAI function parameters should have types in uppercase
+                genai_schema[field] = value.upper()
+            elif isinstance(value, str):
+                genai_schema[field] = value
+            elif isinstance(value, list):
+                genai_schema[field] = [_convert_schema(item) for item in value]
+            elif isinstance(value, dict):
+                genai_schema[field] = {
+                    key: _convert_schema(value) for key, value in value.items()
+                }
+            else:
+                raise ValueError(
+                    f"Failed to convert function declaration to Vertex format: {schema}"
+                )
+
+        return genai_schema
+
+    return cast(GenAISchema, _convert_schema(function_schema))
