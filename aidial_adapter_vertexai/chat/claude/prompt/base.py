@@ -1,46 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, List, Self, Set
+from typing import List, Self, Set
 
 from anthropic.types import MessageParam, TextBlockParam
 from anthropic.types import ToolParam as ClaudeTool
 
+from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
 from aidial_adapter_vertexai.utils.list_projection import ListProjection
 
-
-# NOTE: it's not pydantic BaseModel, because
-# MessageParam.content is of Iterable type and
-# pydantic automatically converts lists into
-# list iterators following the type.
-# See https://github.com/anthropics/anthropic-sdk-python/issues/656 for details.
-@dataclass
-class ClaudeConversation:
-    system: str | List[TextBlockParam] | None
-    messages: ListProjection[MessageParam]
-
-    @classmethod
-    def create(
-        cls,
-        system: str | List[TextBlockParam] | None,
-        messages: List[MessageParam],
-    ) -> Self:
-        return cls(
-            system=system,
-            messages=ListProjection.create(
-                messages, idx_offset=int(system is not None)
-            ),
-        )
-
-    def on_messages(
-        self,
-        func: Callable[
-            [ListProjection[MessageParam]], ListProjection[MessageParam]
-        ],
-    ) -> ClaudeConversation:
-        return ClaudeConversation(self.system, func(self.messages))
+ClaudeConversation = BaseConversation[str | List[TextBlockParam], MessageParam]
 
 
 @dataclass
@@ -90,7 +61,6 @@ class ClaudePrompt(TruncatablePrompt):
         offset = int(self.has_system_instruction)
 
         message_indices: Set[int] = set()
-
         for idx in range(len(self.messages)):
             if idx + offset in indices:
                 message_indices.add(idx)

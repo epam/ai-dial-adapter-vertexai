@@ -20,6 +20,9 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
     get_video_processor,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.message import (
+    LegacyMessageMerger,
+)
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import get_attachments
@@ -66,6 +69,9 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         conversation = await messages_to_conversation(
             conversation_factory, processors, tools, messages
         )
+        conversation = conversation.merge_messages_with_same_role(
+            LegacyMessageMerger
+        )
 
         def usage_message():
             return _get_usage_message(processors.get_file_exts())
@@ -76,11 +82,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         if processors.resource_count == 0:
             return UserError("No documents were found", usage_message())
 
-        return cls(
-            system_instruction=conversation.system_instruction,
-            contents=conversation.contents,
-            tools=tools,
-        )
+        return cls(conversation=conversation, tools=tools)
 
 
 def truncate_messages(messages: List[Message]) -> List[Message]:

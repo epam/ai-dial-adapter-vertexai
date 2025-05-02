@@ -125,13 +125,13 @@ class GeminiGenAIChatCompletionAdapter(
             is_gemini_1_5,
             prompt.tools,
             prompt.static_tools,
-            prompt.system_instruction,
+            prompt.system,
         )
 
         if params.stream:
             gen = await self.client.aio.models.generate_content_stream(
                 model=self.model_id,
-                contents=list(prompt.contents),
+                contents=list(prompt.messages.raw_list),
                 config=generation_config,
             )
             async for chunk in gen:  # type: ignore
@@ -139,7 +139,7 @@ class GeminiGenAIChatCompletionAdapter(
         else:
             yield await self.client.aio.models.generate_content(
                 model=self.model_id,
-                contents=list(prompt.contents),
+                contents=list(prompt.messages.raw_list),
                 config=generation_config,
             )
 
@@ -223,8 +223,13 @@ class GeminiGenAIChatCompletionAdapter(
     async def truncate_prompt(
         self, prompt: GeminiGenAIPrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[GeminiGenAIPrompt]:
-        return await prompt.truncate(
-            tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        prompt = await prompt.truncate(
+            tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        )
+
+        return TruncatedPrompt(
+            prompt=prompt,
+            discarded_messages=list(prompt.messages.get_removed_indices()),
         )
 
     @override
@@ -232,7 +237,7 @@ class GeminiGenAIChatCompletionAdapter(
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self.client.aio.models.count_tokens(
                 model=self.model_id,
-                contents=list(prompt.contents),
+                contents=list(prompt.messages.raw_list),
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             if resp.total_tokens is None:

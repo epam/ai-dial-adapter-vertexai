@@ -3,9 +3,11 @@ from typing import Generic, List, TypeVar
 
 from aidial_sdk.chat_completion.request import Role
 
+from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
+
 PartT = TypeVar("PartT")
 ContentT = TypeVar("ContentT")
-ConversationT = TypeVar("ConversationT")
+ConversationT = TypeVar("ConversationT", bound=BaseConversation)
 
 
 class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
