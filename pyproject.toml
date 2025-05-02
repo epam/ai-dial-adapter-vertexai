@@ -55,10 +55,8 @@ pyright = "1.1.389"
 nox = "^2023.4.22"
 google-auth-oauthlib = "1.0.0"
 
-# -n=auto --self-contained-html --html=pytest.html --alluredir=allure-results --timeout=60
-
 [tool.pytest.ini_options]
-addopts = "--asyncio-mode=auto"
+addopts = "-n=auto --asyncio-mode=auto --self-contained-html --html=pytest.html --alluredir=allure-results --timeout=60"
 env_override_existing_values = 1
 filterwarnings = [
     "error",
