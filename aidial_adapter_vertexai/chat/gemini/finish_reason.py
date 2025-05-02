@@ -55,28 +55,26 @@ def genai_to_openai_finish_reason(
     if not finish_reason:
         return None
     match finish_reason:
-        case GenAIFinishReason.FINISH_REASON_UNSPECIFIED:
+        case "FINISH_REASON_UNSPECIFIED":
             return None
-        case GenAIFinishReason.MAX_TOKENS:
+        case "MAX_TOKENS":
             return FinishReason.LENGTH
-        case GenAIFinishReason.STOP:
+        case "STOP":
             return FinishReason.STOP
         case (
-            GenAIFinishReason.SAFETY
-            | GenAIFinishReason.RECITATION
-            | GenAIFinishReason.BLOCKLIST
-            | GenAIFinishReason.PROHIBITED_CONTENT
-            | GenAIFinishReason.SPII
-            | GenAIFinishReason.IMAGE_SAFETY
-            | GenAIFinishReason.LANGUAGE  # NOTE: undocumented
+            "SAFETY"
+            | "RECITATION"
+            | "BLOCKLIST"
+            | "PROHIBITED_CONTENT"
+            | "SPII"
         ):
             return FinishReason.CONTENT_FILTER
-        case GenAIFinishReason.OTHER:
+        case "OTHER":
             raise FinishReasonOtherError(
                 msg=_EARLY_TERMINATION_ERROR,
                 retriable=retriable,
             )
-        case GenAIFinishReason.MALFORMED_FUNCTION_CALL:
+        case "MALFORMED_FUNCTION_CALL":
             raise FinishReasonOtherError(
                 msg=_INVALID_FUNCTION_CALL_ERROR,
                 retriable=retriable,

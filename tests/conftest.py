@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import AsyncGenerator, Mapping
 
@@ -8,13 +7,6 @@ from asgi_lifespan import LifespanManager
 from google.cloud.aiplatform.constants.base import DEFAULT_REGION
 from httpx import ASGITransport
 from openai import AsyncAzureOpenAI
-
-
-def pytest_configure(config):
-    # Filter out logs containing "Adapter deployments" because they are too verbose
-    logging.getLogger("app").addFilter(
-        lambda record: "Adapter deployments" not in record.getMessage()
-    )
 
 
 @pytest.fixture(autouse=True)
@@ -29,27 +21,16 @@ def configure_unit_tests(monkeypatch, request):
 
 
 @pytest.fixture(autouse=True)
-def disable_caches():
-    # Disable all caches that may retain references to event loops.
+def disable_aiocache():
+    # It's important to disable caches defined in aidial_adapter_vertexai.vertex_ai,
+    # because pytest recreates app for every test function,
+    # but the caches are shared across the tests.
     #
-    # pytest-asyncio creates a new event loop for each test with scope="function".
-    # If a cached object is created or a global object is constructed in an early test,
-    # it may hold a reference to that test’s event loop.
-    #
-    # Once that loop is closed and a new one is created for the next test,
-    # the cached object becomes invalid — leading to the error:
-    # "RuntimeError: Event loop is closed"
-    #
-    # To avoid this, we clear or disable any caches that may hold event loop-bound state.
-
-    # Disable `aiocache`` caches
+    # A cached model holds a reference to an event loop
+    # that is created for the first app instance.
+    # Once the first app instance is released, the event loop is closed.
+    # This reference to a closed event loop breaks follow-up tests.
     os.environ["AIOCACHE_DISABLE"] = "1"
-
-    # Disable `functools.cache`` caches
-    import aidial_adapter_vertexai.app_config as caches
-
-    caches.get_genai_client.cache_clear()
-    caches.get_anthropic_client.cache_clear()
 
 
 @pytest.fixture()

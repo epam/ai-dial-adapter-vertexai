@@ -107,7 +107,7 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
 
 
 def is_retired(deployment: ChatCompletionDeployment) -> bool:
-    # Keep at least one model in the list to test how the adapter handles retired models in streaming and non-streaming modes
+    # Keep at least one model in the list to test how the adapter handles retired models
     return deployment in [
         ChatCompletionDeployment.GEMINI_PRO_1,
         ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
@@ -693,7 +693,7 @@ def get_test_cases(
             name="response format json object",
             messages=[user("extract name and surname from 'John Doe'")],
             extra_body={"response_format": {"type": "json_object"}},
-            expected=lambda s: isinstance(json.loads(s.content), (dict, list)),
+            expected=lambda s: isinstance(json.loads(s.content), dict),
         )
 
     if supports_json_schema_response_format(deployment):
@@ -741,7 +741,7 @@ async def test_chat_completion(get_openai_client, test: TestCase):
     )
 
     async def run_chat_completion() -> ChatCompletionResult:
-        max_attempts = 6
+        attempts = 1
         delay = 1
 
         async def _retry_wait(
@@ -754,8 +754,8 @@ async def test_chat_completion(get_openai_client, test: TestCase):
             await asyncio.sleep(delay)
             delay *= 2
 
-        for attempt in range(max_attempts):
-            is_last_attempt = attempt == max_attempts - 1
+        for attempt in range(attempts):
+            is_last_attempt = attempt == attempts - 1
             try:
                 return await chat_completion(
                     client,

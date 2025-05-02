@@ -15,15 +15,11 @@ from google.genai.types import (
     FunctionCallingConfigDict as GenAIFunctionCallingConfig,
 )
 from google.genai.types import (
-    FunctionCallingConfigMode as GenAIFunctionCallingConfigMode,
-)
-from google.genai.types import (
     FunctionDeclarationDict as GenAIFunctionDeclaration,
 )
 from google.genai.types import SchemaDict as GenAISchema
 from google.genai.types import ToolConfigDict as GenAIToolConfig
 from google.genai.types import ToolDict as GenAITool
-from google.genai.types import Type as GenAIType
 from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import (
     FunctionDeclaration as GeminiFunction,
@@ -249,9 +245,7 @@ class ToolsConfig(BaseModel):
                         parameters=(
                             _convert_genai_function_parameters(func.parameters)
                             if func.parameters
-                            else GenAISchema(
-                                type=GenAIType.OBJECT, properties={}
-                            )
+                            else GenAISchema(type="OBJECT", properties={})
                         ),
                         description=func.description,
                     )
@@ -267,7 +261,7 @@ class ToolsConfig(BaseModel):
         if self.required:
             return GenAIToolConfig(
                 function_calling_config=GenAIFunctionCallingConfig(
-                    mode=GenAIFunctionCallingConfigMode.ANY,
+                    mode="ANY",
                     allowed_function_names=[
                         func.name for func in self.functions
                     ],
@@ -276,7 +270,7 @@ class ToolsConfig(BaseModel):
         else:
             return GenAIToolConfig(
                 function_calling_config=GenAIFunctionCallingConfig(
-                    mode=GenAIFunctionCallingConfigMode.AUTO,
+                    mode="AUTO",
                 )
             )
 
