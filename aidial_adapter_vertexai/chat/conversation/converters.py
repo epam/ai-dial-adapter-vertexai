@@ -1,7 +1,6 @@
 from typing import Any, List, Tuple, assert_never
 
-from aidial_sdk.chat_completion import Message as DialMessage
-from aidial_sdk.chat_completion import Role
+from aidial_sdk.chat_completion import Message, Role
 
 from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessorsBase,
@@ -32,7 +31,7 @@ async def messages_to_conversation(
     conversation_factory: ConversationFactoryBase[PartT, Any, ConversationT],
     processors: AttachmentProcessorsBase[PartT],
     tools: ToolsConfig,
-    messages: List[DialMessage],
+    messages: List[Message],
 ) -> ConversationT:
     function_call_idx = Counter()
 
@@ -63,7 +62,7 @@ async def messages_to_conversation(
 async def _message_to_parts(
     processors: AttachmentProcessorsBase[PartT],
     tools: ToolsConfig,
-    message: DialMessage,
+    message: Message,
     conversation_factory: ConversationFactoryBase,
     function_call_idx: Counter,
 ) -> List[PartT]:

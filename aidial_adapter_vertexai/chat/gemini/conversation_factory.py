@@ -1,19 +1,30 @@
 import json
-from typing import List, assert_never
+from typing import Generic, List, assert_never
 
 from aidial_sdk.chat_completion.request import Role
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
+from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import ChatSession, Content, Part
 
-from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.conversation.factory import (
+    ContentT,
     ConversationFactoryBase,
+    PartT,
 )
 from aidial_adapter_vertexai.chat.errors import ValidationError
 
-GeminiConversation = BaseConversation[List[Part], Content]
-GeminiGenAIConversation = BaseConversation[List[GenAIPart], GenAIContent]
+
+class GeminiConversationBase(BaseModel, Generic[PartT, ContentT]):
+    system_instruction: List[PartT] | None = None
+    contents: List[ContentT]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class GeminiConversation(GeminiConversationBase[Part, Content]):
+    pass
 
 
 class ConversationFactory(
@@ -75,9 +86,13 @@ class ConversationFactory(
     def create_conversation(
         self, system_instruction: List[Part] | None, contents: List[Content]
     ) -> GeminiConversation:
-        return BaseConversation.create(
-            system=system_instruction, messages=contents
+        return GeminiConversation(
+            system_instruction=system_instruction, contents=contents
         )
+
+
+class GeminiGenAIConversation(GeminiConversationBase[GenAIPart, GenAIContent]):
+    pass
 
 
 class GenAIConversationFactory(
@@ -146,6 +161,6 @@ class GenAIConversationFactory(
         system_instruction: List[GenAIPart] | None,
         contents: List[GenAIContent],
     ) -> GeminiGenAIConversation:
-        return BaseConversation.create(
-            system=system_instruction, messages=contents
+        return GeminiGenAIConversation(
+            system_instruction=system_instruction, contents=contents
         )

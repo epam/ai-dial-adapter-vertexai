@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Set, Tuple
 
 from aidial_sdk.chat_completion import Message
 from anthropic.types import MessageParam, TextBlockParam
@@ -20,7 +20,8 @@ from aidial_adapter_vertexai.chat.conversation.converters import (
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
-from aidial_adapter_vertexai.utils.list import MessageMergeStrategy
+from aidial_adapter_vertexai.utils.list import group_by
+from aidial_adapter_vertexai.utils.list_projection import ListProjection
 
 
 class AttachmentProcessorsClaude(AttachmentProcessorsBase[ClaudePart]):
@@ -49,7 +50,8 @@ async def parse_claude_3_prompt(
     conversation = await messages_to_conversation(
         conversation_factory, processors, tools, messages
     )
-    conversation = conversation.merge_messages_with_same_role(MessageMerger)
+
+    conversation = conversation.on_messages(_merge_messages_with_same_role)
 
     if error_message := processors.get_error_message():
         usage_message = get_usage_message(processors.get_file_exts())
@@ -58,18 +60,20 @@ async def parse_claude_3_prompt(
     return ClaudePrompt(conversation=conversation, tools=tools)
 
 
-class MessageMerger(MessageMergeStrategy[MessageParam]):
-    @staticmethod
-    def role(message: MessageParam) -> str:
-        return message["role"]
+def _merge_messages_with_same_role(
+    messages: ListProjection[MessageParam],
+) -> ListProjection[MessageParam]:
+    def _key(message: Tuple[MessageParam, Set[int]]) -> str:
+        return message[0]["role"]
 
-    @staticmethod
-    def merge(a: MessageParam, b: MessageParam) -> MessageParam:
-        if a["role"] != b["role"]:
-            raise ValueError("Cannot merge messages with different roles")
+    def _merge(
+        a: Tuple[MessageParam, Set[int]],
+        b: Tuple[MessageParam, Set[int]],
+    ) -> Tuple[MessageParam, Set[int]]:
+        (msg1, set1), (msg2, set2) = a, b
 
-        content1 = a["content"]
-        content2 = b["content"]
+        content1 = msg1["content"]
+        content2 = msg2["content"]
 
         if isinstance(content1, str):
             content1 = [TextBlockParam(type="text", text=content1)]
@@ -77,9 +81,14 @@ class MessageMerger(MessageMergeStrategy[MessageParam]):
         if isinstance(content2, str):
             content2 = [TextBlockParam(type="text", text=content2)]
 
-        return MessageParam(
-            role=a["role"], content=list(content1) + list(content2)
+        return (
+            MessageParam(
+                role=msg1["role"], content=list(content1) + list(content2)
+            ),
+            set1 | set2,
         )
+
+    return ListProjection(group_by(messages.list, _key, lambda x: x, _merge))
 
 
 def _create_image_processor(max_count: int) -> AttachmentProcessor:
