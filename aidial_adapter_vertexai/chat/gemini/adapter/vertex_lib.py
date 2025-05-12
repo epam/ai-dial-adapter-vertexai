@@ -111,7 +111,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
             tool_config = prompt.tools.to_gemini_tool_config()
             system_instruction = cast(
                 List[str | Part | Image] | None,
-                prompt.system_instruction,
+                prompt.system,
             )
         else:
             tools = None
@@ -131,7 +131,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     ) -> AsyncIterator[GenerationResponse]:
 
         model = self._get_model(params=params, prompt=prompt)
-        contents = prompt.contents
+        contents = prompt.messages.raw_list
 
         if params.stream:
             response = await model._generate_content_streaming_async(contents)
@@ -215,15 +215,20 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     async def truncate_prompt(
         self, prompt: GeminiPrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[GeminiPrompt]:
-        return await prompt.truncate(
-            tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        prompt = await prompt.truncate(
+            tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        )
+
+        return TruncatedPrompt(
+            prompt=prompt,
+            discarded_messages=list(prompt.messages.get_removed_indices()),
         )
 
     @override
     async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self._get_model(prompt=prompt).count_tokens_async(
-                prompt.contents
+                prompt.messages.raw_list
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             return resp.total_tokens

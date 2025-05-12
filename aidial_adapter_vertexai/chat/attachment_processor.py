@@ -11,6 +11,7 @@ from typing import (
     Optional,
     ParamSpec,
     Set,
+    TypeVar,
     Union,
     assert_never,
 )
@@ -29,7 +30,6 @@ from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
-from aidial_adapter_vertexai.chat.gemini.conversation_factory import PartT
 from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.resource import (
     AttachmentResource,
@@ -111,6 +111,9 @@ class AttachmentProcessor(BaseModel):
 class ProcessingError:
     name: str
     message: str
+
+
+PartT = TypeVar("PartT")
 
 
 class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):

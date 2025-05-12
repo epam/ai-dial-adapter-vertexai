@@ -113,6 +113,8 @@ class GeminiGenAIChatCompletionAdapter(
                 | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
                 | ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25
                 | ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25
+                | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1
+                | ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17
             ):
                 return await Gemini_2_Prompt.parse(
                     self.file_storage, tools, static_tools, messages
@@ -130,7 +132,7 @@ class GeminiGenAIChatCompletionAdapter(
             is_gemini_1_5,
             prompt.tools,
             prompt.static_tools,
-            prompt.system_instruction,
+            prompt.system,
         )
 
     def _get_token_count_config(
@@ -142,7 +144,7 @@ class GeminiGenAIChatCompletionAdapter(
             is_gemini_1_5,
             prompt.tools,
             prompt.static_tools,
-            prompt.system_instruction,
+            prompt.system,
         )
 
     async def send_message_async(
@@ -153,7 +155,7 @@ class GeminiGenAIChatCompletionAdapter(
         if params.stream:
             gen = await self.client.aio.models.generate_content_stream(
                 model=self.model_id,
-                contents=list(prompt.contents),
+                contents=list(prompt.messages.raw_list),
                 config=generation_config,
             )
             async for chunk in gen:  # type: ignore
@@ -161,7 +163,7 @@ class GeminiGenAIChatCompletionAdapter(
         else:
             yield await self.client.aio.models.generate_content(
                 model=self.model_id,
-                contents=list(prompt.contents),
+                contents=list(prompt.messages.raw_list),
                 config=generation_config,
             )
 
@@ -245,8 +247,13 @@ class GeminiGenAIChatCompletionAdapter(
     async def truncate_prompt(
         self, prompt: GeminiGenAIPrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[GeminiGenAIPrompt]:
-        return await prompt.truncate(
-            tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        prompt = await prompt.truncate(
+            tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        )
+
+        return TruncatedPrompt(
+            prompt=prompt,
+            discarded_messages=list(prompt.messages.get_removed_indices()),
         )
 
     @override
@@ -255,7 +262,7 @@ class GeminiGenAIChatCompletionAdapter(
             config = self._get_token_count_config(prompt)
             resp = await self.client.aio.models.count_tokens(
                 model=self.model_id,
-                contents=list(prompt.contents),
+                contents=list(prompt.messages.raw_list),
                 config=config,
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")

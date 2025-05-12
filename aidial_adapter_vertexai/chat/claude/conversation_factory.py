@@ -104,8 +104,8 @@ class ClaudeConversationFactory(
         contents: List[MessageParam],
     ) -> ClaudeConversation:
         return ClaudeConversation.create(
-            _sanitize_system_instruction(system_instruction),
-            contents,
+            system=_sanitize_system_instruction(system_instruction),
+            messages=contents,
         )
 
 

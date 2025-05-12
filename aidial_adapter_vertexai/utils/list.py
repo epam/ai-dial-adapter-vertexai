@@ -1,4 +1,5 @@
-from typing import Any, Callable, List, TypeVar
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Generic, List, TypeVar
 
 _T = TypeVar("_T")
 _V = TypeVar("_V")
@@ -29,3 +30,13 @@ def group_by(
         yield prev_val
 
     return list(_gen())
+
+
+class MessageMergeStrategy(Generic[_T], ABC):
+    @staticmethod
+    @abstractmethod
+    def role(_T) -> Any: ...
+
+    @staticmethod
+    @abstractmethod
+    def merge(a: _T, b: _T) -> _T: ...

@@ -233,10 +233,14 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     async def truncate_prompt(
         self, prompt: ClaudePrompt, max_prompt_tokens: int
     ) -> TruncatedPrompt[ClaudePrompt]:
-        truncated_prompt = await prompt.truncate(
-            tokenizer=self.count_prompt_tokens, user_limit=max_prompt_tokens
+        prompt = await prompt.truncate(
+            tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
-        return _project_to_original_indices(prompt, truncated_prompt)
+
+        return TruncatedPrompt(
+            prompt=prompt,
+            discarded_messages=list(prompt.messages.get_removed_indices()),
+        )
 
     @override
     async def count_prompt_tokens(self, prompt: ClaudePrompt) -> int:
@@ -255,18 +259,3 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     @override
     async def count_completion_tokens(self, string: str) -> int:
         raise InternalServerError("Tokenization of strings is not supported")
-
-
-def _project_to_original_indices(
-    prompt: ClaudePrompt,
-    truncated_prompt: TruncatedPrompt[ClaudePrompt],
-) -> TruncatedPrompt[ClaudePrompt]:
-    discarded_messages = list(
-        prompt.conversation.messages.to_original_indices(
-            truncated_prompt.discarded_messages
-        )
-    )
-    return TruncatedPrompt(
-        prompt=truncated_prompt.prompt,
-        discarded_messages=discarded_messages,
-    )
