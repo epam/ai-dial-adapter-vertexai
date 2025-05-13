@@ -7,7 +7,7 @@ from anthropic.types.message_create_params import ToolChoice
 from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 
-_DEFAULT_MAX_TOKENS_CLAUDE = 512
+_DEFAULT_MAX_TOKENS_CLAUDE = 1536
 
 
 _T = TypeVar("_T")
