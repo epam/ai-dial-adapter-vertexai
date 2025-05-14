@@ -368,6 +368,7 @@ def get_test_cases(
             )(r)
             assert r.usage is not None
             assert r.usage.completion_tokens == expected_tokens
+            assert r.finish_reasons == ["length"]
             return True
 
         test_case(
