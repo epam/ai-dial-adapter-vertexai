@@ -88,6 +88,8 @@ Copy `.env.example` to `.env` and customize it for your environment:
 > ```
 >
 > Such a **per-model** configuration is cleaner since all the information relevant to tokens _(like pricing and token limits)_ is kept in the same place.
+>
+> The default value set in the DIAL Core Config takes precedence over the one configured in the adapter.
 
 ## Compatibility mode
 
