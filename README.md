@@ -67,29 +67,35 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 |COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
-|CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request. Claude models require the `max_tokens` parameter unlike OpenAI models. Make sure this value doesn't exceed Claude's [max output tokens](https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table), otherwise, you will receive an error like this one: `max_tokens: 10000 > 8192, which is the maximum allowed number of output tokens for claude-deployment-id`.|
+|CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request. Unlike OpenAI models, Claude models require the `max_tokens` parameter. <code style="color:red">⚠ Using the variable is discouraged</code>. Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 
-> [!WARNING]
-> Using the `CLAUDE_DEFAULT_MAX_TOKENS` variable is **discouraged**. We recommend configuring `max_tokens` default value on a per-model basis in the DIAL Core Config instead, for example:
->
-> ```json
-> {
->     "models": {
->         "dial-claude-deployment-id": {
->             "type": "chat",
->             "description": "...",
->             "endpoint": "...",
->             "defaults": {
->                 "max_tokens": 2048
->             }
->         }
->     }
-> }
-> ```
->
-> Such a **per-model** configuration is cleaner since all the information relevant to tokens _(like pricing and token limits)_ is kept in the same place.
->
-> The default value set in the DIAL Core Config takes precedence over the one configured in the adapter.
+## Default `max_tokens` for Claude models
+
+Unlike OpenAI models, Claude models require the `max_tokens` parameter in the chat completion request.
+We recommend configuring `max_tokens` default value on a per-model basis in the DIAL Core Config, for example:
+
+```json
+{
+    "models": {
+        "dial-claude-deployment-id": {
+            "type": "chat",
+            "description": "...",
+            "endpoint": "...",
+            "defaults": {
+                "max_tokens": 2048
+            }
+        }
+    }
+}
+```
+
+If the default is missing in the DIAL Core Config, it will be taken from the `CLAUDE_DEFAULT_MAX_TOKENS` environment variable.
+However, we strongly recommend not to rely on this variable and instead configure the defaults in the DIAL Core Config.
+Such a **per-model** configuration is operationally cleaner since all the information relevant to tokens _(like pricing and token limits)_ is kept in the same place.
+
+The default value set in the DIAL Core Config takes precedence over the one configured in the adapter.
+
+Make sure the default doesn't exceed Claude's [max output tokens](https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table), otherwise, you will receive an error like this one: `max_tokens: 10000 > 8192, which is the maximum allowed number of output tokens for claude-3...)`.
 
 ## Compatibility mode
 
