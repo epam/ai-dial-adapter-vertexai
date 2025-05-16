@@ -32,15 +32,8 @@ def parse_upstream_config(
         log.debug("accessing deployment via platform api-key")
         return conf
 
-    if (conf := _CloudUpstreamConfig.from_request(request)) is not None:
-        log.debug("accessing deployment via cloud creds")
-        return conf
-
-    raise ValueError(
-        f"Invalid configuration: connection to the deployment isn't defined "
-        f"neither via {DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} environment variables, "
-        f"nor via {_UPSTREAM_CONFIG_HEADER_NAME!r} and {_UPSTREAM_API_KEY_HEADER_NAME!r} request headers."
-    )
+    log.debug("accessing deployment via cloud creds")
+    return _CloudUpstreamConfig.from_request(request)
 
 
 _UPSTREAM_CONFIG_HEADER_NAME = "x-upstream-extra-data"
@@ -76,13 +69,10 @@ class _CloudUpstreamConfig(BaseModel):
     @classmethod
     def from_request(
         cls, request: FromRequestDeploymentMixin
-    ) -> UpstreamConfig | None:
+    ) -> UpstreamConfig:
         conf = request.headers.get(_UPSTREAM_CONFIG_HEADER_NAME)
-        if conf is None:
-            return None
-
         try:
-            conf = json.loads(conf)
+            conf = json.loads(conf or "{}")
         except Exception:
             raise ValueError(
                 f"Header {_UPSTREAM_CONFIG_HEADER_NAME!r} isn't valid JSON"
