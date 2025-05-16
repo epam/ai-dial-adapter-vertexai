@@ -3,7 +3,7 @@ from typing import List, assert_never
 
 from aidial_sdk.chat_completion import Message
 from aidial_sdk.exceptions import InternalServerError
-from anthropic import AsyncAnthropicVertex, MessageStopEvent
+from anthropic import AsyncAnthropic, AsyncAnthropicVertex, MessageStopEvent
 from anthropic.lib.streaming import (
     ContentBlockStopEvent,
     InputJsonEvent,
@@ -20,7 +20,6 @@ from anthropic.types import (
 from typing_extensions import override
 
 from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
-from aidial_adapter_vertexai.app_config import get_anthropic_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -55,13 +54,13 @@ from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 
 class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     deployment: AdapterDeployment[ClaudeDeployment]
-    client: AsyncAnthropicVertex
+    client: AsyncAnthropicVertex | AsyncAnthropic
 
     def __init__(
         self,
         file_storage: FileStorage | None,
         deployment: AdapterDeployment[ClaudeDeployment],
-        client: AsyncAnthropicVertex,
+        client: AsyncAnthropicVertex | AsyncAnthropic,
     ):
         self.file_storage = file_storage
         self.deployment = deployment
@@ -78,11 +77,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         deployment: AdapterDeployment[ClaudeDeployment],
         config: UpstreamConfig,
     ) -> "ClaudeChatCompletionAdapter":
-        return cls(
-            file_storage,
-            deployment,
-            get_anthropic_client(config.project, config.region),
-        )
+        return cls(file_storage, deployment, config.get_anthropic_client())
 
     @override
     async def parse_prompt(

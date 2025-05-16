@@ -48,8 +48,8 @@ def disable_caches():
     # Disable `functools.cache`` caches
     import aidial_adapter_vertexai.app_config as caches
 
-    caches.get_genai_client.cache_clear()
-    caches.get_anthropic_client.cache_clear()
+    caches.get_vertex_genai_client.cache_clear()
+    caches.get_vertex_anthropic_client.cache_clear()
 
 
 @pytest.fixture()

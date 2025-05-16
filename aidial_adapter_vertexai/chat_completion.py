@@ -38,7 +38,7 @@ from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
-from aidial_adapter_vertexai.upstream_config import UpstreamConfig
+from aidial_adapter_vertexai.upstream_config import parse_upstream_config
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.not_implemented import is_implemented
 
@@ -55,7 +55,7 @@ class VertexAIChatCompletion(ChatCompletion):
         return await get_chat_completion_model(
             api_key=request.api_key,
             deployment=self.deployment,
-            upstream_config=UpstreamConfig.from_request(request),
+            upstream_config=parse_upstream_config(request),
         )
 
     @dial_exception_decorator

@@ -60,8 +60,8 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |Variable|Default|Description|
 |---|---|---|
 |GOOGLE_APPLICATION_CREDENTIALS||Filepath to JSON with [credentials](https://cloud.google.com/docs/authentication/application-default-credentials#GAC)|
-|DEFAULT_REGION||Default region for Vertex AI (e.g. "us-central1")|
-|GCP_PROJECT_ID||GCP project ID|
+|DEFAULT_REGION||Optional. Default region for Vertex AI (e.g. `us-central1`)|
+|GCP_PROJECT_ID||Optional. GCP project ID|
 |LOG_LEVEL|INFO|Log level. Use DEBUG for dev purposes and INFO in prod|
 |AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
