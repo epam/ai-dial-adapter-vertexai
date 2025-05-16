@@ -18,16 +18,16 @@ def init_vertex_ai():
     if DEFAULT_REGION and DEFAULT_PROJECT:
         vertexai.init(project=DEFAULT_PROJECT, location=DEFAULT_REGION)
     else:
-        log.warning("DEFAULT_REGION and GCP_PROJECT_ID aren't configured.")
+        log.warning(
+            f"{DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} aren't configured."
+        )
 
 
 @cache
-def get_vertex_genai_client(project: str, location: str) -> GenAIClient:
+def get_genai_client(project: str, location: str) -> GenAIClient:
     return GenAIClient(vertexai=True, project=project, location=location)
 
 
 @cache
-def get_vertex_anthropic_client(
-    project: str, region: str
-) -> AsyncAnthropicVertex:
+def get_anthropic_client(project: str, region: str) -> AsyncAnthropicVertex:
     return AsyncAnthropicVertex(project_id=project, region=region)

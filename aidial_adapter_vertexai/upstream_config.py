@@ -13,8 +13,8 @@ from aidial_adapter_vertexai.app_config import (
     DEFAULT_PROJECT_ENV_VAR,
     DEFAULT_REGION,
     DEFAULT_REGION_ENV_VAR,
-    get_vertex_anthropic_client,
-    get_vertex_genai_client,
+    get_anthropic_client,
+    get_genai_client,
 )
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
@@ -121,7 +121,7 @@ class _CloudUpstreamConfig(BaseModel):
             )
 
     def get_genai_client(self) -> GenAIClient:
-        return get_vertex_genai_client(self.project, self.region)
+        return get_genai_client(self.project, self.region)
 
     def get_anthropic_client(self) -> AsyncAnthropicVertex | AsyncAnthropic:
-        return get_vertex_anthropic_client(self.project, self.region)
+        return get_anthropic_client(self.project, self.region)
