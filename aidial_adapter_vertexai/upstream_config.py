@@ -28,16 +28,19 @@ class UpstreamConfig(Protocol):
 def parse_upstream_config(
     request: FromRequestDeploymentMixin,
 ) -> UpstreamConfig:
-    config = _ApiKeyUpstreamConfig.from_request(
-        request
-    ) or _CloudUpstreamConfig.from_request(request)
-    if config is None:
-        raise ValueError(
-            f"Invalid configuration: connection to VertexAI isn't defined "
-            f"neither via {DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} environment variables, "
-            f"nor via {_UPSTREAM_CONFIG_HEADER_NAME!r} and {_UPSTREAM_API_KEY_HEADER_NAME!r} request headers."
-        )
-    return config
+    if (conf := _ApiKeyUpstreamConfig.from_request(request)) is not None:
+        log.debug("accessing deployment via platform api-key")
+        return conf
+
+    if (conf := _CloudUpstreamConfig.from_request(request)) is not None:
+        log.debug("accessing deployment via cloud creds")
+        return conf
+
+    raise ValueError(
+        f"Invalid configuration: connection to the deployment isn't defined "
+        f"neither via {DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} environment variables, "
+        f"nor via {_UPSTREAM_CONFIG_HEADER_NAME!r} and {_UPSTREAM_API_KEY_HEADER_NAME!r} request headers."
+    )
 
 
 _UPSTREAM_CONFIG_HEADER_NAME = "x-upstream-extra-data"
