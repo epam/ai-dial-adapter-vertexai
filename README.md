@@ -201,10 +201,10 @@ Use the `global` region to enable the [global endpoint](https://cloud.google.com
 
 ### GCP Vertex AI
 
-GCP is accessed via Application Default Credentials ([ADC](https://cloud.google.com/docs/authentication/application-default-credentials)) with region and project configured either:
+Access to GCP Vertex AI is authenticated via Application Default Credentials ([ADC](https://cloud.google.com/docs/authentication/application-default-credentials)) with region and project configured either:
 
 1. globally via `DEFAULT_REGION` and `GCP_PROJECT_ID` environment vars, or
-2. on an [per upstream basis](#load-balancing) via `upstreams.extraData` fields in DIAL Core Config.
+2. on a [per upstream basis](#load-balancing) via `upstreams.extraData` fields in DIAL Core Config.
 
 ### Anthropic API / Google AI Platform
 
@@ -220,31 +220,31 @@ Gemini>=2 and Anthropic deployments could be accessed via API key. The API keys 
           "key": "gemini-api-key"
         }
       ]
+    },
+    "claude-3-5-sonnet-20241022": {
+      "endpoint": "...",
+      "upstreams": [
+        {
+          "key": "anthropic-api-key"
+        }
+      ]
     }
-  },
-  "claude-3-5-sonnet-latest": {
-    "endpoint": "...",
-    "upstreams": [
-      {
-        "key": "anthropic-api-key"
-      }
-    ]
   }
 }
 ```
 
 Keep in mind that the same Anthropic models have [different identifiers](https://docs.anthropic.com/en/docs/about-claude/models/overview#model-names) in Anthropic API and GPC Vertex AI.
 
-E.g. `claude-3-7-sonnet@20250219` in GCP Vertex AI corresponds to `claude-3-7-sonnet-20250219` in Anthropic API.
+E.g. `claude-3-5-sonnet-v2@20241022` in GCP Vertex AI corresponds to `claude-3-5-sonnet-20241022` in Anthropic API.
 
 The adapter uses deployment identifiers from **GCP Vertex AI**.
 Therefore, in order to use Anthropic API model you need to map its identifier to a corresponding identifier in GCP Vertex AI using the [compatibility mapping](#compatibility-mode):
 
 ```
-COMPATIBILITY_MAPPING={"claude-3-7-sonnet-20250219":"claude-3-7-sonnet@20250219"}
+COMPATIBILITY_MAPPING={"claude-3-5-sonnet-20241022":"claude-3-5-sonnet-v2@20241022"}
 ```
 
-Otherwise, the adapter will return 404 on requests to `claude-3-7-sonnet-20250219`.
+Otherwise, the adapter will return 404 on requests to `claude-3-5-sonnet-20241022`.
 
 ## Development
 
