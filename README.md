@@ -8,35 +8,35 @@ The project implements [AI DIAL API](https://epam-rail.com/dial_api) for languag
 
 The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/chat/completions` endpoint along with an optional support of the feature endpoints:
 
-* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/tokenize`
-* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
+- `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/tokenize`
+- `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
 
-|Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
-|---|---|---|---|---|---|
-|Gemini 2.5 Flash|gemini-2.5-flash-preview-04-17|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.5 Pro|gemini-2.5-pro-exp-03-25/gemini-2.5-pro-preview-03-25|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-01-21|text-to-text|✅|✅|❌|
-|Gemini 2.0 Flash|gemini-2.0-flash-(exp\|001)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-preview-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|❌|
-|Gemini 1.5 Pro|gemini-1.5-pro-(preview-0409\|001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 1.5 Flash|gemini-1.5-flash-(001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|
-|Gemini 1.0 Pro|gemini-1.0-pro|text-to-text|✅|✅|✅|
-|Claude 3.7 Sonnet|claude-3-7-sonnet@20250219|(text/image)-to-text|✅|✅|✅|
-|Claude 3 Opus|claude-3-opus@20240229|(text/image)-to-text|✅|✅|✅|
-|Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022|(text/image)-to-text|✅|✅|✅|
-|Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(text/image)-to-text|✅|✅|✅|
-|Claude 3.5 Haiku|claude-3-5-haiku@20241022|text-to-text|✅|✅|✅|
-|Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|
-|Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|
-|PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|
-|PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|
-|PaLM 2 Chat Bison|chat-bison-32k@002|text-to-text|✅|✅|❌|
-|Codey for Code Chat|codechat-bison@001|text-to-text|✅|✅|❌|
-|Codey for Code Chat|codechat-bison@002|text-to-text|✅|✅|❌|
-|Codey for Code Chat|codechat-bison-32k@002|text-to-text|✅|✅|❌|
+| Model                     | Deployment name                                       | Modality                             | `/tokenize` | `/truncate_prompt` | tools/functions support |
+| ------------------------- | ----------------------------------------------------- | ------------------------------------ | ----------- | ------------------ | ----------------------- |
+| Gemini 2.5 Flash          | gemini-2.5-flash-preview-04-17                        | (text/pdf/image/audio/video)-to-text | ✅          | ✅                 | ✅                      |
+| Gemini 2.5 Pro            | gemini-2.5-pro-exp-03-25/gemini-2.5-pro-preview-03-25 | (text/pdf/image/audio/video)-to-text | ✅          | ✅                 | ✅                      |
+| Gemini 2.0 Pro            | gemini-2.0-pro-exp-02-05                              | (text/pdf/image/audio/video)-to-text | ✅          | ✅                 | ✅                      |
+| Gemini 2.0 Flash Lite     | gemini-2.0-flash-lite-001                             | (text/pdf/image/audio/video)-to-text | ✅          | ✅                 | ✅                      |
+| Gemini 2.0 Flash Thinking | gemini-2.0-flash-thinking-exp-01-21                   | text-to-text                         | ✅          | ✅                 | ❌                      |
+| Gemini 2.0 Flash          | gemini-2.0-flash-(exp\|001)                           | (text/pdf/image/audio/video)-to-text | ✅          | ✅                 | ✅                      |
+| Gemini 2.0 Flash Lite     | gemini-2.0-flash-lite-preview-02-05                   | (text/pdf/image/audio/video)-to-text | ✅          | ✅                 | ❌                      |
+| Gemini 1.5 Pro            | gemini-1.5-pro-(preview-0409\|001\|002)               | (text/pdf/image/audio/video)-to-text | ✅          | ✅                 | ✅                      |
+| Gemini 1.5 Flash          | gemini-1.5-flash-(001\|002)                           | (text/pdf/image/audio/video)-to-text | ✅          | ✅                 | ✅                      |
+| Gemini 1.0 Pro Vision     | gemini-pro-vision                                     | (text/pdf/image/video)-to-text       | ✅          | ✅                 | ❌                      |
+| Gemini 1.0 Pro            | gemini-1.0-pro                                        | text-to-text                         | ✅          | ✅                 | ✅                      |
+| Claude 3.7 Sonnet         | claude-3-7-sonnet@20250219                            | (text/image)-to-text                 | ✅          | ✅                 | ✅                      |
+| Claude 3 Opus             | claude-3-opus@20240229                                | (text/image)-to-text                 | ✅          | ✅                 | ✅                      |
+| Claude 3.5 Sonnet v2      | claude-3-5-sonnet-v2@20241022                         | (text/image)-to-text                 | ✅          | ✅                 | ✅                      |
+| Claude 3.5 Sonnet         | claude-3-5-sonnet@20240620                            | (text/image)-to-text                 | ✅          | ✅                 | ✅                      |
+| Claude 3.5 Haiku          | claude-3-5-haiku@20241022                             | text-to-text                         | ✅          | ✅                 | ✅                      |
+| Claude 3 Haiku            | claude-3-haiku@20240307                               | (text/image)-to-text                 | ✅          | ✅                 | ✅                      |
+| Imagen 2                  | imagegeneration@005                                   | text-to-image                        | ✅          | ✅                 | ❌                      |
+| PaLM 2 Chat Bison         | chat-bison@001                                        | text-to-text                         | ✅          | ✅                 | ❌                      |
+| PaLM 2 Chat Bison         | chat-bison@002                                        | text-to-text                         | ✅          | ✅                 | ❌                      |
+| PaLM 2 Chat Bison         | chat-bison-32k@002                                    | text-to-text                         | ✅          | ✅                 | ❌                      |
+| Codey for Code Chat       | codechat-bison@001                                    | text-to-text                         | ✅          | ✅                 | ❌                      |
+| Codey for Code Chat       | codechat-bison@002                                    | text-to-text                         | ✅          | ✅                 | ❌                      |
+| Codey for Code Chat       | codechat-bison-32k@002                                | text-to-text                         | ✅          | ✅                 | ❌                      |
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
@@ -44,30 +44,30 @@ The models that support `/truncate_prompt` do also support `max_prompt_tokens` c
 
 The following models support `$SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:
 
-|Model|Deployment name|Language support|Modality|
-|---|---|---|---|
-|Gecko Embeddings for Text V1|textembedding-gecko@001|English|text-to-embedding|
-|Gecko Embeddings for Text V3|textembedding-gecko@003|English|text-to-embedding|
-|Embeddings for Text|text-embedding-004|English|text-to-embedding|
-|Gecko Embeddings for Text Multilingual|textembedding-gecko-multilingual@001|Multilingual|text-to-embedding|
-|Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
-|Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
+| Model                                  | Deployment name                      | Language support | Modality                  |
+| -------------------------------------- | ------------------------------------ | ---------------- | ------------------------- |
+| Gecko Embeddings for Text V1           | textembedding-gecko@001              | English          | text-to-embedding         |
+| Gecko Embeddings for Text V3           | textembedding-gecko@003              | English          | text-to-embedding         |
+| Embeddings for Text                    | text-embedding-004                   | English          | text-to-embedding         |
+| Gecko Embeddings for Text Multilingual | textembedding-gecko-multilingual@001 | Multilingual     | text-to-embedding         |
+| Embeddings for Text Multilingual       | text-multilingual-embedding-002      | Multilingual     | text-to-embedding         |
+| Multimodal embeddings                  | multimodalembedding@001              | English          | (text/image)-to-embedding |
 
 ## Environment variables
 
 Copy `.env.example` to `.env` and customize it for your environment:
 
-|Variable|Default|Description|
-|---|---|---|
-|GOOGLE_APPLICATION_CREDENTIALS||Filepath to JSON with [credentials](https://cloud.google.com/docs/authentication/application-default-credentials#GAC)|
-|DEFAULT_REGION||Default region for Vertex AI (e.g. "us-central1")|
-|GCP_PROJECT_ID||GCP project ID|
-|LOG_LEVEL|INFO|Log level. Use DEBUG for dev purposes and INFO in prod|
-|AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
-|WEB_CONCURRENCY|1|Number of workers for the server|
-|DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
-|COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
-|CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
+| Variable                       | Default | Description                                                                                                                                                                                                                                                                                              |
+| ------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GOOGLE_APPLICATION_CREDENTIALS |         | Filepath to JSON with [credentials](https://cloud.google.com/docs/authentication/application-default-credentials#GAC)                                                                                                                                                                                    |
+| DEFAULT_REGION                 |         | Optional. Default region for Vertex AI (e.g. `us-central1`)                                                                                                                                                                                                                                              |
+| GCP_PROJECT_ID                 |         | Optional. GCP project ID                                                                                                                                                                                                                                                                                 |
+| LOG_LEVEL                      | INFO    | Log level. Use DEBUG for dev purposes and INFO in prod                                                                                                                                                                                                                                                   |
+| AIDIAL_LOG_LEVEL               | WARNING | AI DIAL SDK log level                                                                                                                                                                                                                                                                                    |
+| WEB_CONCURRENCY                | 1       | Number of workers for the server                                                                                                                                                                                                                                                                         |
+| DIAL_URL                       |         | URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage                                                                                                                                                                                                             |
+| COMPATIBILITY_MAPPING          | {}      | A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.       |
+| CLAUDE_DEFAULT_MAX_TOKENS      | 1536    | The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models). |
 
 ## Default `max_tokens` for Claude models
 
@@ -77,16 +77,16 @@ We recommend configuring `max_tokens` default value on a per-model basis in the 
 
 ```json
 {
-    "models": {
-        "dial-claude-deployment-id": {
-            "type": "chat",
-            "description": "...",
-            "endpoint": "...",
-            "defaults": {
-                "max_tokens": 2048
-            }
-        }
+  "models": {
+    "dial-claude-deployment-id": {
+      "type": "chat",
+      "description": "...",
+      "endpoint": "...",
+      "defaults": {
+        "max_tokens": 2048
+      }
     }
+  }
 }
 ```
 
@@ -160,6 +160,9 @@ If you use DIAL Core load balancing mechanism, you can provide `extraData` upstr
       "extraData": {
         "project": "project2"
       }
+    },
+    {
+      "key": "api-key"
     }
   ]
 }
@@ -167,13 +170,13 @@ If you use DIAL Core load balancing mechanism, you can provide `extraData` upstr
 
 The fields in the extra data override the corresponding environment variables:
 
-|`extraData` field|Env variable|
-|---|---|
-|`region`|`DEFAULT_REGION`|
-|`project`|`GCP_PROJECT_ID`|
+| `extraData` field | Env variable     |
+| ----------------- | ---------------- |
+| `region`          | `DEFAULT_REGION` |
+| `project`         | `GCP_PROJECT_ID` |
 
 > [!NOTE]
-> The region and project configuration is only supported for Gemini 2.0 and Anthropic models.
+> The region and project configuration is only supported for Gemini>=2 and Anthropic models.
 
 ### Global endpoint
 
@@ -193,6 +196,55 @@ Use the `global` region to enable the [global endpoint](https://cloud.google.com
 
 > [!NOTE]
 > The global endpoint is supported only for [certain models](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#supported_models) and has a few other [limitations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#limitations).
+
+## Authentication
+
+### GCP Vertex AI
+
+GCP is accessed via Application Default Credentials ([ADC](https://cloud.google.com/docs/authentication/application-default-credentials)) with region and project configured either:
+
+1. globally via `DEFAULT_REGION` and `GCP_PROJECT_ID` environment vars, or
+2. on an [per upstream basis](#load-balancing) via `upstreams.extraData` fields in DIAL Core Config.
+
+### Anthropic API / Google AI Platform
+
+Gemini>=2 and Anthropic deployments could be accessed via API key. The API keys should be configured per-upstream in the DIAL Core config:
+
+```json
+{
+  "models": {
+    "gemini-2.0-flash-lite-001": {
+      "endpoint": "...",
+      "upstreams": [
+        {
+          "key": "gemini-api-key"
+        }
+      ]
+    }
+  },
+  "claude-3-5-sonnet-latest": {
+    "endpoint": "...",
+    "upstreams": [
+      {
+        "key": "anthropic-api-key"
+      }
+    ]
+  }
+}
+```
+
+Keep in mind that the same Anthropic models have [different identifiers](https://docs.anthropic.com/en/docs/about-claude/models/overview#model-names) in Anthropic API and GPC Vertex AI.
+
+E.g. `claude-3-7-sonnet@20250219` in GCP Vertex AI corresponds to `claude-3-7-sonnet-20250219` in Anthropic API.
+
+The adapter uses deployment identifiers from **GCP Vertex AI**.
+Therefore, in order to use Anthropic API model you need to map its identifier to a corresponding identifier in GCP Vertex AI using the [compatibility mapping](#compatibility-mode):
+
+```
+COMPATIBILITY_MAPPING={"claude-3-7-sonnet-20250219":"claude-3-7-sonnet@20250219"}
+```
+
+Otherwise, the adapter will return 404 on requests to `claude-3-7-sonnet-20250219`.
 
 ## Development
 
