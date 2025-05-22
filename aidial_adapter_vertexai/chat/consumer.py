@@ -94,7 +94,7 @@ class ChoiceConsumer(Consumer):
         traceback: TracebackType | None,
     ) -> bool | None:
         if exc is None and self._choice is not None:
-            self._choice.close()
+            self._choice.close(self.finish_reason)
         return False
 
     def is_empty(self) -> bool:

@@ -14,7 +14,6 @@ from google.genai.types import (
 from typing_extensions import override
 
 from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
-from aidial_adapter_vertexai.app_config import get_genai_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -77,11 +76,7 @@ class GeminiGenAIChatCompletionAdapter(
         deployment: AdapterDeployment[GeminiDeployment],
         config: UpstreamConfig,
     ) -> "GeminiGenAIChatCompletionAdapter":
-        return cls(
-            file_storage,
-            deployment,
-            get_genai_client(config.project, config.region),
-        )
+        return cls(file_storage, deployment, config.get_genai_client())
 
     @property
     def model_id(self) -> str:

@@ -6,7 +6,6 @@ from google.genai.types import GenerateImagesConfigDict, GenerateImagesResponse
 from PIL import Image as PIL_Image
 from typing_extensions import override
 
-from aidial_adapter_vertexai.app_config import get_genai_client
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -133,11 +132,7 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         model_id: str,
         config: UpstreamConfig,
     ) -> "ImagenChatCompletionAdapter":
-        return cls(
-            file_storage,
-            get_genai_client(config.project, config.region),
-            model_id,
-        )
+        return cls(file_storage, config.get_genai_client(), model_id)
 
 
 def _prepare_generation_config(

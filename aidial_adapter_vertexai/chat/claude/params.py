@@ -6,8 +6,9 @@ from anthropic.types.message_create_params import ToolChoice
 
 from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.utils.env import get_env_int
 
-_DEFAULT_MAX_TOKENS_CLAUDE = 512
+_DEFAULT_MAX_TOKENS = get_env_int("CLAUDE_DEFAULT_MAX_TOKENS", 1536)
 
 
 _T = TypeVar("_T")
@@ -37,7 +38,7 @@ def create_chat_params(
 
     temperature = none_to_not_given(params.temperature)
     stop_sequences = none_to_not_given(params.stop)
-    max_tokens = params.max_tokens or _DEFAULT_MAX_TOKENS_CLAUDE
+    max_tokens = params.max_tokens or _DEFAULT_MAX_TOKENS
     top_p = none_to_not_given(params.top_p)
 
     return {

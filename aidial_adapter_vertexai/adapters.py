@@ -51,21 +51,21 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.CHAT_BISON_2
             | ChatCompletionDeployment.CHAT_BISON_2_32K
         ):
-            upstream_config.dynamic_configuration_not_supported()
+            upstream_config.per_request_configuration_not_supported()
             return await BisonChatAdapter.create(model_id)
         case (
             ChatCompletionDeployment.CODECHAT_BISON_1
             | ChatCompletionDeployment.CODECHAT_BISON_2
             | ChatCompletionDeployment.CODECHAT_BISON_2_32K
         ):
-            upstream_config.dynamic_configuration_not_supported()
+            upstream_config.per_request_configuration_not_supported()
             return await BisonCodeChatAdapter.create(model_id)
         case (
             ChatCompletionDeployment.GEMINI_PRO
             | ChatCompletionDeployment.GEMINI_PRO_1
             | ChatCompletionDeployment.GEMINI_PRO_VISION_1
         ):
-            upstream_config.dynamic_configuration_not_supported()
+            upstream_config.per_request_configuration_not_supported()
             return await GeminiChatCompletionAdapter.create(
                 storage,
                 deployment.clone(deployment.reference_deployment_id),

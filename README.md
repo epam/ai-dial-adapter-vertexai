@@ -67,6 +67,36 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 |COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
+|CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
+
+## Default `max_tokens` for Claude models
+
+Unlike Gemini models, Claude models require the `max_tokens` parameter in the chat completion request.
+
+We recommend configuring `max_tokens` default value on a per-model basis in the DIAL Core Config, for example:
+
+```json
+{
+    "models": {
+        "dial-claude-deployment-id": {
+            "type": "chat",
+            "description": "...",
+            "endpoint": "...",
+            "defaults": {
+                "max_tokens": 2048
+            }
+        }
+    }
+}
+```
+
+If the default is missing in the DIAL Core Config, it will be taken from the `CLAUDE_DEFAULT_MAX_TOKENS` environment variable.
+However, we strongly recommend not to rely on this variable and instead configure the defaults in the DIAL Core Config.
+Such a **per-model** configuration is operationally cleaner since all the information relevant to tokens _(like pricing and token limits)_ is kept in the same place.
+
+The default value set in the DIAL Core Config takes precedence over the one configured in the adapter.
+
+Make sure the default doesn't exceed Claude's [max output tokens](https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table), otherwise, you will receive an error like this one: `max_tokens: 10000 > 8192, which is the maximum allowed number of output tokens for claude-3...)`.
 
 ## Compatibility mode
 
@@ -130,6 +160,9 @@ If you use DIAL Core load balancing mechanism, you can provide `extraData` upstr
       "extraData": {
         "project": "project2"
       }
+    },
+    {
+      "key": "api-key"
     }
   ]
 }
@@ -143,7 +176,7 @@ The fields in the extra data override the corresponding environment variables:
 |`project`|`GCP_PROJECT_ID`|
 
 > [!NOTE]
-> The region and project configuration is only supported for Gemini 2.0 and Anthropic models.
+> The region and project configuration is only supported for Gemini>=2 and Anthropic models.
 
 ### Global endpoint
 
@@ -163,6 +196,55 @@ Use the `global` region to enable the [global endpoint](https://cloud.google.com
 
 > [!NOTE]
 > The global endpoint is supported only for [certain models](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#supported_models) and has a few other [limitations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#limitations).
+
+## Authentication
+
+### GCP Vertex AI
+
+Access to GCP Vertex AI is authenticated via Application Default Credentials ([ADC](https://cloud.google.com/docs/authentication/application-default-credentials)) with region and project configured either:
+
+1. globally via `DEFAULT_REGION` and `GCP_PROJECT_ID` environment vars, or
+2. on a [per upstream basis](#load-balancing) via `upstreams.extraData` fields in DIAL Core Config.
+
+### Anthropic API / Google AI Platform
+
+Gemini>=2 and Anthropic deployments could be accessed via API key. The API keys should be configured per-upstream in the DIAL Core config:
+
+```json
+{
+  "models": {
+    "gemini-2.0-flash-lite-001": {
+      "endpoint": "...",
+      "upstreams": [
+        {
+          "key": "gemini-api-key"
+        }
+      ]
+    },
+    "claude-3-5-sonnet-20241022": {
+      "endpoint": "...",
+      "upstreams": [
+        {
+          "key": "anthropic-api-key"
+        }
+      ]
+    }
+  }
+}
+```
+
+Keep in mind that the same Anthropic models have [different identifiers](https://docs.anthropic.com/en/docs/about-claude/models/overview#model-names) in Anthropic API and GPC Vertex AI.
+
+E.g. `claude-3-5-sonnet-v2@20241022` in GCP Vertex AI corresponds to `claude-3-5-sonnet-20241022` in Anthropic API.
+
+The adapter uses deployment identifiers from **GCP Vertex AI**.
+Therefore, in order to use Anthropic API model you need to map its identifier to a corresponding identifier in GCP Vertex AI using the [compatibility mapping](#compatibility-mode):
+
+```
+COMPATIBILITY_MAPPING={"claude-3-5-sonnet-20241022":"claude-3-5-sonnet-v2@20241022"}
+```
+
+Otherwise, the adapter will return 404 on requests to `claude-3-5-sonnet-20241022`.
 
 ## Development
 
