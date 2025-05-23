@@ -2,6 +2,7 @@ import base64
 import json
 from typing import List, Literal, assert_never
 
+from aidial_sdk.chat_completion.request import Message as DialMessage
 from aidial_sdk.chat_completion.request import Role
 from aidial_sdk.exceptions import InvalidRequestError
 from anthropic.types import (
@@ -19,7 +20,10 @@ from anthropic.types import (
 from anthropic.types.base64_image_source_param import Base64ImageSourceParam
 
 from aidial_adapter_vertexai.chat.attachment_processor import FileTypes
-from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudeConversation
+from aidial_adapter_vertexai.chat.claude.prompt.base import (
+    ClaudeConversation,
+    ClaudeMessage,
+)
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
 )
@@ -52,7 +56,7 @@ def _parse_image_type(
 
 
 class ClaudeConversationFactory(
-    ConversationFactoryBase[ClaudePart, MessageParam, ClaudeConversation]
+    ConversationFactoryBase[ClaudePart, ClaudeMessage, ClaudeConversation]
 ):
     def create_multi_modal_part(
         self, data: bytes, mime_type: str
@@ -114,24 +118,27 @@ class ClaudeConversationFactory(
         )
 
     def create_content(
-        self, role: Role, parts: List[ClaudePart]
-    ) -> MessageParam:
-        match role:
+        self, dial_message: DialMessage, parts: List[ClaudePart]
+    ) -> ClaudeMessage:
+        match dial_message.role:
             case Role.USER | Role.FUNCTION | Role.TOOL:
-                return MessageParam(content=parts, role="user")
+                claude_message = MessageParam(content=parts, role="user")
             case Role.ASSISTANT:
-                return MessageParam(content=parts, role="assistant")
+                claude_message = MessageParam(content=parts, role="assistant")
             case Role.SYSTEM | Role.DEVELOPER:
                 raise InvalidRequestError(
                     "System or developer message is only allowed as the first message"
                 )
             case _:
-                assert_never(role)
+                assert_never(dial_message.role)
+        return ClaudeMessage(
+            claude_message=claude_message, dial_messages=[dial_message]
+        )
 
     def create_conversation(
         self,
         system_instruction: List[ClaudePart] | None,
-        contents: List[MessageParam],
+        contents: List[ClaudeMessage],
     ) -> ClaudeConversation:
         return ClaudeConversation.create(
             system=_sanitize_system_instruction(system_instruction),

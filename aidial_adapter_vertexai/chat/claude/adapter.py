@@ -15,7 +15,6 @@ from anthropic.lib.streaming._types import (
     ThinkingEvent,
 )
 from anthropic.types import (
-    CitationsDelta,
     ContentBlockDeltaEvent,
     ContentBlockStartEvent,
     MessageDeltaEvent,
@@ -146,7 +145,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         claude_params = create_chat_params(params, prompt)
 
         async with self.client.messages.stream(
-            messages=prompt.messages.raw_list,
+            messages=prompt.claude_messages,
             model=self.model_id,
             **claude_params,
         ) as stream:
@@ -185,20 +184,17 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                                 assert_never(content_block)
                     case MessageStopEvent(message=message):
                         stop_reason = message.stop_reason
-                    case ContentBlockDeltaEvent(
-                        delta=CitationsDelta(citation=citation)
-                    ):
-                        await create_attachments_from_citations(
-                            consumer, citation
-                        )
                     case (
                         InputJsonEvent()
                         | ContentBlockStartEvent()
                         | ContentBlockDeltaEvent()
                     ):
                         pass
-
-                    case CitationEvent() | ThinkingEvent() | SignatureEvent():
+                    case CitationEvent(citation=citation):
+                        await create_attachments_from_citations(
+                            consumer, citation
+                        )
+                    case ThinkingEvent() | SignatureEvent():
                         pass
                     case _:
                         assert_never(event)
@@ -221,7 +217,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         claude_params = create_chat_params(params, prompt)
 
         message = await self.client.messages.create(
-            messages=prompt.messages.raw_list,
+            messages=prompt.claude_messages,
             model=self.model_id,
             **claude_params,
             stream=False,
@@ -268,8 +264,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         )
 
         return TruncatedPrompt(
-            prompt=prompt,
-            discarded_messages=list(prompt.messages.get_removed_indices()),
+            prompt=prompt, discarded_messages=prompt.removed_indices
         )
 
     @override
@@ -277,7 +272,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         return (
             await self.client.messages.count_tokens(
                 model=self.model_id,
-                messages=prompt.messages.raw_list,
+                messages=prompt.claude_messages,
                 system=none_to_not_given(prompt.system),
                 tools=none_to_not_given(prompt.tools.to_claude_tools()),
                 tool_choice=none_to_not_given(

@@ -38,7 +38,7 @@ async def messages_to_conversation(
 
     message_parts = [
         (
-            message.role,
+            message,
             await _message_to_parts(
                 processors,
                 tools,
@@ -53,8 +53,8 @@ async def messages_to_conversation(
     system, message_parts = _separate_system_messages(message_parts)
 
     contents = [
-        conversation_factory.create_content(role, parts)
-        for role, parts in message_parts
+        conversation_factory.create_content(dial_message, parts)
+        for dial_message, parts in message_parts
     ]
 
     return conversation_factory.create_conversation(system, contents)
@@ -152,8 +152,8 @@ async def _message_to_parts(
 
 
 def _separate_system_messages(
-    messages: List[Tuple[Role, List[PartT]]],
-) -> Tuple[List[PartT] | None, List[Tuple[Role, List[PartT]]]]:
+    messages: List[Tuple[DialMessage, List[PartT]]],
+) -> Tuple[List[PartT] | None, List[Tuple[DialMessage, List[PartT]]]]:
     """
     Extract the leading system messages from the list of messages.
     """
@@ -163,8 +163,8 @@ def _separate_system_messages(
     system_messages: List[PartT] = []
 
     while messages:
-        role, message = messages[0]
-        if is_system_role(role):
+        dial_message, message = messages[0]
+        if is_system_role(dial_message.role):
             system_messages.extend(message)
             messages = messages[1:]
         else:

@@ -1,6 +1,7 @@
 import json
 from typing import List, assert_never
 
+from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion.request import Role
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
@@ -69,8 +70,13 @@ class ConversationFactory(
 
         return Part.from_function_response(name, {"content": args})
 
-    def create_content(self, role: Role, parts: List[Part]) -> Content:
-        return Content(role=self._to_gemini_role(role), parts=parts)
+    def create_content(
+        self, dial_message: DialMessage, parts: List[Part]
+    ) -> Content:
+        return Content(
+            role=self._to_gemini_role(dial_message.role),
+            parts=parts,
+        )
 
     def create_conversation(
         self, system_instruction: List[Part] | None, contents: List[Content]
@@ -137,9 +143,11 @@ class GenAIConversationFactory(
         )
 
     def create_content(
-        self, role: Role, parts: List[GenAIPart]
+        self, dial_message: DialMessage, parts: List[GenAIPart]
     ) -> GenAIContent:
-        return GenAIContent(role=self.to_gemini_genai_role(role), parts=parts)
+        return GenAIContent(
+            role=self.to_gemini_genai_role(dial_message.role), parts=parts
+        )
 
     def create_conversation(
         self,

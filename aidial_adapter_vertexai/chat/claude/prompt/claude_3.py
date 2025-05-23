@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Literal
 
 from aidial_sdk.chat_completion import Message
 from anthropic.types import MessageParam, TextBlockParam
@@ -12,7 +12,10 @@ from aidial_adapter_vertexai.chat.claude.conversation_factory import (
     ClaudeConversationFactory,
     ClaudePart,
 )
-from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
+from aidial_adapter_vertexai.chat.claude.prompt.base import (
+    ClaudeMessage,
+    ClaudePrompt,
+)
 from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
 )
@@ -74,13 +77,24 @@ async def parse_claude_3_prompt(
     return ClaudePrompt(conversation=conversation, tools=tools)
 
 
-class MessageMerger(MessageMergeStrategy[MessageParam]):
+class MessageMerger(MessageMergeStrategy[ClaudeMessage]):
     @staticmethod
-    def role(message: MessageParam) -> str:
-        return message["role"]
+    def role(message: ClaudeMessage) -> Literal["user", "assistant"]:
+        return message.claude_message["role"]
 
     @staticmethod
-    def merge(a: MessageParam, b: MessageParam) -> MessageParam:
+    def merge(a: ClaudeMessage, b: ClaudeMessage) -> ClaudeMessage:
+        claude_message = MessageMerger.merge_claude_messages(
+            a.claude_message, b.claude_message
+        )
+        dial_messages = a.dial_messages + b.dial_messages
+        return ClaudeMessage(
+            claude_message=claude_message,
+            dial_messages=dial_messages,
+        )
+
+    @staticmethod
+    def merge_claude_messages(a: MessageParam, b: MessageParam) -> MessageParam:
         if a["role"] != b["role"]:
             raise ValueError("Cannot merge messages with different roles")
 

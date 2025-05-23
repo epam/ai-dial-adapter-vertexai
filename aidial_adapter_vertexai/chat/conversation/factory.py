@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Generic, List, TypeVar
 
-from aidial_sdk.chat_completion.request import Role
+from aidial_sdk.chat_completion import Message as DialMessage
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 
@@ -28,7 +28,9 @@ class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
     ) -> PartT: ...
 
     @abstractmethod
-    def create_content(self, role: Role, parts: List[PartT]) -> ContentT: ...
+    def create_content(
+        self, dial_message: DialMessage, parts: List[PartT]
+    ) -> ContentT: ...
 
     @abstractmethod
     def create_conversation(
