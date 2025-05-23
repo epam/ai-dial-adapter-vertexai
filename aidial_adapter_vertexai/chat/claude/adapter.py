@@ -9,13 +9,22 @@ from anthropic.lib.streaming import (
     InputJsonEvent,
     TextEvent,
 )
+from anthropic.lib.streaming._types import (
+    CitationEvent,
+    SignatureEvent,
+    ThinkingEvent,
+)
 from anthropic.types import (
     ContentBlockDeltaEvent,
     ContentBlockStartEvent,
     MessageDeltaEvent,
     MessageStartEvent,
+    RedactedThinkingBlock,
+    ServerToolUseBlock,
     TextBlock,
+    ThinkingBlock,
     ToolUseBlock,
+    WebSearchToolResultBlock,
 )
 from typing_extensions import override
 
@@ -160,6 +169,14 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                             case TextBlock():
                                 # Already handled in TextEvent
                                 pass
+                            # thinking & web search isn't yet supported
+                            case (
+                                ServerToolUseBlock()
+                                | WebSearchToolResultBlock()
+                            ):
+                                pass
+                            case ThinkingBlock() | RedactedThinkingBlock():
+                                pass
                             case _:
                                 assert_never(content_block)
                     case MessageStopEvent(message=message):
@@ -169,6 +186,8 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                         | ContentBlockStartEvent()
                         | ContentBlockDeltaEvent()
                     ):
+                        pass
+                    case CitationEvent() | ThinkingEvent() | SignatureEvent():
                         pass
                     case _:
                         assert_never(event)
@@ -206,6 +225,11 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                     await consumer.append_content(text)
                 case ToolUseBlock():
                     await process_tools_block(consumer, content, tools_mode)
+                # thinking & web search isn't yet supported
+                case ServerToolUseBlock() | WebSearchToolResultBlock():
+                    pass
+                case ThinkingBlock() | RedactedThinkingBlock():
+                    pass
                 case _:
                     assert_never(content)
 

@@ -14,7 +14,7 @@ from anthropic.types import (
     ToolResultBlockParam,
     ToolUseBlockParam,
 )
-from anthropic.types.image_block_param import Source
+from anthropic.types.base64_image_source_param import Base64ImageSourceParam
 
 from aidial_adapter_vertexai.chat.attachment_processor import FileTypes
 from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudeConversation
@@ -57,7 +57,7 @@ class ClaudeConversationFactory(
     ) -> ImageBlockParam | DocumentBlockParam:
         text_data = base64.b64encode(data).decode()
         if image_type := _parse_image_type(mime_type):
-            source = Source(
+            source = Base64ImageSourceParam(
                 type="base64",
                 data=text_data,
                 media_type=image_type,

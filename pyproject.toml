@@ -21,7 +21,7 @@ google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
 google-genai = "1.12.1"
 openai = "1.13.3"
-anthropic = {extras = ["vertex"], version = "^0.43.1"}
+anthropic = {extras = ["vertex"], version = "0.52.0"}
 pydantic = "^2.10.4"
 uvicorn = "0.22.0"
 aiocache = "0.12.2"
