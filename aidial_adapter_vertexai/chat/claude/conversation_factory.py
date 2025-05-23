@@ -5,6 +5,7 @@ from typing import List, Literal, assert_never
 from aidial_sdk.chat_completion.request import Role
 from aidial_sdk.exceptions import InvalidRequestError
 from anthropic.types import (
+    Base64PDFSourceParam,
     ContentBlock,
     DocumentBlockParam,
     ImageBlockParam,
@@ -40,12 +41,12 @@ SUPPORTED_IMAGE_TYPES: FileTypes = {
 
 def _parse_image_type(
     mime_type: str,
-) -> Literal["image/jpeg", "image/png", "image/gif", "image/webp"]:
+) -> Literal["image/jpeg", "image/png", "image/gif", "image/webp"] | None:
     match mime_type:
         case "image/jpeg" | "image/png" | "image/gif" | "image/webp":
             return mime_type
         case _:
-            raise InvalidRequestError("Unsupported image format")
+            return None
 
 
 class ClaudeConversationFactory(
@@ -53,13 +54,24 @@ class ClaudeConversationFactory(
 ):
     def create_multi_modal_part(
         self, data: bytes, mime_type: str
-    ) -> ImageBlockParam:
-        source = Source(
-            type="base64",
-            data=base64.b64encode(data).decode(),
-            media_type=_parse_image_type(mime_type),
-        )
-        return ImageBlockParam(type="image", source=source)
+    ) -> ImageBlockParam | DocumentBlockParam:
+        text_data = base64.b64encode(data).decode()
+        if image_type := _parse_image_type(mime_type):
+            source = Source(
+                type="base64",
+                data=text_data,
+                media_type=image_type,
+            )
+            return ImageBlockParam(type="image", source=source)
+        elif mime_type == "application/pdf":
+            source = Base64PDFSourceParam(
+                type="base64",
+                media_type=mime_type,
+                data=text_data,
+            )
+            return DocumentBlockParam(type="document", source=source)
+        else:
+            raise InvalidRequestError("Unsupported file format")
 
     def create_text_part(self, text: str) -> ClaudePart:
         return TextBlockParam(type="text", text=text)

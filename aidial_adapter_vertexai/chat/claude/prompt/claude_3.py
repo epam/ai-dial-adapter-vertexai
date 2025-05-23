@@ -6,7 +6,6 @@ from anthropic.types import MessageParam, TextBlockParam
 from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessor,
     AttachmentProcessorsBase,
-    max_count_validator,
 )
 from aidial_adapter_vertexai.chat.claude.conversation_factory import (
     SUPPORTED_IMAGE_TYPES,
@@ -18,6 +17,7 @@ from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.gemini.processors import get_pdf_processor
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.list import MessageMergeStrategy
@@ -38,11 +38,22 @@ async def parse_claude_3_prompt(
     if len(messages) == 0:
         raise ValidationError("The chat history must have at least one message")
 
-    conversation_factory = ClaudeConversationFactory()
+    # We do not check the number/sizes of PDFs, images and other attachments.
+    # They are constantly changing and different for different models.
+    # It's user's responsibility to keep track of the model limits.
+    #
+    # Image limits: https://docs.anthropic.com/en/docs/build-with-claude/vision#basics-and-limits
+    # PDF limits: https://docs.anthropic.com/en/docs/build-with-claude/pdf-support#check-pdf-requirements
 
+    procs: List[AttachmentProcessor] = []
+    if supports_vision:
+        procs.append(get_image_processor())
+    procs.append(get_pdf_processor())
+
+    conversation_factory = ClaudeConversationFactory()
     processors = AttachmentProcessorsClaude(
         conversation_factory=conversation_factory,
-        processors=[_create_image_processor(20)] if supports_vision else [],
+        processors=procs,
         file_storage=file_storage,
     )
 
@@ -82,12 +93,8 @@ class MessageMerger(MessageMergeStrategy[MessageParam]):
         )
 
 
-def _create_image_processor(max_count: int) -> AttachmentProcessor:
-    # NOTE: not checked condition: The maximum allowed image file size is 5 MB
-    return AttachmentProcessor(
-        file_types=SUPPORTED_IMAGE_TYPES,
-        init_validator=max_count_validator("image", max_count),
-    )
+def get_image_processor() -> AttachmentProcessor:
+    return AttachmentProcessor(file_types=SUPPORTED_IMAGE_TYPES)
 
 
 def get_usage_message(exts: List[str]) -> str:
