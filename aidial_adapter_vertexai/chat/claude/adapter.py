@@ -15,6 +15,7 @@ from anthropic.lib.streaming._types import (
     ThinkingEvent,
 )
 from anthropic.types import (
+    CitationsDelta,
     ContentBlockDeltaEvent,
     ContentBlockStartEvent,
     MessageDeltaEvent,
@@ -35,6 +36,10 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 from aidial_adapter_vertexai.chat.claude.finish_reason import (
     to_dial_finish_reason,
 )
+from aidial_adapter_vertexai.chat.claude.output import (
+    create_attachments_from_citations,
+    process_tools_block,
+)
 from aidial_adapter_vertexai.chat.claude.params import (
     create_chat_params,
     none_to_not_given,
@@ -43,7 +48,6 @@ from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.chat.claude.prompt.claude_3 import (
     parse_claude_3_prompt,
 )
-from aidial_adapter_vertexai.chat.claude.tools import process_tools_block
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
@@ -181,12 +185,19 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                                 assert_never(content_block)
                     case MessageStopEvent(message=message):
                         stop_reason = message.stop_reason
+                    case ContentBlockDeltaEvent(
+                        delta=CitationsDelta(citation=citation)
+                    ):
+                        await create_attachments_from_citations(
+                            consumer, citation
+                        )
                     case (
                         InputJsonEvent()
                         | ContentBlockStartEvent()
                         | ContentBlockDeltaEvent()
                     ):
                         pass
+
                     case CitationEvent() | ThinkingEvent() | SignatureEvent():
                         pass
                     case _:
@@ -221,8 +232,12 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
 
         for content in message.content:
             match content:
-                case TextBlock(text=text):
+                case TextBlock(text=text, citations=citations):
                     await consumer.append_content(text)
+                    for citation in citations or []:
+                        await create_attachments_from_citations(
+                            consumer, citation
+                        )
                 case ToolUseBlock():
                     await process_tools_block(consumer, content, tools_mode)
                 # thinking & web search isn't yet supported

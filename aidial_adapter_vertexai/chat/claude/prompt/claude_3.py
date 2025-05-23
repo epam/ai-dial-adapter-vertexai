@@ -17,7 +17,10 @@ from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
-from aidial_adapter_vertexai.chat.gemini.processors import get_pdf_processor
+from aidial_adapter_vertexai.chat.gemini.processors import (
+    get_pdf_processor,
+    get_plain_text_processor,
+)
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.list import MessageMergeStrategy
@@ -45,10 +48,12 @@ async def parse_claude_3_prompt(
     # Image limits: https://docs.anthropic.com/en/docs/build-with-claude/vision#basics-and-limits
     # PDF limits: https://docs.anthropic.com/en/docs/build-with-claude/pdf-support#check-pdf-requirements
 
-    procs: List[AttachmentProcessor] = []
+    procs: List[AttachmentProcessor] = [
+        get_pdf_processor(),
+        get_plain_text_processor(),
+    ]
     if supports_vision:
         procs.append(get_image_processor())
-    procs.append(get_pdf_processor())
 
     conversation_factory = ClaudeConversationFactory()
     processors = AttachmentProcessorsClaude(

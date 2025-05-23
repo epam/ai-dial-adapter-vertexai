@@ -6,10 +6,12 @@ from aidial_sdk.chat_completion.request import Role
 from aidial_sdk.exceptions import InvalidRequestError
 from anthropic.types import (
     Base64PDFSourceParam,
+    CitationsConfigParam,
     ContentBlock,
     DocumentBlockParam,
     ImageBlockParam,
     MessageParam,
+    PlainTextSourceParam,
     TextBlockParam,
     ToolResultBlockParam,
     ToolUseBlockParam,
@@ -55,23 +57,39 @@ class ClaudeConversationFactory(
     def create_multi_modal_part(
         self, data: bytes, mime_type: str
     ) -> ImageBlockParam | DocumentBlockParam:
-        text_data = base64.b64encode(data).decode()
+        citations = CitationsConfigParam(enabled=True)
+
         if image_type := _parse_image_type(mime_type):
+            base64_string = base64.b64encode(data).decode()
             source = Base64ImageSourceParam(
                 type="base64",
-                data=text_data,
+                data=base64_string,
                 media_type=image_type,
             )
             return ImageBlockParam(type="image", source=source)
-        elif mime_type == "application/pdf":
+
+        if mime_type == "application/pdf":
+            base64_string = base64.b64encode(data).decode()
             source = Base64PDFSourceParam(
                 type="base64",
                 media_type=mime_type,
-                data=text_data,
+                data=base64_string,
             )
-            return DocumentBlockParam(type="document", source=source)
-        else:
-            raise InvalidRequestError("Unsupported file format")
+            return DocumentBlockParam(
+                type="document", source=source, citations=citations
+            )
+
+        if mime_type.startswith("text/"):
+            source = PlainTextSourceParam(
+                type="text",
+                media_type="text/plain",
+                data=data.decode(),
+            )
+            return DocumentBlockParam(
+                type="document", source=source, citations=citations
+            )
+
+        raise InvalidRequestError("Unsupported file format")
 
     def create_text_part(self, text: str) -> ClaudePart:
         return TextBlockParam(type="text", text=text)

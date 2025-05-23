@@ -1,7 +1,14 @@
 import json
 from typing import assert_never
 
-from anthropic.types import ToolUseBlock
+from anthropic.types import (
+    CitationCharLocation,
+    CitationContentBlockLocation,
+    CitationPageLocation,
+    CitationsWebSearchResultLocation,
+    TextCitation,
+    ToolUseBlock,
+)
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
@@ -36,3 +43,29 @@ async def process_tools_block(
             )
         case _:
             assert_never(tools_mode)
+
+
+async def create_attachments_from_citations(
+    consumer: Consumer, citation: TextCitation
+):
+    match citation:
+        case CitationCharLocation(document_index=document_index):
+            document_url = "https://example.com"  # FIXME
+            await consumer.append_content(
+                f"[[{document_index}]({document_url})]"
+            )
+        case CitationPageLocation(
+            document_index=document_index, start_page_number=start_page_number
+        ):
+            document_url = "https://example.com"  # FIXME
+            await consumer.append_content(
+                f"[[{document_index}]({document_url}#page={start_page_number})]"
+            )
+        # custom document aren't supported yet
+        case CitationContentBlockLocation():
+            pass
+        # web search isn't supported yet
+        case CitationsWebSearchResultLocation():
+            pass
+        case _:
+            assert_never(citation)
