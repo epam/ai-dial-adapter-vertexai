@@ -40,6 +40,8 @@ class ChatCompletionDeployment(Enum):
     CLAUDE_3_5_SONNET = "claude-3-5-sonnet@20240620"
     CLAUDE_3_HAIKU = "claude-3-haiku@20240307"
     CLAUDE_3_7_SONNET = "claude-3-7-sonnet@20250219"
+    CLAUDE_4_OPUS = "claude-opus-4@20250514"
+    CLAUDE_4_SONNET = "claude-sonnet-4@20250514"
 
 
 # Redirect deprecated 'gemini-pro' alias to 'gemini-1.0-pro'
@@ -55,6 +57,8 @@ ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_3_5_SONNET,
     ChatCompletionDeployment.CLAUDE_3_HAIKU,
     ChatCompletionDeployment.CLAUDE_3_7_SONNET,
+    ChatCompletionDeployment.CLAUDE_4_OPUS,
+    ChatCompletionDeployment.CLAUDE_4_SONNET,
 ]
 
 GeminiLegacyDeployment = Literal[

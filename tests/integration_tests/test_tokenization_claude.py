@@ -59,6 +59,8 @@ chat_deployments = [
     ChatCompletionDeployment.CLAUDE_3_5_SONNET,
     ChatCompletionDeployment.CLAUDE_3_HAIKU,
     ChatCompletionDeployment.CLAUDE_3_7_SONNET,
+    ChatCompletionDeployment.CLAUDE_4_SONNET,
+    ChatCompletionDeployment.CLAUDE_4_OPUS,
 ]
 
 
