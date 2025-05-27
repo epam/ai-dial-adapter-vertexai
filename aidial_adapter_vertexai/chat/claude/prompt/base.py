@@ -28,19 +28,6 @@ class ClaudePrompt(TruncatablePrompt):
     conversation: ClaudeConversation
     tools: ToolsConfig = field(default_factory=ToolsConfig.noop)
 
-    @cached_property
-    def dial_resources(self) -> List[DialResource]:
-        ret: List[DialResource] = []
-        for message in self.conversation.messages.raw_list:
-            for resource in message.dial_resources:
-                ret.append(resource)
-        return ret
-
-    def get_dial_resource(self, index: int) -> DialResource | None:
-        if index < 0 or index >= len(self.dial_resources):
-            return None
-        return self.dial_resources[index]
-
     @property
     def system(self) -> str | List[TextBlockParam] | None:
         return self.conversation.system
@@ -109,3 +96,16 @@ class ClaudePrompt(TruncatablePrompt):
 
     def to_claude_tools(self) -> List[ClaudeTool] | None:
         return self.tools.to_claude_tools()
+
+    @cached_property
+    def dial_resources(self) -> List[DialResource]:
+        ret: List[DialResource] = []
+        for message in self.conversation.messages.raw_list:
+            for resource in message.dial_resources:
+                ret.append(resource)
+        return ret
+
+    def get_dial_resource(self, index: int) -> DialResource | None:
+        if index < 0 or index >= len(self.dial_resources):
+            return None
+        return self.dial_resources[index]

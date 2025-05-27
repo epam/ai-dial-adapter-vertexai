@@ -50,19 +50,21 @@ async def _add_document_citation(
     consumer: Consumer,
     prompt: ClaudePrompt,
     document_index: int,
-    extra_url: str = "",
+    uri_fragment: str = "",
 ):
     resource = prompt.get_dial_resource(document_index)
-    if resource is None:
-        return await consumer.append_content(f"[{document_index}]")
+    attachment = None if resource is None else resource.to_attachment()
 
-    attachment = resource.to_attachment()
-    attachment.title = f"[{document_index}] {attachment.title or ''}".strip()
+    display_index = await consumer.add_citation_attachment(
+        document_id=document_index, document=attachment
+    )
 
-    if url := attachment.url:
-        await consumer.append_content(f"[[{document_index}]({url}{extra_url})]")
-
-    await consumer.add_attachment(attachment)
+    if attachment and (url := attachment.url):
+        await consumer.append_content(
+            f"[[{display_index}]({url}{uri_fragment})]"
+        )
+    else:
+        await consumer.append_content(f"[{display_index}]")
 
 
 async def create_attachments_from_citations(
@@ -75,9 +77,8 @@ async def create_attachments_from_citations(
         case CitationPageLocation(
             document_index=document_index, start_page_number=start_page_number
         ):
-            extra_url = f"#page={start_page_number}"
             await _add_document_citation(
-                consumer, prompt, document_index, extra_url
+                consumer, prompt, document_index, f"#page={start_page_number}"
             )
 
         # custom document aren't supported yet
