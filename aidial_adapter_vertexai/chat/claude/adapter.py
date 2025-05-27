@@ -171,9 +171,12 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                                 await process_tools_block(
                                     consumer, content_block, tools_mode
                                 )
-                            case TextBlock():
-                                # Already handled in TextEvent
-                                pass
+                            case TextBlock(citations=citations):
+                                # The text content is already handled in TextEvent handler.
+                                for citation in citations or []:
+                                    await create_attachments_from_citations(
+                                        consumer, prompt, citation
+                                    )
                             # thinking & web search isn't yet supported
                             case (
                                 ServerToolUseBlock()
@@ -192,11 +195,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                         | ContentBlockDeltaEvent()
                     ):
                         pass
-                    case CitationEvent(citation=citation):
-                        await create_attachments_from_citations(
-                            consumer, prompt, citation
-                        )
-                    case ThinkingEvent() | SignatureEvent():
+                    case ThinkingEvent() | SignatureEvent() | CitationEvent():
                         pass
                     case _:
                         assert_never(event)
