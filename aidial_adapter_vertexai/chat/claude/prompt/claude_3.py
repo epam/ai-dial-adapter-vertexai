@@ -87,10 +87,10 @@ class MessageMerger(MessageMergeStrategy[ClaudeMessage]):
         claude_message = MessageMerger.merge_claude_messages(
             a.claude_message, b.claude_message
         )
-        dial_messages = a.dial_messages + b.dial_messages
+        dial_messages = a.dial_resources + b.dial_resources
         return ClaudeMessage(
             claude_message=claude_message,
-            dial_messages=dial_messages,
+            dial_resources=dial_messages,
         )
 
     @staticmethod

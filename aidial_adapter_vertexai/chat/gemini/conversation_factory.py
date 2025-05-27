@@ -10,6 +10,7 @@ from vertexai.preview.generative_models import ChatSession, Content, Part
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
+    Parts,
 )
 from aidial_adapter_vertexai.chat.errors import ValidationError
 
@@ -71,11 +72,11 @@ class ConversationFactory(
         return Part.from_function_response(name, {"content": args})
 
     def create_content(
-        self, dial_message: DialMessage, parts: List[Part]
+        self, dial_message: DialMessage, parts: Parts[Part]
     ) -> Content:
         return Content(
             role=self._to_gemini_role(dial_message.role),
-            parts=parts,
+            parts=parts.parts,
         )
 
     def create_conversation(
@@ -143,10 +144,10 @@ class GenAIConversationFactory(
         )
 
     def create_content(
-        self, dial_message: DialMessage, parts: List[GenAIPart]
+        self, dial_message: DialMessage, parts: Parts[GenAIPart]
     ) -> GenAIContent:
         return GenAIContent(
-            role=self.to_gemini_genai_role(dial_message.role), parts=parts
+            role=self.to_gemini_genai_role(dial_message.role), parts=parts.parts
         )
 
     def create_conversation(

@@ -28,6 +28,7 @@ from vertexai.preview.generative_models import Part
 
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
+    Parts,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.dial_api.request import get_attachments
@@ -176,20 +177,21 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
             f"The {dial_resource.entity_name} isn't one of the supported types",
         )
 
-    async def process_message(self, message: Message) -> List[PartT]:
-        ret: List[PartT] = []
+    async def process_message(self, message: Message) -> Parts[PartT]:
+        ret: Parts[PartT] = Parts()
 
         async def collect_resource(dial_resource: DialResource):
             resource = await self.process_resource(dial_resource)
             if resource is not None:
-                ret.append(
+                ret.append_resource(dial_resource)
+                ret.append_part(
                     self.conversation_factory.create_multi_modal_part(
                         resource.data, resource.type
                     )
                 )
 
         def collect_text(text: str):
-            ret.append(self.conversation_factory.create_text_part(text))
+            ret.append_part(self.conversation_factory.create_text_part(text))
 
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices

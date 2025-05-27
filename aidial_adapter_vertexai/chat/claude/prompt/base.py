@@ -3,20 +3,20 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Self, Set
 
-from aidial_sdk.chat_completion.request import Message as DialMessage
 from anthropic.types import MessageParam, TextBlockParam
 from anthropic.types import ToolParam as ClaudeTool
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatablePrompt
+from aidial_adapter_vertexai.dial_api.resource import DialResource
 from aidial_adapter_vertexai.utils.list_projection import ListProjection
 
 
 @dataclass
 class ClaudeMessage:
     claude_message: MessageParam
-    dial_messages: List[DialMessage]
+    dial_resources: List[DialResource]
 
 
 ClaudeConversation = BaseConversation[str | List[TextBlockParam], ClaudeMessage]

@@ -9,6 +9,7 @@ from aidial_adapter_vertexai.chat.attachment_processor import (
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
     ConversationT,
+    Parts,
     PartT,
 )
 from aidial_adapter_vertexai.chat.errors import ValidationError
@@ -66,7 +67,7 @@ async def _message_to_parts(
     message: DialMessage,
     conversation_factory: ConversationFactoryBase,
     function_call_idx: Counter,
-) -> List[PartT]:
+) -> Parts[PartT]:
     content = message.content
 
     match message.role:
@@ -88,22 +89,26 @@ async def _message_to_parts(
         case Role.ASSISTANT:
             if message.function_call is not None:
                 tool_call_id = f"function_call_{function_call_idx.count}"
-                return [
-                    conversation_factory.create_function_call_part(
-                        message.function_call.name,
-                        message.function_call.arguments,
-                        tool_call_id,
-                    )
-                ]
+                return Parts(
+                    parts=[
+                        conversation_factory.create_function_call_part(
+                            message.function_call.name,
+                            message.function_call.arguments,
+                            tool_call_id,
+                        )
+                    ]
+                )
             elif message.tool_calls is not None:
-                return [
-                    conversation_factory.create_function_call_part(
-                        call.function.name,
-                        call.function.arguments,
-                        call.id,
-                    )
-                    for call in message.tool_calls
-                ]
+                return Parts(
+                    parts=[
+                        conversation_factory.create_function_call_part(
+                            call.function.name,
+                            call.function.arguments,
+                            call.id,
+                        )
+                        for call in message.tool_calls
+                    ]
+                )
             else:
                 if not content:
                     raise ValidationError(
@@ -124,11 +129,13 @@ async def _message_to_parts(
             if name is None:
                 raise ValidationError("Function message name must be present")
             tool_call_id = f"function_call_{function_call_idx.post_inc()}"
-            return [
-                conversation_factory.create_function_result_part(
-                    name, content, tool_call_id
-                )
-            ]
+            return Parts(
+                parts=[
+                    conversation_factory.create_function_result_part(
+                        name, content, tool_call_id
+                    )
+                ]
+            )
 
         case Role.TOOL:
             if content is None:
@@ -141,19 +148,21 @@ async def _message_to_parts(
                     "Tool message tool_call_id must be present"
                 )
             name = tools.get_tool_name(tool_call_id)
-            return [
-                conversation_factory.create_function_result_part(
-                    name, content, tool_call_id
-                )
-            ]
+            return Parts(
+                parts=[
+                    conversation_factory.create_function_result_part(
+                        name, content, tool_call_id
+                    )
+                ]
+            )
 
         case _:
             assert_never(message.role)
 
 
 def _separate_system_messages(
-    messages: List[Tuple[DialMessage, List[PartT]]],
-) -> Tuple[List[PartT] | None, List[Tuple[DialMessage, List[PartT]]]]:
+    messages: List[Tuple[DialMessage, Parts[PartT]]],
+) -> Tuple[List[PartT] | None, List[Tuple[DialMessage, Parts[PartT]]]]:
     """
     Extract the leading system messages from the list of messages.
     """
@@ -165,7 +174,11 @@ def _separate_system_messages(
     while messages:
         dial_message, message = messages[0]
         if is_system_role(dial_message.role):
-            system_messages.extend(message)
+            if message.resources:
+                raise ValidationError(
+                    "System messages cannot contain attachments"
+                )
+            system_messages.extend(message.parts)
             messages = messages[1:]
         else:
             break

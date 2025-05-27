@@ -38,6 +38,9 @@ class DialResource(ABC, BaseModel):
     supported_types: List[str] | None = Field(default=None)
 
     @abstractmethod
+    def to_attachment(self) -> Attachment: ...
+
+    @abstractmethod
     async def download(self, storage: FileStorage | None) -> Resource: ...
 
     @abstractmethod
@@ -70,6 +73,9 @@ class DialResource(ABC, BaseModel):
 class URLResource(DialResource):
     url: str
     content_type: str | None = None
+
+    def to_attachment(self) -> Attachment:
+        return Attachment(type=self.content_type, url=self.url)
 
     @root_validator
     def validator(cls, values):
@@ -104,6 +110,9 @@ class URLResource(DialResource):
 
 class AttachmentResource(DialResource):
     attachment: Attachment
+
+    def to_attachment(self) -> Attachment:
+        return self.attachment
 
     @validator("attachment", pre=True)
     def parse_attachment(cls, value):

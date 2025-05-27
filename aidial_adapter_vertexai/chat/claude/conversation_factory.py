@@ -26,6 +26,7 @@ from aidial_adapter_vertexai.chat.claude.prompt.base import (
 )
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
+    Parts,
 )
 
 ClaudePart = (
@@ -118,13 +119,15 @@ class ClaudeConversationFactory(
         )
 
     def create_content(
-        self, dial_message: DialMessage, parts: List[ClaudePart]
+        self, dial_message: DialMessage, parts: Parts[ClaudePart]
     ) -> ClaudeMessage:
         match dial_message.role:
             case Role.USER | Role.FUNCTION | Role.TOOL:
-                claude_message = MessageParam(content=parts, role="user")
+                claude_message = MessageParam(content=parts.parts, role="user")
             case Role.ASSISTANT:
-                claude_message = MessageParam(content=parts, role="assistant")
+                claude_message = MessageParam(
+                    content=parts.parts, role="assistant"
+                )
             case Role.SYSTEM | Role.DEVELOPER:
                 raise InvalidRequestError(
                     "System or developer message is only allowed as the first message"
@@ -132,7 +135,7 @@ class ClaudeConversationFactory(
             case _:
                 assert_never(dial_message.role)
         return ClaudeMessage(
-            claude_message=claude_message, dial_messages=[dial_message]
+            claude_message=claude_message, dial_resources=parts.resources
         )
 
     def create_conversation(
