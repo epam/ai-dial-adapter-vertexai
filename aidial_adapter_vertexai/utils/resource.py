@@ -47,6 +47,10 @@ class Resource(BaseModel):
         return None if match is None else match.group(1)
 
     @staticmethod
+    def is_data_url(data_url: str) -> bool:
+        return Resource.parse_data_url_content_type(data_url) is not None
+
+    @staticmethod
     def _to_data_url_prefix(content_type: str) -> str:
         return f"data:{content_type};base64,"
 

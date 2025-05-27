@@ -7,8 +7,15 @@ from aidial_sdk.chat_completion import Attachment
 from pydantic.v1 import BaseModel, Field, root_validator, validator
 
 from aidial_adapter_vertexai.dial_api.storage import FileStorage, download_file
+from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.text import truncate_string
+
+# Python<=3.11 doesn't include .md in mimetypes by default
+# It was added in Python 3.12: https://github.com/python/cpython/pull/118594
+# Therefore, adding it manually for compatibility
+mimetypes.add_type("text/markdown", ".markdown")
+mimetypes.add_type("text/markdown", ".md")
 
 
 class ValidationError(Exception):
@@ -88,11 +95,20 @@ class URLResource(DialResource):
         return Resource(type=type, data=data)
 
     async def guess_content_type(self) -> str | None:
-        return (
-            self.content_type
-            or Resource.parse_data_url_content_type(self.url)
-            or mimetypes.guess_type(self.url)[0]
-        )
+        if self.content_type:
+            log.debug(f"provided content type: {self.content_type}")
+            return self.content_type
+
+        if content_type := Resource.parse_data_url_content_type(self.url):
+            log.debug(f"data URL content type: {content_type}")
+            return content_type
+
+        if content_type := mimetypes.guess_type(self.url)[0]:
+            log.debug(f"guessed content type: {content_type}")
+            return content_type
+
+        log.debug("could not guess content type")
+        return None
 
     def is_data_url(self) -> bool:
         return Resource.parse_data_url_content_type(self.url) is not None

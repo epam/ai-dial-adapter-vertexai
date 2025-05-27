@@ -15,6 +15,7 @@ from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsMode
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.resource import Resource
 
 
 async def process_tools_block(
@@ -59,7 +60,7 @@ async def _add_document_citation(
         document_id=document_index, document=attachment
     )
 
-    if attachment and (url := attachment.url):
+    if attachment and (url := attachment.url) and not Resource.is_data_url(url):
         await consumer.append_content(
             f"[[{display_index}]({url}{uri_fragment})]"
         )
