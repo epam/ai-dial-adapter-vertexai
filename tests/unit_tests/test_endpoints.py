@@ -50,6 +50,8 @@ test_cases: List[TestCase] = [
     TestCase(D.CLAUDE_3_5_SONNET, True, True),
     TestCase(D.CLAUDE_3_HAIKU, True, True),
     TestCase(D.CLAUDE_3_7_SONNET, True, True),
+    TestCase(D.CLAUDE_4_OPUS, True, True),
+    TestCase(D.CLAUDE_4_SONNET, True, True),
 ]
 
 
