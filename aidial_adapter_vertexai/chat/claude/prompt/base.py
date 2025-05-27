@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import List, Self, Set
 
 from anthropic.types import MessageParam, TextBlockParam
@@ -26,6 +27,19 @@ ClaudeConversation = BaseConversation[str | List[TextBlockParam], ClaudeMessage]
 class ClaudePrompt(TruncatablePrompt):
     conversation: ClaudeConversation
     tools: ToolsConfig = field(default_factory=ToolsConfig.noop)
+
+    @cached_property
+    def dial_resources(self) -> List[DialResource]:
+        ret: List[DialResource] = []
+        for message in self.conversation.messages.raw_list:
+            for resource in message.dial_resources:
+                ret.append(resource)
+        return ret
+
+    def get_dial_resource(self, index: int) -> DialResource | None:
+        if index < 0 or index >= len(self.dial_resources):
+            return None
+        return self.dial_resources[index]
 
     @property
     def system(self) -> str | List[TextBlockParam] | None:

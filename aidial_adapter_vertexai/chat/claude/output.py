@@ -10,6 +10,7 @@ from anthropic.types import (
     ToolUseBlock,
 )
 
+from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsMode
@@ -45,22 +46,40 @@ async def process_tools_block(
             assert_never(tools_mode)
 
 
+async def _add_document_citation(
+    consumer: Consumer,
+    prompt: ClaudePrompt,
+    document_index: int,
+    extra_url: str = "",
+):
+    resource = prompt.get_dial_resource(document_index)
+    if resource is None:
+        return await consumer.append_content(f"[{document_index}]")
+
+    attachment = resource.to_attachment()
+    attachment.title = f"[{document_index}] {attachment.title or ''}".strip()
+
+    if url := attachment.url:
+        await consumer.append_content(f"[[{document_index}]({url}{extra_url})]")
+
+    await consumer.add_attachment(attachment)
+
+
 async def create_attachments_from_citations(
-    consumer: Consumer, citation: TextCitation
+    consumer: Consumer, prompt: ClaudePrompt, citation: TextCitation
 ):
     match citation:
         case CitationCharLocation(document_index=document_index):
-            document_url = "https://example.com"  # FIXME
-            await consumer.append_content(
-                f"[[{document_index}]({document_url})]"
-            )
+            await _add_document_citation(consumer, prompt, document_index)
+
         case CitationPageLocation(
             document_index=document_index, start_page_number=start_page_number
         ):
-            document_url = "https://example.com"  # FIXME
-            await consumer.append_content(
-                f"[[{document_index}]({document_url}#page={start_page_number})]"
+            extra_url = f"#page={start_page_number}"
+            await _add_document_citation(
+                consumer, prompt, document_index, extra_url
             )
+
         # custom document aren't supported yet
         case CitationContentBlockLocation():
             pass

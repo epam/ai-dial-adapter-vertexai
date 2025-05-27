@@ -192,7 +192,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                         pass
                     case CitationEvent(citation=citation):
                         await create_attachments_from_citations(
-                            consumer, citation
+                            consumer, prompt, citation
                         )
                     case ThinkingEvent() | SignatureEvent():
                         pass
@@ -232,7 +232,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                     await consumer.append_content(text)
                     for citation in citations or []:
                         await create_attachments_from_citations(
-                            consumer, citation
+                            consumer, prompt, citation
                         )
                 case ToolUseBlock():
                     await process_tools_block(consumer, content, tools_mode)
