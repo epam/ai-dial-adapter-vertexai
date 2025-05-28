@@ -51,10 +51,20 @@ class ModelParameters(BaseModel):
 
 
 def get_attachments(message: Message) -> List[Attachment]:
-    custom_content = message.custom_content
-    if custom_content is None:
+    if (custom_content := message.custom_content) is None:
         return []
-    return custom_content.attachments or []
+
+    ret: List[Attachment] = []
+    for attachment in custom_content.attachments or []:
+        if (
+            message.role == Role.ASSISTANT
+            and attachment.reference_type is not None
+        ):
+            # Skipping citation attachments from the assistant
+            continue
+        ret.append(attachment)
+
+    return ret
 
 
 def collect_text_content(

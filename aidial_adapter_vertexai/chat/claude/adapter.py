@@ -36,7 +36,7 @@ from aidial_adapter_vertexai.chat.claude.finish_reason import (
     to_dial_finish_reason,
 )
 from aidial_adapter_vertexai.chat.claude.output import (
-    create_attachments_from_citations,
+    create_citations,
     process_tools_block,
 )
 from aidial_adapter_vertexai.chat.claude.params import (
@@ -174,7 +174,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                             case TextBlock(citations=citations):
                                 # The text content is already handled in TextEvent handler.
                                 for citation in citations or []:
-                                    await create_attachments_from_citations(
+                                    await create_citations(
                                         consumer, prompt, citation
                                     )
                             # thinking & web search isn't yet supported
@@ -232,9 +232,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                 case TextBlock(text=text, citations=citations):
                     await consumer.append_content(text)
                     for citation in citations or []:
-                        await create_attachments_from_citations(
-                            consumer, prompt, citation
-                        )
+                        await create_citations(consumer, prompt, citation)
                 case ToolUseBlock():
                     await process_tools_block(consumer, content, tools_mode)
                 # thinking & web search isn't yet supported

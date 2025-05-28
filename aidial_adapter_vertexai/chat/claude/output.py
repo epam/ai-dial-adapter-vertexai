@@ -15,7 +15,6 @@ from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsMode
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.utils.resource import Resource
 
 
 async def process_tools_block(
@@ -48,39 +47,31 @@ async def process_tools_block(
 
 
 async def _add_document_citation(
-    consumer: Consumer,
-    prompt: ClaudePrompt,
-    document_index: int,
-    uri_fragment: str = "",
+    consumer: Consumer, prompt: ClaudePrompt, document_index: int
 ):
     resource = prompt.get_dial_resource(document_index)
     attachment = None if resource is None else resource.to_attachment()
 
+    # NOTE: multiple citations to the same document are merged into one citation
+    # until we find a better API to handle citations embedded in text.
     display_index = await consumer.add_citation_attachment(
         document_id=document_index, document=attachment
     )
 
-    if attachment and (url := attachment.url) and not Resource.is_data_url(url):
-        await consumer.append_content(
-            f"[[{display_index}]({url}{uri_fragment})]"
-        )
-    else:
-        await consumer.append_content(f"[{display_index}]")
+    # NOTE: avoid adding citation URLs into the generated content,
+    # since such references aren't easily portable (e.g. when a conversion is duplicated).
+    await consumer.append_content(f"[{display_index}]")
 
 
-async def create_attachments_from_citations(
+async def create_citations(
     consumer: Consumer, prompt: ClaudePrompt, citation: TextCitation
 ):
     match citation:
         case CitationCharLocation(document_index=document_index):
             await _add_document_citation(consumer, prompt, document_index)
 
-        case CitationPageLocation(
-            document_index=document_index, start_page_number=start_page_number
-        ):
-            await _add_document_citation(
-                consumer, prompt, document_index, f"#page={start_page_number}"
-            )
+        case CitationPageLocation(document_index=document_index):
+            await _add_document_citation(consumer, prompt, document_index)
 
         # custom document aren't supported yet
         case CitationContentBlockLocation():

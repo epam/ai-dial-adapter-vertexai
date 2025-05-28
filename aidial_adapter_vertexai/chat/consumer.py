@@ -132,8 +132,6 @@ class ChoiceConsumer(Consumer):
     async def add_citation_attachment(
         self, document_id: int, document: Attachment | None
     ) -> int:
-        self.empty = False
-
         if document_id in self.citations:
             return self.citations[document_id][0]
 
@@ -143,6 +141,8 @@ class ChoiceConsumer(Consumer):
         if document:
             document = document.copy()
             document.title = f"[{display_index}] {document.title or ''}".strip()
+            document.reference_type = document.reference_type or document.type
+            document.reference_url = document.reference_url or document.url
             await self.add_attachment(document)
 
         return display_index

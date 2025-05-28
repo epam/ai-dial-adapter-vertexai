@@ -24,7 +24,7 @@ from aidial_adapter_vertexai.chat.gemini.generation_config import (
 )
 from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
 from aidial_adapter_vertexai.chat.gemini.output import (
-    create_attachments_from_citations,
+    create_citations,
     create_function_calls_from_genai,
     set_usage,
 )
@@ -191,7 +191,7 @@ class GeminiGenAIChatCompletionAdapter(
                     candidate, consumer
                 )
 
-                await create_attachments_from_citations(candidate, consumer)
+                await create_citations(candidate, consumer)
                 if openai_reason := genai_to_openai_finish_reason(
                     candidate.finish_reason,
                     consumer.is_empty(),
