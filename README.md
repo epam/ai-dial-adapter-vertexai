@@ -10,37 +10,61 @@ The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYME
 
 * `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/tokenize`
 * `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
+* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/configuration`
 
-|Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|
-|---|---|---|---|---|---|
-|Gemini 2.5 Flash|gemini-2.5-flash-preview-04-17|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.5 Pro|gemini-2.5-pro-exp-03-25/gemini-2.5-pro-preview-03-25|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-01-21|text-to-text|✅|✅|❌|
-|Gemini 2.0 Flash|gemini-2.0-flash-(exp\|001)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-preview-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|❌|
-|Gemini 1.5 Pro|gemini-1.5-pro-(preview-0409\|001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 1.5 Flash|gemini-1.5-flash-(001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|
-|Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|
-|Gemini 1.0 Pro|gemini-1.0-pro|text-to-text|✅|✅|✅|
-|Claude 4 Opus|claude-opus-4@20250514|(text/image)-to-text|✅|✅|✅|
-|Claude 4 Sonnet|claude-sonnet-4@20250514|(text/image)-to-text|✅|✅|✅|
-|Claude 3.7 Sonnet|claude-3-7-sonnet@20250219|(text/image)-to-text|✅|✅|✅|
-|Claude 3 Opus|claude-3-opus@20240229|(text/image)-to-text|✅|✅|✅|
-|Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022|(text/image)-to-text|✅|✅|✅|
-|Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(text/image)-to-text|✅|✅|✅|
-|Claude 3.5 Haiku|claude-3-5-haiku@20241022|text-to-text|✅|✅|✅|
-|Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|
-|Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|
-|PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|
-|PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|
-|PaLM 2 Chat Bison|chat-bison-32k@002|text-to-text|✅|✅|❌|
-|Codey for Code Chat|codechat-bison@001|text-to-text|✅|✅|❌|
-|Codey for Code Chat|codechat-bison@002|text-to-text|✅|✅|❌|
-|Codey for Code Chat|codechat-bison-32k@002|text-to-text|✅|✅|❌|
+|Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
+|---|---|---|---|---|---|---|
+|Gemini 2.5 Flash|gemini-2.5-flash-preview-04-17|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.5 Pro|gemini-2.5-pro-exp-03-25/gemini-2.5-pro-preview-03-25|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-01-21|text-to-text|✅|✅|❌|❌|
+|Gemini 2.0 Flash|gemini-2.0-flash-(exp\|001)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-preview-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|❌|❌|
+|Gemini 1.5 Pro|gemini-1.5-pro-(preview-0409\|001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 1.5 Flash|gemini-1.5-flash-(001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|❌|
+|Gemini 1.0 Pro|gemini-1.0-pro|text-to-text|✅|✅|✅|❌|
+|Claude 4 Opus|claude-opus-4@20250514|(pdf/text/image)-to-text|✅|✅|✅|✅|
+|Claude 4 Sonnet|claude-sonnet-4@20250514|(pdf/text/image)-to-text|✅|✅|✅|✅|
+|Claude 3.7 Sonnet|claude-3-7-sonnet@20250219|(pdf/text/image)-to-text|✅|✅|✅|✅|
+|Claude 3 Opus|claude-3-opus@20240229|(text/image)-to-text|✅|✅|✅|✅|
+|Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022|(pdf/text/image)-to-text|✅|✅|✅|✅|
+|Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(pdf/text/image)-to-text|✅|✅|✅|✅|
+|Claude 3.5 Haiku|claude-3-5-haiku@20241022|(pdf/text)-to-text|✅|✅|✅|✅|
+|Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|✅|
+|Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|❌|
+|PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|❌|
+|PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|❌|
+|PaLM 2 Chat Bison|chat-bison-32k@002|text-to-text|✅|✅|❌|❌|
+|Codey for Code Chat|codechat-bison@001|text-to-text|✅|✅|❌|❌|
+|Codey for Code Chat|codechat-bison@002|text-to-text|✅|✅|❌|❌|
+|Codey for Code Chat|codechat-bison-32k@002|text-to-text|✅|✅|❌|❌|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
+
+#### Configurable models
+
+Certain models support configuration via the `/configuration` endpoint.
+GET request to this endpoint returns the schema of the model configuration in [JSON Schema](https://json-schema.org/) format.
+Such models expect that `custom_fields.configuration` field of the `chat/completions` request will contain a JSON value that conforms to the schema.
+The `custom_fields.configuration` field is optional iff each field in the schema is optional too.
+
+##### Claude models
+
+The Claude models accept a configuration flag that enables document citations in the generated output. The flag is false by default.
+
+```json
+{
+  "custom_fields": {
+    "configuration": {
+      "enable_citations": true
+    }
+  }
+}
+```
+
+Not every Claude model supports citations. Refer to the [official documentation](https://docs.anthropic.com/en/docs/build-with-claude/citations) before utilizing any flags.
 
 ### Embedding models
 
