@@ -1,5 +1,5 @@
 from logging import DEBUG
-from typing import List, assert_never
+from typing import List, Type, assert_never
 
 from aidial_sdk.chat_completion import Message
 from aidial_sdk.exceptions import InternalServerError
@@ -62,6 +62,11 @@ from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.pydantic import ExtraForbidModel
+
+
+class ClaudeConfiguration(ExtraForbidModel):
+    enable_citations: bool = False
 
 
 class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
@@ -92,12 +97,19 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         return cls(file_storage, deployment, config.get_anthropic_client())
 
     @override
+    async def configuration(self) -> Type[ClaudeConfiguration]:
+        return ClaudeConfiguration
+
+    @override
     async def parse_prompt(
         self,
+        params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
         messages: List[Message],
     ) -> ClaudePrompt | UserError:
+        configuration = params.parse_configuration(await self.configuration())
+        enable_citations = configuration.enable_citations
 
         static_tools.not_supported()
         match self.deployment.reference_deployment_id:
@@ -111,11 +123,19 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                 | ChatCompletionDeployment.CLAUDE_4_SONNET
             ):
                 return await parse_claude_3_prompt(
-                    self.file_storage, tools, messages, supports_vision=True
+                    self.file_storage,
+                    tools,
+                    messages,
+                    supports_vision=True,
+                    enable_citations=enable_citations,
                 )
             case ChatCompletionDeployment.CLAUDE_3_5_HAIKU:
                 return await parse_claude_3_prompt(
-                    self.file_storage, tools, messages, supports_vision=False
+                    self.file_storage,
+                    tools,
+                    messages,
+                    supports_vision=False,
+                    enable_citations=enable_citations,
                 )
             case _:
                 assert_never(self.deployment)

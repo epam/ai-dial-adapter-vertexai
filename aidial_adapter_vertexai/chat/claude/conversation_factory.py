@@ -59,10 +59,16 @@ def _parse_image_type(
 class ClaudeConversationFactory(
     ConversationFactoryBase[ClaudePart, ClaudeMessage, ClaudeConversation]
 ):
+    enable_citations: bool
+
+    def __init__(self, *, enable_citations: bool) -> None:
+        super().__init__()
+        self.enable_citations = enable_citations
+
     def create_multi_modal_part(
         self, data: bytes, mime_type: str
     ) -> ImageBlockParam | DocumentBlockParam:
-        citations = CitationsConfigParam(enabled=True)
+        citations = CitationsConfigParam(enabled=self.enable_citations)
 
         if image_type := _parse_image_type(mime_type):
             base64_string = base64.b64encode(data).decode()

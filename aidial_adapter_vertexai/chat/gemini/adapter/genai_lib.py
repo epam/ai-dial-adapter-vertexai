@@ -80,6 +80,7 @@ class GeminiGenAIChatCompletionAdapter(
     @override
     async def parse_prompt(
         self,
+        params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
         messages: List[Message],

@@ -1,4 +1,13 @@
-from typing import List, Literal, Mapping, Optional, TypeGuard, assert_never
+from typing import (
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Type,
+    TypeGuard,
+    TypeVar,
+    assert_never,
+)
 
 from aidial_sdk.chat_completion import (
     Attachment,
@@ -6,14 +15,20 @@ from aidial_sdk.chat_completion import (
     MessageContentImagePart,
     MessageContentPart,
     MessageContentTextPart,
-    Request,
     ResponseFormat,
     Role,
 )
-from aidial_sdk.chat_completion.request import MessageContentRefusalPart
+from aidial_sdk.chat_completion.request import (
+    ChatCompletionRequest,
+    MessageContentRefusalPart,
+)
+from aidial_sdk.exceptions import RequestValidationError
+from aidial_sdk.pydantic_v1 import ValidationError as PydanticValidationError
 from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+
+_Model = TypeVar("_Model", bound=BaseModel)
 
 
 class ModelParameters(BaseModel):
@@ -29,10 +44,17 @@ class ModelParameters(BaseModel):
     stream: bool = False
     response_format: Optional[ResponseFormat] = None
     seed: Optional[int] = None
+    configuration: Optional[dict] = None
 
     @classmethod
-    def create(cls, request: Request) -> "ModelParameters":
+    def create(cls, request: ChatCompletionRequest) -> "ModelParameters":
         stop = [request.stop] if isinstance(request.stop, str) else request.stop
+
+        configuration = (
+            cf.configuration
+            if (cf := request.custom_fields) is not None
+            else None
+        )
 
         return cls(
             temperature=request.temperature,
@@ -47,7 +69,21 @@ class ModelParameters(BaseModel):
             stream=request.stream,
             response_format=request.response_format,
             seed=request.seed,
+            configuration=configuration,
         )
+
+    def parse_configuration(self, cls: Type[_Model]) -> _Model:
+        try:
+            return cls.parse_obj(self.configuration or {})
+        except PydanticValidationError as e:
+            if self.configuration is None:
+                msg = "The configuration at path 'custom_fields.configuration' is missing."
+            else:
+                error = e.errors()[0]
+                path = ".".join(map(str, error["loc"]))
+                msg = f"Invalid request. Path: 'custom_fields.configuration.{path}', error: {error['msg']}"
+
+            raise RequestValidationError(msg)
 
 
 def get_attachments(message: Message) -> List[Attachment]:

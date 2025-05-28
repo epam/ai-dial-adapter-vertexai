@@ -223,7 +223,7 @@ async def tokenize_request(
     messages: List[ChatCompletionMessageParam],
     functions: List[Function] | None,
     tools: List[ChatCompletionToolParam] | None,
-    extra_headers: Mapping[str, str] = {},
+    extra_headers: Mapping[str, str] | None = None,
 ) -> TokenizeResponse:
 
     chat_completion_request = {
@@ -240,12 +240,29 @@ async def tokenize_request(
     resp = await http_client.post(
         f"openai/deployments/{model_id}/tokenize",
         json=request,
-        headers=extra_headers,
+        headers=extra_headers or {},
     )
 
     resp.raise_for_status()
 
     return TokenizeResponse.parse_obj(resp.json())
+
+
+async def configuration(
+    client: httpx.AsyncClient,
+    model: str,
+    extra_headers: Mapping[str, str] | None = None,
+) -> dict | None:
+    response = await client.get(
+        url=f"/openai/deployments/{model}/configuration",
+        headers=extra_headers or {},
+    )
+
+    if response.status_code == 404:
+        return None
+
+    response.raise_for_status()
+    return response.json()
 
 
 async def chat_completion(
@@ -258,8 +275,15 @@ async def chat_completion(
     functions: List[Function] | None,
     tools: List[ChatCompletionToolParam] | None,
     static_tools: StaticToolsConfig | None,
+    configuration: dict | None = None,
     extra_body: dict | None = None,
 ) -> ChatCompletionResult:
+    extra_body = extra_body or {}
+    if configuration:
+        extra_body = extra_body | {
+            "custom_fields": {"configuration": configuration}
+        }
+
     async def get_response() -> ChatCompletion:
         merged_tools = (
             [

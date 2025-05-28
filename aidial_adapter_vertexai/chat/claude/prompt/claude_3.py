@@ -39,6 +39,7 @@ async def parse_claude_3_prompt(
     messages: List[Message],
     *,
     supports_vision: bool,
+    enable_citations: bool,
 ) -> ClaudePrompt | UserError:
 
     if len(messages) == 0:
@@ -58,7 +59,9 @@ async def parse_claude_3_prompt(
     if supports_vision:
         procs.append(get_image_processor())
 
-    conversation_factory = ClaudeConversationFactory()
+    conversation_factory = ClaudeConversationFactory(
+        enable_citations=enable_citations
+    )
     processors = AttachmentProcessorsClaude(
         conversation_factory=conversation_factory,
         processors=procs,
