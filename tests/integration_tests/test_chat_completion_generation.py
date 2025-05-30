@@ -17,7 +17,7 @@ from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from tests.integration_tests.constants import BLUE_PNG_PICTURE
+from tests.integration_tests.constants import DOG_PICTURE
 from tests.utils.dial import get_extra_headers
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
@@ -109,6 +109,8 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_OPUS: _EAST,
 }
 
 
@@ -227,6 +229,8 @@ def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
         ChatCompletionDeployment.CLAUDE_3_5_SONNET,
         ChatCompletionDeployment.CLAUDE_3_HAIKU,
         ChatCompletionDeployment.CLAUDE_3_7_SONNET,
+        ChatCompletionDeployment.CLAUDE_4_OPUS,
+        ChatCompletionDeployment.CLAUDE_4_SONNET,
     ]
 
 
@@ -420,16 +424,16 @@ def get_test_cases(
         content = "describe the image"
         for idx, user_message in enumerate(
             [
-                user_with_attachment_data(content, BLUE_PNG_PICTURE),
-                user_with_attachment_url(content, BLUE_PNG_PICTURE),
-                user_with_image_url(content, BLUE_PNG_PICTURE),
+                user_with_attachment_data(content, DOG_PICTURE),
+                user_with_attachment_url(content, DOG_PICTURE),
+                user_with_image_url(content, DOG_PICTURE),
             ]
         ):
             test_case(
                 name=f"describe image {idx}",
                 max_tokens=1000 if support_thinking(deployment) else 100,
                 messages=[sys("be a helpful assistant"), user_message],
-                expected=lambda s: assert_in("blue", s.content.lower()),
+                expected=lambda s: assert_in("dog", s.content.lower()),
             )
 
     if supports_tools(deployment):

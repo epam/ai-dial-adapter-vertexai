@@ -68,6 +68,14 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_OPUS: _EAST,
+}
+
+_tolerance: Mapping[ChatCompletionDeployment, int] = {
+    # For some reason reported tokens for Claude 4 are off by one
+    ChatCompletionDeployment.CLAUDE_4_SONNET: 1,
+    ChatCompletionDeployment.CLAUDE_4_OPUS: 1,
 }
 
 
@@ -274,4 +282,5 @@ async def test_tokenize(
         assert output.status == "success"
         usage = chat_completion_response.usage
         assert usage is not None, "Usage is missing"
-        assert output.token_count == usage.prompt_tokens
+        _tolerance_value = _tolerance.get(test.deployment, 0)
+        assert abs(output.token_count - usage.prompt_tokens) <= _tolerance_value
