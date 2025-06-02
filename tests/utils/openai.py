@@ -1,15 +1,10 @@
 import json
 import re
-from typing import Any, Callable, List, Mapping, Optional, TypeVar
+from typing import Any, Callable, Iterable, List, Mapping, TypeVar
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
-from aidial_sdk.deployment.tokenize import (
-    TokenizeError,
-    TokenizeOutput,
-    TokenizeResponse,
-    TokenizeSuccess,
-)
+from aidial_sdk.deployment.tokenize import TokenizeResponse
 from aidial_sdk.utils.merge_chunks import (
     cleanup_indices,
     merge_chat_completion_chunks,
@@ -153,6 +148,26 @@ def sanitize_test_name(name: str) -> str:
     return re.sub("_+", "_", name)
 
 
+_T = TypeVar("_T")
+
+
+def foreach(f: Callable[[_T], None], xs: Iterable[_T]) -> None:
+    for x in xs:
+        f(x)
+
+
+def assert_in(val: Any, container: Any):
+    assert val in container
+
+
+def assert_not_in(val: Any, container: Any):
+    assert val not in container
+
+
+def assert_eq(a: Any, b: Any):
+    assert a == b
+
+
 class ChatCompletionResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -189,10 +204,9 @@ class ChatCompletionResult(BaseModel):
     def tool_calls(self) -> List[ChatCompletionMessageToolCall] | None:
         return self.message.tool_calls
 
-    def content_contains_all(self, matches: List[Any]) -> bool:
-        return all(
-            str(match).lower() in self.content.lower() for match in matches
-        )
+    def content_contains_all(self, matches: List[Any]) -> None:
+        for match in matches:
+            assert str(match).lower() in self.content.lower()
 
     @property
     def attachments(self) -> List[Attachment] | None:
@@ -251,13 +265,14 @@ async def tokenize_request(
 async def chat_completion(
     client: AsyncAzureOpenAI,
     messages: List[ChatCompletionMessageParam],
+    *,
     stream: bool,
-    stop: Optional[List[str]],
-    max_tokens: Optional[int],
-    n: Optional[int],
-    functions: List[Function] | None,
-    tools: List[ChatCompletionToolParam] | None,
-    static_tools: StaticToolsConfig | None,
+    stop: List[str] | None = None,
+    max_tokens: int | None = None,
+    n: int | None = None,
+    functions: List[Function] | None = None,
+    tools: List[ChatCompletionToolParam] | None = None,
+    static_tools: StaticToolsConfig | None = None,
     extra_body: dict | None = None,
 ) -> ChatCompletionResult:
     async def get_response() -> ChatCompletion:
@@ -296,7 +311,7 @@ async def chat_completion(
         if isinstance(response, AsyncStream):
             chunks: List[dict] = []
             async for chunk in response:
-                chunks.append(chunk.dict())
+                chunks.append(chunk.model_dump())
 
             response_dict = merge_chat_completion_chunks(*chunks)
 
@@ -306,7 +321,7 @@ async def chat_completion(
 
             response_dict["object"] = "chat.completion"
 
-            return ChatCompletion.parse_obj(response_dict)
+            return ChatCompletion.model_validate(response_dict)
         else:
             return response
 
@@ -315,42 +330,17 @@ async def chat_completion(
 
 
 def for_all_choices(
-    predicate: Callable[[str], bool], n: int = 1
-) -> Callable[[ChatCompletionResult], bool]:
-    def f(resp: ChatCompletionResult) -> bool:
+    checker: Callable[[str], None], n: int = 1
+) -> Callable[[ChatCompletionResult], None]:
+    def ret(resp: ChatCompletionResult) -> None:
         contents = resp.contents
         assert (
             len(contents) == n
         ), f"Expected {n} candidates, got {len(contents)}"
-        return all(predicate(content) for content in contents)
+        for content in contents:
+            checker(content)
 
-    return f
-
-
-_T = TypeVar("_T")
-
-
-def _make_list(tokens: List[_T] | _T) -> List[_T]:
-    if isinstance(tokens, list):
-        return tokens
-    else:
-        return [tokens]
-
-
-def _create_tokenize_output(value: int | str) -> TokenizeOutput:
-    if isinstance(value, int):
-        return TokenizeSuccess(token_count=value)
-    else:
-        return TokenizeError(error=value)
-
-
-def check_tokenize_response(
-    expected: List[int | str] | int | str,
-) -> Callable[[TokenizeResponse], bool]:
-    expected_list = _make_list(expected)
-    expected_outputs = list(map(_create_tokenize_output, expected_list))
-
-    return lambda resp: expected_outputs == resp.outputs
+    return ret
 
 
 GET_WEATHER_FUNCTION: Function = {
@@ -380,30 +370,28 @@ GET_WEATHER_TOOL: ChatCompletionToolParam = function_to_tool(
 
 def is_valid_function_call(
     call: FunctionCall | None, expected_name: str, expected_args: Any
-) -> bool:
-    assert call is not None
+):
+    assert call is not None, "Function call is missing"
     assert call.name == expected_name
     obj = json.loads(call.arguments)
     match_objects(expected_args, obj)
-    return True
 
 
 def is_valid_tool_call(
     calls: List[ChatCompletionMessageToolCall] | None,
     tool_call_idx: int,
-    check_tool_id: Callable[[str], bool],
+    check_tool_id: Callable[[str], None],
     expected_name: str,
     expected_args: dict,
-) -> bool:
+):
     assert calls is not None, "Tool calls are missing"
     assert tool_call_idx < len(calls), f"Tool call #{tool_call_idx} is missing"
 
     call = calls[tool_call_idx]
 
     function = call.function
-    assert check_tool_id(call.id)
+    check_tool_id(call.id)
     assert expected_name == function.name
 
     actual_args = json.loads(function.arguments)
     match_objects(expected_args, actual_args)
-    return True

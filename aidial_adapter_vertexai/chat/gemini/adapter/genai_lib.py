@@ -4,6 +4,10 @@ from typing import AsyncIterator, Callable, List, Optional, assert_never
 from aidial_sdk.chat_completion import FinishReason, Message, Stage
 from aidial_sdk.exceptions import RuntimeServerError
 from google.genai.client import Client as GenAIClient
+from google.genai.types import CountTokensConfigDict as GenAICountTokensConfig
+from google.genai.types import (
+    GenerateContentConfigDict as GenAIGenerationConfig,
+)
 from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
 )
@@ -20,6 +24,7 @@ from aidial_adapter_vertexai.chat.gemini.finish_reason import (
     genai_to_openai_finish_reason,
 )
 from aidial_adapter_vertexai.chat.gemini.generation_config import (
+    create_genai_count_tokens_config,
     create_genai_generation_config,
 )
 from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
@@ -112,18 +117,35 @@ class GeminiGenAIChatCompletionAdapter(
             case _:
                 assert_never(self.deployment)
 
-    async def send_message_async(
+    def _get_generation_config(
         self, params: ModelParameters, prompt: GeminiGenAIPrompt
-    ) -> AsyncIterator[GenAIGenerateContentResponse]:
+    ) -> GenAIGenerationConfig:
         is_gemini_1_5 = isinstance(prompt, Gemini_1_5_Prompt)
 
-        generation_config = create_genai_generation_config(
+        return create_genai_generation_config(
             params,
             is_gemini_1_5,
             prompt.tools,
             prompt.static_tools,
             prompt.system,
         )
+
+    def _get_token_count_config(
+        self, prompt: GeminiGenAIPrompt
+    ) -> GenAICountTokensConfig:
+        is_gemini_1_5 = isinstance(prompt, Gemini_1_5_Prompt)
+
+        return create_genai_count_tokens_config(
+            is_gemini_1_5,
+            prompt.tools,
+            prompt.static_tools,
+            prompt.system,
+        )
+
+    async def send_message_async(
+        self, params: ModelParameters, prompt: GeminiGenAIPrompt
+    ) -> AsyncIterator[GenAIGenerateContentResponse]:
+        generation_config = self._get_generation_config(params, prompt)
 
         if params.stream:
             gen = await self.client.aio.models.generate_content_stream(
@@ -232,9 +254,11 @@ class GeminiGenAIChatCompletionAdapter(
     @override
     async def count_prompt_tokens(self, prompt: GeminiGenAIPrompt) -> int:
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
+            config = self._get_token_count_config(prompt)
             resp = await self.client.aio.models.count_tokens(
                 model=self.model_id,
                 contents=list(prompt.messages.raw_list),
+                config=config,
             )
             log.debug(f"count_tokens[prompt] response: {json_dumps(resp)}")
             if resp.total_tokens is None:

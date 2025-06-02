@@ -135,9 +135,7 @@ async def test_input_validation(get_openai_client, test: TestCase):
     client = get_openai_client(test.deployment.value)
 
     async def run_chat_completion() -> ChatCompletionResult:
-        return await chat_completion(
-            client, test.messages, False, None, None, None, None, None, None
-        )
+        return await chat_completion(client, test.messages, stream=False)
 
     if test.expected_exception is not None:
         with pytest.raises(Exception) as exc_info:
@@ -156,9 +154,7 @@ async def test_imagen_content_filtering(get_openai_client):
     ]
 
     with pytest.raises(Exception) as exc_info:
-        await chat_completion(
-            client, messages, False, None, None, None, None, None, None
-        )
+        await chat_completion(client, messages, stream=False)
 
     assert isinstance(exc_info.value, BadRequestError)
 
@@ -180,9 +176,7 @@ async def test_gemini_pdf_page_overflow_for_document(get_openai_client):
     ]
 
     with pytest.raises(Exception) as exc_info:
-        await chat_completion(
-            client, messages, False, None, None, None, None, None, None
-        )
+        await chat_completion(client, messages, stream=False)
 
     assert isinstance(exc_info.value, UnprocessableEntityError)
 
@@ -202,9 +196,7 @@ async def test_gemini_pdf_page_overflow_for_request(get_openai_client):
     ]
 
     with pytest.raises(Exception) as exc_info:
-        await chat_completion(
-            client, messages, False, None, None, None, None, None, None
-        )
+        await chat_completion(client, messages, stream=False)
 
     assert isinstance(exc_info.value, UnprocessableEntityError)
 

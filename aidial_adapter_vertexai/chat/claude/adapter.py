@@ -211,6 +211,10 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                 case _:
                     assert_never(content)
 
+        if not message.content:
+            # Appending at least some content, otherwise it's not possible to report usage
+            await consumer.append_content("")
+
         await consumer.set_finish_reason(
             to_dial_finish_reason(message.stop_reason, tools_mode)
         )

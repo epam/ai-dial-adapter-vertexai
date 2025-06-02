@@ -66,10 +66,6 @@ filterwarnings = [
     "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
     "ignore::DeprecationWarning:google.rpc",
     "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
-    # Pydantic v2 deprecation warnings
-    "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
-    "ignore:The `dict` method is deprecated:DeprecationWarning",
-    "ignore:The `parse_obj` method is deprecated:DeprecationWarning"
 ]
 
 [tool.pyright]
