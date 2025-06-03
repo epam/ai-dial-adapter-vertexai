@@ -1,6 +1,16 @@
 import json
 import re
-from typing import Any, Callable, Iterable, List, Mapping, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    Required,
+    TypedDict,
+    TypeVar,
+    Unpack,
+)
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
@@ -237,7 +247,7 @@ async def tokenize_request(
     messages: List[ChatCompletionMessageParam],
     functions: List[Function] | None,
     tools: List[ChatCompletionToolParam] | None,
-    extra_headers: Mapping[str, str] = {},
+    extra_headers: Mapping[str, str] | None = None,
 ) -> TokenizeResponse:
 
     chat_completion_request = {
@@ -254,7 +264,7 @@ async def tokenize_request(
     resp = await http_client.post(
         f"openai/deployments/{model_id}/tokenize",
         json=request,
-        headers=extra_headers,
+        headers=extra_headers or {},
     )
 
     resp.raise_for_status()
@@ -262,50 +272,61 @@ async def tokenize_request(
     return TokenizeResponse.parse_obj(resp.json())
 
 
+class ChatCompletionArgs(TypedDict, total=False):
+    messages: Required[List[ChatCompletionMessageParam]]
+    stop: List[str] | None
+    max_tokens: int | None
+    n: int | None
+    functions: List[Function] | None
+    tools: List[ChatCompletionToolParam] | None
+    static_tools: StaticToolsConfig | None
+    extra_body: dict | None
+
+
 async def chat_completion(
     client: AsyncAzureOpenAI,
-    messages: List[ChatCompletionMessageParam],
     *,
-    stream: bool,
-    stop: List[str] | None = None,
-    max_tokens: int | None = None,
-    n: int | None = None,
-    functions: List[Function] | None = None,
-    tools: List[ChatCompletionToolParam] | None = None,
-    static_tools: StaticToolsConfig | None = None,
-    extra_body: dict | None = None,
+    stream: bool | None = None,
+    **kwargs: Unpack[ChatCompletionArgs],
 ) -> ChatCompletionResult:
+
+    merged_tools = (
+        [
+            StaticTool(
+                type="static_function",
+                static_function=function,
+            ).dict()
+            for function in (static_tools.functions or [])
+        ]
+        if (static_tools := kwargs.get("static_tools"))
+        else []
+    )
+    if tools := kwargs.get("tools"):
+        merged_tools += tools
+
+    extra_body = kwargs.get("extra_body") or {}
+    if merged_tools:
+        extra_body["tools"] = merged_tools
+
     async def get_response() -> ChatCompletion:
-        merged_tools = (
-            [
-                StaticTool(
-                    type="static_function",
-                    static_function=function,
-                ).dict()
-                for function in (static_tools.functions or [])
-            ]
-            if static_tools
-            else []
-        )
-        if tools:
-            merged_tools += tools
+        functions = kwargs.get("functions")
+        tools = kwargs.get("tools")
 
         response = await client.chat.completions.create(
             model="dummy-model",
-            messages=messages,
-            stream=stream,
-            stop=stop,
-            max_tokens=max_tokens,
+            messages=kwargs["messages"],
+            stream=stream or False,
+            stop=kwargs.get("stop"),
+            max_tokens=kwargs.get("max_tokens"),
             temperature=0.0,
-            n=n,
+            n=kwargs.get("n"),
             function_call="auto" if functions is not None else NOT_GIVEN,
             functions=functions or NOT_GIVEN,
             tool_choice="auto" if tools is not None else NOT_GIVEN,
             tools=tools or NOT_GIVEN,
             # Using extra_body to override tools, since openai
             # doesn't support static tools
-            extra_body=({"tools": merged_tools} if merged_tools else {})
-            | (extra_body or {}),
+            extra_body=extra_body,
         )
 
         if isinstance(response, AsyncStream):

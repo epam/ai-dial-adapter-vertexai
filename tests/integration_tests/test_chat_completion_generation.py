@@ -2,7 +2,7 @@ import asyncio
 import json
 import re
 from dataclasses import dataclass
-from typing import Callable, List, Mapping
+from typing import Awaitable, Callable, List, Mapping, Unpack
 
 import openai
 import pytest
@@ -13,14 +13,14 @@ from openai.types.chat import (
     ChatCompletionToolParam,
 )
 from openai.types.chat.completion_create_params import Function
-from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
-from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.integration_tests.constants import DOG_PICTURE
-from tests.utils.dial import get_extra_headers
+from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
+    ChatCompletionArgs,
     ChatCompletionResult,
     ai,
     ai_function,
@@ -45,12 +45,7 @@ from tests.utils.openai import (
     user_with_attachment_url,
     user_with_image_url,
 )
-
-
-class ExpectedException(BaseModel):
-    type: type[APIError]
-    message: str
-    status_code: int | None = None
+from tests.utils.selector import Selector, pred
 
 
 def expected_success(*args, **kwargs):
@@ -63,7 +58,7 @@ class TestCase:
 
     name: str
     region: str | None
-    deployment: ChatCompletionDeployment
+    deployment: D
     streaming: bool
 
     messages: List[ChatCompletionMessageParam]
@@ -87,174 +82,308 @@ class TestCase:
 
 _CENTRAL = "us-central1"
 _EAST = "us-east5"
-
-chat_deployments: Mapping[ChatCompletionDeployment, str] = {
-    ChatCompletionDeployment.CHAT_BISON_1: _CENTRAL,
-    ChatCompletionDeployment.CHAT_BISON_2_32K: _CENTRAL,
-    ChatCompletionDeployment.CODECHAT_BISON_1: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_PRO_1: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_PRO_VISION_1: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_001: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17: _CENTRAL,
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
-    ChatCompletionDeployment.CLAUDE_4_SONNET: _EAST,
-    ChatCompletionDeployment.CLAUDE_4_OPUS: _EAST,
+_DEPLOYMENT_TO_REGION: Mapping[D, str] = {
+    D.CHAT_BISON_1: _CENTRAL,
+    D.CHAT_BISON_2_32K: _CENTRAL,
+    D.CODECHAT_BISON_1: _CENTRAL,
+    D.GEMINI_PRO_1: _CENTRAL,
+    D.GEMINI_FLASH_1_5_V2: _CENTRAL,
+    D.GEMINI_PRO_VISION_1: _CENTRAL,
+    D.GEMINI_PRO_1_5_V2: _CENTRAL,
+    D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
+    D.GEMINI_2_0_FLASH_001: _CENTRAL,
+    D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
+    D.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
+    D.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
+    D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
+    D.GEMINI_2_5_FLASH_PREVIEW_04_17: _CENTRAL,
+    D.CLAUDE_3_5_SONNET_V2: _EAST,
+    D.CLAUDE_3_5_HAIKU: _EAST,
+    D.CLAUDE_3_OPUS: _EAST,
+    D.CLAUDE_3_5_SONNET: _EAST,
+    D.CLAUDE_3_HAIKU: _EAST,
+    D.CLAUDE_3_7_SONNET: _EAST,
+    D.CLAUDE_4_SONNET: _EAST,
+    D.CLAUDE_4_OPUS: _EAST,
 }
 
 
-def is_retired(deployment: ChatCompletionDeployment) -> bool:
+def is_retired_model(deployment: D) -> bool:
     # Keep at least one model in the list to test how the adapter handles retired models in streaming and non-streaming modes
-    return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO_1,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-    ]
+    return deployment in {
+        D.GEMINI_PRO_1,
+        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
+        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+        D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_PRO_VISION_1,
+        D.GEMINI_PRO_1_5_PREVIEW,
+        D.GEMINI_PRO_1_5_V1,
+        D.GEMINI_FLASH_1_5_V1,
+        D.CHAT_BISON_1,
+        D.CODECHAT_BISON_1,
+        D.CHAT_BISON_2_32K,
+    }
 
 
-def is_codechat(deployment: ChatCompletionDeployment) -> bool:
+def select(p: Selector[D], xs: List[D]) -> List[D]:
+    return [x for x in xs if p(x)]
+
+
+all_deployments = list(_DEPLOYMENT_TO_REGION.keys())
+deployments = select(~pred(is_retired_model), all_deployments)
+retired_deployments = select(pred(is_retired_model), all_deployments)
+
+
+def is_codechat(deployment: D) -> bool:
     return deployment in [
-        ChatCompletionDeployment.CODECHAT_BISON_1,
-        ChatCompletionDeployment.CODECHAT_BISON_2,
-        ChatCompletionDeployment.CODECHAT_BISON_2_32K,
+        D.CODECHAT_BISON_1,
+        D.CODECHAT_BISON_2,
+        D.CODECHAT_BISON_2_32K,
     ]
 
 
 def supports_json_object_response_format(
-    deployment: ChatCompletionDeployment,
+    deployment: D,
 ) -> bool:
     return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO_1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
-        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
-        ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
-        ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
+        D.GEMINI_PRO_1,
+        D.GEMINI_PRO_1_5_PREVIEW,
+        D.GEMINI_PRO_1_5_V1,
+        D.GEMINI_PRO_1_5_V2,
+        D.GEMINI_FLASH_1_5_V1,
+        D.GEMINI_FLASH_1_5_V2,
+        D.GEMINI_2_0_FLASH_EXP,
+        D.GEMINI_2_0_FLASH_001,
     ]
 
 
 def supports_json_schema_response_format(
-    deployment: ChatCompletionDeployment,
+    deployment: D,
 ) -> bool:
     return supports_json_object_response_format(
         deployment
     ) and deployment not in [
-        ChatCompletionDeployment.GEMINI_PRO_1,
+        D.GEMINI_PRO_1,
     ]
 
 
-def is_claude(deployment: ChatCompletionDeployment) -> bool:
+def is_claude(deployment: D) -> bool:
     return "claude" in deployment.value
 
 
-def supports_tools(deployment: ChatCompletionDeployment) -> bool:
+def supports_tools(deployment: D) -> bool:
     return is_claude(deployment) or deployment in [
-        ChatCompletionDeployment.GEMINI_PRO_1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
-        ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
-        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1,
-        ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17,
+        D.GEMINI_PRO_1,
+        D.GEMINI_PRO_1_5_V1,
+        D.GEMINI_2_0_FLASH_EXP,
+        D.GEMINI_2_0_FLASH_001,
+        D.GEMINI_2_0_PRO_EXP_02_05,
+        D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_0_FLASH_LITE_1,
+        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
-def supports_parallel_tool_calls(deployment: ChatCompletionDeployment) -> bool:
+def supports_parallel_tool_calls(deployment: D) -> bool:
     return deployment in [
-        # ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
-        # ChatCompletionDeployment.CLAUDE_3_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_OPUS,
-        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
-        # ChatCompletionDeployment.CLAUDE_3_7_SONNET,
-        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1,
-        ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17,
+        # D.CLAUDE_3_5_SONNET_V2,
+        # D.CLAUDE_3_HAIKU,
+        D.CLAUDE_3_5_HAIKU,
+        D.CLAUDE_3_OPUS,
+        D.CLAUDE_3_5_SONNET,
+        # D.CLAUDE_3_7_SONNET,
+        D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_0_FLASH_LITE_1,
+        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
-def supports_tool_call_ids(deployment: ChatCompletionDeployment) -> bool:
+def supports_tool_call_ids(deployment: D) -> bool:
     return is_claude(deployment)
 
 
-def supports_grounding(deployment: ChatCompletionDeployment) -> bool:
-    return (
-        "gemini" in deployment.value
-        and deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
-    )
+def supports_grounding(deployment: D) -> bool:
+    return "gemini" in deployment.value and deployment != D.GEMINI_PRO_VISION_1
 
 
-def supports_text_input(deployment: ChatCompletionDeployment) -> bool:
-    return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
-
-
-def supports_empty_content(deployment: ChatCompletionDeployment) -> bool:
+def supports_empty_content(deployment: D) -> bool:
     return is_codechat(deployment) or deployment in [
-        ChatCompletionDeployment.CHAT_BISON_1,
-        ChatCompletionDeployment.CHAT_BISON_2,
-        ChatCompletionDeployment.CHAT_BISON_2_32K,
+        D.CHAT_BISON_1,
+        D.CHAT_BISON_2,
+        D.CHAT_BISON_2_32K,
     ]
 
 
-def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
+def is_vision_model(deployment: D) -> bool:
     return deployment in [
-        ChatCompletionDeployment.GEMINI_PRO_VISION_1,
-        ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
-        ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
-        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
-        ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
+        D.GEMINI_PRO_VISION_1,
+        D.GEMINI_PRO_1_5_V2,
+        D.GEMINI_FLASH_1_5_V2,
+        D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
+        D.GEMINI_2_0_PRO_EXP_02_05,
+        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+        D.GEMINI_2_0_FLASH_EXP,
+        D.GEMINI_2_0_FLASH_001,
+        D.CLAUDE_3_5_SONNET_V2,
         # Upstream returns 'claude-3-5-haiku-20241022 does not support images.'
-        # ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
+        # D.CLAUDE_3_5_HAIKU,
         # This model hallucinates on a the test image
-        # ChatCompletionDeployment.CLAUDE_3_OPUS,
-        ChatCompletionDeployment.CLAUDE_3_5_SONNET,
-        ChatCompletionDeployment.CLAUDE_3_HAIKU,
-        ChatCompletionDeployment.CLAUDE_3_7_SONNET,
-        ChatCompletionDeployment.CLAUDE_4_OPUS,
-        ChatCompletionDeployment.CLAUDE_4_SONNET,
+        # D.CLAUDE_3_OPUS,
+        D.CLAUDE_3_5_SONNET,
+        D.CLAUDE_3_HAIKU,
+        D.CLAUDE_3_7_SONNET,
+        D.CLAUDE_4_OPUS,
+        D.CLAUDE_4_SONNET,
     ]
 
 
-def support_explicit_thinking(deployment: ChatCompletionDeployment) -> bool:
+def support_explicit_thinking(deployment: D) -> bool:
     return deployment in [
-        ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
     ]
 
 
-def support_thinking(deployment: ChatCompletionDeployment) -> bool:
+def support_thinking(deployment: D) -> bool:
     return support_explicit_thinking(deployment) or deployment in [
         # Gemini 2.5 doesn't emit thinking tokens into a separate output,
         # it's all the part of the completion tokens.
-        ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
-        ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17,
+        D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
-def is_gemini_2(deployment: ChatCompletionDeployment) -> bool:
+def is_gemini_2(deployment: D) -> bool:
     return "gemini-2." in deployment.value
 
 
+@pytest.fixture
+def deployment(request) -> D:
+    return request.param
+
+
+@pytest.fixture
+def region(deployment: D) -> str:
+    region = _DEPLOYMENT_TO_REGION.get(deployment)
+    if region is None:
+        raise ValueError(
+            f"{deployment.value!r} is missing from the region mapping"
+        )
+    return region
+
+
+@pytest.fixture(params=[True, False], ids=lambda b: "stream" if b else "block")
+def stream(request) -> bool:
+    return request.param
+
+
+@pytest.fixture
+def openai_client(deployment: D, region: str, get_openai_client):
+    return get_openai_client(deployment.value, region=region)
+
+
+Chat = Callable[..., Awaitable[ChatCompletionResult]]
+
+
+@pytest.fixture
+def chat(openai_client: openai.AsyncAzureOpenAI, stream: bool):
+    async def _inner(
+        **kwargs: Unpack[ChatCompletionArgs],
+    ) -> ChatCompletionResult:
+        return await chat_completion(openai_client, stream=stream, **kwargs)
+
+    return _inner
+
+
+def display_deployment(dep: D):
+    return sanitize_test_name(dep.value)
+
+
+@pytest.mark.parametrize(
+    "deployment", retired_deployments, ids=display_deployment
+)
+async def test_retired_models(deployment: D, chat: Chat):
+    async with expected_exception(
+        cls=openai.NotFoundError,
+        status_code=404,
+        message="not found",
+    ):
+        if is_vision_model(deployment):
+            user_message = user_with_image_url(
+                "describe the image", DOG_PICTURE
+            )
+        else:
+            user_message = user("test")
+
+        await chat(messages=[user_message], max_tokens=1)
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_model_field(deployment: D, chat: Chat):
+    response = await chat(messages=[user("test")], max_tokens=1)
+    assert deployment.value == response.response.model
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_2_plus_3(chat: Chat):
+    response = await chat(messages=[user("2+3=?")])
+    assert "5" in response.content
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_hello(chat: Chat):
+    response = await chat(messages=[user('Reply with "Hello"')])
+    assert "hello" in response.content.lower()
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_empty_sys_message(chat: Chat):
+    response = await chat(messages=[sys(""), user("2+4=?")])
+    assert "6" in response.content.lower()
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_non_empty_sys_message(chat: Chat):
+    system = sys("Act as helpful assistant")
+    response = await chat(messages=[system, user("2+5=?")])
+    assert "7" in response.content.lower()
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_empty_assistant_message(deployment: D, chat: Chat):
+    messages = [
+        user("hi, what is your name?"),
+        ai(""),
+        user("please come again?"),
+    ]
+
+    if not supports_empty_content(deployment):
+        async with expected_exception(
+            cls=UnprocessableEntityError,
+            message="Assistant message content must be present",
+            status_code=422,
+        ):
+            await chat(messages=messages)
+    else:
+        await chat(messages=messages)
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_finish_reason_length(deployment: D, chat: Chat):
+    response = await chat(
+        max_tokens=1,
+        messages=[user("tell me the full story of Pinocchio")],
+    )
+
+    expected_tokens = 0 if support_thinking(deployment) else 1
+    assert len(response.content.split()) <= expected_tokens
+    assert response.usage is not None
+    assert response.usage.completion_tokens == expected_tokens
+    assert response.finish_reasons == ["length"]
+
+
 def get_test_cases(
-    deployment: ChatCompletionDeployment, region: str, streaming: bool
+    deployment: D, region: str, streaming: bool
 ) -> List[TestCase]:
     test_cases: List[TestCase] = []
 
@@ -290,135 +419,41 @@ def get_test_cases(
             )
         )
 
-    if is_retired(deployment):
-        test_case(
-            name="retired",
-            messages=[user("test")],
-            max_tokens=1,
-            expected=ExpectedException(
-                type=openai.NotFoundError,
-                status_code=404,
-                message="not found",
-            ),
-        )
-        return test_cases
+    if is_retired_model(deployment):
+        return []
 
-    if supports_text_input(deployment):
-        test_case(
-            name="2+3=5",
-            messages=[user("2+3=?")],
-            expected=for_all_choices(lambda s: assert_in("5", s)),
-        )
+    # Gemini 2.0 rate-limits always fail on such concurrency
+    candidates_count = 5 if not is_gemini_2(deployment) else 2
+    test_case(
+        name="multiple candidates",
+        max_tokens=10 if not support_thinking(deployment) else 250,
+        n=candidates_count,
+        messages=[user("2+7=? Reply with a single number")],
+        expected=for_all_choices(lambda s: assert_in("9", s), candidates_count),
+    )
 
+    # Stop sequences do not work for some reason for CHAT_BISON_2_32K and streaming mode
+    if (deployment, streaming) != (
+        D.CHAT_BISON_2_32K,
+        True,
+    ):
         test_case(
-            name="model field",
-            messages=[user("test")],
-            max_tokens=1,
-            expected=lambda s: assert_eq(s.response.model, deployment.value),
-        )
-
-        test_case(
-            name="hello",
-            messages=[user('Reply with "Hello"')],
-            expected=for_all_choices(lambda s: assert_in("hello", s.lower())),
-        )
-
-        test_case(
-            name="empty sys message",
-            messages=[sys(""), user("2+4=?")],
-            expected=for_all_choices(lambda s: assert_in("6", s)),
-        )
-
-        test_case(
-            name="non empty sys message",
-            messages=[sys("Act as helpful assistant"), user("2+5=?")],
-            expected=for_all_choices(lambda s: assert_in("7", s)),
-        )
-
-        test_case(
-            name="empty assistant content",
-            messages=[
-                user("hi, what is your name?"),
-                ai(""),
-                user("please come again?"),
-            ],
+            name="stop sequence",
+            max_tokens=None,
+            stop=["world"],
+            messages=[user('Reply with "hello world"')],
             expected=(
-                expected_success
-                if supports_empty_content(deployment)
-                else ExpectedException(
+                ExpectedException(
                     type=UnprocessableEntityError,
-                    message="Assistant message content must be present",
+                    message="stop sequences are not supported for code chat model",
                     status_code=422,
+                )
+                if is_codechat(deployment)
+                else for_all_choices(
+                    lambda s: assert_not_in("world", s.lower())
                 )
             ),
         )
-
-        test_case(
-            name="empty user content",
-            messages=[
-                user(""),
-            ],
-            expected=(
-                expected_success
-                if supports_empty_content(deployment)
-                else ExpectedException(
-                    type=UnprocessableEntityError,
-                    message="User message content must be present",
-                    status_code=422,
-                )
-            ),
-        )
-
-        def _check_max_tokens_1(r: ChatCompletionResult) -> None:
-            expected_tokens = 0 if support_thinking(deployment) else 1
-            for_all_choices(
-                lambda text: assert_eq(len(text.split()), expected_tokens)
-            )(r)
-            assert r.usage is not None
-            assert r.usage.completion_tokens == expected_tokens
-            assert r.finish_reasons == ["length"]
-
-        test_case(
-            name="max tokens 1",
-            max_tokens=1,
-            messages=[user("tell me the full story of Pinocchio")],
-            expected=_check_max_tokens_1,
-        )
-
-        # Gemini 2.0 rate-limits always fail on such concurrency
-        candidates_count = 5 if not is_gemini_2(deployment) else 2
-        test_case(
-            name="multiple candidates",
-            max_tokens=10 if not support_thinking(deployment) else 250,
-            n=candidates_count,
-            messages=[user("2+7=? Reply with a single number")],
-            expected=for_all_choices(
-                lambda s: assert_in("9", s), candidates_count
-            ),
-        )
-
-        # Stop sequences do not work for some reason for CHAT_BISON_2_32K and streaming mode
-        if (deployment, streaming) != (
-            ChatCompletionDeployment.CHAT_BISON_2_32K,
-            True,
-        ):
-            test_case(
-                name="stop sequence",
-                max_tokens=None,
-                stop=["world"],
-                messages=[user('Reply with "hello world"')],
-                expected=(
-                    ExpectedException(
-                        type=UnprocessableEntityError,
-                        message="stop sequences are not supported for code chat model",
-                        status_code=422,
-                    )
-                    if is_codechat(deployment)
-                    else for_all_choices(
-                        lambda s: assert_not_in("world", s.lower())
-                    )
-                ),
-            )
 
     if is_vision_model(deployment):
         content = "describe the image"
@@ -730,7 +765,7 @@ def get_test_cases(
     "test",
     [
         test
-        for deployment, region in chat_deployments.items()
+        for deployment, region in _DEPLOYMENT_TO_REGION.items()
         for streaming in [False, True]
         for test in get_test_cases(deployment, region, streaming)
     ],
@@ -738,7 +773,7 @@ def get_test_cases(
 )
 async def test_chat_completion(get_openai_client, test: TestCase):
     client: openai.AsyncAzureOpenAI = get_openai_client(
-        test.deployment.value, get_extra_headers(test.region)
+        test.deployment.value, region=test.region
     )
 
     async def run_chat_completion() -> ChatCompletionResult:
@@ -760,7 +795,7 @@ async def test_chat_completion(get_openai_client, test: TestCase):
             try:
                 return await chat_completion(
                     client,
-                    test.messages,
+                    messages=test.messages,
                     stream=test.streaming,
                     stop=test.stop,
                     max_tokens=test.max_tokens,

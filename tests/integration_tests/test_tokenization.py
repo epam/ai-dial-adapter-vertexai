@@ -11,8 +11,8 @@ from openai.types.chat import (
 from openai.types.chat.completion_create_params import Function
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from tests.conftest import get_extra_headers
 from tests.integration_tests.constants import BLUE_PNG_PICTURE
-from tests.utils.dial import get_extra_headers
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
     GET_WEATHER_TOOL,
@@ -247,7 +247,6 @@ def get_test_cases(
 async def test_tokenize(
     get_openai_client, test_http_client: httpx.AsyncClient, test: TestCase
 ):
-    extra_headers = get_extra_headers(test.region)
     deployment_id = test.deployment.value
 
     actual_output = await tokenize_request(
@@ -256,7 +255,7 @@ async def test_tokenize(
         test.messages,
         test.functions,
         test.tools,
-        extra_headers=extra_headers,
+        extra_headers=get_extra_headers(test.region),
     )
 
     outputs = actual_output.outputs
@@ -270,7 +269,7 @@ async def test_tokenize(
     else:
 
         chat_completion_response = await chat_completion(
-            client=get_openai_client(deployment_id, extra_headers),
+            client=get_openai_client(deployment_id, region=test.region),
             messages=test.messages,
             stream=False,
             max_tokens=1,
