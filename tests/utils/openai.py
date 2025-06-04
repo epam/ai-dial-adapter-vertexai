@@ -1,16 +1,6 @@
 import json
 import re
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Mapping,
-    Required,
-    TypedDict,
-    TypeVar,
-    Unpack,
-)
+from typing import Any, List, Mapping, Required, TypedDict, Unpack
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
@@ -48,7 +38,6 @@ from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
-from tests.utils.json import match_objects
 
 
 def sys(content: str) -> ChatCompletionSystemMessageParam:
@@ -156,18 +145,6 @@ def sanitize_test_name(name: str) -> str:
         c if (c.isalnum() or c in "/:") else "_" for c in name.lower()
     )
     return re.sub("_+", "_", name)
-
-
-_T = TypeVar("_T")
-
-
-def foreach(f: Callable[[_T], None], xs: Iterable[_T]) -> None:
-    for x in xs:
-        f(x)
-
-
-def assert_eq(a: Any, b: Any):
-    assert a == b
 
 
 class ChatCompletionResult(BaseModel):
@@ -365,32 +342,3 @@ GET_WEATHER_FUNCTION: Function = {
 GET_WEATHER_TOOL: ChatCompletionToolParam = function_to_tool(
     GET_WEATHER_FUNCTION
 )
-
-
-def is_valid_function_call(
-    call: FunctionCall | None, expected_name: str, expected_args: Any
-):
-    assert call is not None, "Function call is missing"
-    assert call.name == expected_name
-    obj = json.loads(call.arguments)
-    match_objects(expected_args, obj)
-
-
-def is_valid_tool_call(
-    calls: List[ChatCompletionMessageToolCall] | None,
-    tool_call_idx: int,
-    check_tool_id: Callable[[str], None],
-    expected_name: str,
-    expected_args: dict,
-):
-    assert calls is not None, "Tool calls are missing"
-    assert tool_call_idx < len(calls), f"Tool call #{tool_call_idx} is missing"
-
-    call = calls[tool_call_idx]
-
-    function = call.function
-    check_tool_id(call.id)
-    assert expected_name == function.name
-
-    actual_args = json.loads(function.arguments)
-    match_objects(expected_args, actual_args)
