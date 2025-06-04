@@ -106,10 +106,10 @@ class BisonCodeChatAdapter(BisonChatCompletionAdapter):
         return cls(await get_code_chat_model(model_id))
 
     def validate_parameters(self, params: ModelParameters) -> None:
-        # if params.stop is not None and params.stop != []:
-        #     raise ValidationError(
-        #         "stop sequences are not supported for code chat model"
-        #     )
+        if params.stop is not None and params.stop != []:
+            raise ValidationError(
+                "stop sequences are not supported for code chat model"
+            )
 
         if params.top_p is not None:
             raise ValidationError("top_p is not supported for code chat model")

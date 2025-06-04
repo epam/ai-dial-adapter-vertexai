@@ -343,22 +343,22 @@ async def chat_completion(
 
 
 GET_WEATHER_FUNCTION: Function = {
-    "name": "get_current_weather",
-    "description": "Get the current weather",
+    "name": "get_temperature",
+    "description": "Get reliable information about the temperature in the given city",
     "parameters": {
         "type": "object",
         "properties": {
             "location": {
                 "type": "string",
-                "description": "The city and state, e.g. San Francisco, CA",
+                "description": "The city, e.g. San Francisco",
             },
-            "format": {
+            "unit": {
                 "type": "string",
                 "enum": ["celsius", "fahrenheit"],
-                "description": "The temperature unit to use. Infer this from the users location.",
+                "description": "The temperature unit to use. Infer this from the location.",
             },
         },
-        "required": ["location", "format"],
+        "required": ["location", "unit"],
     },
 }
 

@@ -18,31 +18,22 @@ from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.integration_tests.constants import DOG_PICTURE
 from tests.utils.exception import ExpectedException, expected_exception
+from tests.utils.json import match_objects
 from tests.utils.openai import (
-    GET_WEATHER_FUNCTION,
     ChatCompletionArgs,
     ChatCompletionResult,
     ai,
-    ai_function,
-    ai_tools,
     assert_eq,
     chat_completion,
-    foreach,
-    function_request,
-    function_response,
-    function_to_tool,
-    is_valid_function_call,
-    is_valid_tool_call,
     sanitize_test_name,
     sys,
-    tool_request,
-    tool_response,
     user,
     user_with_attachment_data,
     user_with_attachment_url,
     user_with_image_url,
 )
 from tests.utils.selector import Selector, pred
+from tests.utils.tools import ToolCallTest
 
 
 def expected_success(*args, **kwargs):
@@ -420,6 +411,105 @@ async def test_vision(deployment: D, chat: Chat, message_factory):
     assert "dog" in response.content.lower()
 
 
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+@pytest.mark.parametrize(
+    "test", [ToolCallTest(1), ToolCallTest(2)], ids=lambda x: x.get_id()
+)
+async def test_function_call(test: ToolCallTest, chat: Chat):
+    response = await chat(
+        messages=test.messages(True),
+        functions=test.functions,
+    )
+
+    function_call = response.function_call
+    assert function_call is not None, "Function call is missing"
+    assert function_call.name == test.function_name
+
+    function_args = json.loads(function_call.arguments)
+    assert match_objects(test.expected_function_args(0), function_args)
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+@pytest.mark.parametrize("test", [ToolCallTest(1)], ids=lambda x: x.get_id())
+async def test_function_response(test: ToolCallTest, chat: Chat):
+    messages = [
+        *test.messages(True),
+        test.function_request(0),
+        test.function_response(0),
+    ]
+
+    response = await chat(messages=messages, functions=test.functions)
+
+    assert str(test.city_temps[0]) in response.content
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+@pytest.mark.parametrize(
+    "test", [ToolCallTest(1), ToolCallTest(2)], ids=lambda x: x.get_id()
+)
+async def test_tool_call(deployment: D, test: ToolCallTest, chat: Chat):
+
+    response = await chat(
+        messages=test.messages(True),
+        tools=test.tools,
+    )
+
+    tool_calls = response.tool_calls
+    assert tool_calls is not None, "Tool calls are missing"
+
+    expected_calls = (
+        test.targets if supports_parallel_tool_calls(deployment) else 1
+    )
+
+    assert (
+        len(tool_calls) >= expected_calls
+    ), f"Number of tools calls: actual ({len(tool_calls)}), expected ({expected_calls})"
+
+    for idx, tool_call in enumerate(tool_calls):
+        if not supports_tool_call_ids(deployment):
+            name = f"{test.function_name}_{idx+1}"
+            assert tool_call.id == name
+
+        function_call = tool_call.function
+        assert function_call.name == test.function_name
+
+        function_args = json.loads(function_call.arguments)
+        assert match_objects(test.expected_function_args(idx), function_args)
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+@pytest.mark.parametrize(
+    "test", [ToolCallTest(1), ToolCallTest(2)], ids=lambda x: x.get_id()
+)
+async def test_tool_response(test: ToolCallTest, chat: Chat):
+    messages = [
+        *test.messages(True),
+        test.tool_request(),
+        *test.tool_responses(),
+    ]
+
+    response = await chat(messages=messages, tools=test.tools)
+
+    for temp in test.city_temps:
+        assert str(temp) in response.content
+
+
 def get_test_cases(
     deployment: D, region: str, streaming: bool
 ) -> List[TestCase]:
@@ -459,154 +549,6 @@ def get_test_cases(
 
     if is_retired_model(deployment):
         return []
-
-    if supports_tools(deployment):
-
-        city_config = (
-            [
-                [("Glasgow", "Scotland", 15)],
-                [("Glasgow", "Scotland", 15), ("London", "England", 20)],
-            ]
-            if supports_parallel_tool_calls(deployment)
-            else [[("Glasgow", "Scotland", 15)]]
-        )
-
-        for cities in city_config:
-            function = GET_WEATHER_FUNCTION
-            tool = function_to_tool(function)
-            fun_name = function["name"]
-
-            city_names = [name for name, _, _ in cities]
-            city_countries = [country for _, country, _ in cities]
-            city_temps = [temp for _, _, temp in cities]
-
-            location_queries = [
-                f"{name} in {country}"
-                for name, country in zip(city_names, city_countries)
-            ]
-
-            query = f"What's the temperature in city of {' and in '.join(location_queries)} in celsius?"
-
-            init_messages = [
-                user("2+3=?"),
-                ai("5"),
-                user(query),
-            ]
-
-            init_messages.insert(0, sys("act as a helpful assistant"))
-
-            def create_fun_args(city: str):
-                return {
-                    "location": city,
-                    "format": "celsius",
-                }
-
-            def check_fun_args(city: str):
-                return {
-                    "location": lambda s: city.lower() in s.lower(),
-                    "format": "celsius",
-                }
-
-            test_name_suffix = " ".join(city_names)
-
-            # Functions
-            test_case(
-                name=f"weather function {test_name_suffix}",
-                messages=init_messages,
-                functions=[function],
-                expected=lambda s, n=city_names[0]: is_valid_function_call(
-                    s.function_call, fun_name, check_fun_args(n)
-                ),
-            )
-
-            function_req = ai_function(
-                function_request(fun_name, create_fun_args(city_names[0]))
-            )
-            function_resp = function_response(
-                fun_name, f"{city_temps[0]} celsius"
-            )
-
-            if len(cities) == 1:
-                test_case(
-                    name=f"weather function followup {test_name_suffix}",
-                    messages=[
-                        *init_messages,
-                        function_req,
-                        function_resp,
-                    ],
-                    functions=[function],
-                    expected=lambda s, t=city_temps[0]: s.content_contains_all(
-                        [t]
-                    ),
-                )
-            else:
-                test_case(
-                    name=f"weather function followup {test_name_suffix}",
-                    messages=[
-                        *init_messages,
-                        function_req,
-                        function_resp,
-                    ],
-                    functions=[function],
-                    expected=lambda s, n=city_names[1]: is_valid_function_call(
-                        s.function_call, fun_name, check_fun_args(n)
-                    ),
-                )
-
-            # Tools
-            def create_tool_call_id(idx: int):
-                return f"{fun_name}_{idx+1}"
-
-            def check_tool_call_id(idx: int):
-                def ret(id: str):
-                    if not supports_tool_call_ids(deployment):
-                        assert f"{fun_name}_{idx+1}" == id
-
-                return ret
-
-            expected_city_names = (
-                city_names
-                if supports_parallel_tool_calls(deployment)
-                else city_names[:1]
-            )
-
-            test_case(
-                name=f"weather tool {test_name_suffix}",
-                messages=init_messages,
-                tools=[tool],
-                expected=lambda s, n=expected_city_names: foreach(
-                    lambda idx: is_valid_tool_call(
-                        s.tool_calls,
-                        idx,
-                        check_tool_call_id(idx),
-                        fun_name,
-                        check_fun_args(n[idx]),
-                    ),
-                    range(len(n)),
-                ),
-            )
-
-            tool_reqs = ai_tools(
-                [
-                    tool_request(
-                        create_tool_call_id(idx),
-                        fun_name,
-                        create_fun_args(name),
-                    )
-                    for idx, (name, _, _) in enumerate(cities)
-                ]
-            )
-            tool_resps = [
-                tool_response(create_tool_call_id(idx), f"{temp} celsius")
-                for idx, (_, _, temp) in enumerate(cities)
-            ]
-
-            test_case(
-                name=f"weather tool followup {test_name_suffix}",
-                messages=[*init_messages, tool_reqs, *tool_resps],
-                tools=[tool],
-                expected=lambda s, t=city_temps: s.content_contains_all(t),
-            )
 
     if supports_grounding(deployment):
 
