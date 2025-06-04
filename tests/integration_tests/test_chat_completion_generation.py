@@ -26,10 +26,7 @@ from tests.utils.openai import (
     ai_function,
     ai_tools,
     assert_eq,
-    assert_in,
-    assert_not_in,
     chat_completion,
-    for_all_choices,
     foreach,
     function_request,
     function_response,
@@ -84,8 +81,11 @@ _CENTRAL = "us-central1"
 _EAST = "us-east5"
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.CHAT_BISON_1: _CENTRAL,
+    D.CHAT_BISON_2: _CENTRAL,
     D.CHAT_BISON_2_32K: _CENTRAL,
     D.CODECHAT_BISON_1: _CENTRAL,
+    D.CODECHAT_BISON_2: _CENTRAL,
+    D.CODECHAT_BISON_2_32K: _CENTRAL,
     D.GEMINI_PRO_1: _CENTRAL,
     D.GEMINI_FLASH_1_5_V2: _CENTRAL,
     D.GEMINI_PRO_VISION_1: _CENTRAL,
@@ -120,8 +120,11 @@ def is_retired_model(deployment: D) -> bool:
         D.GEMINI_PRO_1_5_V1,
         D.GEMINI_FLASH_1_5_V1,
         D.CHAT_BISON_1,
-        D.CODECHAT_BISON_1,
+        D.CHAT_BISON_2,
         D.CHAT_BISON_2_32K,
+        D.CODECHAT_BISON_1,
+        D.CODECHAT_BISON_2,
+        D.CODECHAT_BISON_2_32K,
     }
 
 
@@ -132,14 +135,6 @@ def select(p: Selector[D], xs: List[D]) -> List[D]:
 all_deployments = list(_DEPLOYMENT_TO_REGION.keys())
 deployments = select(~pred(is_retired_model), all_deployments)
 retired_deployments = select(pred(is_retired_model), all_deployments)
-
-
-def is_codechat(deployment: D) -> bool:
-    return deployment in [
-        D.CODECHAT_BISON_1,
-        D.CODECHAT_BISON_2,
-        D.CODECHAT_BISON_2_32K,
-    ]
 
 
 def supports_json_object_response_format(
@@ -204,14 +199,6 @@ def supports_tool_call_ids(deployment: D) -> bool:
 
 def supports_grounding(deployment: D) -> bool:
     return "gemini" in deployment.value and deployment != D.GEMINI_PRO_VISION_1
-
-
-def supports_empty_content(deployment: D) -> bool:
-    return is_codechat(deployment) or deployment in [
-        D.CHAT_BISON_1,
-        D.CHAT_BISON_2,
-        D.CHAT_BISON_2_32K,
-    ]
 
 
 def is_vision_model(deployment: D) -> bool:
@@ -350,22 +337,36 @@ async def test_non_empty_sys_message(chat: Chat):
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
-async def test_empty_assistant_message(deployment: D, chat: Chat):
+async def test_empty_assistant_message(chat: Chat):
     messages = [
         user("hi, what is your name?"),
         ai(""),
         user("please come again?"),
     ]
 
-    if not supports_empty_content(deployment):
-        async with expected_exception(
-            cls=UnprocessableEntityError,
-            message="Assistant message content must be present",
-            status_code=422,
-        ):
-            await chat(messages=messages)
-    else:
+    async with expected_exception(
+        cls=UnprocessableEntityError,
+        message="Assistant message content must be present",
+        status_code=422,
+    ):
         await chat(messages=messages)
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_multiple_candidates(deployment: D, chat: Chat):
+    max_tokens = 10 if not support_thinking(deployment) else 250
+    # Gemini 2.0 rate-limits always fail on such concurrency
+    n = 5 if not is_gemini_2(deployment) else 2
+
+    response = await chat(
+        messages=[user("2+7=? Reply with a single number")],
+        max_tokens=max_tokens,
+        n=n,
+    )
+
+    assert len(response.contents) == n
+    for content in response.contents:
+        assert "9" in content
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
@@ -380,6 +381,43 @@ async def test_finish_reason_length(deployment: D, chat: Chat):
     assert response.usage is not None
     assert response.usage.completion_tokens == expected_tokens
     assert response.finish_reasons == ["length"]
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_stop_sequence(chat: Chat):
+    stop = ["world"]
+    response = await chat(
+        max_tokens=None, stop=stop, messages=[user('Reply with "hello world"')]
+    )
+    content = response.content.lower()
+    assert not all(w in content for w in stop)
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(is_vision_model), deployments),
+    ids=display_deployment,
+)
+@pytest.mark.parametrize(
+    "message_factory",
+    [
+        user_with_attachment_data,
+        user_with_attachment_url,
+        user_with_image_url,
+    ],
+    ids=[
+        "attachment_data",
+        "attachment_data_url",
+        "content_part_image_url",
+    ],
+)
+async def test_vision(deployment: D, chat: Chat, message_factory):
+    user_message = message_factory("describe the image", DOG_PICTURE)
+    messages = [sys("be a helpful assistant"), user_message]
+    max_tokens = 1000 if support_thinking(deployment) else 100
+
+    response = await chat(max_tokens=max_tokens, messages=messages)
+    assert "dog" in response.content.lower()
 
 
 def get_test_cases(
@@ -421,55 +459,6 @@ def get_test_cases(
 
     if is_retired_model(deployment):
         return []
-
-    # Gemini 2.0 rate-limits always fail on such concurrency
-    candidates_count = 5 if not is_gemini_2(deployment) else 2
-    test_case(
-        name="multiple candidates",
-        max_tokens=10 if not support_thinking(deployment) else 250,
-        n=candidates_count,
-        messages=[user("2+7=? Reply with a single number")],
-        expected=for_all_choices(lambda s: assert_in("9", s), candidates_count),
-    )
-
-    # Stop sequences do not work for some reason for CHAT_BISON_2_32K and streaming mode
-    if (deployment, streaming) != (
-        D.CHAT_BISON_2_32K,
-        True,
-    ):
-        test_case(
-            name="stop sequence",
-            max_tokens=None,
-            stop=["world"],
-            messages=[user('Reply with "hello world"')],
-            expected=(
-                ExpectedException(
-                    type=UnprocessableEntityError,
-                    message="stop sequences are not supported for code chat model",
-                    status_code=422,
-                )
-                if is_codechat(deployment)
-                else for_all_choices(
-                    lambda s: assert_not_in("world", s.lower())
-                )
-            ),
-        )
-
-    if is_vision_model(deployment):
-        content = "describe the image"
-        for idx, user_message in enumerate(
-            [
-                user_with_attachment_data(content, DOG_PICTURE),
-                user_with_attachment_url(content, DOG_PICTURE),
-                user_with_image_url(content, DOG_PICTURE),
-            ]
-        ):
-            test_case(
-                name=f"describe image {idx}",
-                max_tokens=1000 if support_thinking(deployment) else 100,
-                messages=[sys("be a helpful assistant"), user_message],
-                expected=lambda s: assert_in("dog", s.content.lower()),
-            )
 
     if supports_tools(deployment):
 

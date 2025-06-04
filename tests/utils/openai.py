@@ -166,14 +166,6 @@ def foreach(f: Callable[[_T], None], xs: Iterable[_T]) -> None:
         f(x)
 
 
-def assert_in(val: Any, container: Any):
-    assert val in container
-
-
-def assert_not_in(val: Any, container: Any):
-    assert val not in container
-
-
 def assert_eq(a: Any, b: Any):
     assert a == b
 
@@ -348,20 +340,6 @@ async def chat_completion(
 
     response = await get_response()
     return ChatCompletionResult(response=response)
-
-
-def for_all_choices(
-    checker: Callable[[str], None], n: int = 1
-) -> Callable[[ChatCompletionResult], None]:
-    def ret(resp: ChatCompletionResult) -> None:
-        contents = resp.contents
-        assert (
-            len(contents) == n
-        ), f"Expected {n} candidates, got {len(contents)}"
-        for content in contents:
-            checker(content)
-
-    return ret
 
 
 GET_WEATHER_FUNCTION: Function = {
