@@ -13,6 +13,10 @@ from openai.types.chat.completion_create_params import Function
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from tests.conftest import get_extra_headers
 from tests.integration_tests.constants import BLUE_PNG_PICTURE
+from tests.integration_tests.test_chat_completion_generation import (
+    is_vision_model,
+    supports_tools,
+)
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
     GET_WEATHER_TOOL,
@@ -56,12 +60,9 @@ _CENTRAL = "us-central1"
 _EAST = "us-east5"
 
 chat_deployments: Mapping[ChatCompletionDeployment, str] = {
-    ChatCompletionDeployment.GEMINI_PRO_VISION_1: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V1: _CENTRAL,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V1: _CENTRAL,
     ChatCompletionDeployment.GEMINI_FLASH_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
@@ -79,36 +80,8 @@ _tolerance: Mapping[ChatCompletionDeployment, int] = {
 }
 
 
-def supports_tools(deployment: ChatCompletionDeployment) -> bool:
-    return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
-
-
 def is_gemini(deployment: ChatCompletionDeployment) -> bool:
     return "gemini" in deployment.value
-
-
-def is_claude(deployment: ChatCompletionDeployment) -> bool:
-    return "claude" in deployment.value
-
-
-def supports_vision(deployment: ChatCompletionDeployment) -> bool:
-    if is_claude(deployment):
-        return deployment != ChatCompletionDeployment.CLAUDE_3_5_HAIKU
-    elif is_gemini(deployment):
-        return True
-    else:
-        raise ValueError(f"Unknown deployment: {deployment.value}")
-
-
-def supports_only_vision(deployment: ChatCompletionDeployment) -> bool:
-    return deployment == ChatCompletionDeployment.GEMINI_PRO_VISION_1
-
-
-# def is_text_model(deployment: ChatCompletionDeployment) -> bool:
-#     return deployment != ChatCompletionDeployment.GEMINI_PRO_VISION_1
-
-# def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
-#     return deployment != ChatCompletionDeployment.CLAUDE_3_5_HAIKU
 
 
 def get_test_cases(
@@ -125,56 +98,41 @@ def get_test_cases(
     ) -> None:
         test_cases.append(
             TestCase(
-                name,
-                deployment,
-                region,
-                messages,
-                error,
-                functions,
-                tools,
+                name, deployment, region, messages, error, functions, tools
             )
         )
-
-    vision_only = supports_only_vision(deployment)
-    no_images_error = "No documents were found" if vision_only else None
 
     test_case(
         name="single user message",
         messages=[user("user")],
-        error=no_images_error,
     )
 
     test_case(
         name="empty sys message + user",
         messages=[sys(""), user("user")],
-        error=no_images_error,
     )
 
     test_case(
         name="non-empty sys message + user",
         messages=[sys("system"), user("user")],
-        error=no_images_error,
     )
 
     test_case(
         name="long completion",
         messages=[user("tell me the full story of Pinocchio")],
-        error=no_images_error,
-    )
-
-    no_messages_error = (
-        "contents are required."
-        if is_gemini(deployment)
-        else "messages: at least one message is required"
     )
 
     test_case(
         name="sys message",
         messages=[sys("system")],
-        error="No documents were found" if vision_only else no_messages_error,
+        error=(
+            "contents are required."
+            if is_gemini(deployment)
+            else "messages: at least one message is required"
+        ),
     )
 
-    if supports_vision(deployment):
+    if is_vision_model(deployment):
         for idx, user_message in enumerate(
             [
                 user_with_attachment_data("user", BLUE_PNG_PICTURE),

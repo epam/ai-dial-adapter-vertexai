@@ -60,20 +60,20 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
 def is_retired_model(deployment: D) -> bool:
     # Keep at least one model in the list to test how the adapter handles retired models in streaming and non-streaming modes
     return deployment in {
-        D.GEMINI_PRO_1,
-        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-        D.GEMINI_2_5_PRO_EXP_03_25,
-        D.GEMINI_PRO_VISION_1,
-        D.GEMINI_PRO_1_5_PREVIEW,
-        D.GEMINI_PRO_1_5_V1,
-        D.GEMINI_FLASH_1_5_V1,
         D.CHAT_BISON_1,
         D.CHAT_BISON_2,
         D.CHAT_BISON_2_32K,
         D.CODECHAT_BISON_1,
         D.CODECHAT_BISON_2,
         D.CODECHAT_BISON_2_32K,
+        D.GEMINI_PRO_1,
+        D.GEMINI_PRO_VISION_1,
+        D.GEMINI_PRO_1_5_PREVIEW,
+        D.GEMINI_PRO_1_5_V1,
+        D.GEMINI_FLASH_1_5_V1,
+        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
+        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+        D.GEMINI_2_5_PRO_EXP_03_25,
     }
 
 
