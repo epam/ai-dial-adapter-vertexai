@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import AsyncGenerator, Mapping
@@ -66,21 +67,26 @@ async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
             yield client
 
 
+def get_extra_headers(region: str) -> Mapping[str, str]:
+    return {"x-upstream-extra-data": json.dumps({"region": region})}
+
+
 @pytest.fixture
 def get_openai_client(test_http_client: httpx.AsyncClient):
     def _get_client(
         deployment_id: str | None = None,
-        extra_headers: Mapping[str, str] | None = None,
+        *,
+        region: str | None = None,
     ) -> AsyncAzureOpenAI:
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
             azure_deployment=deployment_id,
             api_version="dummy-version",
             api_key="dummy-key",
-            max_retries=2,
+            max_retries=10,
             timeout=30,
             http_client=test_http_client,
-            default_headers=extra_headers,
+            default_headers=get_extra_headers(region) if region else {},
         )
 
     yield _get_client
