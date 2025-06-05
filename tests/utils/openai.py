@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Callable, Iterable, List, Mapping, TypeVar
+from typing import Any, List, Mapping, Required, TypedDict, Unpack
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
@@ -38,7 +38,6 @@ from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
-from tests.utils.json import match_objects
 
 
 def sys(content: str) -> ChatCompletionSystemMessageParam:
@@ -148,26 +147,6 @@ def sanitize_test_name(name: str) -> str:
     return re.sub("_+", "_", name)
 
 
-_T = TypeVar("_T")
-
-
-def foreach(f: Callable[[_T], None], xs: Iterable[_T]) -> None:
-    for x in xs:
-        f(x)
-
-
-def assert_in(val: Any, container: Any):
-    assert val in container
-
-
-def assert_not_in(val: Any, container: Any):
-    assert val not in container
-
-
-def assert_eq(a: Any, b: Any):
-    assert a == b
-
-
 class ChatCompletionResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -237,7 +216,7 @@ async def tokenize_request(
     messages: List[ChatCompletionMessageParam],
     functions: List[Function] | None,
     tools: List[ChatCompletionToolParam] | None,
-    extra_headers: Mapping[str, str] = {},
+    extra_headers: Mapping[str, str] | None = None,
 ) -> TokenizeResponse:
 
     chat_completion_request = {
@@ -254,7 +233,7 @@ async def tokenize_request(
     resp = await http_client.post(
         f"openai/deployments/{model_id}/tokenize",
         json=request,
-        headers=extra_headers,
+        headers=extra_headers or {},
     )
 
     resp.raise_for_status()
@@ -262,50 +241,61 @@ async def tokenize_request(
     return TokenizeResponse.parse_obj(resp.json())
 
 
+class ChatCompletionArgs(TypedDict, total=False):
+    messages: Required[List[ChatCompletionMessageParam]]
+    stop: List[str] | None
+    max_tokens: int | None
+    n: int | None
+    functions: List[Function] | None
+    tools: List[ChatCompletionToolParam] | None
+    static_tools: StaticToolsConfig | None
+    extra_body: dict | None
+
+
 async def chat_completion(
     client: AsyncAzureOpenAI,
-    messages: List[ChatCompletionMessageParam],
     *,
-    stream: bool,
-    stop: List[str] | None = None,
-    max_tokens: int | None = None,
-    n: int | None = None,
-    functions: List[Function] | None = None,
-    tools: List[ChatCompletionToolParam] | None = None,
-    static_tools: StaticToolsConfig | None = None,
-    extra_body: dict | None = None,
+    stream: bool | None = None,
+    **kwargs: Unpack[ChatCompletionArgs],
 ) -> ChatCompletionResult:
+
+    merged_tools = (
+        [
+            StaticTool(
+                type="static_function",
+                static_function=function,
+            ).dict()
+            for function in (static_tools.functions or [])
+        ]
+        if (static_tools := kwargs.get("static_tools"))
+        else []
+    )
+    if tools := kwargs.get("tools"):
+        merged_tools += tools
+
+    extra_body = kwargs.get("extra_body") or {}
+    if merged_tools:
+        extra_body["tools"] = merged_tools
+
     async def get_response() -> ChatCompletion:
-        merged_tools = (
-            [
-                StaticTool(
-                    type="static_function",
-                    static_function=function,
-                ).dict()
-                for function in (static_tools.functions or [])
-            ]
-            if static_tools
-            else []
-        )
-        if tools:
-            merged_tools += tools
+        functions = kwargs.get("functions")
+        tools = kwargs.get("tools")
 
         response = await client.chat.completions.create(
             model="dummy-model",
-            messages=messages,
-            stream=stream,
-            stop=stop,
-            max_tokens=max_tokens,
+            messages=kwargs["messages"],
+            stream=stream or False,
+            stop=kwargs.get("stop"),
+            max_tokens=kwargs.get("max_tokens"),
             temperature=0.0,
-            n=n,
+            n=kwargs.get("n"),
             function_call="auto" if functions is not None else NOT_GIVEN,
             functions=functions or NOT_GIVEN,
             tool_choice="auto" if tools is not None else NOT_GIVEN,
             tools=tools or NOT_GIVEN,
             # Using extra_body to override tools, since openai
             # doesn't support static tools
-            extra_body=({"tools": merged_tools} if merged_tools else {})
-            | (extra_body or {}),
+            extra_body=extra_body,
         )
 
         if isinstance(response, AsyncStream):
@@ -329,69 +319,26 @@ async def chat_completion(
     return ChatCompletionResult(response=response)
 
 
-def for_all_choices(
-    checker: Callable[[str], None], n: int = 1
-) -> Callable[[ChatCompletionResult], None]:
-    def ret(resp: ChatCompletionResult) -> None:
-        contents = resp.contents
-        assert (
-            len(contents) == n
-        ), f"Expected {n} candidates, got {len(contents)}"
-        for content in contents:
-            checker(content)
-
-    return ret
-
-
 GET_WEATHER_FUNCTION: Function = {
-    "name": "get_current_weather",
-    "description": "Get the current weather",
+    "name": "get_temperature",
+    "description": "Get reliable information about the temperature in the given city",
     "parameters": {
         "type": "object",
         "properties": {
             "location": {
                 "type": "string",
-                "description": "The city and state, e.g. San Francisco, CA",
+                "description": "The city, e.g. San Francisco",
             },
-            "format": {
+            "unit": {
                 "type": "string",
                 "enum": ["celsius", "fahrenheit"],
-                "description": "The temperature unit to use. Infer this from the users location.",
+                "description": "The temperature unit to use. Infer this from the location.",
             },
         },
-        "required": ["location", "format"],
+        "required": ["location", "unit"],
     },
 }
 
 GET_WEATHER_TOOL: ChatCompletionToolParam = function_to_tool(
     GET_WEATHER_FUNCTION
 )
-
-
-def is_valid_function_call(
-    call: FunctionCall | None, expected_name: str, expected_args: Any
-):
-    assert call is not None, "Function call is missing"
-    assert call.name == expected_name
-    obj = json.loads(call.arguments)
-    match_objects(expected_args, obj)
-
-
-def is_valid_tool_call(
-    calls: List[ChatCompletionMessageToolCall] | None,
-    tool_call_idx: int,
-    check_tool_id: Callable[[str], None],
-    expected_name: str,
-    expected_args: dict,
-):
-    assert calls is not None, "Tool calls are missing"
-    assert tool_call_idx < len(calls), f"Tool call #{tool_call_idx} is missing"
-
-    call = calls[tool_call_idx]
-
-    function = call.function
-    check_tool_id(call.id)
-    assert expected_name == function.name
-
-    actual_args = json.loads(function.arguments)
-    match_objects(expected_args, actual_args)

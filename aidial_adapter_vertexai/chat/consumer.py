@@ -119,6 +119,10 @@ class ChoiceConsumer(Consumer):
         self.choice.add_attachment(attachment)
 
     async def set_usage(self, usage: TokenUsage):
+        # Avoiding the error from DIAL SDK:
+        #   'Trying to set "usage" before generating all choices'
+        if self.is_empty():
+            await self.append_content("")
         self.usage = usage
 
     async def set_finish_reason(self, finish_reason: FinishReason):

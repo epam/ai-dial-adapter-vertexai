@@ -11,6 +11,7 @@ from aidial_sdk.chat_completion import Attachment
 from openai.types import CreateEmbeddingResponse
 
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment
+from tests.utils.exception import expected_exception
 from tests.utils.json import flatten_obj
 from tests.utils.openai import sanitize_test_name
 
@@ -36,13 +37,6 @@ embedding_types: Set[str] = {
 }
 
 specs: List[ModelSpec] = [
-    ModelSpec(
-        deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1,
-        supports_types=set(),
-        supports_instr=False,
-        default_dimensions=768,
-        supports_dimensions=False,
-    ),
     ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
         supports_types=embedding_types,
@@ -96,6 +90,10 @@ class EmbeddingsTestCase:
         )
 
 
+def display_deployment(dep: EmbeddingsDeployment):
+    return sanitize_test_name(dep.value)
+
+
 def check_embeddings_response(
     input: str | List[str],
     custom_input: list[Any] | None,
@@ -114,11 +112,11 @@ def check_embeddings_response(
 def get_test_case(
     spec: ModelSpec,
     input: str | List[str],
-    custom_input: list[Any] | None,
-    encoding_format: str | None,
-    embedding_type: str | None,
-    embedding_instr: str | None,
-    dimensions: int | None,
+    custom_input: list[Any] | None = None,
+    encoding_format: str | None = None,
+    embedding_type: str | None = None,
+    embedding_instr: str | None = None,
+    dimensions: int | None = None,
 ) -> EmbeddingsTestCase:
 
     has_titles = custom_input and any(isinstance(i, list) for i in custom_input)
@@ -258,6 +256,25 @@ async def test_embeddings(get_openai_client, test: EmbeddingsTestCase):
     else:
         embeddings = await run()
         test.expected(embeddings)
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    [EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1],
+    ids=display_deployment,
+)
+async def test_retired_models(
+    get_openai_client, deployment: EmbeddingsDeployment
+):
+    model_id = deployment.value
+    client: openai.AsyncAzureOpenAI = get_openai_client(model_id)
+
+    async with expected_exception(
+        cls=openai.NotFoundError,
+        status_code=404,
+        message="not found",
+    ):
+        await client.embeddings.create(model=model_id, input="test")
 
 
 @dataclass
