@@ -40,7 +40,10 @@ from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
+from aidial_adapter_vertexai.dial_api.exceptions import (
+    dial_exception_decorator,
+    to_dial_exception,
+)
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.upstream_config import parse_upstream_config
@@ -158,7 +161,7 @@ class VertexAIChatCompletion(ChatCompletion):
             return TokenizeSuccess(token_count=tokens)
         except Exception as e:
             log.exception("Error tokenizing a string")
-            return TokenizeError(error=str(e))
+            return TokenizeError(error=to_dial_exception(e).message)
 
     async def _tokenize_request(
         self, model: ChatCompletionAdapter, request: ChatCompletionRequest
@@ -177,7 +180,7 @@ class VertexAIChatCompletion(ChatCompletion):
             return TokenizeSuccess(token_count=token_count)
         except Exception as e:
             log.exception("Error tokenizing a request")
-            return TokenizeError(error=str(e))
+            return TokenizeError(error=to_dial_exception(e).message)
 
     @override
     @dial_exception_decorator

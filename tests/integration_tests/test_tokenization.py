@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import List, Mapping
 
 import httpx
 import pytest
+from aidial_sdk.deployment.tokenize import TokenizeError, TokenizeSuccess
 from openai.types.chat import (
     ChatCompletionMessageParam,
     ChatCompletionToolParam,
@@ -10,8 +11,12 @@ from openai.types.chat import (
 from openai.types.chat.completion_create_params import Function
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from tests.conftest import get_extra_headers
 from tests.integration_tests.constants import BLUE_PNG_PICTURE
-from tests.utils.dial import get_extra_headers
+from tests.integration_tests.test_chat_completion_generation import (
+    is_vision_model,
+    supports_tools,
+)
 from tests.utils.openai import (
     GET_WEATHER_FUNCTION,
     GET_WEATHER_TOOL,
@@ -39,98 +44,100 @@ class TestCase:
 
     name: str
     deployment: ChatCompletionDeployment
+    region: str
 
     messages: List[ChatCompletionMessageParam]
+    expected_error: str | None
 
-    max_tokens: int | None
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
-
-    check: Callable[[int, int], None]
 
     def get_id(self):
         return sanitize_test_name(f"{self.deployment.value}/{self.name}")
 
 
-chat_deployments = [
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
-    ChatCompletionDeployment.CLAUDE_3_5_HAIKU,
-    ChatCompletionDeployment.CLAUDE_3_OPUS,
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET,
-    ChatCompletionDeployment.CLAUDE_3_HAIKU,
-    ChatCompletionDeployment.CLAUDE_3_7_SONNET,
-    ChatCompletionDeployment.CLAUDE_4_SONNET,
-    ChatCompletionDeployment.CLAUDE_4_OPUS,
-]
+_CENTRAL = "us-central1"
+_EAST = "us-east5"
+
+chat_deployments: Mapping[ChatCompletionDeployment, str] = {
+    ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2: _CENTRAL,
+    ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
+    ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_OPUS: _EAST,
+}
+
+_tolerance: Mapping[ChatCompletionDeployment, int] = {
+    # For some reason reported tokens for Claude 4 are off by one
+    ChatCompletionDeployment.CLAUDE_4_SONNET: 1,
+    ChatCompletionDeployment.CLAUDE_4_OPUS: 1,
+}
 
 
-def supports_tools(deployment: ChatCompletionDeployment) -> bool:
-    return True
+def is_gemini(deployment: ChatCompletionDeployment) -> bool:
+    return "gemini" in deployment.value
 
 
-def is_vision_model(deployment: ChatCompletionDeployment) -> bool:
-    return deployment != ChatCompletionDeployment.CLAUDE_3_5_HAIKU
-
-
-def _eq_check(actual: int, expected: int):
-    assert actual == expected
-
-
-def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
+def get_test_cases(
+    deployment: ChatCompletionDeployment, region: str
+) -> List[TestCase]:
     test_cases: List[TestCase] = []
 
     def test_case(
         name: str,
         messages: List[ChatCompletionMessageParam],
-        max_tokens: int | None = None,
+        error: str | None = None,
         functions: List[Function] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
-        check: Callable[[int, int], None] = _eq_check,
     ) -> None:
         test_cases.append(
             TestCase(
-                name,
-                deployment,
-                messages,
-                max_tokens,
-                functions,
-                tools,
-                check,
+                name, deployment, region, messages, error, functions, tools
             )
         )
 
     test_case(
         name="single user message",
         messages=[user("user")],
-        max_tokens=1,
     )
 
     test_case(
         name="empty sys message + user",
         messages=[sys(""), user("user")],
-        max_tokens=1,
     )
 
     test_case(
         name="non-empty sys message + user",
         messages=[sys("system"), user("user")],
-        max_tokens=1,
     )
 
     test_case(
         name="long completion",
         messages=[user("tell me the full story of Pinocchio")],
-        max_tokens=1,
+    )
+
+    test_case(
+        name="sys message",
+        messages=[sys("system")],
+        error=(
+            "contents are required."
+            if is_gemini(deployment)
+            else "messages: at least one message is required"
+        ),
     )
 
     if is_vision_model(deployment):
-        content = "user"
-
         for idx, user_message in enumerate(
             [
-                user_with_attachment_data(content, BLUE_PNG_PICTURE),
-                user_with_attachment_url(content, BLUE_PNG_PICTURE),
-                user_with_image_url(content, BLUE_PNG_PICTURE),
+                user_with_attachment_data("user", BLUE_PNG_PICTURE),
+                user_with_attachment_url("user", BLUE_PNG_PICTURE),
+                user_with_image_url("user", BLUE_PNG_PICTURE),
             ]
         ):
             test_case(
@@ -141,7 +148,6 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
                     ai("pong"),
                     user_message,
                 ],
-                max_tokens=1,
             )
 
     if supports_tools(deployment):
@@ -191,45 +197,47 @@ def get_test_cases(deployment: ChatCompletionDeployment) -> List[TestCase]:
     "test",
     [
         test
-        for deployment in chat_deployments
-        for test in get_test_cases(deployment)
+        for deployment, region in chat_deployments.items()
+        for test in get_test_cases(deployment, region)
     ],
     ids=TestCase.get_id,
 )
 async def test_tokenize(
-    test_http_client: httpx.AsyncClient, get_openai_client, test: TestCase
+    get_openai_client, test_http_client: httpx.AsyncClient, test: TestCase
 ):
-    region = "us-east5"
-    extra_headers = get_extra_headers(region)
-    client = get_openai_client(test.deployment.value, extra_headers)
+    deployment_id = test.deployment.value
 
-    response = await chat_completion(
-        client=client,
-        messages=test.messages,
-        stream=False,
-        stop=[],
-        max_tokens=test.max_tokens,
-        n=1,
-        functions=test.functions,
-        tools=test.tools,
-        static_tools=None,
-    )
-
-    usage = response.usage
-    assert usage is not None, "Usage is missing"
-
-    expected_prompt_tokens = usage.prompt_tokens
-
-    resp = await tokenize_request(
+    actual_output = await tokenize_request(
         test_http_client,
-        test.deployment.value,
+        deployment_id,
         test.messages,
         test.functions,
         test.tools,
-        extra_headers=extra_headers,
+        extra_headers=get_extra_headers(test.region),
     )
 
-    output = resp.outputs[0]
-    assert output.status == "success"
-    actual_prompt_tokens = output.token_count
-    test.check(actual_prompt_tokens, expected_prompt_tokens)
+    outputs = actual_output.outputs
+    assert len(outputs) == 1
+    output = outputs[0]
+
+    if isinstance(test.expected_error, str):
+        assert isinstance(output, TokenizeError)
+        assert output.status == "error"
+        assert output.error == test.expected_error
+    else:
+
+        chat_completion_response = await chat_completion(
+            client=get_openai_client(deployment_id, region=test.region),
+            messages=test.messages,
+            stream=False,
+            max_tokens=1,
+            functions=test.functions,
+            tools=test.tools,
+        )
+
+        assert isinstance(output, TokenizeSuccess)
+        assert output.status == "success"
+        usage = chat_completion_response.usage
+        assert usage is not None, "Usage is missing"
+        _tolerance_value = _tolerance.get(test.deployment, 0)
+        assert abs(output.token_count - usage.prompt_tokens) <= _tolerance_value

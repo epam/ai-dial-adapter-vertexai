@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass
 from typing import List
 
@@ -9,7 +8,6 @@ from openai.types.chat import ChatCompletionMessageParam
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.utils.resource import Resource
 from tests.utils.openai import (
-    ChatCompletionResult,
     ai,
     chat_completion,
     sanitize_test_name,
@@ -18,11 +16,6 @@ from tests.utils.openai import (
     user_with_attachment_data,
 )
 from tests.utils.pdf import gen_pdf
-
-deployments = [
-    ChatCompletionDeployment.CHAT_BISON_1,
-    ChatCompletionDeployment.CODECHAT_BISON_1,
-]
 
 
 @dataclass
@@ -121,34 +114,6 @@ def get_test_cases(
     ]
 
 
-validation_test_cases: List[TestCase] = [
-    test_case
-    for deployment in deployments
-    for test_case in get_test_cases(deployment)
-]
-
-
-@pytest.mark.parametrize(
-    "test", validation_test_cases, ids=lambda test: test.get_id()
-)
-async def test_input_validation(get_openai_client, test: TestCase):
-    client = get_openai_client(test.deployment.value)
-
-    async def run_chat_completion() -> ChatCompletionResult:
-        return await chat_completion(
-            client, test.messages, False, None, None, None, None, None, None
-        )
-
-    if test.expected_exception is not None:
-        with pytest.raises(Exception) as exc_info:
-            await run_chat_completion()
-
-        assert isinstance(exc_info.value, UnprocessableEntityError)
-        assert re.search(str(test.expected_exception), str(exc_info.value))
-    else:
-        await run_chat_completion()
-
-
 async def test_imagen_content_filtering(get_openai_client):
     client = get_openai_client(ChatCompletionDeployment.IMAGEN_005.value)
     messages: List[ChatCompletionMessageParam] = [
@@ -156,9 +121,7 @@ async def test_imagen_content_filtering(get_openai_client):
     ]
 
     with pytest.raises(Exception) as exc_info:
-        await chat_completion(
-            client, messages, False, None, None, None, None, None, None
-        )
+        await chat_completion(client, messages=messages, stream=False)
 
     assert isinstance(exc_info.value, BadRequestError)
 
@@ -180,9 +143,7 @@ async def test_gemini_pdf_page_overflow_for_document(get_openai_client):
     ]
 
     with pytest.raises(Exception) as exc_info:
-        await chat_completion(
-            client, messages, False, None, None, None, None, None, None
-        )
+        await chat_completion(client, messages=messages, stream=False)
 
     assert isinstance(exc_info.value, UnprocessableEntityError)
 
@@ -202,9 +163,7 @@ async def test_gemini_pdf_page_overflow_for_request(get_openai_client):
     ]
 
     with pytest.raises(Exception) as exc_info:
-        await chat_completion(
-            client, messages, False, None, None, None, None, None, None
-        )
+        await chat_completion(client, messages=messages, stream=False)
 
     assert isinstance(exc_info.value, UnprocessableEntityError)
 

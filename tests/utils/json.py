@@ -1,7 +1,7 @@
 from typing import Any, List
 
 
-def match_objects(expected: Any, actual: Any) -> None:
+def match_objects(expected: Any, actual: Any) -> bool:
     if isinstance(expected, dict):
         assert list(sorted(expected.keys())) == list(sorted(actual.keys()))
         for k, v in expected.items():
@@ -18,6 +18,8 @@ def match_objects(expected: Any, actual: Any) -> None:
         assert expected(actual)
     else:
         assert expected == actual
+
+    return True
 
 
 def flatten_obj(obj: Any) -> List[tuple[str, Any]]:

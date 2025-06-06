@@ -5,7 +5,7 @@ import openai
 import pytest
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from tests.utils.dial import get_extra_headers
+from tests.conftest import get_extra_headers
 from tests.utils.openai import chat_completion, configuration, user
 
 _EAST = "us-east5"
@@ -65,7 +65,7 @@ async def test_invalid_configuration(
     deployment_enum, region = deployment
     deployment_id = deployment_enum.value
     client: openai.AsyncAzureOpenAI = get_openai_client(
-        deployment_id, get_extra_headers(region)
+        deployment_id, region=region
     )
 
     configuration, expected_error_message = test
@@ -75,12 +75,6 @@ async def test_invalid_configuration(
             client,
             messages=[user("test")],
             stream=stream,
-            stop=[],
-            max_tokens=None,
-            n=None,
-            functions=None,
-            tools=None,
-            static_tools=None,
             configuration=configuration,
         )
 

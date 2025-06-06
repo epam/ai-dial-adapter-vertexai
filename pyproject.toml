@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aidial-adapter-vertexai"
-version = "0.22.0rc"
+version = "0.23.0rc"
 description = "DIAL adapter for Google Vertex AI"
 authors = ["EPAM RAIL <SpecialEPM-DIALDevTeam@epam.com>"]
 homepage = "https://epam-rail.com"
@@ -8,25 +8,23 @@ documentation = "https://epam-rail.com/dial_api"
 license = "Apache-2.0"
 readme = "README.md"
 keywords = ["ai"]
-classifiers = [
-    "Topic :: Software Development :: Libraries :: Python Modules"
-]
+classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
 repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
 
 [tool.poetry.dependencies]
 python = "~3.11"
-aidial-sdk = {version = "0.20.0", extras = ["telemetry"]}
+aidial-sdk = { version = "0.20.0", extras = ["telemetry"] }
 fastapi = "0.115.2"
 google-cloud-aiplatform = "^1.70.0"
 google-auth = "2.21.0"
 google-genai = "1.12.1"
 openai = "1.13.3"
-anthropic = {extras = ["vertex"], version = "0.52.0"}
+anthropic = { extras = ["vertex"], version = "0.52.0" }
 pydantic = "^2.10.4"
 uvicorn = "0.22.0"
 aiocache = "0.12.2"
 pillow = "^10.3.0"
-pypdf = {version = "^4.3.1", extras = ["crypto"]}
+pypdf = { version = "^4.3.1", extras = ["crypto"] }
 numpy = "^2.0.0"
 aiohttp = "^3.10.11"
 
@@ -58,31 +56,22 @@ google-auth-oauthlib = "1.0.0"
 [tool.pytest.ini_options]
 addopts = "-n=auto --asyncio-mode=auto --self-contained-html --html=pytest.html --alluredir=allure-results --timeout=60"
 env_override_existing_values = 1
+testpaths = ["tests"]
 filterwarnings = [
-    "error",
-    # muting warnings like this: ResourceWarning: unclosed <socket.socket fd=13...
-    "ignore::ResourceWarning:",
-    # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
-    "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
-    "ignore::DeprecationWarning:google.rpc",
-    "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
-    # Pydantic v2 deprecation warnings
-    "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
-    "ignore:The `dict` method is deprecated:DeprecationWarning",
-    "ignore:The `parse_obj` method is deprecated:DeprecationWarning"
+  "error",
+  # muting warnings like this: ResourceWarning: unclosed <socket.socket fd=13...
+  "ignore::ResourceWarning:",
+  # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
+  "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
+  "ignore::DeprecationWarning:google.rpc",
+  "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
 ]
 
 [tool.pyright]
 typeCheckingMode = "basic"
 reportUnusedVariable = "error"
 reportIncompatibleMethodOverride = "error"
-exclude = [
-    ".git",
-    ".venv",
-    ".nox",
-    "**/__pycache__",
-    "~*"
-]
+exclude = [".git", ".venv", ".nox", "**/__pycache__", "~*", "allure-results"]
 
 [tool.black]
 line-length = 80
@@ -92,12 +81,14 @@ exclude = '''
   | \.venv
   | \.nox
   | \.__pycache__
+  | allure-results
 )/
 '''
 
 [tool.isort]
 line_length = 80
 profile = "black"
+skip = [".venv", ".nox", "allure-results"]
 
 [tool.autoflake]
 ignore_init_module_imports = true
@@ -105,7 +96,4 @@ remove_all_unused_imports = true
 in_place = true
 recursive = true
 quiet = true
-exclude = [
-    "\\.venv",
-    "\\.nox",
-]
+exclude = ["\\.venv", "\\.nox", "allure-results"]

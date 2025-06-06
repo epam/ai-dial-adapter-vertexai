@@ -1,15 +1,10 @@
 import json
 import re
-from typing import Any, Callable, List, Mapping, Optional, TypeVar
+from typing import Any, List, Mapping, Required, TypedDict, Unpack
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
-from aidial_sdk.deployment.tokenize import (
-    TokenizeError,
-    TokenizeOutput,
-    TokenizeResponse,
-    TokenizeSuccess,
-)
+from aidial_sdk.deployment.tokenize import TokenizeResponse
 from aidial_sdk.utils.merge_chunks import (
     cleanup_indices,
     merge_chat_completion_chunks,
@@ -43,7 +38,6 @@ from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
-from tests.utils.json import match_objects
 
 
 def sys(content: str) -> ChatCompletionSystemMessageParam:
@@ -189,10 +183,9 @@ class ChatCompletionResult(BaseModel):
     def tool_calls(self) -> List[ChatCompletionMessageToolCall] | None:
         return self.message.tool_calls
 
-    def content_contains_all(self, matches: List[Any]) -> bool:
-        return all(
-            str(match).lower() in self.content.lower() for match in matches
-        )
+    def content_contains_all(self, matches: List[Any]) -> None:
+        for match in matches:
+            assert str(match).lower() in self.content.lower()
 
     @property
     def attachments(self) -> List[Attachment] | None:
@@ -265,62 +258,70 @@ async def configuration(
     return response.json()
 
 
+class ChatCompletionArgs(TypedDict, total=False):
+    messages: Required[List[ChatCompletionMessageParam]]
+    stop: List[str] | None
+    max_tokens: int | None
+    n: int | None
+    functions: List[Function] | None
+    tools: List[ChatCompletionToolParam] | None
+    static_tools: StaticToolsConfig | None
+    configuration: dict | None
+    extra_body: dict | None
+
+
 async def chat_completion(
     client: AsyncAzureOpenAI,
-    messages: List[ChatCompletionMessageParam],
-    stream: bool,
-    stop: Optional[List[str]],
-    max_tokens: Optional[int],
-    n: Optional[int],
-    functions: List[Function] | None,
-    tools: List[ChatCompletionToolParam] | None,
-    static_tools: StaticToolsConfig | None,
-    configuration: dict | None = None,
-    extra_body: dict | None = None,
+    *,
+    stream: bool | None = None,
+    **kwargs: Unpack[ChatCompletionArgs],
 ) -> ChatCompletionResult:
-    extra_body = extra_body or {}
-    if configuration:
-        extra_body = extra_body | {
-            "custom_fields": {"configuration": configuration}
-        }
+    # Using extra_body to override tools, since openai
+    # doesn't support static tools
+    merged_tools = (
+        [
+            StaticTool(
+                type="static_function",
+                static_function=function,
+            ).dict()
+            for function in (static_tools.functions or [])
+        ]
+        if (static_tools := kwargs.get("static_tools"))
+        else []
+    )
+    if tools := kwargs.get("tools"):
+        merged_tools += tools
+
+    extra_body = kwargs.get("extra_body") or {}
+    if merged_tools:
+        extra_body["tools"] = merged_tools
+
+    if configuration := kwargs.get("configuration"):
+        extra_body["custom_fields"] = {"configuration": configuration}
 
     async def get_response() -> ChatCompletion:
-        merged_tools = (
-            [
-                StaticTool(
-                    type="static_function",
-                    static_function=function,
-                ).dict()
-                for function in (static_tools.functions or [])
-            ]
-            if static_tools
-            else []
-        )
-        if tools:
-            merged_tools += tools
+        functions = kwargs.get("functions")
+        tools = kwargs.get("tools")
 
         response = await client.chat.completions.create(
             model="dummy-model",
-            messages=messages,
-            stream=stream,
-            stop=stop,
-            max_tokens=max_tokens,
+            messages=kwargs["messages"],
+            stream=stream or False,
+            stop=kwargs.get("stop"),
+            max_tokens=kwargs.get("max_tokens"),
             temperature=0.0,
-            n=n,
+            n=kwargs.get("n"),
             function_call="auto" if functions is not None else NOT_GIVEN,
             functions=functions or NOT_GIVEN,
             tool_choice="auto" if tools is not None else NOT_GIVEN,
             tools=tools or NOT_GIVEN,
-            # Using extra_body to override tools, since openai
-            # doesn't support static tools
-            extra_body=({"tools": merged_tools} if merged_tools else {})
-            | (extra_body or {}),
+            extra_body=extra_body,
         )
 
         if isinstance(response, AsyncStream):
             chunks: List[dict] = []
             async for chunk in response:
-                chunks.append(chunk.dict())
+                chunks.append(chunk.model_dump())
 
             response_dict = merge_chat_completion_chunks(*chunks)
 
@@ -330,7 +331,7 @@ async def chat_completion(
 
             response_dict["object"] = "chat.completion"
 
-            return ChatCompletion.parse_obj(response_dict)
+            return ChatCompletion.model_validate(response_dict)
         else:
             return response
 
@@ -338,96 +339,26 @@ async def chat_completion(
     return ChatCompletionResult(response=response)
 
 
-def for_all_choices(
-    predicate: Callable[[str], bool], n: int = 1
-) -> Callable[[ChatCompletionResult], bool]:
-    def f(resp: ChatCompletionResult) -> bool:
-        contents = resp.contents
-        assert (
-            len(contents) == n
-        ), f"Expected {n} candidates, got {len(contents)}"
-        return all(predicate(content) for content in contents)
-
-    return f
-
-
-_T = TypeVar("_T")
-
-
-def _make_list(tokens: List[_T] | _T) -> List[_T]:
-    if isinstance(tokens, list):
-        return tokens
-    else:
-        return [tokens]
-
-
-def _create_tokenize_output(value: int | str) -> TokenizeOutput:
-    if isinstance(value, int):
-        return TokenizeSuccess(token_count=value)
-    else:
-        return TokenizeError(error=value)
-
-
-def check_tokenize_response(
-    expected: List[int | str] | int | str,
-) -> Callable[[TokenizeResponse], bool]:
-    expected_list = _make_list(expected)
-    expected_outputs = list(map(_create_tokenize_output, expected_list))
-
-    return lambda resp: expected_outputs == resp.outputs
-
-
 GET_WEATHER_FUNCTION: Function = {
-    "name": "get_current_weather",
-    "description": "Get the current weather",
+    "name": "get_temperature",
+    "description": "Get reliable information about the temperature in the given city",
     "parameters": {
         "type": "object",
         "properties": {
             "location": {
                 "type": "string",
-                "description": "The city and state, e.g. San Francisco, CA",
+                "description": "The city, e.g. San Francisco",
             },
-            "format": {
+            "unit": {
                 "type": "string",
                 "enum": ["celsius", "fahrenheit"],
-                "description": "The temperature unit to use. Infer this from the users location.",
+                "description": "The temperature unit to use. Infer this from the location.",
             },
         },
-        "required": ["location", "format"],
+        "required": ["location", "unit"],
     },
 }
 
 GET_WEATHER_TOOL: ChatCompletionToolParam = function_to_tool(
     GET_WEATHER_FUNCTION
 )
-
-
-def is_valid_function_call(
-    call: FunctionCall | None, expected_name: str, expected_args: Any
-) -> bool:
-    assert call is not None
-    assert call.name == expected_name
-    obj = json.loads(call.arguments)
-    match_objects(expected_args, obj)
-    return True
-
-
-def is_valid_tool_call(
-    calls: List[ChatCompletionMessageToolCall] | None,
-    tool_call_idx: int,
-    check_tool_id: Callable[[str], bool],
-    expected_name: str,
-    expected_args: dict,
-) -> bool:
-    assert calls is not None, "Tool calls are missing"
-    assert tool_call_idx < len(calls), f"Tool call #{tool_call_idx} is missing"
-
-    call = calls[tool_call_idx]
-
-    function = call.function
-    assert check_tool_id(call.id)
-    assert expected_name == function.name
-
-    actual_args = json.loads(function.arguments)
-    match_objects(expected_args, actual_args)
-    return True
