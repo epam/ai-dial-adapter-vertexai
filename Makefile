@@ -5,8 +5,7 @@ DEV_PYTHON ?= 3.11
 DOCKER ?= docker
 VENV_DIR ?= .venv
 POETRY ?= $(VENV_DIR)/bin/poetry
-POETRY_VERSION ?= 1.8.5
-ARGS=
+POETRY_VERSION ?= 2.1.1
 
 .PHONY: all init_env install build serve clean lint format test integration_tests docker_build docker_run
 
@@ -64,6 +63,5 @@ help:
 	@echo 'docker_serve                 - run the dev server from the docker'
 	@echo '-- TESTS --'
 	@echo 'test                         - run unit tests'
-	@echo 'test ARGS=<test_file>        - run all tests in file'
 	@echo 'docker_test                  - run unit tests from the docker'
 	@echo 'integration_tests            - run integration tests'
