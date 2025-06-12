@@ -241,6 +241,23 @@ async def tokenize_request(
     return TokenizeResponse.parse_obj(resp.json())
 
 
+async def configuration(
+    client: httpx.AsyncClient,
+    model: str,
+    extra_headers: Mapping[str, str] | None = None,
+) -> dict | None:
+    response = await client.get(
+        url=f"/openai/deployments/{model}/configuration",
+        headers=extra_headers or {},
+    )
+
+    if response.status_code == 404:
+        return None
+
+    response.raise_for_status()
+    return response.json()
+
+
 class ChatCompletionArgs(TypedDict, total=False):
     messages: Required[List[ChatCompletionMessageParam]]
     stop: List[str] | None
@@ -249,6 +266,7 @@ class ChatCompletionArgs(TypedDict, total=False):
     functions: List[Function] | None
     tools: List[ChatCompletionToolParam] | None
     static_tools: StaticToolsConfig | None
+    configuration: dict | None
     extra_body: dict | None
 
 
@@ -258,7 +276,8 @@ async def chat_completion(
     stream: bool | None = None,
     **kwargs: Unpack[ChatCompletionArgs],
 ) -> ChatCompletionResult:
-
+    # Using extra_body to override tools, since openai
+    # doesn't support static tools
     merged_tools = (
         [
             StaticTool(
@@ -277,6 +296,9 @@ async def chat_completion(
     if merged_tools:
         extra_body["tools"] = merged_tools
 
+    if configuration := kwargs.get("configuration"):
+        extra_body["custom_fields"] = {"configuration": configuration}
+
     async def get_response() -> ChatCompletion:
         functions = kwargs.get("functions")
         tools = kwargs.get("tools")
@@ -293,8 +315,6 @@ async def chat_completion(
             functions=functions or NOT_GIVEN,
             tool_choice="auto" if tools is not None else NOT_GIVEN,
             tools=tools or NOT_GIVEN,
-            # Using extra_body to override tools, since openai
-            # doesn't support static tools
             extra_body=extra_body,
         )
 

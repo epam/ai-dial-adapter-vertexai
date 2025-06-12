@@ -26,7 +26,7 @@ from aidial_adapter_vertexai.chat.gemini.generation_config import (
 )
 from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
 from aidial_adapter_vertexai.chat.gemini.output import (
-    create_attachments_from_citations,
+    create_citations,
     create_function_calls,
     set_usage,
 )
@@ -79,6 +79,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
     @override
     async def parse_prompt(
         self,
+        params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
         messages: List[Message],
@@ -167,7 +168,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
                     candidate, consumer
                 )
 
-                await create_attachments_from_citations(candidate, consumer)
+                await create_citations(candidate, consumer)
                 if openai_reason := to_openai_finish_reason(
                     candidate.finish_reason,
                     consumer.is_empty(),

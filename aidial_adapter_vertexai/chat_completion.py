@@ -1,7 +1,12 @@
 import asyncio
 from typing import List, assert_never
 
-from aidial_sdk.chat_completion import ChatCompletion, Request, Response
+from aidial_sdk.chat_completion import (
+    ChatCompletion,
+    ConfigurationRequest,
+    Request,
+    Response,
+)
 from aidial_sdk.chat_completion.request import ChatCompletionRequest
 from aidial_sdk.deployment.from_request_mixin import FromRequestDeploymentMixin
 from aidial_sdk.deployment.tokenize import (
@@ -61,20 +66,31 @@ class VertexAIChatCompletion(ChatCompletion):
             upstream_config=parse_upstream_config(request),
         )
 
+    @override
+    @dial_exception_decorator
+    async def configuration(self, request: ConfigurationRequest):
+        model = await self._get_model(request)
+        if not is_implemented(model.configuration):
+            raise ResourceNotFoundError("The endpoint is not implemented")
+        cls = await model.configuration()
+        return cls.schema()
+
     @dial_exception_decorator
     async def chat_completion(self, request: Request, response: Response):
         response.set_model(request.deployment_id)
 
+        params = ModelParameters.create(request)
+
         model = await self._get_model(request)
         tools = ToolsConfig.from_request(request)
         static_tools = StaticToolsConfig.from_request(request)
-        prompt = await model.parse_prompt(tools, static_tools, request.messages)
+        prompt = await model.parse_prompt(
+            params, tools, static_tools, request.messages
+        )
 
         if isinstance(prompt, UserError):
             await prompt.report_usage(response)
             raise prompt
-
-        params = ModelParameters.create(request)
 
         # Currently n>1 is emulated by calling the model n times
         n = params.n or 1
@@ -151,10 +167,11 @@ class VertexAIChatCompletion(ChatCompletion):
         self, model: ChatCompletionAdapter, request: ChatCompletionRequest
     ) -> TokenizeOutput:
         try:
+            params = ModelParameters.create(request)
             tools = ToolsConfig.from_request(request)
             static_tools = StaticToolsConfig.from_request(request)
             prompt = await model.parse_prompt(
-                tools, static_tools, request.messages
+                params, tools, static_tools, request.messages
             )
             if isinstance(prompt, UserError):
                 raise prompt
@@ -187,10 +204,11 @@ class VertexAIChatCompletion(ChatCompletion):
             if request.max_prompt_tokens is None:
                 raise ValidationError("max_prompt_tokens is required")
 
+            params = ModelParameters.create(request)
             tools = ToolsConfig.from_request(request)
             static_tools = StaticToolsConfig.from_request(request)
             prompt = await model.parse_prompt(
-                tools, static_tools, request.messages
+                params, tools, static_tools, request.messages
             )
 
             truncated_prompt = await model.truncate_prompt(

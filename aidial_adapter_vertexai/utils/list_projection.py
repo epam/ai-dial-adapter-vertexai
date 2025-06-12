@@ -47,7 +47,3 @@ class ListProjection(Generic[_T]):
             idx_offset + len(list),
             [(elem, {idx}) for idx, elem in enumerate(list, start=idx_offset)],
         )
-
-
-def _to_set(idx: int | Iterable[int]) -> Set[int]:
-    return {idx} if isinstance(idx, int) else set(idx)

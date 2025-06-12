@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import Optional
+from typing import Optional, Tuple
 
 from aidial_sdk.chat_completion import (
     Attachment,
@@ -27,6 +27,11 @@ class Consumer(ABC):
 
     @abstractmethod
     async def add_attachment(self, attachment: Attachment): ...
+
+    @abstractmethod
+    async def add_citation_attachment(
+        self, document_id: int, document: Attachment | None
+    ) -> int: ...
 
     @abstractmethod
     async def set_usage(self, usage: TokenUsage): ...
@@ -59,12 +64,18 @@ class ChoiceConsumer(Consumer):
     Whether the consumer has sent something to the choice or not.
     """
 
+    citations: dict[int, Tuple[int, Attachment | None]]
+    """
+    Mapping from the document ID to a tuple of (1-based display index, attachment).
+    """
+
     def __init__(self, response: Response):
         self.response = response
         self._choice = None
         self.empty = True
         self.usage = TokenUsage()
         self.finish_reason = None
+        self.citations = {}
 
     @property
     def choice(self) -> Choice:
@@ -117,6 +128,24 @@ class ChoiceConsumer(Consumer):
     async def add_attachment(self, attachment: Attachment):
         self.empty = False
         self.choice.add_attachment(attachment)
+
+    async def add_citation_attachment(
+        self, document_id: int, document: Attachment | None
+    ) -> int:
+        if document_id in self.citations:
+            return self.citations[document_id][0]
+
+        display_index = len(self.citations) + 1
+        self.citations[document_id] = (display_index, document)
+
+        if document:
+            document = document.copy()
+            document.title = f"[{display_index}] {document.title or ''}".strip()
+            document.reference_type = document.reference_type or document.type
+            document.reference_url = document.reference_url or document.url
+            await self.add_attachment(document)
+
+        return display_index
 
     async def set_usage(self, usage: TokenUsage):
         # Avoiding the error from DIAL SDK:

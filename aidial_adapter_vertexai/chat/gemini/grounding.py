@@ -85,6 +85,7 @@ async def create_grounding(
                     data=support.segment.text if support.segment else None,
                     title=chunk.web.title,
                     type="text/markdown",
+                    reference_type="text/markdown",
                 )
             )
             grounding_added = True

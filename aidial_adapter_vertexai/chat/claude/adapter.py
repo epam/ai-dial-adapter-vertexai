@@ -1,5 +1,5 @@
 from logging import DEBUG
-from typing import List, assert_never
+from typing import List, Type, assert_never
 
 from aidial_sdk.chat_completion import Message
 from aidial_sdk.exceptions import InternalServerError
@@ -9,13 +9,22 @@ from anthropic.lib.streaming import (
     InputJsonEvent,
     TextEvent,
 )
+from anthropic.lib.streaming._types import (
+    CitationEvent,
+    SignatureEvent,
+    ThinkingEvent,
+)
 from anthropic.types import (
     ContentBlockDeltaEvent,
     ContentBlockStartEvent,
     MessageDeltaEvent,
     MessageStartEvent,
+    RedactedThinkingBlock,
+    ServerToolUseBlock,
     TextBlock,
+    ThinkingBlock,
     ToolUseBlock,
+    WebSearchToolResultBlock,
 )
 from typing_extensions import override
 
@@ -26,6 +35,10 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 from aidial_adapter_vertexai.chat.claude.finish_reason import (
     to_dial_finish_reason,
 )
+from aidial_adapter_vertexai.chat.claude.output import (
+    create_citations,
+    process_tools_block,
+)
 from aidial_adapter_vertexai.chat.claude.params import (
     create_chat_params,
     none_to_not_given,
@@ -34,7 +47,6 @@ from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.chat.claude.prompt.claude_3 import (
     parse_claude_3_prompt,
 )
-from aidial_adapter_vertexai.chat.claude.tools import process_tools_block
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
@@ -50,6 +62,11 @@ from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.pydantic import ExtraForbidModel
+
+
+class ClaudeConfiguration(ExtraForbidModel):
+    enable_citations: bool = False
 
 
 class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
@@ -80,12 +97,19 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         return cls(file_storage, deployment, config.get_anthropic_client())
 
     @override
+    async def configuration(self) -> Type[ClaudeConfiguration]:
+        return ClaudeConfiguration
+
+    @override
     async def parse_prompt(
         self,
+        params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
         messages: List[Message],
     ) -> ClaudePrompt | UserError:
+        configuration = params.parse_configuration(await self.configuration())
+        enable_citations = configuration.enable_citations
 
         static_tools.not_supported()
         match self.deployment.reference_deployment_id:
@@ -99,11 +123,19 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                 | ChatCompletionDeployment.CLAUDE_4_SONNET
             ):
                 return await parse_claude_3_prompt(
-                    self.file_storage, tools, messages, supports_vision=True
+                    self.file_storage,
+                    tools,
+                    messages,
+                    supports_vision=True,
+                    enable_citations=enable_citations,
                 )
             case ChatCompletionDeployment.CLAUDE_3_5_HAIKU:
                 return await parse_claude_3_prompt(
-                    self.file_storage, tools, messages, supports_vision=False
+                    self.file_storage,
+                    tools,
+                    messages,
+                    supports_vision=False,
+                    enable_citations=enable_citations,
                 )
             case _:
                 assert_never(self.deployment)
@@ -135,7 +167,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         claude_params = create_chat_params(params, prompt)
 
         async with self.client.messages.stream(
-            messages=prompt.messages.raw_list,
+            messages=prompt.claude_messages,
             model=self.model_id,
             **claude_params,
         ) as stream:
@@ -159,8 +191,19 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                                 await process_tools_block(
                                     consumer, content_block, tools_mode
                                 )
-                            case TextBlock():
-                                # Already handled in TextEvent
+                            case TextBlock(citations=citations):
+                                # The text content is already handled in TextEvent handler.
+                                for citation in citations or []:
+                                    await create_citations(
+                                        consumer, prompt, citation
+                                    )
+                            # thinking & web search isn't yet supported
+                            case (
+                                ServerToolUseBlock()
+                                | WebSearchToolResultBlock()
+                            ):
+                                pass
+                            case ThinkingBlock() | RedactedThinkingBlock():
                                 pass
                             case _:
                                 assert_never(content_block)
@@ -171,6 +214,8 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                         | ContentBlockStartEvent()
                         | ContentBlockDeltaEvent()
                     ):
+                        pass
+                    case ThinkingEvent() | SignatureEvent() | CitationEvent():
                         pass
                     case _:
                         assert_never(event)
@@ -193,7 +238,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         claude_params = create_chat_params(params, prompt)
 
         message = await self.client.messages.create(
-            messages=prompt.messages.raw_list,
+            messages=prompt.claude_messages,
             model=self.model_id,
             **claude_params,
             stream=False,
@@ -204,10 +249,17 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
 
         for content in message.content:
             match content:
-                case TextBlock(text=text):
+                case TextBlock(text=text, citations=citations):
                     await consumer.append_content(text)
+                    for citation in citations or []:
+                        await create_citations(consumer, prompt, citation)
                 case ToolUseBlock():
                     await process_tools_block(consumer, content, tools_mode)
+                # thinking & web search isn't yet supported
+                case ServerToolUseBlock() | WebSearchToolResultBlock():
+                    pass
+                case ThinkingBlock() | RedactedThinkingBlock():
+                    pass
                 case _:
                     assert_never(content)
 
@@ -235,8 +287,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         )
 
         return TruncatedPrompt(
-            prompt=prompt,
-            discarded_messages=list(prompt.messages.get_removed_indices()),
+            prompt=prompt, discarded_messages=prompt.removed_indices
         )
 
     @override
@@ -244,7 +295,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         return (
             await self.client.messages.count_tokens(
                 model=self.model_id,
-                messages=prompt.messages.raw_list,
+                messages=prompt.claude_messages,
                 system=none_to_not_given(prompt.system),
                 tools=none_to_not_given(prompt.tools.to_claude_tools()),
                 tool_choice=none_to_not_given(

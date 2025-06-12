@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, TypeVar
+from typing import Generic, List, Type, TypeVar
 
 from aidial_sdk.chat_completion import Message
+from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
@@ -18,6 +19,7 @@ class ChatCompletionAdapter(ABC, Generic[P]):
     @abstractmethod
     async def parse_prompt(
         self,
+        params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
         messages: List[Message],
@@ -29,6 +31,9 @@ class ChatCompletionAdapter(ABC, Generic[P]):
         self, params: ModelParameters, consumer: Consumer, prompt: P
     ) -> None:
         pass
+
+    @not_implemented
+    async def configuration(self) -> Type[BaseModel]: ...
 
     @not_implemented
     async def truncate_prompt(

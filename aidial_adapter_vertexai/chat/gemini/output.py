@@ -33,20 +33,23 @@ def _is_absolute_url(uri: str) -> bool:
     return bool(parsed.scheme and parsed.netloc)
 
 
-async def create_attachments_from_citations(
+async def create_citations(
     candidate: Candidate | GenAICandidate, consumer: Consumer
 ) -> None:
-    citation_metadata = candidate.citation_metadata
-
-    if citation_metadata is None or not citation_metadata.citations:
+    if (citation_metadata := candidate.citation_metadata) is None:
         return None
 
-    for citation in citation_metadata.citations:
-        uri = citation.uri
-        if uri:
+    for citation in citation_metadata.citations or []:
+        if uri := citation.uri:
             if _is_absolute_url(uri):
                 await consumer.add_attachment(
-                    Attachment(url=uri, title=citation.title)
+                    Attachment(
+                        title=citation.title,
+                        type="text/markdown",
+                        url=uri,
+                        reference_url=uri,
+                        reference_type="text/markdown",
+                    )
                 )
             else:
                 log.error(f"Gemini provided invalid citation URI: {uri!r}.")

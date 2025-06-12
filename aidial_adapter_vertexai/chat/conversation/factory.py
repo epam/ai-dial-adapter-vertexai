@@ -1,13 +1,26 @@
 from abc import ABC, abstractmethod
 from typing import Generic, List, TypeVar
 
-from aidial_sdk.chat_completion.request import Role
+from aidial_sdk.chat_completion import Message as DialMessage
+from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
+from aidial_adapter_vertexai.dial_api.resource import DialResource
 
 PartT = TypeVar("PartT")
 ContentT = TypeVar("ContentT")
 ConversationT = TypeVar("ConversationT", bound=BaseConversation)
+
+
+class Parts(BaseModel, Generic[PartT]):
+    parts: List[PartT] = []
+    resources: List[DialResource] = []
+
+    def append_part(self, part: PartT):
+        self.parts.append(part)
+
+    def append_resource(self, resource: DialResource):
+        self.resources.append(resource)
 
 
 class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
@@ -28,7 +41,9 @@ class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
     ) -> PartT: ...
 
     @abstractmethod
-    def create_content(self, role: Role, parts: List[PartT]) -> ContentT: ...
+    def create_content(
+        self, dial_message: DialMessage, parts: Parts[PartT]
+    ) -> ContentT: ...
 
     @abstractmethod
     def create_conversation(

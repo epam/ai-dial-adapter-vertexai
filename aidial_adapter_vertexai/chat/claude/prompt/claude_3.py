@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Literal
 
 from aidial_sdk.chat_completion import Message
 from anthropic.types import MessageParam, TextBlockParam
@@ -6,18 +6,24 @@ from anthropic.types import MessageParam, TextBlockParam
 from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessor,
     AttachmentProcessorsBase,
-    max_count_validator,
 )
 from aidial_adapter_vertexai.chat.claude.conversation_factory import (
     SUPPORTED_IMAGE_TYPES,
     ClaudeConversationFactory,
     ClaudePart,
 )
-from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
+from aidial_adapter_vertexai.chat.claude.prompt.base import (
+    ClaudeMessage,
+    ClaudePrompt,
+)
 from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.gemini.processors import (
+    get_pdf_processor,
+    get_plain_text_processor,
+)
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.list import MessageMergeStrategy
@@ -33,16 +39,32 @@ async def parse_claude_3_prompt(
     messages: List[Message],
     *,
     supports_vision: bool,
+    enable_citations: bool,
 ) -> ClaudePrompt | UserError:
 
     if len(messages) == 0:
         raise ValidationError("The chat history must have at least one message")
 
-    conversation_factory = ClaudeConversationFactory()
+    # We do not check the number/sizes of PDFs, images and other attachments.
+    # They are constantly changing and different for different models.
+    # It's user's responsibility to keep track of the model limits.
+    #
+    # Image limits: https://docs.anthropic.com/en/docs/build-with-claude/vision#basics-and-limits
+    # PDF limits: https://docs.anthropic.com/en/docs/build-with-claude/pdf-support#check-pdf-requirements
 
+    procs: List[AttachmentProcessor] = [
+        get_pdf_processor(),
+        get_plain_text_processor(),
+    ]
+    if supports_vision:
+        procs.append(get_image_processor())
+
+    conversation_factory = ClaudeConversationFactory(
+        enable_citations=enable_citations
+    )
     processors = AttachmentProcessorsClaude(
         conversation_factory=conversation_factory,
-        processors=[_create_image_processor(20)] if supports_vision else [],
+        processors=procs,
         file_storage=file_storage,
     )
 
@@ -58,13 +80,24 @@ async def parse_claude_3_prompt(
     return ClaudePrompt(conversation=conversation, tools=tools)
 
 
-class MessageMerger(MessageMergeStrategy[MessageParam]):
+class MessageMerger(MessageMergeStrategy[ClaudeMessage]):
     @staticmethod
-    def role(message: MessageParam) -> str:
-        return message["role"]
+    def role(message: ClaudeMessage) -> Literal["user", "assistant"]:
+        return message.claude_message["role"]
 
     @staticmethod
-    def merge(a: MessageParam, b: MessageParam) -> MessageParam:
+    def merge(a: ClaudeMessage, b: ClaudeMessage) -> ClaudeMessage:
+        claude_message = MessageMerger.merge_claude_messages(
+            a.claude_message, b.claude_message
+        )
+        dial_messages = a.dial_resources + b.dial_resources
+        return ClaudeMessage(
+            claude_message=claude_message,
+            dial_resources=dial_messages,
+        )
+
+    @staticmethod
+    def merge_claude_messages(a: MessageParam, b: MessageParam) -> MessageParam:
         if a["role"] != b["role"]:
             raise ValueError("Cannot merge messages with different roles")
 
@@ -82,12 +115,8 @@ class MessageMerger(MessageMergeStrategy[MessageParam]):
         )
 
 
-def _create_image_processor(max_count: int) -> AttachmentProcessor:
-    # NOTE: not checked condition: The maximum allowed image file size is 5 MB
-    return AttachmentProcessor(
-        file_types=SUPPORTED_IMAGE_TYPES,
-        init_validator=max_count_validator("image", max_count),
-    )
+def get_image_processor() -> AttachmentProcessor:
+    return AttachmentProcessor(file_types=SUPPORTED_IMAGE_TYPES)
 
 
 def get_usage_message(exts: List[str]) -> str:
