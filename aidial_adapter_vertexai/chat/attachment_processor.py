@@ -210,7 +210,8 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
                 for part in content:
                     match part:
                         case MessageContentTextPart(text=text):
-                            collect_text(text)
+                            if text:
+                                collect_text(text)
                         case MessageContentImagePart(image_url=image_url):
                             await collect_resource(
                                 URLResource(

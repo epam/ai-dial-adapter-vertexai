@@ -9,7 +9,7 @@ from openai import UnprocessableEntityError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.integration_tests.constants import DOG_PICTURE
-from tests.utils.exception import expected_exception
+from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
     ChatCompletionArgs,
@@ -77,6 +77,30 @@ def is_retired_model(deployment: D) -> bool:
     }
 
 
+def is_vision_model(deployment: D) -> bool:
+    return deployment in [
+        D.GEMINI_PRO_VISION_1,
+        D.GEMINI_PRO_1_5_V2,
+        D.GEMINI_FLASH_1_5_V2,
+        D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
+        D.GEMINI_2_0_PRO_EXP_02_05,
+        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+        D.GEMINI_2_0_FLASH_EXP,
+        D.GEMINI_2_0_FLASH_001,
+        D.CLAUDE_3_5_SONNET_V2,
+        # Upstream returns 'claude-3-5-haiku-20241022 does not support images.'
+        # D.CLAUDE_3_5_HAIKU,
+        # This model hallucinates on a the test image
+        # D.CLAUDE_3_OPUS,
+        D.CLAUDE_3_5_SONNET,
+        D.CLAUDE_3_HAIKU,
+        D.CLAUDE_3_7_SONNET,
+        D.CLAUDE_4_OPUS,
+        D.CLAUDE_4_SONNET,
+    ]
+
+
 def select(p: Selector[D], xs: List[D]) -> List[D]:
     return [x for x in xs if p(x)]
 
@@ -84,6 +108,7 @@ def select(p: Selector[D], xs: List[D]) -> List[D]:
 all_deployments = list(_DEPLOYMENT_TO_REGION.keys())
 deployments = select(~pred(is_retired_model), all_deployments)
 retired_deployments = select(pred(is_retired_model), all_deployments)
+vision_deployments = select(pred(is_vision_model), deployments)
 
 
 def supports_json_object_response_format(
@@ -148,30 +173,6 @@ def supports_grounding(deployment: D) -> bool:
     return "gemini" in deployment.value
 
 
-def is_vision_model(deployment: D) -> bool:
-    return deployment in [
-        D.GEMINI_PRO_VISION_1,
-        D.GEMINI_PRO_1_5_V2,
-        D.GEMINI_FLASH_1_5_V2,
-        D.GEMINI_2_5_PRO_EXP_03_25,
-        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        D.GEMINI_2_0_PRO_EXP_02_05,
-        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-        D.GEMINI_2_0_FLASH_EXP,
-        D.GEMINI_2_0_FLASH_001,
-        D.CLAUDE_3_5_SONNET_V2,
-        # Upstream returns 'claude-3-5-haiku-20241022 does not support images.'
-        # D.CLAUDE_3_5_HAIKU,
-        # This model hallucinates on a the test image
-        # D.CLAUDE_3_OPUS,
-        D.CLAUDE_3_5_SONNET,
-        D.CLAUDE_3_HAIKU,
-        D.CLAUDE_3_7_SONNET,
-        D.CLAUDE_4_OPUS,
-        D.CLAUDE_4_SONNET,
-    ]
-
-
 def support_thinking(deployment: D) -> bool:
     return deployment in [
         # Gemini 2.5 doesn't emit thinking tokens into a separate output,
@@ -208,6 +209,22 @@ def stream(request) -> bool:
 @pytest.fixture
 def openai_client(deployment: D, region: str, get_openai_client):
     return get_openai_client(deployment.value, region=region)
+
+
+@pytest.fixture(
+    params=[
+        user_with_attachment_data,
+        user_with_attachment_url,
+        user_with_image_url,
+    ],
+    ids=[
+        "attachment_data",
+        "attachment_data_url",
+        "content_part_image_url",
+    ],
+)
+def create_message_with_image(request) -> Callable:
+    return request.param
 
 
 Chat = Callable[..., Awaitable[ChatCompletionResult]]
@@ -335,30 +352,96 @@ async def test_stop_sequence(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
-    select(pred(is_vision_model), deployments),
-    ids=display_deployment,
+    "deployment", vision_deployments, ids=display_deployment
 )
-@pytest.mark.parametrize(
-    "message_factory",
-    [
-        user_with_attachment_data,
-        user_with_attachment_url,
-        user_with_image_url,
-    ],
-    ids=[
-        "attachment_data",
-        "attachment_data_url",
-        "content_part_image_url",
-    ],
-)
-async def test_vision(deployment: D, chat: Chat, message_factory):
-    user_message = message_factory("describe the image", DOG_PICTURE)
-    messages = [sys("be a helpful assistant"), user_message]
-    max_tokens = 1000 if support_thinking(deployment) else 100
+async def test_vision_single_turn_with_text_part(
+    deployment: D, chat: Chat, create_message_with_image
+):
+    messages = [create_message_with_image("describe the image", DOG_PICTURE)]
+    await _run_test_vision(deployment, chat, messages, "dog")
 
-    response = await chat(max_tokens=max_tokens, messages=messages)
-    assert "dog" in response.content.lower()
+
+@pytest.fixture
+def missing_text_prompt_error(deployment: D) -> ExpectedException | None:
+    if "gemini" in deployment.value:
+        # Gemini requires some non-system text input to be always supplied.
+        return ExpectedException(
+            type=openai.BadRequestError,
+            message="Unable to submit request because it must have a text parameter. Add a text parameter and try again",
+            status_code=400,
+        )
+    return None
+
+
+@pytest.mark.parametrize(
+    "deployment", vision_deployments, ids=display_deployment
+)
+async def test_vision_single_turn_with_empty_text_part(
+    deployment: D,
+    chat: Chat,
+    create_message_with_image,
+    missing_text_prompt_error,
+):
+    messages = [create_message_with_image("", DOG_PICTURE)]
+    expected = missing_text_prompt_error or "dog"
+    await _run_test_vision(deployment, chat, messages, expected)
+
+
+@pytest.mark.parametrize(
+    "deployment", vision_deployments, ids=display_deployment
+)
+async def test_vision_single_turn_without_text_part(
+    deployment: D, chat: Chat, missing_text_prompt_error
+):
+    messages = [user_with_image_url(None, DOG_PICTURE)]
+    expected = missing_text_prompt_error or "dog"
+    await _run_test_vision(deployment, chat, messages, expected)
+
+
+@pytest.mark.parametrize(
+    "deployment", vision_deployments, ids=display_deployment
+)
+async def test_vision_two_turns(
+    deployment: D, chat: Chat, create_message_with_image
+):
+    user_message = create_message_with_image("", DOG_PICTURE)
+    messages = [
+        sys("describe an image when you receive it"),
+        user("2+3=?"),
+        ai("5"),
+        user_message,
+    ]
+    await _run_test_vision(deployment, chat, messages, "dog")
+
+
+@pytest.mark.parametrize(
+    "deployment", vision_deployments, ids=display_deployment
+)
+async def test_vision_single_turn_with_system(
+    deployment: D,
+    chat: Chat,
+    create_message_with_image,
+    missing_text_prompt_error,
+):
+    user_message = create_message_with_image("", DOG_PICTURE)
+    messages = [sys("describe an image when you receive it"), user_message]
+    expected = missing_text_prompt_error or "dog"
+    await _run_test_vision(deployment, chat, messages, expected)
+
+
+async def _run_test_vision(
+    deployment: D, chat: Chat, messages, expected: str | ExpectedException
+):
+    async def _run():
+        max_tokens = 1000 if support_thinking(deployment) else 100
+        return await chat(max_tokens=max_tokens, messages=messages)
+
+    if isinstance(expected, ExpectedException):
+        async with expected_exception(expected):
+            await _run()
+    else:
+        response = await _run()
+        assert expected in response.content.lower()
 
 
 @pytest.mark.parametrize(
