@@ -82,7 +82,7 @@ async def _message_to_parts(
                 )
             return await processors.process_message(message)
         case Role.USER:
-            if not content:
+            if content is None:
                 raise ValidationError("User message content must be present")
             return await processors.process_message(message)
 
