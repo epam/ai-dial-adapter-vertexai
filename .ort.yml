@@ -34,3 +34,6 @@ resolutions:
     - message: ".*PyPI::setuptools:78\\.1\\.1.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: 'MIT License: https://github.com/pypa/setuptools/blob/v78.1.1/LICENSE'
+    - message: ".*PyPI::urllib3:2\\.5\\.0.*"
+      reason: "CANT_FIX_EXCEPTION"
+      comment: 'MIT License: https://github.com/urllib3/urllib3/blob/2.5.0/LICENSE.txt'
