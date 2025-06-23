@@ -81,9 +81,11 @@ async def get_chat_completion_model(
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
             | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
+            | ChatCompletionDeployment.GEMINI_2_5_PRO
             | ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25
             | ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1
+            | ChatCompletionDeployment.GEMINI_2_5_FLASH
             | ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17
         ):
             return await GeminiGenAIChatCompletionAdapter.create(
