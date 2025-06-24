@@ -58,6 +58,10 @@ def to_dial_exception(e: Exception) -> DialException:
             message = e.message
 
         code = e.status_code
+        # Strangely, Anthropic returns 200 status code with the Overloaded exception.
+        if code == 200 and message == "Overloaded":
+            code = 503
+
         return DialException(
             status_code=code,
             type=_get_exception_type(code),

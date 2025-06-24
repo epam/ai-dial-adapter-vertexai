@@ -107,10 +107,12 @@ class GeminiGenAIChatCompletionAdapter(
                 | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
                 | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
                 | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
+                | ChatCompletionDeployment.GEMINI_2_5_PRO
                 | ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25
                 | ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25
                 | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1
                 | ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17
+                | ChatCompletionDeployment.GEMINI_2_5_FLASH
             ):
                 return await Gemini_2_Prompt.parse(
                     self.file_storage, tools, static_tools, messages

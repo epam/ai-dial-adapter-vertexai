@@ -14,8 +14,8 @@ The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYME
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
-|Gemini 2.5 Flash|gemini-2.5-flash-preview-04-17|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 2.5 Pro|gemini-2.5-pro-exp-03-25/gemini-2.5-pro-preview-03-25|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.5 Flash|gemini-2.5-(flash\|flash-preview-04-17)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.5 Pro|gemini-2.5-(pro\|pro-exp-03-25\|pro-preview-03-25)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-01-21|text-to-text|✅|✅|❌|❌|
