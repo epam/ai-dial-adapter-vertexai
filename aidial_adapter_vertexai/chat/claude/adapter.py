@@ -3,29 +3,54 @@ from typing import List, Type, assert_never
 
 from aidial_sdk.chat_completion import Message
 from aidial_sdk.exceptions import InternalServerError
-from anthropic import AsyncAnthropic, AsyncAnthropicVertex, MessageStopEvent
+from anthropic import AsyncAnthropic, AsyncAnthropicVertex
+from anthropic._resource import AsyncAPIResource
 from anthropic.lib.streaming import (
-    ContentBlockStopEvent,
-    InputJsonEvent,
-    TextEvent,
+    BetaContentBlockStopEvent as ContentBlockStopEvent,
 )
-from anthropic.lib.streaming._types import (
-    CitationEvent,
-    SignatureEvent,
-    ThinkingEvent,
+from anthropic.lib.streaming import BetaInputJsonEvent as InputJsonEvent
+from anthropic.lib.streaming import BetaTextEvent as TextEvent
+from anthropic.lib.streaming._beta_types import (
+    BetaCitationEvent as CitationEvent,
 )
-from anthropic.types import (
-    ContentBlockDeltaEvent,
-    ContentBlockStartEvent,
-    MessageDeltaEvent,
-    MessageStartEvent,
-    RedactedThinkingBlock,
-    ServerToolUseBlock,
-    TextBlock,
-    ThinkingBlock,
-    ToolUseBlock,
-    WebSearchToolResultBlock,
+from anthropic.lib.streaming._beta_types import (
+    BetaMessageStopEvent as MessageStopEvent,
 )
+from anthropic.lib.streaming._beta_types import (
+    BetaSignatureEvent as SignatureEvent,
+)
+from anthropic.lib.streaming._beta_types import (
+    BetaThinkingEvent as ThinkingEvent,
+)
+from anthropic.resources.beta import AsyncMessages as FirstPartyAsyncMessagesAPI
+from anthropic.types.anthropic_beta_param import AnthropicBetaParam
+from anthropic.types.beta import (
+    BetaCodeExecutionToolResultBlock as CodeExecutionToolResultBlock,
+)
+from anthropic.types.beta import (
+    BetaContainerUploadBlock as ContainerUploadBlock,
+)
+from anthropic.types.beta import BetaMCPToolResultBlock as MCPToolResultBlock
+from anthropic.types.beta import BetaMCPToolUseBlock as MCPToolUseBlock
+from anthropic.types.beta import (
+    BetaRawContentBlockDeltaEvent as ContentBlockDeltaEvent,
+)
+from anthropic.types.beta import (
+    BetaRawContentBlockStartEvent as ContentBlockStartEvent,
+)
+from anthropic.types.beta import BetaRawMessageDeltaEvent as MessageDeltaEvent
+from anthropic.types.beta import BetaRawMessageStartEvent as MessageStartEvent
+from anthropic.types.beta import (
+    BetaRedactedThinkingBlock as RedactedThinkingBlock,
+)
+from anthropic.types.beta import BetaServerToolUseBlock as ServerToolUseBlock
+from anthropic.types.beta import BetaTextBlock as TextBlock
+from anthropic.types.beta import BetaThinkingBlock as ThinkingBlock
+from anthropic.types.beta import BetaToolUseBlock as ToolUseBlock
+from anthropic.types.beta import (
+    BetaWebSearchToolResultBlock as WebSearchToolResultBlock,
+)
+from pydantic.v1 import Field
 from typing_extensions import override
 
 from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
@@ -65,8 +90,23 @@ from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.pydantic import ExtraForbidModel
 
 
+# Beta AsyncMessages doesn't provide stream and count_tokens,
+# so we enabled it via the adapter.
+class _AsyncMessagesAdapter(AsyncAPIResource):
+    create = FirstPartyAsyncMessagesAPI.create
+    stream = FirstPartyAsyncMessagesAPI.stream
+    count_tokens = FirstPartyAsyncMessagesAPI.count_tokens
+
+    def __init__(self, resource: AsyncAPIResource):
+        super().__init__(resource._client)
+
+
 class ClaudeConfiguration(ExtraForbidModel):
     enable_citations: bool = False
+    betas: List[AnthropicBetaParam] | None = Field(
+        default=None,
+        description="List of beta features to enable. Make sure to check if the given feature is supported by the Claude deployment you are using.",
+    )
 
 
 class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
@@ -163,10 +203,11 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     async def _invoke_streaming(
         self, params: ModelParameters, consumer: Consumer, prompt: ClaudePrompt
     ):
+        configuration = params.parse_configuration(await self.configuration())
         tools_mode = prompt.tools.tools_mode
-        claude_params = create_chat_params(params, prompt)
+        claude_params = create_chat_params(params, prompt, configuration.betas)
 
-        async with self.client.messages.stream(
+        async with _AsyncMessagesAdapter(self.client.beta.messages).stream(
             messages=prompt.claude_messages,
             model=self.model_id,
             **claude_params,
@@ -203,7 +244,14 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                                 | WebSearchToolResultBlock()
                             ):
                                 pass
-                            case ThinkingBlock() | RedactedThinkingBlock():
+                            case (
+                                ThinkingBlock()
+                                | RedactedThinkingBlock()
+                                | CodeExecutionToolResultBlock()
+                                | MCPToolUseBlock()
+                                | MCPToolResultBlock()
+                                | ContainerUploadBlock()
+                            ):
                                 pass
                             case _:
                                 assert_never(content_block)
@@ -234,10 +282,11 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     async def _invoke_non_streaming(
         self, params: ModelParameters, consumer: Consumer, prompt: ClaudePrompt
     ):
+        configuration = params.parse_configuration(await self.configuration())
         tools_mode = prompt.tools.tools_mode
-        claude_params = create_chat_params(params, prompt)
+        claude_params = create_chat_params(params, prompt, configuration.betas)
 
-        message = await self.client.messages.create(
+        message = await self.client.beta.messages.create(
             messages=prompt.claude_messages,
             model=self.model_id,
             **claude_params,
@@ -258,7 +307,14 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                 # thinking & web search isn't yet supported
                 case ServerToolUseBlock() | WebSearchToolResultBlock():
                     pass
-                case ThinkingBlock() | RedactedThinkingBlock():
+                case (
+                    ThinkingBlock()
+                    | RedactedThinkingBlock()
+                    | CodeExecutionToolResultBlock()
+                    | ContainerUploadBlock()
+                    | MCPToolUseBlock()
+                    | MCPToolResultBlock()
+                ):
                     pass
                 case _:
                     assert_never(content)
@@ -293,7 +349,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     @override
     async def count_prompt_tokens(self, prompt: ClaudePrompt) -> int:
         return (
-            await self.client.messages.count_tokens(
+            await _AsyncMessagesAdapter(self.client.beta.messages).count_tokens(
                 model=self.model_id,
                 messages=prompt.claude_messages,
                 system=none_to_not_given(prompt.system),

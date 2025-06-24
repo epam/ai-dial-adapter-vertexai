@@ -4,8 +4,9 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import List, Self, Set
 
-from anthropic.types import MessageParam, TextBlockParam
-from anthropic.types import ToolParam as ClaudeTool
+from anthropic.types.beta import BetaMessageParam as MessageParam
+from anthropic.types.beta import BetaTextBlockParam as TextBlockParam
+from anthropic.types.beta import BetaToolParam as ClaudeTool
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.tools import ToolsConfig

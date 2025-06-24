@@ -5,19 +5,26 @@ from typing import List, Literal, assert_never
 from aidial_sdk.chat_completion.request import Message as DialMessage
 from aidial_sdk.chat_completion.request import Role
 from aidial_sdk.exceptions import InvalidRequestError
-from anthropic.types import (
-    Base64PDFSourceParam,
-    CitationsConfigParam,
-    ContentBlock,
-    DocumentBlockParam,
-    ImageBlockParam,
-    MessageParam,
-    PlainTextSourceParam,
-    TextBlockParam,
-    ToolResultBlockParam,
-    ToolUseBlockParam,
+from anthropic.types.beta import (
+    BetaBase64ImageSourceParam as Base64ImageSourceParam,
 )
-from anthropic.types.base64_image_source_param import Base64ImageSourceParam
+from anthropic.types.beta import BetaBase64PDFBlockParam as DocumentBlockParam
+from anthropic.types.beta import (
+    BetaBase64PDFSourceParam as Base64PDFSourceParam,
+)
+from anthropic.types.beta import (
+    BetaCitationsConfigParam as CitationsConfigParam,
+)
+from anthropic.types.beta import BetaImageBlockParam as ImageBlockParam
+from anthropic.types.beta import BetaMessageParam as MessageParam
+from anthropic.types.beta import (
+    BetaPlainTextSourceParam as PlainTextSourceParam,
+)
+from anthropic.types.beta import BetaTextBlockParam as TextBlockParam
+from anthropic.types.beta import (
+    BetaToolResultBlockParam as ToolResultBlockParam,
+)
+from anthropic.types.beta import BetaToolUseBlockParam as ToolUseBlockParam
 
 from aidial_adapter_vertexai.chat.attachment_processor import FileTypes
 from aidial_adapter_vertexai.chat.claude.prompt.base import (
@@ -35,7 +42,6 @@ ClaudePart = (
     | ToolUseBlockParam
     | ToolResultBlockParam
     | DocumentBlockParam
-    | ContentBlock
 )
 
 SUPPORTED_IMAGE_TYPES: FileTypes = {

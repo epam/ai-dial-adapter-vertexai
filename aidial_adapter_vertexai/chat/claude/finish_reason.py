@@ -1,7 +1,7 @@
 from typing import assert_never
 
 from aidial_sdk.chat_completion import FinishReason as DialFinishReason
-from anthropic.types import StopReason as ClaudeFinishReason
+from anthropic.types.beta import BetaStopReason as ClaudeFinishReason
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsMode
