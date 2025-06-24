@@ -8,7 +8,7 @@ from openai import UnprocessableEntityError
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
-from tests.integration_tests.constants import DOG_PICTURE
+from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
@@ -42,10 +42,11 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     D.GEMINI_2_0_FLASH_001: _CENTRAL,
     D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
+    D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
     D.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
-    D.GEMINI_2_5_FLASH_PREVIEW_04_17: _CENTRAL,
+    D.GEMINI_2_5_FLASH: _CENTRAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
     D.CLAUDE_3_5_HAIKU: _EAST,
     D.CLAUDE_3_OPUS: _EAST,
@@ -82,6 +83,8 @@ def is_vision_model(deployment: D) -> bool:
         D.GEMINI_PRO_VISION_1,
         D.GEMINI_PRO_1_5_V2,
         D.GEMINI_FLASH_1_5_V2,
+        D.GEMINI_2_5_FLASH,
+        D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
         D.GEMINI_2_0_PRO_EXP_02_05,
@@ -145,8 +148,10 @@ def supports_tools(deployment: D) -> bool:
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
         D.GEMINI_2_0_PRO_EXP_02_05,
+        D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_0_FLASH_LITE_1,
+        D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
@@ -159,8 +164,10 @@ def supports_parallel_tool_calls(deployment: D) -> bool:
         D.CLAUDE_3_OPUS,
         D.CLAUDE_3_5_SONNET,
         # D.CLAUDE_3_7_SONNET,
+        D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_0_FLASH_LITE_1,
+        D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
@@ -177,7 +184,9 @@ def support_thinking(deployment: D) -> bool:
     return deployment in [
         # Gemini 2.5 doesn't emit thinking tokens into a separate output,
         # it's all the part of the completion tokens.
+        D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
@@ -358,7 +367,7 @@ async def test_vision_single_turn_with_text_part(
     deployment: D, chat: Chat, create_message_with_image
 ):
     messages = [create_message_with_image("describe the image", DOG_PICTURE)]
-    await _run_test_vision(deployment, chat, messages, "dog")
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.fixture
@@ -383,7 +392,7 @@ async def test_vision_single_turn_with_empty_text_part(
     missing_text_prompt_error,
 ):
     messages = [create_message_with_image("", DOG_PICTURE)]
-    expected = missing_text_prompt_error or "dog"
+    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
     await _run_test_vision(deployment, chat, messages, expected)
 
 
@@ -394,7 +403,7 @@ async def test_vision_single_turn_without_text_part(
     deployment: D, chat: Chat, missing_text_prompt_error
 ):
     messages = [user_with_image_url(None, DOG_PICTURE)]
-    expected = missing_text_prompt_error or "dog"
+    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
     await _run_test_vision(deployment, chat, messages, expected)
 
 
@@ -411,7 +420,7 @@ async def test_vision_two_turns(
         ai("5"),
         user_message,
     ]
-    await _run_test_vision(deployment, chat, messages, "dog")
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -425,15 +434,18 @@ async def test_vision_single_turn_with_system(
 ):
     user_message = create_message_with_image("", DOG_PICTURE)
     messages = [sys("describe an image when you receive it"), user_message]
-    expected = missing_text_prompt_error or "dog"
+    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
     await _run_test_vision(deployment, chat, messages, expected)
 
 
 async def _run_test_vision(
-    deployment: D, chat: Chat, messages, expected: str | ExpectedException
+    deployment: D,
+    chat: Chat,
+    messages,
+    expected: str | List[str] | ExpectedException,
 ):
     async def _run():
-        max_tokens = 1000 if support_thinking(deployment) else 100
+        max_tokens = 2000 if support_thinking(deployment) else 100
         return await chat(max_tokens=max_tokens, messages=messages)
 
     if isinstance(expected, ExpectedException):
@@ -441,7 +453,8 @@ async def _run_test_vision(
             await _run()
     else:
         response = await _run()
-        assert expected in response.content.lower()
+        substrings = [expected] if isinstance(expected, str) else expected
+        assert any(s in response.content.lower() for s in substrings)
 
 
 @pytest.mark.parametrize(
