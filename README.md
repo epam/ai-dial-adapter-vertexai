@@ -66,6 +66,18 @@ The Claude models accept a configuration flag that enables document citations in
 
 Not every Claude model supports citations. Refer to the [official documentation](https://docs.anthropic.com/en/docs/build-with-claude/citations) before utilizing any flags.
 
+Besides that Claude models support beta flags.
+The whole list of flags could be found in the [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/types/anthropic_beta_param.py).
+
+The most notable beta flags are:
+
+|Configuration|Comment|Scope|
+|---|---|---|
+|`{"betas": ["token-efficient-tools-2025-02-19"]}`|[Token-efficient tool use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use/token-efficient-tool-use)|Claude 3.7 Sonnet|
+|`{"betas": ["output-128k-2025-02-19"]}`|[Extended output length](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#extended-output-capabilities-beta)|Claude 3.7 Sonnet|
+
+Not every model supports all flags. Refer to the official documentation before utilizing any flags.
+
 ### Embedding models
 
 The following models support `$SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:

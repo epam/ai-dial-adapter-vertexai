@@ -1,14 +1,20 @@
 import json
 from typing import assert_never
 
-from anthropic.types import (
-    CitationCharLocation,
-    CitationContentBlockLocation,
-    CitationPageLocation,
-    CitationsWebSearchResultLocation,
-    TextCitation,
-    ToolUseBlock,
+from anthropic.types.beta import (
+    BetaCitationCharLocation as CitationCharLocation,
 )
+from anthropic.types.beta import (
+    BetaCitationContentBlockLocation as CitationContentBlockLocation,
+)
+from anthropic.types.beta import (
+    BetaCitationPageLocation as CitationPageLocation,
+)
+from anthropic.types.beta import (
+    BetaCitationsWebSearchResultLocation as CitationsWebSearchResultLocation,
+)
+from anthropic.types.beta import BetaTextCitation as TextCitation
+from anthropic.types.beta import BetaToolUseBlock as ToolUseBlock
 
 from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.chat.consumer import Consumer

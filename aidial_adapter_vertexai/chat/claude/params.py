@@ -1,8 +1,10 @@
 from typing import Iterable, List, TypedDict, TypeVar, Union
 
 from anthropic import NOT_GIVEN, NotGiven
-from anthropic.types import TextBlockParam, ToolParam
-from anthropic.types.message_create_params import ToolChoice
+from anthropic.types.anthropic_beta_param import AnthropicBetaParam
+from anthropic.types.beta import BetaTextBlockParam as TextBlockParam
+from anthropic.types.beta import BetaToolChoiceParam as ToolChoice
+from anthropic.types.beta import BetaToolParam as ToolParam
 
 from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
@@ -27,10 +29,13 @@ class ChatParameters(TypedDict):
     tools: List[ToolParam] | NotGiven
     tool_choice: ToolChoice | NotGiven
     system: Union[str, Iterable[TextBlockParam]] | NotGiven
+    betas: List[AnthropicBetaParam] | NotGiven
 
 
 def create_chat_params(
-    params: ModelParameters, prompt: ClaudePrompt
+    params: ModelParameters,
+    prompt: ClaudePrompt,
+    betas: List[AnthropicBetaParam] | None,
 ) -> ChatParameters:
     system = none_to_not_given(prompt.system)
     tools = none_to_not_given(prompt.tools.to_claude_tools())
@@ -41,12 +46,13 @@ def create_chat_params(
     max_tokens = params.max_tokens or _DEFAULT_MAX_TOKENS
     top_p = none_to_not_given(params.top_p)
 
-    return {
-        "system": system,
-        "tools": tools,
-        "tool_choice": tool_choice,
-        "temperature": temperature,
-        "stop_sequences": stop_sequences,
-        "max_tokens": max_tokens,
-        "top_p": top_p,
-    }
+    return ChatParameters(
+        system=system,
+        tools=tools,
+        tool_choice=tool_choice,
+        temperature=temperature,
+        stop_sequences=stop_sequences,
+        max_tokens=max_tokens,
+        top_p=top_p,
+        betas=betas or NOT_GIVEN,
+    )

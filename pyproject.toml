@@ -29,7 +29,7 @@ google-cloud-aiplatform = "1.70.0"
 google-auth = "2.40.3"
 google-genai = "1.12.1"
 openai = "1.13.3"
-anthropic = { extras = ["vertex"], version = "0.52.0" }
+anthropic = { version = "0.52.0", extras = ["vertex"] }
 pydantic = "2.10.4"
 uvicorn = "0.22.0"
 aiocache = "0.12.2"

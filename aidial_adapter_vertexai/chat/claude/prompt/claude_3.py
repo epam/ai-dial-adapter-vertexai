@@ -1,7 +1,8 @@
 from typing import List, Literal
 
 from aidial_sdk.chat_completion import Message
-from anthropic.types import MessageParam, TextBlockParam
+from anthropic.types.beta import BetaMessageParam as MessageParam
+from anthropic.types.beta import BetaTextBlockParam as TextBlockParam
 
 from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessor,

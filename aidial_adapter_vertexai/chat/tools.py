@@ -9,8 +9,8 @@ from aidial_sdk.chat_completion import (
     ToolChoice,
 )
 from aidial_sdk.chat_completion.request import AzureChatCompletionRequest, Tool
-from anthropic.types import ToolChoiceParam as ClaudeToolConfig
-from anthropic.types import ToolParam as ClaudeTool
+from anthropic.types.beta import BetaToolChoiceParam as ClaudeToolConfig
+from anthropic.types.beta import BetaToolParam as ClaudeTool
 from google.genai.types import (
     FunctionCallingConfigDict as GenAIFunctionCallingConfig,
 )
