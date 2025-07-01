@@ -68,6 +68,7 @@ The Gemini 2.5 series models support configuration of [thinking](https://ai.goog
 ```
 
 The thought summaries are printed into a dedicated `Thinking` stage.
+The content of the thinking stage isn't provided to the model in subsequent requests.
 
 ##### Claude models
 
