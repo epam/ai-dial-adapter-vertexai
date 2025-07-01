@@ -12,6 +12,7 @@ from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
 )
 from google.genai.types import ThinkingConfigDict
+from pydantic.v1 import Field
 from typing_extensions import override
 
 from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
@@ -59,8 +60,16 @@ from aidial_adapter_vertexai.utils.timer import Timer
 
 
 class ThinkingConfig(ExtraAllowModel):
-    include_thoughts: bool | None = None
-    thinking_budget: int | None = None
+    """The thinking features configuration."""
+
+    include_thoughts: bool | None = Field(
+        default=None,
+        description="Whether to include thoughts in the response. If true, thoughts are returned in a dedicated stage given that the thoughts are available.",
+    )
+
+    thinking_budget: int | None = Field(
+        default=None, description="The thinking budget in tokens."
+    )
 
     def to_thinking_config(self) -> ThinkingConfigDict:
         ret: ThinkingConfigDict = {
