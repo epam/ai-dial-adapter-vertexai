@@ -245,7 +245,7 @@ class GeminiGenAIChatCompletionAdapter(
                         if part.thought and part.text:
                             if thinking_stage is None:
                                 thinking_stage = await consumer.create_stage(
-                                    "Thought Process"
+                                    "Thinking"
                                 )
                                 thinking_stage.open()
                             thinking_stage.append_content(part.text)
