@@ -6,6 +6,7 @@ from google.genai.types import (
     GenerateContentConfigDict as GenAIGenerationConfig,
 )
 from google.genai.types import Part as GenAIPart
+from google.genai.types import ThinkingConfigDict
 from google.genai.types import ToolDict as GenAITool
 from typing_extensions import assert_never
 from vertexai.preview.generative_models import GenerationConfig
@@ -44,7 +45,8 @@ def create_genai_generation_config(
     is_gemini_1_5: bool,
     tools: ToolsConfig,
     static_tools: StaticToolsConfig,
-    system_instruction: List[GenAIPart] | None = None,
+    system_instruction: List[GenAIPart] | None,
+    thinking_config: ThinkingConfigDict | None,
 ) -> GenAIGenerationConfig:
     validate_n_parameter(params)
 
@@ -65,6 +67,7 @@ def create_genai_generation_config(
         seed=params.seed,
         response_mime_type=response_mime_type,
         response_schema=response_schema,
+        thinking_config=thinking_config,
     )
 
 

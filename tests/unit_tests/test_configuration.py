@@ -4,41 +4,59 @@ import httpx
 import openai
 import pytest
 
-from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.conftest import get_extra_headers
 from tests.utils.openai import chat_completion, configuration, user
 
 _EAST = "us-east5"
+_CENTRAL = "us-central1"
 
-_chat_deployments: Mapping[ChatCompletionDeployment, str] = {
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
-    ChatCompletionDeployment.CLAUDE_4_SONNET: _EAST,
-    ChatCompletionDeployment.CLAUDE_4_OPUS: _EAST,
+_claude_deployments: Mapping[D, str] = {
+    D.CLAUDE_3_5_SONNET_V2: _EAST,
+    D.CLAUDE_3_5_HAIKU: _EAST,
+    D.CLAUDE_3_OPUS: _EAST,
+    D.CLAUDE_3_5_SONNET: _EAST,
+    D.CLAUDE_3_HAIKU: _EAST,
+    D.CLAUDE_3_7_SONNET: _EAST,
+    D.CLAUDE_4_SONNET: _EAST,
+    D.CLAUDE_4_OPUS: _EAST,
+}
+
+_gemini_2_5_deployments: Mapping[D, str] = {
+    D.GEMINI_2_5_PRO: _CENTRAL,
+    D.GEMINI_2_5_FLASH: _CENTRAL,
+    D.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
 }
 
 
-async def _supports_citations(
-    client: httpx.AsyncClient, region: str, deployment: ChatCompletionDeployment
+async def _configuration_has_field(
+    client: httpx.AsyncClient, region: str, deployment: D, field_name: str
 ) -> bool:
     conf = await configuration(
         client, deployment.value, get_extra_headers(region)
     )
     assert conf is not None
-    return "enable_citations" in conf["properties"]
+    return field_name in conf["properties"]
 
 
-@pytest.mark.parametrize("test", _chat_deployments.items())
-async def test_supports_citations(
-    test_http_client: httpx.AsyncClient,
-    test: Tuple[ChatCompletionDeployment, str],
+@pytest.mark.parametrize("test", _gemini_2_5_deployments.items())
+async def test_gemini_2_5_supports_thinking(
+    test_http_client: httpx.AsyncClient, test: Tuple[D, str]
 ):
     deployment, region = test
-    assert await _supports_citations(test_http_client, region, deployment)
+    assert await _configuration_has_field(
+        test_http_client, region, deployment, "thinking"
+    )
+
+
+@pytest.mark.parametrize("test", _claude_deployments.items())
+async def test_claude_supports_citations(
+    test_http_client: httpx.AsyncClient, test: Tuple[D, str]
+):
+    deployment, region = test
+    assert await _configuration_has_field(
+        test_http_client, region, deployment, "enable_citations"
+    )
 
 
 _invalid_configuration_test_cases = [
@@ -54,11 +72,11 @@ _invalid_configuration_test_cases = [
 
 
 @pytest.mark.parametrize("test", _invalid_configuration_test_cases)
-@pytest.mark.parametrize("deployment", _chat_deployments.items())
+@pytest.mark.parametrize("deployment", _claude_deployments.items())
 @pytest.mark.parametrize("stream", [False, True])
-async def test_invalid_configuration(
+async def test_claude_invalid_configuration(
     get_openai_client,
-    deployment: Tuple[ChatCompletionDeployment, str],
+    deployment: Tuple[D, str],
     stream: bool,
     test: Tuple[dict, str],
 ):

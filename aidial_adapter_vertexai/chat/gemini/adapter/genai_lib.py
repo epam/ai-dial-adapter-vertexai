@@ -1,5 +1,5 @@
 from logging import DEBUG
-from typing import AsyncIterator, Callable, List, Optional, assert_never
+from typing import AsyncIterator, Callable, List, Optional, Type, assert_never
 
 from aidial_sdk.chat_completion import FinishReason, Message, Stage
 from aidial_sdk.exceptions import RuntimeServerError
@@ -11,6 +11,7 @@ from google.genai.types import (
 from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
 )
+from google.genai.types import ThinkingConfigDict
 from typing_extensions import override
 
 from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
@@ -50,7 +51,27 @@ from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from aidial_adapter_vertexai.utils.json import json_dumps, json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
+from aidial_adapter_vertexai.utils.pydantic import (
+    ExtraAllowModel,
+    ExtraForbidModel,
+)
 from aidial_adapter_vertexai.utils.timer import Timer
+
+
+class ThinkingConfig(ExtraAllowModel):
+    include_thoughts: bool | None = None
+    thinking_budget: int | None = None
+
+    def to_thinking_config(self) -> ThinkingConfigDict:
+        ret: ThinkingConfigDict = {
+            "include_thoughts": self.include_thoughts,
+            "thinking_budget": self.thinking_budget,
+        }
+        return ret | self.extra_fields  # type: ignore
+
+
+class GeminiConfiguration(ExtraForbidModel):
+    thinking: ThinkingConfig | None = None
 
 
 class GeminiGenAIChatCompletionAdapter(
@@ -68,6 +89,15 @@ class GeminiGenAIChatCompletionAdapter(
         self.file_storage = file_storage
         self.deployment = deployment
         self.client = client
+
+    @property
+    def supports_thinking(self) -> bool:
+        return "gemini-2.5" in self.deployment.reference_deployment_id.value
+
+    async def configuration(self) -> Type[GeminiConfiguration] | None:
+        if self.supports_thinking:
+            return GeminiConfiguration
+        return None
 
     @classmethod
     async def create(
@@ -120,10 +150,21 @@ class GeminiGenAIChatCompletionAdapter(
             case _:
                 assert_never(self.deployment)
 
-    def _get_generation_config(
+    async def _get_generation_config(
         self, params: ModelParameters, prompt: GeminiGenAIPrompt
     ) -> GenAIGenerationConfig:
+        conf_cls = await self.configuration()
+        configuration = (
+            GeminiConfiguration()
+            if conf_cls is None
+            else params.parse_configuration(conf_cls)
+        )
+
         is_gemini_1_5 = isinstance(prompt, Gemini_1_5_Prompt)
+
+        thinking_config: ThinkingConfigDict | None = None
+        if configuration and configuration.thinking:
+            thinking_config = configuration.thinking.to_thinking_config()
 
         return create_genai_generation_config(
             params,
@@ -131,6 +172,7 @@ class GeminiGenAIChatCompletionAdapter(
             prompt.tools,
             prompt.static_tools,
             prompt.system,
+            thinking_config,
         )
 
     def _get_token_count_config(
@@ -148,7 +190,7 @@ class GeminiGenAIChatCompletionAdapter(
     async def send_message_async(
         self, params: ModelParameters, prompt: GeminiGenAIPrompt
     ) -> AsyncIterator[GenAIGenerateContentResponse]:
-        generation_config = self._get_generation_config(params, prompt)
+        generation_config = await self._get_generation_config(params, prompt)
 
         if params.stream:
             gen = await self.client.aio.models.generate_content_stream(
