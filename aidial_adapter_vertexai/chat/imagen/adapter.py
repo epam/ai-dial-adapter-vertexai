@@ -11,6 +11,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.imagen.configuration import ImagenConfig
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
@@ -46,6 +47,9 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         self.client = client
         self.model_id = model_id
 
+    async def configuration(self) -> type[ImagenConfig]:
+        return ImagenConfig
+
     @override
     async def parse_prompt(
         self,
@@ -75,7 +79,8 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: ImagenPrompt
     ) -> None:
-        config = _prepare_generation_config(params)
+        configuration = params.parse_configuration(await self.configuration())
+        config = _prepare_generation_config(params, configuration)
 
         with Timer("predict timing: {time}", log.debug):
             response = await self.client.aio.models.generate_images(
@@ -137,9 +142,9 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
 
 
 def _prepare_generation_config(
-    params: ModelParameters,
+    params: ModelParameters, config: ImagenConfig | None
 ) -> GenerateImagesConfigDict:
-    return {"seed": params.seed}
+    return (config or ImagenConfig()).to_config_dict(params.seed)
 
 
 def _extract_image(
