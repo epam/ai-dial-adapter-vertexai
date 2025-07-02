@@ -65,8 +65,11 @@ async def set_usage(
         log.debug(f"usage: {json_dumps(usage)}")
 
     completion_tokens = usage.candidates_token_count or 0
+    completion_tokens += usage.thoughts_token_count or 0
+
     if is_grounding_added:
         completion_tokens += google_search_grounding_tokens(deployment)
+
     await consumer.set_usage(
         TokenUsage(
             prompt_tokens=usage.prompt_token_count or 0,

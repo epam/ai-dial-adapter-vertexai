@@ -70,9 +70,11 @@ class VertexAIChatCompletion(ChatCompletion):
     @dial_exception_decorator
     async def configuration(self, request: ConfigurationRequest):
         model = await self._get_model(request)
-        if not is_implemented(model.configuration):
+        if (
+            not is_implemented(model.configuration)
+            or (cls := await model.configuration()) is None
+        ):
             raise ResourceNotFoundError("The endpoint is not implemented")
-        cls = await model.configuration()
         return cls.schema()
 
     @dial_exception_decorator

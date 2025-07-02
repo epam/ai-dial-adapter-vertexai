@@ -14,8 +14,8 @@ The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYME
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
-|Gemini 2.5 Flash|gemini-2.5-(flash\|flash-preview-04-17)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 2.5 Pro|gemini-2.5-(pro\|pro-exp-03-25\|pro-preview-03-25)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.5 Flash|gemini-2.5-(flash\|flash-preview-04-17)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|Gemini 2.5 Pro|gemini-2.5-(pro\|pro-exp-03-25\|pro-preview-03-25)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-01-21|text-to-text|✅|✅|❌|❌|
@@ -66,6 +66,26 @@ The Imagen models support configuration of parameters specific for image-generat
   }
 }
 ```
+
+##### Gemini 2.5 models
+
+The Gemini 2.5 series models support configuration of [thinking](https://ai.google.dev/gemini-api/docs/thinking) parameters:
+
+```json
+{
+  "custom_fields": {
+    "configuration": {
+      "thinking": {
+        "include_thoughts": true,
+        "thinking_budget": 2048
+      }
+    }
+  }
+}
+```
+
+The thought summaries are printed into a dedicated `Thinking` stage.
+The content of the thinking stage isn't provided to the model in subsequent requests.
 
 ##### Claude models
 
