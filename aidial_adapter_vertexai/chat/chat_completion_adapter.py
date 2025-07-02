@@ -33,7 +33,7 @@ class ChatCompletionAdapter(ABC, Generic[P]):
         pass
 
     @not_implemented
-    async def configuration(self) -> Type[BaseModel]: ...
+    async def configuration(self) -> Type[BaseModel] | None: ...
 
     @not_implemented
     async def truncate_prompt(

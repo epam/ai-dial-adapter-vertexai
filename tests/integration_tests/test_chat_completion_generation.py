@@ -180,7 +180,7 @@ def supports_grounding(deployment: D) -> bool:
     return "gemini" in deployment.value
 
 
-def support_thinking(deployment: D) -> bool:
+def supports_thinking(deployment: D) -> bool:
     return deployment in [
         # Gemini 2.5 doesn't emit thinking tokens into a separate output,
         # it's all the part of the completion tokens.
@@ -321,7 +321,7 @@ async def test_empty_assistant_message(chat: Chat):
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_multiple_candidates(deployment: D, chat: Chat):
-    max_tokens = 10 if not support_thinking(deployment) else 250
+    max_tokens = 10 if not supports_thinking(deployment) else 250
     # Gemini 2.0 rate-limits always fail on such concurrency
     n = 5 if not is_gemini_2(deployment) else 2
 
@@ -343,11 +343,43 @@ async def test_finish_reason_length(deployment: D, chat: Chat):
         messages=[user("tell me the full story of Pinocchio")],
     )
 
-    expected_tokens = 0 if support_thinking(deployment) else 1
+    expected_tokens = 0 if supports_thinking(deployment) else 1
     assert len(response.content.split()) <= expected_tokens
     assert response.usage is not None
     assert response.usage.completion_tokens == expected_tokens
     assert response.finish_reasons == ["length"]
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_thinking), deployments),
+    ids=display_deployment,
+)
+async def test_thinking(deployment: D, chat: Chat):
+    response = await chat(
+        messages=[user("2+3=?")],
+        configuration={
+            "thinking": {
+                "include_thoughts": True,
+                "thinking_budget": 2048,
+            }
+        },
+    )
+
+    assert "5" in response.content
+
+    assert response.usage is not None
+    assert response.usage.completion_tokens > 10
+
+    stages = response.stages
+    assert stages is not None and len(stages) == 1
+
+    thinking_stage = stages[0]
+    assert thinking_stage.name == "Thinking"
+    assert thinking_stage.content is not None
+    assert len(thinking_stage.content) > 10
+
+    assert response.finish_reasons == ["stop"]
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
@@ -445,7 +477,7 @@ async def _run_test_vision(
     expected: str | List[str] | ExpectedException,
 ):
     async def _run():
-        max_tokens = 2000 if support_thinking(deployment) else 100
+        max_tokens = 2000 if supports_thinking(deployment) else 100
         return await chat(max_tokens=max_tokens, messages=messages)
 
     if isinstance(expected, ExpectedException):
