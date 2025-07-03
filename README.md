@@ -33,7 +33,7 @@ The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYME
 |Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 3.5 Haiku|claude-3-5-haiku@20241022|(pdf/text)-to-text|✅|✅|✅|✅|
 |Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|✅|
-|Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|❌|
+|Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
 |PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|❌|
 |PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|❌|
 |PaLM 2 Chat Bison|chat-bison-32k@002|text-to-text|✅|✅|❌|❌|
@@ -49,6 +49,23 @@ Certain models support configuration via the `/configuration` endpoint.
 GET request to this endpoint returns the schema of the model configuration in [JSON Schema](https://json-schema.org/) format.
 Such models expect that `custom_fields.configuration` field of the `chat/completions` request will contain a JSON value that conforms to the schema.
 The `custom_fields.configuration` field is optional iff each field in the schema is optional too.
+
+##### Imagen models
+
+The Imagen models support configuration of parameters specific for image-generation such as negative prompt, aspect ratio and watermarking. See the complete list of configurable parameters at the [Imagen API documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#python_1).
+
+```json
+{
+  "messages": [{"role": "user", "content": "forest meadow"}],
+  "custom_fields": {
+    "configuration": {
+      "add_watermark": false,
+      "negative_prompt": "trees",
+      "aspect_ratio": "16:9"
+    }
+  }
+}
+```
 
 ##### Gemini 2.5 models
 
