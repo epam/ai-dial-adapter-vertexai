@@ -77,13 +77,14 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
         deployment_id: str | None = None,
         *,
         region: str | None = None,
+        max_retries: int = 10,
     ) -> AsyncAzureOpenAI:
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
             azure_deployment=deployment_id,
             api_version="dummy-version",
             api_key="dummy-key",
-            max_retries=10,
+            max_retries=max_retries,
             timeout=30,
             http_client=test_http_client,
             default_headers=get_extra_headers(region) if region else {},

@@ -57,6 +57,9 @@ class ImagenConfig(ExtraAllowModel):
             "output_compression_quality": self.output_compression_quality,
             "output_mime_type": self.output_mime_type,
             "person_generation": self.person_generation,
+            "include_rai_reason": True,
+            "include_safety_attributes": True,
+            "number_of_images": 1,
         }
 
         return ret | self.extra_fields  # type: ignore

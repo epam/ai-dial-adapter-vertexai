@@ -36,6 +36,12 @@ class ChatCompletionDeployment(Enum):
     GEMINI_2_5_FLASH_PREVIEW_04_17 = "gemini-2.5-flash-preview-04-17"
 
     IMAGEN_005 = "imagegeneration@005"
+    IMAGEN_3_GENERATE_001 = "imagen-3.0-generate-001"
+    IMAGEN_3_GENERATE_002 = "imagen-3.0-generate-002"
+    IMAGEN_3_FAST_GENERATE = "imagen-3.0-fast-generate-001"
+    IMAGEN_4_GENERATE = "imagen-4.0-generate-preview-06-06"
+    IMAGEN_4_FAST_GENERATE = "imagen-4.0-fast-generate-preview-06-06"
+    IMAGEN_4_ULTRA_GENERATE = "imagen-4.0-ultra-generate-preview-06-06"
 
     CLAUDE_3_5_SONNET_V2 = "claude-3-5-sonnet-v2@20241022"
     CLAUDE_3_5_HAIKU = "claude-3-5-haiku@20241022"
@@ -52,6 +58,15 @@ CHAT_COMPLETION_REDIRECTS = {
     ChatCompletionDeployment.GEMINI_PRO: ChatCompletionDeployment.GEMINI_PRO_1
 }
 
+ImagenDeployment = Literal[
+    ChatCompletionDeployment.IMAGEN_005,
+    ChatCompletionDeployment.IMAGEN_3_GENERATE_001,
+    ChatCompletionDeployment.IMAGEN_3_GENERATE_002,
+    ChatCompletionDeployment.IMAGEN_3_FAST_GENERATE,
+    ChatCompletionDeployment.IMAGEN_4_GENERATE,
+    ChatCompletionDeployment.IMAGEN_4_FAST_GENERATE,
+    ChatCompletionDeployment.IMAGEN_4_ULTRA_GENERATE,
+]
 
 ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2,
