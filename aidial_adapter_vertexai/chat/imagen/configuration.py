@@ -1,8 +1,4 @@
-from google.genai.types import (
-    GenerateImagesConfigDict,
-    PersonGeneration,
-    SafetyFilterLevel,
-)
+from google.genai.types import GenerateImagesConfigDict, PersonGeneration
 from pydantic.v1 import Field
 
 from aidial_adapter_vertexai.utils.pydantic import ExtraAllowModel
@@ -53,7 +49,6 @@ class ImagenConfig(ExtraAllowModel):
     def to_config_dict(self, seed: int | None) -> GenerateImagesConfigDict:
         ret: GenerateImagesConfigDict = {
             "seed": seed,
-            "safety_filter_level": SafetyFilterLevel.BLOCK_NONE,
             "negative_prompt": self.negative_prompt,
             "add_watermark": self.add_watermark,
             "aspect_ratio": self.aspect_ratio,
