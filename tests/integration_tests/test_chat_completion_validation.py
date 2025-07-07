@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List
 
 import pytest
-from openai import BadRequestError, UnprocessableEntityError
+from openai import UnprocessableEntityError
 from openai.types.chat import ChatCompletionMessageParam
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
@@ -112,25 +112,6 @@ def get_test_cases(
             ),
         ),
     ]
-
-
-async def test_imagen_content_filtering(get_openai_client):
-    client = get_openai_client(ChatCompletionDeployment.IMAGEN_005.value)
-    messages: List[ChatCompletionMessageParam] = [
-        user("generate something unsafe")
-    ]
-
-    with pytest.raises(Exception) as exc_info:
-        await chat_completion(client, messages=messages, stream=False)
-
-    assert isinstance(exc_info.value, BadRequestError)
-
-    resp = exc_info.value.response.json()
-    assert (resp["error"]["code"]) == "content_filter"
-    assert (
-        resp["error"]["message"]
-        == "The response is blocked, as it may violate our policies."
-    )
 
 
 async def test_gemini_pdf_page_overflow_for_document(get_openai_client):

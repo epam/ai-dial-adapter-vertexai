@@ -33,6 +33,8 @@ The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYME
 |Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 3.5 Haiku|claude-3-5-haiku@20241022|(pdf/text)-to-text|✅|✅|✅|✅|
 |Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|✅|
+|Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06)|text-to-image|✅|✅|❌|✅|
+|Imagen 3.0|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
 |PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|❌|
 |PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|❌|

@@ -6,6 +6,7 @@ import pytest
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.utils.openai import sanitize_test_name
+from tests.utils.validation import check_enum_completeness
 
 
 @dataclass
@@ -28,6 +29,7 @@ test_cases: List[TestCase] = [
     TestCase(D.CODECHAT_BISON_1, True, True, False),
     TestCase(D.CODECHAT_BISON_2, True, True, False),
     TestCase(D.CODECHAT_BISON_2_32K, True, True, False),
+    TestCase(D.GEMINI_PRO, True, True, False),
     TestCase(D.GEMINI_PRO_1, True, True, False),
     TestCase(D.GEMINI_PRO_VISION_1, True, True, False),
     TestCase(D.GEMINI_PRO_1_5_PREVIEW, True, True, False),
@@ -36,6 +38,12 @@ test_cases: List[TestCase] = [
     TestCase(D.GEMINI_FLASH_1_5_V1, True, True, False),
     TestCase(D.GEMINI_FLASH_1_5_V2, True, True, False),
     TestCase(D.IMAGEN_005, True, True, True),
+    TestCase(D.IMAGEN_3_GENERATE_001, True, True, True),
+    TestCase(D.IMAGEN_3_GENERATE_002, True, True, True),
+    TestCase(D.IMAGEN_3_FAST_GENERATE, True, True, True),
+    TestCase(D.IMAGEN_4_GENERATE, True, True, True),
+    TestCase(D.IMAGEN_4_FAST_GENERATE, True, True, True),
+    TestCase(D.IMAGEN_4_ULTRA_GENERATE, True, True, True),
     TestCase(D.GEMINI_2_0_FLASH_EXP, True, True, False),
     TestCase(D.GEMINI_2_0_FLASH_001, True, True, False),
     TestCase(D.GEMINI_2_0_FLASH_THINKING_EXP_01_21, True, True, False),
@@ -56,6 +64,8 @@ test_cases: List[TestCase] = [
     TestCase(D.CLAUDE_4_OPUS, True, True, True),
     TestCase(D.CLAUDE_4_SONNET, True, True, True),
 ]
+
+check_enum_completeness([tc.deployment for tc in test_cases])
 
 
 async def assert_feature(

@@ -1,11 +1,15 @@
+from logging import DEBUG
 from typing import List, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message
+from aidial_sdk.exceptions import InvalidRequestError
 from google.genai.client import Client as GenAIClient
 from google.genai.types import GenerateImagesConfigDict, GenerateImagesResponse
 from PIL import Image as PIL_Image
+from pydantic import BaseModel
 from typing_extensions import override
 
+from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -15,6 +19,7 @@ from aidial_adapter_vertexai.chat.imagen.configuration import ImagenConfig
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
+from aidial_adapter_vertexai.deployments import ImagenDeployment
 from aidial_adapter_vertexai.dial_api.request import (
     ModelParameters,
     collect_text_content,
@@ -25,6 +30,7 @@ from aidial_adapter_vertexai.dial_api.storage import (
 )
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
+from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.timer import Timer
@@ -35,17 +41,21 @@ ImagenPrompt = str
 class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     file_storage: FileStorage | None
     client: GenAIClient
-    model_id: str
+    deployment: AdapterDeployment[ImagenDeployment]
 
     def __init__(
         self,
         file_storage: FileStorage | None,
         client: GenAIClient,
-        model_id: str,
+        deployment: AdapterDeployment[ImagenDeployment],
     ):
         self.file_storage = file_storage
         self.client = client
-        self.model_id = model_id
+        self.deployment = deployment
+
+    @property
+    def model_id(self) -> str:
+        return self.deployment.upstream_deployment_id
 
     async def configuration(self) -> type[ImagenConfig]:
         return ImagenConfig
@@ -82,14 +92,24 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         configuration = params.parse_configuration(await self.configuration())
         config = _prepare_generation_config(params, configuration)
 
+        if log.isEnabledFor(DEBUG):
+            msg = json_dumps_short(
+                {"model": self.model_id, "prompt": prompt, "config": config}
+            )
+            log.debug(f"request: {msg}")
+
         with Timer("predict timing: {time}", log.debug):
             response = await self.client.aio.models.generate_images(
                 model=self.model_id, prompt=prompt, config=config
             )
 
-        if (resource := _extract_image(response)) is None:
+        if log.isEnabledFor(DEBUG):
+            log.debug(f"response: {json_dumps_short(response)}")
+
+        if (generated_image := _extract_image(response)) is None:
             raise RuntimeError("Expected image in response, but got none")
 
+        resource = generated_image.resource
         attachment = Attachment(
             title="Image",
             type=resource.type,
@@ -107,6 +127,11 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
 
             attachment.data = None
             attachment.url = meta["url"]
+
+        if revised_prompt := generated_image.revised_prompt:
+            await consumer.add_attachment(
+                Attachment(title="Revised prompt", data=revised_prompt)
+            )
 
         await consumer.add_attachment(attachment)
 
@@ -135,10 +160,10 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     async def create(
         cls,
         file_storage: Optional[FileStorage],
-        model_id: str,
+        deployment: AdapterDeployment[ImagenDeployment],
         config: UpstreamConfig,
     ) -> "ImagenChatCompletionAdapter":
-        return cls(file_storage, config.get_genai_client(), model_id)
+        return cls(file_storage, config.get_genai_client(), deployment)
 
 
 def _prepare_generation_config(
@@ -147,14 +172,28 @@ def _prepare_generation_config(
     return (config or ImagenConfig()).to_config_dict(params.seed)
 
 
-def _extract_image(
-    response: GenerateImagesResponse,
-) -> Resource | None:
+class GeneratedImage(BaseModel):
+    resource: Resource
+    revised_prompt: str | None
+
+
+def _extract_image(response: GenerateImagesResponse) -> GeneratedImage | None:
     images = response.generated_images
     if images is None or len(images) == 0:
         return None
 
-    if (image := images[0].image) is None:
+    if len(images) > 1:
+        log.warning(
+            f"Expected to receive 1 generated image, but got {len(images)}. Only the first is taken into account."
+        )
+
+    generated_image = images[0]
+    revised_prompt = generated_image.enhanced_prompt
+
+    if reason := generated_image.rai_filtered_reason:
+        raise InvalidRequestError(code="content_filter", message=reason)
+
+    if (image := generated_image.image) is None:
         return None
 
     if (image_data := image.image_bytes) is None:
@@ -164,7 +203,10 @@ def _extract_image(
         return None
 
     media_type = _get_image_type(pil_image)
-    return Resource(type=media_type, data=image_data)
+
+    resource = Resource(type=media_type, data=image_data)
+
+    return GeneratedImage(resource=resource, revised_prompt=revised_prompt)
 
 
 def _get_image_type(image: PIL_Image.Image) -> str:
