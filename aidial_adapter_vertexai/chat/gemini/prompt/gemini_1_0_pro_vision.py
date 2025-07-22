@@ -3,7 +3,7 @@ from typing import List, Self, Union
 from aidial_sdk.chat_completion import Message, Role
 
 from aidial_adapter_vertexai.chat.attachment_processor import (
-    AttachmentProcessors,
+    AttachmentProcessorsLegacy,
     exclusive_validator,
 )
 from aidial_adapter_vertexai.chat.conversation.converters import (
@@ -51,7 +51,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
         exclusive = exclusive_validator()
 
         conversation_factory = ConversationFactory()
-        processors = AttachmentProcessors(
+        processors = AttachmentProcessorsLegacy(
             conversation_factory=conversation_factory,
             processors=[
                 get_plain_text_processor(),

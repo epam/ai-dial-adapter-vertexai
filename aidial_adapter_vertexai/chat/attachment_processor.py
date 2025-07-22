@@ -1,4 +1,3 @@
-from abc import ABC
 from dataclasses import dataclass
 from logging import DEBUG
 from typing import (
@@ -16,15 +15,15 @@ from typing import (
     assert_never,
 )
 
+from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion import (
-    Message,
     MessageContentImagePart,
     MessageContentTextPart,
 )
 from aidial_sdk.chat_completion.request import MessageContentRefusalPart
 from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
-from vertexai.preview.generative_models import Part
+from vertexai.preview.generative_models import Part as LegacyPart
 
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
@@ -117,7 +116,7 @@ class ProcessingError:
 PartT = TypeVar("PartT")
 
 
-class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
+class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
     class Config:
         arbitrary_types_allowed = True  # for errors
 
@@ -177,7 +176,7 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
             f"The {dial_resource.entity_name} isn't one of the supported types",
         )
 
-    async def process_message(self, message: Message) -> Parts[PartT]:
+    async def process_message(self, message: DialMessage) -> Parts[PartT]:
         ret: Parts[PartT] = Parts()
 
         async def collect_resource(dial_resource: DialResource):
@@ -230,12 +229,8 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
         return ret
 
 
-class AttachmentProcessors(AttachmentProcessorsBase[Part]):
-    pass
-
-
-class AttachmentProcessorsGenAI(AttachmentProcessorsBase[GenAIPart]):
-    pass
+AttachmentProcessorsLegacy = AttachmentProcessorsBase[LegacyPart]
+AttachmentProcessorsGenAI = AttachmentProcessorsBase[GenAIPart]
 
 
 def max_count_validator(category: str, limit: int) -> InitValidator:

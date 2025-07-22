@@ -75,12 +75,14 @@ async def _message_to_parts(
             if content is None:
                 raise ValidationError("System message content must be present")
             return await processors.process_message(message)
+
         case Role.DEVELOPER:
             if content is None:
                 raise ValidationError(
                     "Developer message content must be present"
                 )
             return await processors.process_message(message)
+
         case Role.USER:
             if content is None:
                 raise ValidationError("User message content must be present")

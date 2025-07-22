@@ -3,7 +3,7 @@ from typing import List, Self
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.attachment_processor import (
-    AttachmentProcessors,
+    AttachmentProcessorsLegacy,
 )
 from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
@@ -34,7 +34,7 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
             )
 
         conversation_factory = ConversationFactory()
-        processors = AttachmentProcessors(
+        processors = AttachmentProcessorsLegacy(
             conversation_factory=conversation_factory,
             processors=[],
             file_storage=None,
