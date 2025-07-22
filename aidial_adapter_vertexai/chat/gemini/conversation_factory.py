@@ -79,11 +79,27 @@ class ConversationFactoryLegacy(
             parts=parts.parts,
         )
 
+    def _ensure_non_empty_text_prompt(
+        self, contents: List[Content]
+    ) -> List[Content]:
+        # Gemini requires some non-system text input to be always supplied -
+        # adding a fake single-space one when needed.
+        for content in contents:
+            if content.parts is None:
+                continue
+
+            no_text_parts = all(not part.text for part in content.parts)
+            if content.role == ChatSession._USER_ROLE and no_text_parts:
+                content.parts.append(self.create_text_part(" "))
+                break
+        return contents
+
     def create_conversation(
         self, system_instruction: List[Part] | None, contents: List[Content]
     ) -> GeminiConversationLegacy:
+        messages = self._ensure_non_empty_text_prompt(contents)
         return BaseConversation.create(
-            system=system_instruction, messages=contents
+            system=system_instruction, messages=messages
         )
 
 
@@ -147,14 +163,31 @@ class ConversationFactoryGenAI(
         self, dial_message: DialMessage, parts: Parts[GenAIPart]
     ) -> GenAIContent:
         return GenAIContent(
-            role=self.to_gemini_genai_role(dial_message.role), parts=parts.parts
+            role=self.to_gemini_genai_role(dial_message.role),
+            parts=parts.parts,
         )
+
+    def _ensure_non_empty_text_prompt(
+        self, contents: List[GenAIContent]
+    ) -> List[GenAIContent]:
+        # Gemini requires some non-system text input to be always supplied -
+        # adding a fake single-space one when needed.
+        for content in contents:
+            if content.parts is None:
+                continue
+
+            no_text_parts = all(not part.text for part in content.parts)
+            if content.role == "user" and no_text_parts:
+                content.parts.append(self.create_text_part(" "))
+                break
+        return contents
 
     def create_conversation(
         self,
         system_instruction: List[GenAIPart] | None,
         contents: List[GenAIContent],
     ) -> GeminiConversationGenAI:
+        messages = self._ensure_non_empty_text_prompt(contents)
         return BaseConversation.create(
-            system=system_instruction, messages=contents
+            system=system_instruction, messages=messages
         )

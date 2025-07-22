@@ -405,50 +405,20 @@ async def test_vision_single_turn_with_text_part(
 @pytest.mark.parametrize(
     "deployment", vision_deployments, ids=display_deployment
 )
-async def test_vision_single_turn_system_message_only(
+async def test_vision_single_turn_with_empty_text_part(
     deployment: D, chat: Chat, create_message_with_image
 ):
-    messages = [
-        sys("describe the image"),
-        create_message_with_image(None, DOG_PICTURE),
-    ]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
-
-
-@pytest.fixture
-def missing_text_prompt_error(deployment: D) -> ExpectedException | None:
-    if "gemini" in deployment.value:
-        # Gemini requires some non-system text input to be always supplied.
-        return ExpectedException(
-            type=openai.BadRequestError,
-            message="Unable to submit request because it must have a text parameter. Add a text parameter and try again",
-            status_code=400,
-        )
-    return None
-
-
-@pytest.mark.parametrize(
-    "deployment", vision_deployments, ids=display_deployment
-)
-async def test_vision_single_turn_with_empty_text_part(
-    deployment: D,
-    chat: Chat,
-    create_message_with_image,
-    missing_text_prompt_error,
-):
     messages = [create_message_with_image("", DOG_PICTURE)]
-    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
+    expected = DOG_PICTURE_CONTENT
     await _run_test_vision(deployment, chat, messages, expected)
 
 
 @pytest.mark.parametrize(
     "deployment", vision_deployments, ids=display_deployment
 )
-async def test_vision_single_turn_without_text_part(
-    deployment: D, chat: Chat, missing_text_prompt_error
-):
+async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
     messages = [user_with_image_url(None, DOG_PICTURE)]
-    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
+    expected = DOG_PICTURE_CONTENT
     await _run_test_vision(deployment, chat, messages, expected)
 
 
@@ -472,14 +442,11 @@ async def test_vision_two_turns(
     "deployment", vision_deployments, ids=display_deployment
 )
 async def test_vision_single_turn_with_system(
-    deployment: D,
-    chat: Chat,
-    create_message_with_image,
-    missing_text_prompt_error,
+    deployment: D, chat: Chat, create_message_with_image
 ):
-    user_message = create_message_with_image("", DOG_PICTURE)
-    messages = [sys("describe an image when you receive it"), user_message]
-    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
+    user_message = create_message_with_image(None, DOG_PICTURE)
+    messages = [sys("describe the image"), user_message]
+    expected = DOG_PICTURE_CONTENT
     await _run_test_vision(deployment, chat, messages, expected)
 
 
