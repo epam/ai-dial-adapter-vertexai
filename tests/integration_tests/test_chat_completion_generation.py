@@ -402,6 +402,19 @@ async def test_vision_single_turn_with_text_part(
     await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
+@pytest.mark.parametrize(
+    "deployment", vision_deployments, ids=display_deployment
+)
+async def test_vision_single_turn_system_message_only(
+    deployment: D, chat: Chat, create_message_with_image
+):
+    messages = [
+        sys("describe the image"),
+        create_message_with_image(None, DOG_PICTURE),
+    ]
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+
+
 @pytest.fixture
 def missing_text_prompt_error(deployment: D) -> ExpectedException | None:
     if "gemini" in deployment.value:

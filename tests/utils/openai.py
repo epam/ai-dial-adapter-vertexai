@@ -67,11 +67,11 @@ def user(
 
 
 def user_with_attachment_data(
-    content: str, *resource: Resource
+    content: str | None, *resource: Resource
 ) -> ChatCompletionUserMessageParam:
     return {
         "role": "user",
-        "content": content,
+        "content": content or "",
         "custom_content": {  # type: ignore
             "attachments": [
                 {"type": r.type, "data": r.data_base64} for r in resource
@@ -81,11 +81,11 @@ def user_with_attachment_data(
 
 
 def user_with_attachment_url(
-    content: str, resource: Resource
+    content: str | None, resource: Resource
 ) -> ChatCompletionUserMessageParam:
     return {
         "role": "user",
-        "content": content,
+        "content": content or "",
         "custom_content": {  # type: ignore
             "attachments": [
                 {
