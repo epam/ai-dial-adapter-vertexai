@@ -409,8 +409,7 @@ async def test_vision_single_turn_with_empty_text_part(
     deployment: D, chat: Chat, create_message_with_image
 ):
     messages = [create_message_with_image("", DOG_PICTURE)]
-    expected = DOG_PICTURE_CONTENT
-    await _run_test_vision(deployment, chat, messages, expected)
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -418,8 +417,7 @@ async def test_vision_single_turn_with_empty_text_part(
 )
 async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
     messages = [user_with_image_url(None, DOG_PICTURE)]
-    expected = DOG_PICTURE_CONTENT
-    await _run_test_vision(deployment, chat, messages, expected)
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -446,8 +444,7 @@ async def test_vision_single_turn_with_system(
 ):
     user_message = create_message_with_image(None, DOG_PICTURE)
     messages = [sys("describe the image"), user_message]
-    expected = DOG_PICTURE_CONTENT
-    await _run_test_vision(deployment, chat, messages, expected)
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 async def _run_test_vision(
