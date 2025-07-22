@@ -1,5 +1,9 @@
+from google.genai.types import Part as GenAIPart
+from vertexai.preview.generative_models import Part as LegacyPart
+
 from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessor,
+    AttachmentProcessorsBase,
     InitValidator,
     max_count_validator,
     max_pdf_page_count_validator,
@@ -15,6 +19,9 @@ from aidial_adapter_vertexai.chat.attachment_processor import (
 # Text/Code processing:
 # 1.0: max_total_tokens: 16384, max_completion_tokens: 2048
 # 1.5: max_total_tokens ~: 1M, max_completion_tokens: not specified
+
+GeminiAttachmentProcessorsLegacy = AttachmentProcessorsBase[LegacyPart]
+GeminiAttachmentProcessorsGenAI = AttachmentProcessorsBase[GenAIPart]
 
 
 # Plain text file processing:

@@ -6,7 +6,7 @@ from aidial_sdk.exceptions import HTTPException as DialException
 from google.genai.types import Content, Part
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
-from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiGenAIPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
     Gemini_1_5_Prompt,
 )
@@ -19,7 +19,7 @@ from tests.unit_tests.prompt_truncation.utils import (
 )
 
 
-async def tokenize_by_words(prompt: GeminiGenAIPrompt) -> int:
+async def tokenize_by_words(prompt: GeminiPromptGenAI) -> int:
     text = " ".join(
         [
             *[part.text or "" for part in prompt.conversation.system or []],

@@ -21,9 +21,7 @@ from aidial_sdk.chat_completion import (
     MessageContentTextPart,
 )
 from aidial_sdk.chat_completion.request import MessageContentRefusalPart
-from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
-from vertexai.preview.generative_models import Part as LegacyPart
 
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
@@ -227,10 +225,6 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
                 assert_never(content)
 
         return ret
-
-
-AttachmentProcessorsLegacy = AttachmentProcessorsBase[LegacyPart]
-AttachmentProcessorsGenAI = AttachmentProcessorsBase[GenAIPart]
 
 
 def max_count_validator(category: str, limit: int) -> InitValidator:

@@ -30,7 +30,7 @@ from aidial_adapter_vertexai.chat.gemini.output import (
     create_function_calls,
     set_usage,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptLegacy
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_0_pro import (
     Gemini_1_0_Pro_Prompt,
 )
@@ -61,7 +61,7 @@ def _get_candidate_text_safe(candidate: Candidate) -> str | None:
         return None
 
 
-class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
+class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPromptLegacy]):
     deployment: AdapterDeployment[GeminiLegacyDeployment]
 
     def __init__(
@@ -83,7 +83,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
         messages: List[Message],
-    ) -> GeminiPrompt | UserError:
+    ) -> GeminiPromptLegacy | UserError:
         match self.deployment.reference_deployment_id:
             case (
                 ChatCompletionDeployment.GEMINI_PRO
@@ -103,7 +103,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         self,
         *,
         params: ModelParameters | None = None,
-        prompt: GeminiPrompt | None = None,
+        prompt: GeminiPromptLegacy | None = None,
     ) -> GenerativeModel:
         generation_config = create_generation_config(params) if params else None
 
@@ -128,7 +128,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         )
 
     async def send_message_async(
-        self, params: ModelParameters, prompt: GeminiPrompt
+        self, params: ModelParameters, prompt: GeminiPromptLegacy
     ) -> AsyncIterator[GenerationResponse]:
 
         model = self._get_model(params=params, prompt=prompt)
@@ -190,7 +190,10 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     @override
     async def chat(
-        self, params: ModelParameters, consumer: Consumer, prompt: GeminiPrompt
+        self,
+        params: ModelParameters,
+        consumer: Consumer,
+        prompt: GeminiPromptLegacy,
     ) -> None:
         with Timer("predict timing: {time}", log.debug):
             if log.isEnabledFor(DEBUG):
@@ -214,8 +217,8 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
 
     @override
     async def truncate_prompt(
-        self, prompt: GeminiPrompt, max_prompt_tokens: int
-    ) -> TruncatedPrompt[GeminiPrompt]:
+        self, prompt: GeminiPromptLegacy, max_prompt_tokens: int
+    ) -> TruncatedPrompt[GeminiPromptLegacy]:
         prompt = await prompt.truncate(
             tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
@@ -226,7 +229,7 @@ class GeminiChatCompletionAdapter(ChatCompletionAdapter[GeminiPrompt]):
         )
 
     @override
-    async def count_prompt_tokens(self, prompt: GeminiPrompt) -> int:
+    async def count_prompt_tokens(self, prompt: GeminiPromptLegacy) -> int:
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             resp = await self._get_model(prompt=prompt).count_tokens_async(
                 prompt.messages.raw_list

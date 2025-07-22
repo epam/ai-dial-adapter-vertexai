@@ -2,9 +2,6 @@ from typing import List, Self
 
 from aidial_sdk.chat_completion import Message
 
-from aidial_adapter_vertexai.chat.attachment_processor import (
-    AttachmentProcessorsLegacy,
-)
 from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
 )
@@ -12,7 +9,10 @@ from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
     ConversationFactoryLegacy,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.processors import (
+    GeminiAttachmentProcessorsLegacy,
+)
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptLegacy
 from aidial_adapter_vertexai.chat.gemini.prompt.message import (
     LegacyMessageMerger,
 )
@@ -20,7 +20,7 @@ from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 
 
-class Gemini_1_0_Pro_Prompt(GeminiPrompt):
+class Gemini_1_0_Pro_Prompt(GeminiPromptLegacy):
     @classmethod
     async def parse(
         cls,
@@ -34,7 +34,7 @@ class Gemini_1_0_Pro_Prompt(GeminiPrompt):
             )
 
         conversation_factory = ConversationFactoryLegacy()
-        processors = AttachmentProcessorsLegacy(
+        processors = GeminiAttachmentProcessorsLegacy(
             conversation_factory=conversation_factory,
             processors=[],
             file_storage=None,
