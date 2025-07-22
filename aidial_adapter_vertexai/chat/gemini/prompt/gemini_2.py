@@ -10,7 +10,7 @@ from aidial_adapter_vertexai.chat.conversation.converters import (
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
-    GenAIConversationFactory,
+    ConversationFactoryGenAI,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
     get_audio_processor,
@@ -45,7 +45,7 @@ class Gemini_2_Prompt(GeminiGenAIPrompt):
                 "The chat history must have at least one message"
             )
 
-        conversation_factory = GenAIConversationFactory()
+        conversation_factory = ConversationFactoryGenAI()
         # TODO: update limits, when they are published
         processors = AttachmentProcessorsGenAI(
             conversation_factory=conversation_factory,

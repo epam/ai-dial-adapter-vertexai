@@ -11,7 +11,7 @@ from aidial_adapter_vertexai.chat.conversation.converters import (
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
-    ConversationFactory,
+    ConversationFactoryLegacy,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
     get_image_processor,
@@ -50,7 +50,7 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
 
         exclusive = exclusive_validator()
 
-        conversation_factory = ConversationFactory()
+        conversation_factory = ConversationFactoryLegacy()
         processors = AttachmentProcessorsLegacy(
             conversation_factory=conversation_factory,
             processors=[

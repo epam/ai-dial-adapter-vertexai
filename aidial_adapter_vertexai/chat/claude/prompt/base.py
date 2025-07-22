@@ -21,12 +21,12 @@ class ClaudeMessage:
     dial_resources: List[DialResource]
 
 
-ClaudeConversation = BaseConversation[str | List[TextBlockParam], ClaudeMessage]
+ConversationClaude = BaseConversation[str | List[TextBlockParam], ClaudeMessage]
 
 
 @dataclass
 class ClaudePrompt(TruncatablePrompt):
-    conversation: ClaudeConversation
+    conversation: ConversationClaude
     tools: ToolsConfig = field(default_factory=ToolsConfig.noop)
 
     @property
@@ -91,7 +91,7 @@ class ClaudePrompt(TruncatablePrompt):
             raise RuntimeError("The last user prompt must not be omitted.")
 
         return self.__class__(
-            conversation=ClaudeConversation(system=system, messages=messages),
+            conversation=ConversationClaude(system=system, messages=messages),
             tools=self.tools,
         )
 

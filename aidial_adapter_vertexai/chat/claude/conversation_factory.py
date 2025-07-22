@@ -28,8 +28,8 @@ from anthropic.types.beta import BetaToolUseBlockParam as ToolUseBlockParam
 
 from aidial_adapter_vertexai.chat.attachment_processor import FileTypes
 from aidial_adapter_vertexai.chat.claude.prompt.base import (
-    ClaudeConversation,
     ClaudeMessage,
+    ConversationClaude,
 )
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
@@ -63,7 +63,7 @@ def _parse_image_type(
 
 
 class ClaudeConversationFactory(
-    ConversationFactoryBase[ClaudePart, ClaudeMessage, ClaudeConversation]
+    ConversationFactoryBase[ClaudePart, ClaudeMessage, ConversationClaude]
 ):
     enable_citations: bool
 
@@ -154,8 +154,8 @@ class ClaudeConversationFactory(
         self,
         system_instruction: List[ClaudePart] | None,
         contents: List[ClaudeMessage],
-    ) -> ClaudeConversation:
-        return ClaudeConversation.create(
+    ) -> ConversationClaude:
+        return ConversationClaude.create(
             system=_sanitize_system_instruction(system_instruction),
             messages=contents,
         )
