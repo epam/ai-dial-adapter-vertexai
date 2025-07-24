@@ -320,6 +320,25 @@ async def test_empty_assistant_message(chat: Chat):
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_empty_user_message(deployment: D, chat: Chat):
+    messages = [
+        user(""),
+        ai("come again?"),
+        user("2+3=?"),
+    ]
+
+    expected = "5"
+    if is_claude(deployment):
+        expected = ExpectedException(
+            type=openai.BadRequestError,
+            message="messages: text content blocks must contain non-whitespace text",
+            status_code=400,
+        )
+
+    await _run_test_vision(deployment, chat, messages, expected)
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_multiple_candidates(deployment: D, chat: Chat):
     max_tokens = 10 if not supports_thinking(deployment) else 250
     # Gemini 2.0 rate-limits always fail on such concurrency

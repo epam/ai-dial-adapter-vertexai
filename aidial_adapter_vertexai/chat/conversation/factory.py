@@ -16,11 +16,18 @@ class Parts(BaseModel, Generic[PartT]):
     parts: List[PartT] = []
     resources: List[DialResource] = []
 
-    def append_part(self, part: PartT):
+    def append_text_part(self, part: PartT):
         self.parts.append(part)
 
-    def append_resource(self, resource: DialResource):
+    def append_multi_modal_part(self, part: PartT, resource: DialResource):
         self.resources.append(resource)
+        self.parts.append(part)
+
+    def empty(self) -> bool:
+        return len(self.parts) == 0
+
+    def has_text_parts(self) -> bool:
+        return len(self.parts) > len(self.resources)
 
 
 class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
