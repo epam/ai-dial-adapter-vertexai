@@ -3,7 +3,6 @@ from typing import List, Self, Union
 from aidial_sdk.chat_completion import Message, Role
 
 from aidial_adapter_vertexai.chat.attachment_processor import (
-    AttachmentProcessors,
     exclusive_validator,
 )
 from aidial_adapter_vertexai.chat.conversation.converters import (
@@ -11,15 +10,16 @@ from aidial_adapter_vertexai.chat.conversation.converters import (
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
-    ConversationFactory,
+    ConversationFactoryLegacy,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
+    GeminiAttachmentProcessorsLegacy,
     get_image_processor,
     get_pdf_processor,
     get_plain_text_processor,
     get_video_processor,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptLegacy
 from aidial_adapter_vertexai.chat.gemini.prompt.message import (
     LegacyMessageMerger,
 )
@@ -29,7 +29,7 @@ from aidial_adapter_vertexai.dial_api.request import get_attachments
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
 
-class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
+class Gemini_1_0_Pro_Vision_Prompt(GeminiPromptLegacy):
     @classmethod
     async def parse(
         cls,
@@ -50,8 +50,8 @@ class Gemini_1_0_Pro_Vision_Prompt(GeminiPrompt):
 
         exclusive = exclusive_validator()
 
-        conversation_factory = ConversationFactory()
-        processors = AttachmentProcessors(
+        conversation_factory = ConversationFactoryLegacy()
+        processors = GeminiAttachmentProcessorsLegacy(
             conversation_factory=conversation_factory,
             processors=[
                 get_plain_text_processor(),

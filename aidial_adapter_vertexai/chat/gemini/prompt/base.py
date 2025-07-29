@@ -3,7 +3,8 @@ from typing import Generic, List, Self, Set, TypeVar
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
-from vertexai.preview.generative_models import Content, Part
+from vertexai.preview.generative_models import Content as LegacyContent
+from vertexai.preview.generative_models import Part as LegacyPart
 from vertexai.preview.generative_models import Tool as GeminiTool
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
@@ -93,5 +94,5 @@ class GeminiBasePrompt(
         return regular_tools + static_tools
 
 
-GeminiPrompt = GeminiBasePrompt[List[Part], Content]
-GeminiGenAIPrompt = GeminiBasePrompt[List[GenAIPart], GenAIContent]
+GeminiPromptLegacy = GeminiBasePrompt[List[LegacyPart], LegacyContent]
+GeminiPromptGenAI = GeminiBasePrompt[List[GenAIPart], GenAIContent]

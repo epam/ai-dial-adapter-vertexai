@@ -1,4 +1,3 @@
-from abc import ABC
 from dataclasses import dataclass
 from logging import DEBUG
 from typing import (
@@ -16,15 +15,14 @@ from typing import (
     assert_never,
 )
 
+from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion import (
-    Message,
     MessageContentImagePart,
     MessageContentTextPart,
 )
+from aidial_sdk.chat_completion import Role as DialRole
 from aidial_sdk.chat_completion.request import MessageContentRefusalPart
-from google.genai.types import Part as GenAIPart
 from pydantic.v1 import BaseModel, Field
-from vertexai.preview.generative_models import Part
 
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
@@ -117,7 +115,7 @@ class ProcessingError:
 PartT = TypeVar("PartT")
 
 
-class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
+class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
     class Config:
         arbitrary_types_allowed = True  # for errors
 
@@ -177,21 +175,21 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
             f"The {dial_resource.entity_name} isn't one of the supported types",
         )
 
-    async def process_message(self, message: Message) -> Parts[PartT]:
+    async def process_message(self, message: DialMessage) -> Parts[PartT]:
         ret: Parts[PartT] = Parts()
 
         async def collect_resource(dial_resource: DialResource):
             resource = await self.process_resource(dial_resource)
             if resource is not None:
-                ret.append_resource(dial_resource)
-                ret.append_part(
-                    self.conversation_factory.create_multi_modal_part(
-                        resource.data, resource.type
-                    )
+                part = self.conversation_factory.create_multi_modal_part(
+                    resource.data, resource.type
                 )
+                ret.append_multi_modal_part(part, dial_resource)
 
         def collect_text(text: str):
-            ret.append_part(self.conversation_factory.create_text_part(text))
+            ret.append_text_part(
+                self.conversation_factory.create_text_part(text)
+            )
 
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
@@ -227,15 +225,11 @@ class AttachmentProcessorsBase(BaseModel, ABC, Generic[PartT]):
             case _:
                 assert_never(content)
 
+        could_be_empty = message.role in (DialRole.SYSTEM, DialRole.DEVELOPER)
+        if ret.empty() and not could_be_empty:
+            collect_text(" ")
+
         return ret
-
-
-class AttachmentProcessors(AttachmentProcessorsBase[Part]):
-    pass
-
-
-class AttachmentProcessorsGenAI(AttachmentProcessorsBase[GenAIPart]):
-    pass
 
 
 def max_count_validator(category: str, limit: int) -> InitValidator:

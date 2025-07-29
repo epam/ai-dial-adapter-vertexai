@@ -29,9 +29,7 @@ from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.list import MessageMergeStrategy
 
-
-class AttachmentProcessorsClaude(AttachmentProcessorsBase[ClaudePart]):
-    pass
+AttachmentProcessorsClaude = AttachmentProcessorsBase[ClaudePart]
 
 
 async def parse_claude_3_prompt(

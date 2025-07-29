@@ -35,7 +35,7 @@ from aidial_adapter_vertexai.chat.gemini.output import (
     create_function_calls_from_genai,
     set_usage,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiGenAIPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
     Gemini_1_5_Prompt,
 )
@@ -84,7 +84,7 @@ class GeminiConfiguration(ExtraForbidModel):
 
 
 class GeminiGenAIChatCompletionAdapter(
-    ChatCompletionAdapter[GeminiGenAIPrompt]
+    ChatCompletionAdapter[GeminiPromptGenAI]
 ):
     deployment: AdapterDeployment[GeminiDeployment]
     client: GenAIClient
@@ -128,7 +128,7 @@ class GeminiGenAIChatCompletionAdapter(
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
         messages: List[Message],
-    ) -> GeminiGenAIPrompt | UserError:
+    ) -> GeminiPromptGenAI | UserError:
         match self.deployment.reference_deployment_id:
             case (
                 ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
@@ -160,7 +160,7 @@ class GeminiGenAIChatCompletionAdapter(
                 assert_never(self.deployment)
 
     async def _get_generation_config(
-        self, params: ModelParameters, prompt: GeminiGenAIPrompt
+        self, params: ModelParameters, prompt: GeminiPromptGenAI
     ) -> GenAIGenerationConfig:
         conf_cls = await self.configuration()
         configuration = (
@@ -185,7 +185,7 @@ class GeminiGenAIChatCompletionAdapter(
         )
 
     def _get_token_count_config(
-        self, prompt: GeminiGenAIPrompt
+        self, prompt: GeminiPromptGenAI
     ) -> GenAICountTokensConfig:
         is_gemini_1_5 = isinstance(prompt, Gemini_1_5_Prompt)
 
@@ -197,7 +197,7 @@ class GeminiGenAIChatCompletionAdapter(
         )
 
     async def send_message_async(
-        self, params: ModelParameters, prompt: GeminiGenAIPrompt
+        self, params: ModelParameters, prompt: GeminiPromptGenAI
     ) -> AsyncIterator[GenAIGenerateContentResponse]:
         generation_config = await self._get_generation_config(params, prompt)
 
@@ -294,8 +294,8 @@ class GeminiGenAIChatCompletionAdapter(
 
     @override
     async def truncate_prompt(
-        self, prompt: GeminiGenAIPrompt, max_prompt_tokens: int
-    ) -> TruncatedPrompt[GeminiGenAIPrompt]:
+        self, prompt: GeminiPromptGenAI, max_prompt_tokens: int
+    ) -> TruncatedPrompt[GeminiPromptGenAI]:
         prompt = await prompt.truncate(
             tokenize=self.count_prompt_tokens, user_limit=max_prompt_tokens
         )
@@ -306,7 +306,7 @@ class GeminiGenAIChatCompletionAdapter(
         )
 
     @override
-    async def count_prompt_tokens(self, prompt: GeminiGenAIPrompt) -> int:
+    async def count_prompt_tokens(self, prompt: GeminiPromptGenAI) -> int:
         with Timer("count_tokens[prompt] timing: {time}", log.debug):
             config = self._get_token_count_config(prompt)
             resp = await self.client.aio.models.count_tokens(
@@ -338,7 +338,7 @@ class GeminiGenAIChatCompletionAdapter(
         self,
         params: ModelParameters,
         consumer: Consumer,
-        prompt: GeminiGenAIPrompt,
+        prompt: GeminiPromptGenAI,
     ) -> None:
 
         with Timer("predict timing: {time}", log.debug):

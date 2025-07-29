@@ -14,12 +14,12 @@ from aidial_adapter_vertexai.chat.conversation.factory import (
 )
 from aidial_adapter_vertexai.chat.errors import ValidationError
 
-GeminiConversation = BaseConversation[List[Part], Content]
-GeminiGenAIConversation = BaseConversation[List[GenAIPart], GenAIContent]
+GeminiConversationLegacy = BaseConversation[List[Part], Content]
+GeminiConversationGenAI = BaseConversation[List[GenAIPart], GenAIContent]
 
 
-class ConversationFactory(
-    ConversationFactoryBase[Part, Content, GeminiConversation],
+class ConversationFactoryLegacy(
+    ConversationFactoryBase[Part, Content, GeminiConversationLegacy],
 ):
     @staticmethod
     def _to_gemini_role(role: Role) -> str:
@@ -81,14 +81,14 @@ class ConversationFactory(
 
     def create_conversation(
         self, system_instruction: List[Part] | None, contents: List[Content]
-    ) -> GeminiConversation:
+    ) -> GeminiConversationLegacy:
         return BaseConversation.create(
             system=system_instruction, messages=contents
         )
 
 
-class GenAIConversationFactory(
-    ConversationFactoryBase[GenAIPart, GenAIContent, GeminiGenAIConversation],
+class ConversationFactoryGenAI(
+    ConversationFactoryBase[GenAIPart, GenAIContent, GeminiConversationGenAI],
 ):
     @staticmethod
     def to_gemini_genai_role(role: Role) -> str:
@@ -147,14 +147,15 @@ class GenAIConversationFactory(
         self, dial_message: DialMessage, parts: Parts[GenAIPart]
     ) -> GenAIContent:
         return GenAIContent(
-            role=self.to_gemini_genai_role(dial_message.role), parts=parts.parts
+            role=self.to_gemini_genai_role(dial_message.role),
+            parts=parts.parts,
         )
 
     def create_conversation(
         self,
         system_instruction: List[GenAIPart] | None,
         contents: List[GenAIContent],
-    ) -> GeminiGenAIConversation:
+    ) -> GeminiConversationGenAI:
         return BaseConversation.create(
             system=system_instruction, messages=contents
         )

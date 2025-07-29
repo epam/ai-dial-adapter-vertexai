@@ -2,24 +2,22 @@ from typing import List, Optional, Self
 
 from aidial_sdk.chat_completion import Message
 
-from aidial_adapter_vertexai.chat.attachment_processor import (
-    AttachmentProcessorsGenAI,
-)
 from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.gemini.conversation_factory import (
-    GenAIConversationFactory,
+    ConversationFactoryGenAI,
 )
 from aidial_adapter_vertexai.chat.gemini.processors import (
+    GeminiAttachmentProcessorsGenAI,
     get_audio_processor,
     get_image_processor,
     get_pdf_processor,
     get_plain_text_processor,
     get_video_processor,
 )
-from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiGenAIPrompt
+from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.message import (
     GenAIMessageMerger,
 )
@@ -28,7 +26,7 @@ from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
 
-class Gemini_1_5_Prompt(GeminiGenAIPrompt):
+class Gemini_1_5_Prompt(GeminiPromptGenAI):
     @classmethod
     async def parse(
         cls,
@@ -42,8 +40,8 @@ class Gemini_1_5_Prompt(GeminiGenAIPrompt):
                 "The chat history must have at least one message"
             )
 
-        conversation_factory = GenAIConversationFactory()
-        processors = AttachmentProcessorsGenAI(
+        conversation_factory = ConversationFactoryGenAI()
+        processors = GeminiAttachmentProcessorsGenAI(
             conversation_factory=conversation_factory,
             processors=[
                 get_plain_text_processor(),

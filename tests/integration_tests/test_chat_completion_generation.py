@@ -320,6 +320,25 @@ async def test_empty_assistant_message(chat: Chat):
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+async def test_empty_user_message(deployment: D, chat: Chat):
+    messages = [
+        user(""),
+        ai("come again?"),
+        user("2+3=?"),
+    ]
+
+    expected = "5"
+    if is_claude(deployment):
+        expected = ExpectedException(
+            type=openai.BadRequestError,
+            message="messages: text content blocks must contain non-whitespace text",
+            status_code=400,
+        )
+
+    await _run_test_vision(deployment, chat, messages, expected)
+
+
+@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_multiple_candidates(deployment: D, chat: Chat):
     max_tokens = 10 if not supports_thinking(deployment) else 250
     # Gemini 2.0 rate-limits always fail on such concurrency
@@ -402,41 +421,22 @@ async def test_vision_single_turn_with_text_part(
     await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
-@pytest.fixture
-def missing_text_prompt_error(deployment: D) -> ExpectedException | None:
-    if "gemini" in deployment.value:
-        # Gemini requires some non-system text input to be always supplied.
-        return ExpectedException(
-            type=openai.BadRequestError,
-            message="Unable to submit request because it must have a text parameter. Add a text parameter and try again",
-            status_code=400,
-        )
-    return None
-
-
 @pytest.mark.parametrize(
     "deployment", vision_deployments, ids=display_deployment
 )
 async def test_vision_single_turn_with_empty_text_part(
-    deployment: D,
-    chat: Chat,
-    create_message_with_image,
-    missing_text_prompt_error,
+    deployment: D, chat: Chat, create_message_with_image
 ):
     messages = [create_message_with_image("", DOG_PICTURE)]
-    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
-    await _run_test_vision(deployment, chat, messages, expected)
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
     "deployment", vision_deployments, ids=display_deployment
 )
-async def test_vision_single_turn_without_text_part(
-    deployment: D, chat: Chat, missing_text_prompt_error
-):
+async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
     messages = [user_with_image_url(None, DOG_PICTURE)]
-    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
-    await _run_test_vision(deployment, chat, messages, expected)
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -459,15 +459,11 @@ async def test_vision_two_turns(
     "deployment", vision_deployments, ids=display_deployment
 )
 async def test_vision_single_turn_with_system(
-    deployment: D,
-    chat: Chat,
-    create_message_with_image,
-    missing_text_prompt_error,
+    deployment: D, chat: Chat, create_message_with_image
 ):
-    user_message = create_message_with_image("", DOG_PICTURE)
-    messages = [sys("describe an image when you receive it"), user_message]
-    expected = missing_text_prompt_error or DOG_PICTURE_CONTENT
-    await _run_test_vision(deployment, chat, messages, expected)
+    user_message = create_message_with_image(None, DOG_PICTURE)
+    messages = [sys("describe the image"), user_message]
+    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 async def _run_test_vision(
