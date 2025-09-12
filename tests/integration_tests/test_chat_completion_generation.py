@@ -28,6 +28,7 @@ from tests.utils.tools import ToolCallTest
 
 _CENTRAL = "us-central1"
 _EAST = "us-east5"
+_GLOBAL = "global"
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.CHAT_BISON_1: _CENTRAL,
     D.CHAT_BISON_2: _CENTRAL,
@@ -47,7 +48,7 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
-    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _CENTRAL,
+    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
     D.CLAUDE_3_5_HAIKU: _EAST,
     D.CLAUDE_3_OPUS: _EAST,
@@ -179,7 +180,10 @@ def supports_tool_call_ids(deployment: D) -> bool:
 
 
 def supports_grounding(deployment: D) -> bool:
-    return "gemini" in deployment.value
+    return (
+        "gemini" in deployment.value
+        and deployment != D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+    )
 
 
 def supports_thinking(deployment: D) -> bool:
@@ -359,9 +363,18 @@ async def test_multiple_candidates(deployment: D, chat: Chat):
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_finish_reason_length(deployment: D, chat: Chat):
+    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+        pytest.skip(
+            "Gemini Image doesn't seem to support max_tokens parameter."
+        )
+
     response = await chat(
         max_tokens=1,
-        messages=[user("tell me the full story of Pinocchio")],
+        messages=[
+            user(
+                "Tell me the full story of Pinocchio. Generate text and only the text."
+            )
+        ],
     )
 
     expected_tokens = 0 if supports_thinking(deployment) else 1
@@ -404,7 +417,10 @@ async def test_thinking(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
-async def test_stop_sequence(chat: Chat):
+async def test_stop_sequence(deployment: D, chat: Chat):
+    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+        pytest.skip("Gemini Image doesn't seem to support stop parameter.")
+
     stop = ["world"]
     response = await chat(
         max_tokens=None, stop=stop, messages=[user('Reply with "hello world"')]
@@ -447,6 +463,11 @@ async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
 async def test_vision_two_turns(
     deployment: D, chat: Chat, create_message_with_image
 ):
+    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+        pytest.skip(
+            "Gemini Image generates a variation of the given image with 2+3=5 text embedded into it, instead of describing the given image."
+        )
+
     user_message = create_message_with_image("", DOG_PICTURE)
     messages = [
         sys("describe an image when you receive it"),

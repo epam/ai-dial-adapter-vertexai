@@ -265,7 +265,7 @@ Use the `global` region to enable the [global endpoint](https://cloud.google.com
   "upstreams": [
     {
       "extraData": {
-        "project": "global"
+        "region": "global"
       }
     }
   ]
