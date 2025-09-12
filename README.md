@@ -1,4 +1,4 @@
-## Overview
+# Overview
 
 The project implements [AI DIAL API](https://epam-rail.com/dial_api) for language models and embeddings from [Vertex AI](https://console.cloud.google.com/vertex-ai).
 
@@ -15,6 +15,7 @@ The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYME
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
 |Gemini 2.5 Flash|gemini-2.5-(flash\|flash-preview-04-17)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|Gemini 2.5 Flash Image|gemini-2.5-flash-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
 |Gemini 2.5 Pro|gemini-2.5-(pro\|pro-exp-03-25\|pro-preview-03-25)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
