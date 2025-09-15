@@ -64,7 +64,7 @@ async def set_usage(
     usage: GenerateContentResponse.UsageMetadata | GenAIUsageMetadata,
     consumer: Consumer,
     deployment: GeminiLegacyDeployment | GeminiDeployment,
-    is_grounding_added: bool = False,
+    is_grounding_added: bool,
 ) -> None:
     if log.isEnabledFor(DEBUG):
         log.debug(f"usage: {json_dumps(usage)}")
