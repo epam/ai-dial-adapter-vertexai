@@ -99,6 +99,9 @@ async def get_chat_completion_model(
             | D.IMAGEN_3_GENERATE_001
             | D.IMAGEN_3_GENERATE_002
             | D.IMAGEN_3_FAST_GENERATE
+            | D.IMAGEN_4_GENERATE_PREVIEW
+            | D.IMAGEN_4_FAST_GENERATE_PREVIEW
+            | D.IMAGEN_4_ULTRA_GENERATE_PREVIEW
             | D.IMAGEN_4_GENERATE
             | D.IMAGEN_4_FAST_GENERATE
             | D.IMAGEN_4_ULTRA_GENERATE
