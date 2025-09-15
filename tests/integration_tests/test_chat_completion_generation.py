@@ -4,7 +4,6 @@ from typing import Awaitable, Callable, List, Mapping, Unpack
 import openai
 import pytest
 from aidial_sdk.chat_completion.request import StaticFunction
-from openai import UnprocessableEntityError
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
@@ -61,7 +60,7 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
 
 
 def is_retired_model(deployment: D) -> bool:
-    # Keep at least one model in the list to test how the adapter handles retired models in streaming and non-streaming modes
+    # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     return deployment in {
         D.CHAT_BISON_1,
         D.CHAT_BISON_2,
@@ -310,19 +309,22 @@ async def test_non_empty_sys_message(chat: Chat):
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
-async def test_empty_assistant_message(chat: Chat):
+async def test_empty_assistant_message(deployment: D, chat: Chat):
     messages = [
         user("hi, what is your name?"),
         ai(""),
         user("please come again?"),
     ]
 
-    async with expected_exception(
-        cls=UnprocessableEntityError,
-        message="Assistant message content must be present",
-        status_code=422,
-    ):
-        await chat(messages=messages)
+    expected = None
+    if is_claude(deployment):
+        expected = ExpectedException(
+            type=openai.BadRequestError,
+            message="messages: text content blocks must contain non-whitespace text",
+            status_code=400,
+        )
+
+    await _run_test(deployment, chat, messages, expected)
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
@@ -341,7 +343,7 @@ async def test_empty_user_message(deployment: D, chat: Chat):
             status_code=400,
         )
 
-    await _run_test_vision(deployment, chat, messages, expected)
+    await _run_test(deployment, chat, messages, expected)
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
@@ -436,7 +438,7 @@ async def test_vision_single_turn_with_text_part(
     deployment: D, chat: Chat, create_message_with_image
 ):
     messages = [create_message_with_image("describe the image", DOG_PICTURE)]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -446,7 +448,7 @@ async def test_vision_single_turn_with_empty_text_part(
     deployment: D, chat: Chat, create_message_with_image
 ):
     messages = [create_message_with_image("", DOG_PICTURE)]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -454,7 +456,7 @@ async def test_vision_single_turn_with_empty_text_part(
 )
 async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
     messages = [user_with_image_url(None, DOG_PICTURE)]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -475,7 +477,7 @@ async def test_vision_two_turns(
         ai("5"),
         user_message,
     ]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -486,14 +488,14 @@ async def test_vision_single_turn_with_system(
 ):
     user_message = create_message_with_image(None, DOG_PICTURE)
     messages = [sys("describe the image"), user_message]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
-async def _run_test_vision(
+async def _run_test(
     deployment: D,
     chat: Chat,
     messages,
-    expected: str | List[str] | ExpectedException,
+    expected: str | List[str] | ExpectedException | None,
 ):
     async def _run():
         max_tokens = 2000 if supports_thinking(deployment) else 100
@@ -504,8 +506,9 @@ async def _run_test_vision(
             await _run()
     else:
         response = await _run()
-        substrings = [expected] if isinstance(expected, str) else expected
-        assert any(s in response.content.lower() for s in substrings)
+        if expected is not None:
+            substrings = [expected] if isinstance(expected, str) else expected
+            assert any(s in response.content.lower() for s in substrings)
 
 
 @pytest.mark.parametrize(
