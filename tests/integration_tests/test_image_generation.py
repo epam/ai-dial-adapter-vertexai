@@ -91,7 +91,7 @@ async def test_text_to_image(
 
 
 @pytest.mark.parametrize("deployment, region", _IMAGE_EDITING_MODELS.items())
-async def test_image_editing(
+async def test_image_from_user(
     mock_storage: FileStorage,
     vision_model: AsyncAzureOpenAI,
     get_openai_client: Callable[..., AsyncAzureOpenAI],
@@ -129,6 +129,60 @@ async def test_image_editing(
 
     answer = (vision_response.choices[0].message.content or "").lower()
     assert any(w in answer for w in ("forest", "meadow"))
+
+
+@pytest.mark.parametrize("deployment, region", _IMAGE_EDITING_MODELS.items())
+async def test_image_from_assistant(
+    mock_storage: FileStorage,
+    vision_model: AsyncAzureOpenAI,
+    get_openai_client: Callable[..., AsyncAzureOpenAI],
+    deployment: D,
+    region: str,
+):
+    client = get_openai_client(deployment.value, region=region)
+
+    messages = []
+    messages.append(user("generate a close up image of a siamese cat"))
+
+    response1 = await client.chat.completions.create(
+        model=deployment.value, messages=messages
+    )
+
+    assistant_message = response1.choices[0].message.model_dump()
+
+    messages.append(assistant_message)
+    messages.append(
+        user("now put a fedora hat and tortoise shell glasses on the cat")
+    )
+
+    response2 = await client.chat.completions.create(
+        model=deployment.value, messages=messages
+    )
+
+    image = await _extract_image_bytes(mock_storage, response2)
+
+    verification_prompt = """
+Which one of the following descriptions describes the given image best?
+1. Crouching tiger
+2. Cat with a hat and glasses
+3. Picnic in a forest
+4. Amazon river
+Answer ONLY with the index of the best description as a single digit number.
+DO NOT GENERATE IMAGES.
+"""
+    vision_response = await vision_model.chat.completions.create(
+        model=_VISION_MODEL.value,
+        messages=[
+            user_with_image_url(
+                verification_prompt,
+                Resource(type="image/png", data=image),
+            )
+        ],
+    )
+
+    answer = (vision_response.choices[0].message.content or "").lower()
+    assert "2" in answer
+    assert all(w not in answer for w in ("1", "3", "4"))
 
 
 @pytest.mark.parametrize("stream", [False, True])
