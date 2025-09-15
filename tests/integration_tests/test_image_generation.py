@@ -41,13 +41,15 @@ _IMAGEN_MODELS: Mapping[D, str] = {
     D.IMAGEN_4_GENERATE: _CENTRAL,
     D.IMAGEN_4_FAST_GENERATE: _CENTRAL,
     D.IMAGEN_4_ULTRA_GENERATE: _CENTRAL,
+}
+
+_GEMINI_IMAGE_MODELS: Mapping[D, str] = {
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
 }
 
-_IMAGE_EDITING_MODELS: Mapping[D, str] = {
-    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
-}
 
+_IMAGE_GENERATION_MODELS = _IMAGEN_MODELS | _GEMINI_IMAGE_MODELS
+_IMAGE_TO_IMAGE_MODELS = _GEMINI_IMAGE_MODELS
 
 _VISION_MODEL = D.CLAUDE_3_7_SONNET
 
@@ -57,7 +59,7 @@ def vision_model(get_openai_client: Callable[..., AsyncAzureOpenAI]):
     return get_openai_client(_VISION_MODEL.value, region=_EAST)
 
 
-@pytest.mark.parametrize("deployment, region", _IMAGEN_MODELS.items())
+@pytest.mark.parametrize("deployment, region", _IMAGE_GENERATION_MODELS.items())
 async def test_text_to_image(
     mock_storage: FileStorage,
     vision_model: AsyncAzureOpenAI,
@@ -90,8 +92,8 @@ async def test_text_to_image(
     assert "red" in (vision_response.choices[0].message.content or "").lower()
 
 
-@pytest.mark.parametrize("deployment, region", _IMAGE_EDITING_MODELS.items())
-async def test_image_from_user(
+@pytest.mark.parametrize("deployment, region", _IMAGE_TO_IMAGE_MODELS.items())
+async def test_edit_image_from_user(
     mock_storage: FileStorage,
     vision_model: AsyncAzureOpenAI,
     get_openai_client: Callable[..., AsyncAzureOpenAI],
@@ -131,8 +133,8 @@ async def test_image_from_user(
     assert any(w in answer for w in ("forest", "meadow"))
 
 
-@pytest.mark.parametrize("deployment, region", _IMAGE_EDITING_MODELS.items())
-async def test_image_from_assistant(
+@pytest.mark.parametrize("deployment, region", _IMAGE_TO_IMAGE_MODELS.items())
+async def test_edit_image_from_assistant(
     mock_storage: FileStorage,
     vision_model: AsyncAzureOpenAI,
     get_openai_client: Callable[..., AsyncAzureOpenAI],
@@ -187,7 +189,7 @@ DO NOT GENERATE IMAGES.
 
 @pytest.mark.parametrize("stream", [False, True])
 @pytest.mark.parametrize("deployment, region", _IMAGEN_MODELS.items())
-async def test_content_filtering(
+async def test_content_filtering_imagen(
     get_openai_client: Callable[..., AsyncAzureOpenAI],
     deployment: D,
     region: str,
