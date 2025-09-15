@@ -1,5 +1,5 @@
 from logging import DEBUG
-from typing import AsyncIterator, Callable, List, Optional, Type, assert_never
+from typing import AsyncIterator, Callable, List, Type, assert_never
 
 from aidial_sdk.chat_completion import FinishReason, Message, Stage
 from aidial_sdk.exceptions import RuntimeServerError
@@ -33,6 +33,7 @@ from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
 from aidial_adapter_vertexai.chat.gemini.output import (
     create_citations,
     create_function_calls_from_genai,
+    create_image_attachment,
     set_usage,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
@@ -89,7 +90,7 @@ class GeminiGenAIChatCompletionAdapter(
 
     def __init__(
         self,
-        file_storage: Optional[FileStorage],
+        file_storage: FileStorage | None,
         deployment: AdapterDeployment[GeminiDeployment],
         client: GenAIClient,
     ):
@@ -257,17 +258,23 @@ class GeminiGenAIChatCompletionAdapter(
                         await create_function_calls_from_genai(
                             part, consumer, tools
                         )
-                        if part.thought and part.text:
-                            if thinking_stage is None:
-                                thinking_stage = await consumer.create_stage(
-                                    "Thinking"
-                                )
-                                thinking_stage.open()
-                            thinking_stage.append_content(part.text)
-                            yield part.text
-                        elif part.text:
-                            await consumer.append_content(part.text)
-                            yield part.text
+
+                        if text := part.text:
+                            if part.thought:
+                                if thinking_stage is None:
+                                    thinking_stage = (
+                                        await consumer.create_stage("Thinking")
+                                    )
+                                    thinking_stage.open()
+                                thinking_stage.append_content(text)
+                            else:
+                                await consumer.append_content(text)
+
+                            yield text
+
+                        await create_image_attachment(
+                            consumer, self.file_storage, part
+                        )
 
                 is_grounding_added |= await create_grounding(
                     candidate, consumer
