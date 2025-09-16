@@ -1,4 +1,4 @@
-## Overview
+# Overview
 
 The project implements [AI DIAL API](https://epam-rail.com/dial_api) for language models and embeddings from [Vertex AI](https://console.cloud.google.com/vertex-ai).
 

@@ -73,6 +73,7 @@ async def set_usage(
     await consumer.set_usage(
         TokenUsage(
             prompt_tokens=usage.prompt_token_count or 0,
+            prompt_cached_tokens=usage.cached_content_token_count,
             completion_tokens=completion_tokens,
         )
     )
