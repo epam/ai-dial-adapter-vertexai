@@ -77,7 +77,7 @@ def _pseudo_random(seed: int, a: int = 0, b: int = 100) -> int:
     return random.Random(seed).randrange(a, b + 1)
 
 
-def _create_large_prompt(n: int) -> Tuple[str, Dict[int, int]]:
+def _create_prompt(n: int) -> Tuple[str, Dict[int, int]]:
     lines = []
     answers = {}
     for idx in range(1, n + 1):
@@ -90,7 +90,7 @@ def _create_large_prompt(n: int) -> Tuple[str, Dict[int, int]]:
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_caching(chat: Chat):
-    message, answers = _create_large_prompt(300)
+    message, answers = _create_prompt(300)
 
     messages: List[ChatCompletionMessageParam] = [sys(message)]
 
