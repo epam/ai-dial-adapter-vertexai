@@ -19,10 +19,7 @@ from tests.utils.selector import Selector
 
 _CENTRAL = "us-central1"
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
-    D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
-    D.GEMINI_2_0_FLASH_001: _CENTRAL,
     D.GEMINI_2_5_PRO: _CENTRAL,
-    D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
 }
 
@@ -98,18 +95,21 @@ async def test_caching(chat: Chat):
     messages: List[ChatCompletionMessageParam] = [sys(message)]
 
     indices = [151, 132, 267]
-    for idx in indices:
-        query = (
-            f"Compute the expression number {idx}. Reply with a single number."
-        )
+    for i, idx in enumerate(indices):
+        query = f"Print the expression [{idx}] and compute it."
         answer = str(answers[idx])
 
         messages.append(user(query))
 
-        response = await chat(messages=messages, max_tokens=50)
+        response = await chat(messages=messages, max_tokens=512)
         assert answer in response.content
 
         messages.append(ai(response.content))
 
         assert response.usage is not None
         assert response.usage.prompt_tokens >= 4_096
+
+        if i:
+            assert (details := response.usage.prompt_tokens_details) is not None
+            assert (cached := details.cached_tokens) is not None
+            assert cached > 0

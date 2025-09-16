@@ -17,7 +17,7 @@ class TokenUsage(BaseModel):
         self.completion_tokens += other.completion_tokens
         if (
             self.prompt_cached_tokens is not None
-            and other.prompt_cached_tokens is not None
+            or other.prompt_cached_tokens is not None
         ):
             self.prompt_cached_tokens = (self.prompt_cached_tokens or 0) + (
                 other.prompt_cached_tokens or 0
