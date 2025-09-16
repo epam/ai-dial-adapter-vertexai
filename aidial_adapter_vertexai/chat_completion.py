@@ -40,6 +40,9 @@ from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.dial_api.caching import (
+    set_response_headers_for_caching,
+)
 from aidial_adapter_vertexai.dial_api.exceptions import (
     dial_exception_decorator,
     to_dial_exception,
@@ -110,6 +113,17 @@ class VertexAIChatCompletion(ChatCompletion):
             truncated_prompt = await model.truncate_prompt(
                 prompt, params.max_prompt_tokens
             )
+
+        async def _get_request_tokens() -> int:
+            return await model.count_prompt_tokens(truncated_prompt)
+
+        await set_response_headers_for_caching(
+            response,
+            deployment=self.deployment.reference_deployment_id,
+            request_headers=request.headers,
+            request_body=await request.original_request.json(),
+            get_request_tokens=_get_request_tokens,
+        )
 
         async def generate_response(usage: TokenUsage) -> None:
             with ChoiceConsumer(response=response) as consumer:
