@@ -182,7 +182,13 @@ class ChatCompletionResult(BaseModel):
 
     @property
     def tool_calls(self) -> List[ChatCompletionMessageToolCall] | None:
-        return self.message.tool_calls
+        if (calls := self.message.tool_calls) is None:
+            return None
+        return [
+            call
+            for call in calls
+            if isinstance(call, ChatCompletionMessageToolCall)
+        ]
 
     def content_contains_all(self, matches: List[Any]) -> None:
         for match in matches:
