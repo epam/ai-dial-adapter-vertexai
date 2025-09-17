@@ -4,7 +4,6 @@ from typing import Awaitable, Callable, List, Mapping, Unpack
 import openai
 import pytest
 from aidial_sdk.chat_completion.request import StaticFunction
-from openai import UnprocessableEntityError
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
@@ -28,6 +27,7 @@ from tests.utils.tools import ToolCallTest
 
 _CENTRAL = "us-central1"
 _EAST = "us-east5"
+_GLOBAL = "global"
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.CHAT_BISON_1: _CENTRAL,
     D.CHAT_BISON_2: _CENTRAL,
@@ -47,6 +47,7 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
+    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
     D.CLAUDE_3_5_HAIKU: _EAST,
     D.CLAUDE_3_OPUS: _EAST,
@@ -59,7 +60,7 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
 
 
 def is_retired_model(deployment: D) -> bool:
-    # Keep at least one model in the list to test how the adapter handles retired models in streaming and non-streaming modes
+    # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     return deployment in {
         D.CHAT_BISON_1,
         D.CHAT_BISON_2,
@@ -84,6 +85,7 @@ def is_vision_model(deployment: D) -> bool:
         D.GEMINI_PRO_1_5_V2,
         D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_5_FLASH,
+        D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
@@ -177,7 +179,10 @@ def supports_tool_call_ids(deployment: D) -> bool:
 
 
 def supports_grounding(deployment: D) -> bool:
-    return "gemini" in deployment.value
+    return (
+        "gemini" in deployment.value
+        and deployment != D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+    )
 
 
 def supports_thinking(deployment: D) -> bool:
@@ -302,19 +307,22 @@ async def test_non_empty_sys_message(chat: Chat):
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
-async def test_empty_assistant_message(chat: Chat):
+async def test_empty_assistant_message(deployment: D, chat: Chat):
     messages = [
         user("hi, what is your name?"),
         ai(""),
         user("please come again?"),
     ]
 
-    async with expected_exception(
-        cls=UnprocessableEntityError,
-        message="Assistant message content must be present",
-        status_code=422,
-    ):
-        await chat(messages=messages)
+    expected = None
+    if is_claude(deployment):
+        expected = ExpectedException(
+            type=openai.BadRequestError,
+            message="messages: text content blocks must contain non-whitespace text",
+            status_code=400,
+        )
+
+    await _run_test(deployment, chat, messages, expected)
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
@@ -333,7 +341,7 @@ async def test_empty_user_message(deployment: D, chat: Chat):
             status_code=400,
         )
 
-    await _run_test_vision(deployment, chat, messages, expected)
+    await _run_test(deployment, chat, messages, expected)
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
@@ -355,9 +363,18 @@ async def test_multiple_candidates(deployment: D, chat: Chat):
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_finish_reason_length(deployment: D, chat: Chat):
+    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+        pytest.skip(
+            "Gemini Image doesn't seem to support max_tokens parameter."
+        )
+
     response = await chat(
         max_tokens=1,
-        messages=[user("tell me the full story of Pinocchio")],
+        messages=[
+            user(
+                "Tell me the full story of Pinocchio. Generate text and only the text."
+            )
+        ],
     )
 
     expected_tokens = 0 if supports_thinking(deployment) else 1
@@ -400,7 +417,10 @@ async def test_thinking(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
-async def test_stop_sequence(chat: Chat):
+async def test_stop_sequence(deployment: D, chat: Chat):
+    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+        pytest.skip("Gemini Image doesn't seem to support stop parameter.")
+
     stop = ["world"]
     response = await chat(
         max_tokens=None, stop=stop, messages=[user('Reply with "hello world"')]
@@ -416,7 +436,7 @@ async def test_vision_single_turn_with_text_part(
     deployment: D, chat: Chat, create_message_with_image
 ):
     messages = [create_message_with_image("describe the image", DOG_PICTURE)]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -426,7 +446,7 @@ async def test_vision_single_turn_with_empty_text_part(
     deployment: D, chat: Chat, create_message_with_image
 ):
     messages = [create_message_with_image("", DOG_PICTURE)]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -434,7 +454,7 @@ async def test_vision_single_turn_with_empty_text_part(
 )
 async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
     messages = [user_with_image_url(None, DOG_PICTURE)]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -443,6 +463,11 @@ async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
 async def test_vision_two_turns(
     deployment: D, chat: Chat, create_message_with_image
 ):
+    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+        pytest.skip(
+            "Gemini Image generates a variation of the given image with 2+3=5 text embedded into it, instead of describing the given image."
+        )
+
     user_message = create_message_with_image("", DOG_PICTURE)
     messages = [
         sys("describe an image when you receive it"),
@@ -450,7 +475,7 @@ async def test_vision_two_turns(
         ai("5"),
         user_message,
     ]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
 @pytest.mark.parametrize(
@@ -461,14 +486,14 @@ async def test_vision_single_turn_with_system(
 ):
     user_message = create_message_with_image(None, DOG_PICTURE)
     messages = [sys("describe the image"), user_message]
-    await _run_test_vision(deployment, chat, messages, DOG_PICTURE_CONTENT)
+    await _run_test(deployment, chat, messages, DOG_PICTURE_CONTENT)
 
 
-async def _run_test_vision(
+async def _run_test(
     deployment: D,
     chat: Chat,
     messages,
-    expected: str | List[str] | ExpectedException,
+    expected: str | List[str] | ExpectedException | None,
 ):
     async def _run():
         max_tokens = 2000 if supports_thinking(deployment) else 100
@@ -479,8 +504,9 @@ async def _run_test_vision(
             await _run()
     else:
         response = await _run()
-        substrings = [expected] if isinstance(expected, str) else expected
-        assert any(s in response.content.lower() for s in substrings)
+        if expected is not None:
+            substrings = [expected] if isinstance(expected, str) else expected
+            assert any(s in response.content.lower() for s in substrings)
 
 
 @pytest.mark.parametrize(

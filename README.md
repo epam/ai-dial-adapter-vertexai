@@ -15,6 +15,7 @@ The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYME
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
 |Gemini 2.5 Flash|gemini-2.5-(flash\|flash-preview-04-17)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|Gemini 2.5 Flash Image|gemini-2.5-flash-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
 |Gemini 2.5 Pro|gemini-2.5-(pro\|pro-exp-03-25\|pro-preview-03-25)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
@@ -33,7 +34,7 @@ The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYME
 |Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 3.5 Haiku|claude-3-5-haiku@20241022|(pdf/text)-to-text|✅|✅|✅|✅|
 |Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|✅|
-|Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06)|text-to-image|✅|✅|❌|✅|
+|Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 3.0|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
 |PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|❌|
@@ -264,7 +265,7 @@ Use the `global` region to enable the [global endpoint](https://cloud.google.com
   "upstreams": [
     {
       "extraData": {
-        "project": "global"
+        "region": "global"
       }
     }
   ]

@@ -1,3 +1,4 @@
+import base64
 import json
 from logging import DEBUG
 from urllib.parse import urlparse
@@ -21,6 +22,10 @@ from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import (
     GeminiDeployment,
     GeminiLegacyDeployment,
+)
+from aidial_adapter_vertexai.dial_api.storage import (
+    FileStorage,
+    compute_hash_digest,
 )
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps
@@ -59,7 +64,7 @@ async def set_usage(
     usage: GenerateContentResponse.UsageMetadata | GenAIUsageMetadata,
     consumer: Consumer,
     deployment: GeminiLegacyDeployment | GeminiDeployment,
-    is_grounding_added: bool = False,
+    is_grounding_added: bool,
 ) -> None:
     if log.isEnabledFor(DEBUG):
         log.debug(f"usage: {json_dumps(usage)}")
@@ -131,3 +136,27 @@ async def create_function_calls_from_genai(
                 name=function_call.name,
                 arguments=function_args,
             )
+
+
+async def create_image_attachment(
+    consumer: Consumer, storage: FileStorage | None, part: GenAIPart
+):
+    if (image := part.inline_data) and (data := image.data):
+        title = image.display_name or "Image"
+        type = image.mime_type or "image/png"
+        data_base64 = base64.b64encode(data).decode()
+
+        attachment = Attachment(title=title, type=type, data=data_base64)
+
+        if storage is not None:
+            filename = "images/" + compute_hash_digest(data)
+            meta = await storage.upload(
+                filename=filename,
+                content_type=type,
+                content=data,
+            )
+
+            attachment.data = None
+            attachment.url = meta["url"]
+
+        await consumer.add_attachment(attachment)

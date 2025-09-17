@@ -1,5 +1,5 @@
 from logging import DEBUG
-from typing import AsyncIterator, Callable, List, Optional, Type, assert_never
+from typing import AsyncIterator, Callable, List, Type, assert_never
 
 from aidial_sdk.chat_completion import FinishReason, Message, Stage
 from aidial_sdk.exceptions import RuntimeServerError
@@ -33,6 +33,7 @@ from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
 from aidial_adapter_vertexai.chat.gemini.output import (
     create_citations,
     create_function_calls_from_genai,
+    create_image_attachment,
     set_usage,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
@@ -43,10 +44,8 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
-from aidial_adapter_vertexai.deployments import (
-    ChatCompletionDeployment,
-    GeminiDeployment,
-)
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
+from aidial_adapter_vertexai.deployments import GeminiDeployment
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
@@ -91,7 +90,7 @@ class GeminiGenAIChatCompletionAdapter(
 
     def __init__(
         self,
-        file_storage: Optional[FileStorage],
+        file_storage: FileStorage | None,
         deployment: AdapterDeployment[GeminiDeployment],
         client: GenAIClient,
     ):
@@ -102,6 +101,12 @@ class GeminiGenAIChatCompletionAdapter(
     @property
     def supports_thinking(self) -> bool:
         return "gemini-2.5" in self.deployment.reference_deployment_id.value
+
+    @property
+    def supports_image_generation(self) -> bool:
+        return self.deployment.reference_deployment_id in [
+            D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+        ]
 
     async def configuration(self) -> Type[GeminiConfiguration] | None:
         if self.supports_thinking:
@@ -131,27 +136,28 @@ class GeminiGenAIChatCompletionAdapter(
     ) -> GeminiPromptGenAI | UserError:
         match self.deployment.reference_deployment_id:
             case (
-                ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
-                | ChatCompletionDeployment.GEMINI_PRO_1_5_V1
-                | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
-                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
-                | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
+                D.GEMINI_PRO_1_5_PREVIEW
+                | D.GEMINI_PRO_1_5_V1
+                | D.GEMINI_PRO_1_5_V2
+                | D.GEMINI_FLASH_1_5_V1
+                | D.GEMINI_FLASH_1_5_V2
             ):
                 return await Gemini_1_5_Prompt.parse(
                     self.file_storage, tools, static_tools, messages
                 )
             case (
-                ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
-                | ChatCompletionDeployment.GEMINI_2_0_FLASH_001
-                | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
-                | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
-                | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
-                | ChatCompletionDeployment.GEMINI_2_5_PRO
-                | ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25
-                | ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25
-                | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1
-                | ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17
-                | ChatCompletionDeployment.GEMINI_2_5_FLASH
+                D.GEMINI_2_0_FLASH_EXP
+                | D.GEMINI_2_0_FLASH_001
+                | D.GEMINI_2_0_FLASH_THINKING_EXP_01_21
+                | D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
+                | D.GEMINI_2_0_PRO_EXP_02_05
+                | D.GEMINI_2_5_PRO
+                | D.GEMINI_2_5_PRO_EXP_03_25
+                | D.GEMINI_2_5_PRO_PREVIEW_03_25
+                | D.GEMINI_2_0_FLASH_LITE_1
+                | D.GEMINI_2_5_FLASH_PREVIEW_04_17
+                | D.GEMINI_2_5_FLASH
+                | D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
             ):
                 return await Gemini_2_Prompt.parse(
                     self.file_storage, tools, static_tools, messages
@@ -177,11 +183,12 @@ class GeminiGenAIChatCompletionAdapter(
 
         return create_genai_generation_config(
             params,
-            is_gemini_1_5,
-            prompt.tools,
-            prompt.static_tools,
-            prompt.system,
-            thinking_config,
+            is_gemini_1_5=is_gemini_1_5,
+            supports_image_generation=self.supports_image_generation,
+            tools=prompt.tools,
+            static_tools=prompt.static_tools,
+            system_instruction=prompt.system,
+            thinking_config=thinking_config,
         )
 
     def _get_token_count_config(
@@ -251,17 +258,23 @@ class GeminiGenAIChatCompletionAdapter(
                         await create_function_calls_from_genai(
                             part, consumer, tools
                         )
-                        if part.thought and part.text:
-                            if thinking_stage is None:
-                                thinking_stage = await consumer.create_stage(
-                                    "Thinking"
-                                )
-                                thinking_stage.open()
-                            thinking_stage.append_content(part.text)
-                            yield part.text
-                        elif part.text:
-                            await consumer.append_content(part.text)
-                            yield part.text
+
+                        if text := part.text:
+                            if part.thought:
+                                if thinking_stage is None:
+                                    thinking_stage = (
+                                        await consumer.create_stage("Thinking")
+                                    )
+                                    thinking_stage.open()
+                                thinking_stage.append_content(text)
+                            else:
+                                await consumer.append_content(text)
+
+                            yield text
+
+                        await create_image_attachment(
+                            consumer, self.file_storage, part
+                        )
 
                 is_grounding_added |= await create_grounding(
                     candidate, consumer

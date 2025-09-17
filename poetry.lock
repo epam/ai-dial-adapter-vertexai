@@ -35,8 +35,8 @@ telemetry = ["opentelemetry-api (>=1.22.0,<2.0)", "opentelemetry-exporter-otlp-p
 [package.source]
 type = "git"
 url = "https://github.com/epam/ai-dial-sdk.git"
-reference = "feat/add-headers-to-response"
-resolved_reference = "982f2068b5ef3c87dbe107084cc16fb6943937c8"
+reference = "development"
+resolved_reference = "48e217ae754701454a1e2f9ba50797bfc99b30d1"
 
 [[package]]
 name = "aiocache"
@@ -1188,14 +1188,14 @@ testing = ["pytest"]
 
 [[package]]
 name = "google-genai"
-version = "1.12.1"
+version = "1.36.0"
 description = "GenAI Python SDK"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "google_genai-1.12.1-py3-none-any.whl", hash = "sha256:7cbc1bc029712946ce41bcf80c0eaa89eb8c09c308efbbfe30fd491f402c258a"},
-    {file = "google_genai-1.12.1.tar.gz", hash = "sha256:5c7eda422360643ce602a3f6b23152470ec1039310ef40080cbe4e71237f6391"},
+    {file = "google_genai-1.36.0-py3-none-any.whl", hash = "sha256:bd48d800547cb90e40648178620c89474807305b03f6cd147fb3cc7faab27670"},
+    {file = "google_genai-1.36.0.tar.gz", hash = "sha256:6501f18cbf44488becab6fbff09529ff77e856f1baa65d55686261e4677cec3f"},
 ]
 
 [package.dependencies]
@@ -1204,8 +1204,13 @@ google-auth = ">=2.14.1,<3.0.0"
 httpx = ">=0.28.1,<1.0.0"
 pydantic = ">=2.0.0,<3.0.0"
 requests = ">=2.28.1,<3.0.0"
+tenacity = ">=8.2.3,<9.2.0"
 typing-extensions = ">=4.11.0,<5.0.0"
 websockets = ">=13.0.0,<15.1.0"
+
+[package.extras]
+aiohttp = ["aiohttp (<4.0.0)"]
+local-tokenizer = ["protobuf", "sentencepiece (>=0.2.0)"]
 
 [[package]]
 name = "google-resumable-media"
@@ -3125,6 +3130,22 @@ typing-extensions = {version = ">=4.10.0", markers = "python_version < \"3.13\""
 full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.18)", "pyyaml"]
 
 [[package]]
+name = "tenacity"
+version = "9.1.2"
+description = "Retry code until it succeeds"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138"},
+    {file = "tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb"},
+]
+
+[package.extras]
+doc = ["reno", "sphinx"]
+test = ["pytest", "tornado (>=4.5)", "typeguard"]
+
+[[package]]
 name = "termcolor"
 version = "3.0.0"
 description = "ANSI color formatting for output in terminal"
@@ -3511,4 +3532,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "6f65cc5324da1f4c0262cee92c570700b2bf3cbbb3e59f8c70b747c72ee5d390"
+content-hash = "f83350c2a80109e5ddbb88da00e2065b7b480b608a58322adc96194dad403c27"

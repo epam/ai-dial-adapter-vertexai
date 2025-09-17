@@ -73,6 +73,7 @@ async def get_chat_completion_model(
             | D.GEMINI_2_0_FLASH_LITE_1
             | D.GEMINI_2_5_FLASH
             | D.GEMINI_2_5_FLASH_PREVIEW_04_17
+            | D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
         ):
             return await GeminiGenAIChatCompletionAdapter.create(
                 storage,
@@ -99,6 +100,9 @@ async def get_chat_completion_model(
             | D.IMAGEN_3_GENERATE_001
             | D.IMAGEN_3_GENERATE_002
             | D.IMAGEN_3_FAST_GENERATE
+            | D.IMAGEN_4_GENERATE_PREVIEW
+            | D.IMAGEN_4_FAST_GENERATE_PREVIEW
+            | D.IMAGEN_4_ULTRA_GENERATE_PREVIEW
             | D.IMAGEN_4_GENERATE
             | D.IMAGEN_4_FAST_GENERATE
             | D.IMAGEN_4_ULTRA_GENERATE
