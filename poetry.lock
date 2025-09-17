@@ -2,28 +2,30 @@
 
 [[package]]
 name = "aidial-sdk"
-version = "0.25.0rc"
+version = "0.25.1"
 description = "Framework to create applications and model adapters for AI DIAL"
 optional = false
-python-versions = ">=3.9,<4.0"
+python-versions = "<4.0,>=3.9"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "aidial_sdk-0.25.1-py3-none-any.whl", hash = "sha256:e1db54564991456765f4031cb8bce0829255e3c360748216742198805a87e1fb"},
+    {file = "aidial_sdk-0.25.1.tar.gz", hash = "sha256:f7110bc42d85fa0a40dc113eca3147d0b6de10d3ac578966bbb23db6d8dddc51"},
+]
 
 [package.dependencies]
 fastapi = ">=0.51,<1.0"
-opentelemetry-api = {version = ">=1.22.0,<2.0", optional = true}
-opentelemetry-exporter-otlp-proto-grpc = {version = ">=1.22.0,<2.0", optional = true}
-opentelemetry-exporter-prometheus = {version = ">=0.43b0", optional = true}
-opentelemetry-instrumentation-aiohttp-client = {version = ">=0.43b0", optional = true}
-opentelemetry-instrumentation-fastapi = {version = ">=0.43b0", optional = true}
-opentelemetry-instrumentation-httpx = {version = ">=0.43b0", optional = true}
-opentelemetry-instrumentation-logging = {version = ">=0.43b0", optional = true}
-opentelemetry-instrumentation-requests = {version = ">=0.43b0", optional = true}
-opentelemetry-instrumentation-system-metrics = {version = ">=0.43b0", optional = true}
-opentelemetry-instrumentation-urllib = {version = ">=0.43b0", optional = true}
-opentelemetry-sdk = {version = ">=1.22.0,<2.0", optional = true}
-prometheus-client = {version = ">=0.17.1,<=0.21", optional = true}
+opentelemetry-api = {version = ">=1.22.0,<2.0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-exporter-otlp-proto-grpc = {version = ">=1.22.0,<2.0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-exporter-prometheus = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-instrumentation-aiohttp-client = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-instrumentation-fastapi = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-instrumentation-httpx = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-instrumentation-logging = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-instrumentation-requests = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-instrumentation-system-metrics = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-instrumentation-urllib = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-sdk = {version = ">=1.22.0,<2.0", optional = true, markers = "extra == \"telemetry\""}
+prometheus-client = {version = ">=0.17.1,<=0.21", optional = true, markers = "extra == \"telemetry\""}
 pydantic = ">=1.10.17,<3"
 uvicorn = ">=0.19,<1.0"
 wrapt = ">=1.10,<2"
@@ -31,12 +33,6 @@ wrapt = ">=1.10,<2"
 [package.extras]
 httpx = ["httpx (>=0.25.0,<1)"]
 telemetry = ["opentelemetry-api (>=1.22.0,<2.0)", "opentelemetry-exporter-otlp-proto-grpc (>=1.22.0,<2.0)", "opentelemetry-exporter-prometheus (>=0.43b0)", "opentelemetry-instrumentation-aiohttp-client (>=0.43b0)", "opentelemetry-instrumentation-fastapi (>=0.43b0)", "opentelemetry-instrumentation-httpx (>=0.43b0)", "opentelemetry-instrumentation-logging (>=0.43b0)", "opentelemetry-instrumentation-requests (>=0.43b0)", "opentelemetry-instrumentation-system-metrics (>=0.43b0)", "opentelemetry-instrumentation-urllib (>=0.43b0)", "opentelemetry-sdk (>=1.22.0,<2.0)", "prometheus-client (>=0.17.1,<=0.21)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/epam/ai-dial-sdk.git"
-reference = "fix/relax-append-headers-check"
-resolved_reference = "b88c765d3c980076edcd3b3da5b1b80f0b4b3d6d"
 
 [[package]]
 name = "aiocache"
@@ -3532,4 +3528,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "a0f8ea9888ef88eda798f4163446d5b53bbd106eedf1b1cdd0a4e511bc41d36e"
+content-hash = "451a9f16a50a6cc0a1943624d8adef7eddb17187c36ef506e43fcfa89d85f98f"
