@@ -1,10 +1,9 @@
 import dataclasses
-from typing import List, Mapping, Tuple
+from typing import Tuple
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.adapter_deployments import (
     AdapterChatCompletionDeployment,
@@ -14,21 +13,15 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
-from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
-from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
-from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from tests.utils.openai import sanitize_test_name, sys, user
 
-_CENTRAL = "us-central1"
-_DEPLOYMENT_TO_REGION: Mapping[D, str] = {
-    D.GEMINI_2_5_PRO: _CENTRAL,
-    D.GEMINI_2_5_FLASH: _CENTRAL,
-}
-
-deployments = list(_DEPLOYMENT_TO_REGION.keys())
+_DEPLOYMENTS = [
+    D.GEMINI_2_5_PRO,
+    D.GEMINI_2_5_FLASH,
+]
 
 
 @pytest.fixture
@@ -38,16 +31,6 @@ def deployment(request) -> D:
 
 def display_deployment(dep: D):
     return sanitize_test_name(dep.value)
-
-
-@pytest.fixture
-def region(deployment: D) -> str:
-    region = _DEPLOYMENT_TO_REGION.get(deployment)
-    if region is None:
-        raise ValueError(
-            f"{deployment.value!r} is missing from the region mapping"
-        )
-    return region
 
 
 MockPrompt = Tuple[str, dict | None]
@@ -60,16 +43,12 @@ class MockChatCompletionAdapter(ChatCompletionAdapter[MockPrompt]):
         self.deployment = deployment
 
     async def parse_prompt(
-        self,
-        params: ModelParameters,
-        tools: ToolsConfig,
-        static_tools: StaticToolsConfig,
-        messages: List[Message],
+        self, params: ModelParameters, tools, static_tools, messages
     ) -> MockPrompt | UserError:
         return str(messages[-1].content), params.configuration
 
     async def chat(
-        self, params: ModelParameters, consumer: Consumer, prompt: MockPrompt
+        self, params, consumer: Consumer, prompt: MockPrompt
     ) -> None:
         await consumer.append_content("hello world")
 
@@ -88,10 +67,7 @@ class MockChatCompletionAdapter(ChatCompletionAdapter[MockPrompt]):
 @pytest.fixture(autouse=True)
 def mock_adapter():
     async def _mock_adapter(
-        *,
-        api_key: str,
-        upstream_config: UpstreamConfig,
-        deployment: AdapterChatCompletionDeployment,
+        *, api_key, upstream_config, deployment: AdapterChatCompletionDeployment
     ):
         return MockChatCompletionAdapter(deployment=deployment)
 
@@ -158,7 +134,7 @@ class DialCacheTestCase:
         return "/".join(xs)
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment", _DEPLOYMENTS, ids=display_deployment)
 @pytest.mark.parametrize(
     "ts",
     [

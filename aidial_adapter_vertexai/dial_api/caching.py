@@ -75,5 +75,5 @@ async def set_response_headers_for_caching(
     path = f"prefix.body.messages[{last_message_idx}]"
     expire_at = str(int(time.time()) + _DEFAULT_TTL_SEC)
 
-    response.set_header(_DIAL_CACHE_BREAKPOINT_PATH, path)
-    response.set_header(_DIAL_CACHE_EXPIRE_AT, expire_at)
+    response.append_header(_DIAL_CACHE_BREAKPOINT_PATH, path)
+    response.append_header(_DIAL_CACHE_EXPIRE_AT, expire_at)
