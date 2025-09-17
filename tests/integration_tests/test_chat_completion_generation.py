@@ -187,8 +187,6 @@ def supports_grounding(deployment: D) -> bool:
 
 def supports_thinking(deployment: D) -> bool:
     return deployment in [
-        # Gemini 2.5 doesn't emit thinking tokens into a separate output,
-        # it's all the part of the completion tokens.
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_5_FLASH,

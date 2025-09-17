@@ -125,7 +125,7 @@ class VertexAIChatCompletion(ChatCompletion):
         await asyncio.gather(*(generate_response(usage) for _ in range(n)))
 
         log.debug(f"usage: {usage}")
-        response.set_usage(usage.prompt_tokens, usage.completion_tokens)
+        usage.set_response_usage(response)
 
         if params.max_prompt_tokens is not None:
             response.set_discarded_messages(truncated_prompt.discarded_messages)
