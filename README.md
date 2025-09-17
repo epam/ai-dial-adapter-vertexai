@@ -283,7 +283,7 @@ Gemini 2.5 models support [implicit context caching](https://ai.google.dev/gemin
 
 Any request over a certain amount of tokens will be automatically cached. The token threshold triggering caching for Gemini 2.5 Flash is 1024 and for Gemini 2.5 Pro - 4096.
 
-To enable this feature in DIAL, you need to set `autoCachingSupported` flag in the DIAL Core config:
+Set `autoCachingSupported` flag in the DIAL Core config for a deployment of interest to enable this feature:
 
 ```json
 {
