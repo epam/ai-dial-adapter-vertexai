@@ -6,11 +6,11 @@ The project implements [AI DIAL API](https://epam-rail.com/dial_api) for languag
 
 ### Chat completion models
 
-The following models support `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/chat/completions` endpoint along with an optional support of the feature endpoints:
+The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/chat/completions` endpoint along with an optional support of the feature endpoints:
 
-* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/tokenize`
-* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
-* `POST $SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/configuration`
+* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/tokenize`
+* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
+* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/configuration`
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
@@ -120,7 +120,7 @@ Not every model supports all flags. Refer to the official documentation before u
 
 ### Embedding models
 
-The following models support `$SERVER_HOSTNAME/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:
+The following models support `$SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:
 
 |Model|Deployment name|Language support|Modality|
 |---|---|---|---|
@@ -274,6 +274,45 @@ Use the `global` region to enable the [global endpoint](https://cloud.google.com
 
 > [!NOTE]
 > The global endpoint is supported only for [certain models](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#supported_models) and has a few other [limitations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#limitations).
+
+## Prompt caching
+
+### Implicit caching
+
+Gemini 2.5 models support [implicit context caching](https://ai.google.dev/gemini-api/docs/caching?lang=python#implicit-caching).
+
+Any request over a certain amount of tokens will be automatically cached. The token threshold triggering caching for Gemini 2.5 Flash is 1024 and for Gemini 2.5 Pro - 4096.
+
+To enable this feature in DIAL, you need to set `autoCachingSupported` flag in the DIAL Core config:
+
+```json
+{
+  "models": {
+    "my-dial-gemini-deployment": {
+      "type": "chat",
+      "displayName": "Gemini 2.5 Flash",
+      "endpoint": "$VERTEXAI_ADAPTER_ORIGIN/openai/deployments/gemini-2.5-flash/chat/completions",
+      "upstreams": [
+        {
+          "extraData": {
+            "region": "us-central1"
+          }
+        },
+        {
+          "extraData": {
+            "region": "us-east5"
+          }
+        }
+      ],
+      "features": {
+        "autoCachingSupported": true
+      }
+    }
+  }
+}
+```
+
+The cached prompt tokens *(if any)* are reported in the `usage.prompt_tokens_details.cached_tokens` field of the chat completion response.
 
 ## Authentication
 
