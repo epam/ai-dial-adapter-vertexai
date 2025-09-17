@@ -76,7 +76,10 @@ def genai_to_openai_finish_reason(
                 msg=_EARLY_TERMINATION_ERROR,
                 retriable=retriable,
             )
-        case GenAIFinishReason.MALFORMED_FUNCTION_CALL:
+        case (
+            GenAIFinishReason.MALFORMED_FUNCTION_CALL
+            | GenAIFinishReason.UNEXPECTED_TOOL_CALL
+        ):
             raise FinishReasonOtherError(
                 msg=_INVALID_FUNCTION_CALL_ERROR,
                 retriable=retriable,

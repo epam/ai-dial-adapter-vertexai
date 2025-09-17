@@ -42,7 +42,9 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
 
 def create_genai_generation_config(
     params: ModelParameters,
+    *,
     is_gemini_1_5: bool,
+    supports_image_generation: bool,
     tools: ToolsConfig,
     static_tools: StaticToolsConfig,
     system_instruction: List[GenAIPart] | None,
@@ -56,6 +58,10 @@ def create_genai_generation_config(
 
     response_mime_type, response_schema = _get_response_format(params)
 
+    response_modalities = None
+    if supports_image_generation:
+        response_modalities = ["TEXT", "IMAGE"]
+
     return GenAIGenerationConfig(
         system_instruction=config.get("system_instruction"),
         tools=config.get("tools"),  # type: ignore
@@ -67,6 +73,7 @@ def create_genai_generation_config(
         seed=params.seed,
         response_mime_type=response_mime_type,
         response_schema=response_schema,
+        response_modalities=response_modalities,
         thinking_config=thinking_config,
     )
 

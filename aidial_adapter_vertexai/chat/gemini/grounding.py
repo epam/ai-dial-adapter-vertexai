@@ -51,6 +51,7 @@ def google_search_grounding_tokens(
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1
             | ChatCompletionDeployment.GEMINI_2_5_FLASH
             | ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17
+            | ChatCompletionDeployment.GEMINI_2_5_FLASH_IMAGE_PREVIEW
         ):
             # TODO: Add pricing, when it will be available.
             # Currently, while this models are in experimental mode, there is no pricing information.

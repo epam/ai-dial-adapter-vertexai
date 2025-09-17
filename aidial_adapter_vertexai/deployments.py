@@ -34,14 +34,19 @@ class ChatCompletionDeployment(Enum):
 
     GEMINI_2_5_FLASH = "gemini-2.5-flash"
     GEMINI_2_5_FLASH_PREVIEW_04_17 = "gemini-2.5-flash-preview-04-17"
+    GEMINI_2_5_FLASH_IMAGE_PREVIEW = "gemini-2.5-flash-image-preview"
 
     IMAGEN_005 = "imagegeneration@005"
     IMAGEN_3_GENERATE_001 = "imagen-3.0-generate-001"
     IMAGEN_3_GENERATE_002 = "imagen-3.0-generate-002"
     IMAGEN_3_FAST_GENERATE = "imagen-3.0-fast-generate-001"
-    IMAGEN_4_GENERATE = "imagen-4.0-generate-preview-06-06"
-    IMAGEN_4_FAST_GENERATE = "imagen-4.0-fast-generate-preview-06-06"
-    IMAGEN_4_ULTRA_GENERATE = "imagen-4.0-ultra-generate-preview-06-06"
+
+    IMAGEN_4_GENERATE_PREVIEW = "imagen-4.0-generate-preview-06-06"
+    IMAGEN_4_FAST_GENERATE_PREVIEW = "imagen-4.0-fast-generate-preview-06-06"
+    IMAGEN_4_ULTRA_GENERATE_PREVIEW = "imagen-4.0-ultra-generate-preview-06-06"
+    IMAGEN_4_GENERATE = "imagen-4.0-generate-001"
+    IMAGEN_4_FAST_GENERATE = "imagen-4.0-fast-generate-001"
+    IMAGEN_4_ULTRA_GENERATE = "imagen-4.0-ultra-generate-001"
 
     CLAUDE_3_5_SONNET_V2 = "claude-3-5-sonnet-v2@20241022"
     CLAUDE_3_5_HAIKU = "claude-3-5-haiku@20241022"
@@ -63,6 +68,9 @@ ImagenDeployment = Literal[
     ChatCompletionDeployment.IMAGEN_3_GENERATE_001,
     ChatCompletionDeployment.IMAGEN_3_GENERATE_002,
     ChatCompletionDeployment.IMAGEN_3_FAST_GENERATE,
+    ChatCompletionDeployment.IMAGEN_4_GENERATE_PREVIEW,
+    ChatCompletionDeployment.IMAGEN_4_FAST_GENERATE_PREVIEW,
+    ChatCompletionDeployment.IMAGEN_4_ULTRA_GENERATE_PREVIEW,
     ChatCompletionDeployment.IMAGEN_4_GENERATE,
     ChatCompletionDeployment.IMAGEN_4_FAST_GENERATE,
     ChatCompletionDeployment.IMAGEN_4_ULTRA_GENERATE,
@@ -103,6 +111,7 @@ GeminiDeployment = Literal[
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1,
     ChatCompletionDeployment.GEMINI_2_5_FLASH,
     ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17,
+    ChatCompletionDeployment.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
 ]
 
 
