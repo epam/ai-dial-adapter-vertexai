@@ -312,7 +312,7 @@ Set `autoCachingSupported` flag in the DIAL Core config for a deployment of inte
 }
 ```
 
-The cached prompt tokens *(if any)* are reported in the `usage.prompt_tokens_details.cached_tokens` field of the chat completion response.
+On a cache hit, `usage.prompt_tokens_details.cached_tokens` field reports the number of cached prompt tokens.
 
 ## Authentication
 
