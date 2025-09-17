@@ -65,7 +65,7 @@ def mock_adapter():
         return _MockChatCompletionAdapter(deployment=deployment)
 
     with patch(
-        "aidial_adapter_vertexai.adapters.get_chat_completion_model",
+        "aidial_adapter_vertexai.chat_completion.get_chat_completion_model",
         new=AsyncMock(side_effect=_mock_adapter),
     ):
         yield
