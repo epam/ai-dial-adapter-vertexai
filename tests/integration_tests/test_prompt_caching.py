@@ -15,17 +15,12 @@ from tests.utils.openai import (
     sys,
     user,
 )
-from tests.utils.selector import Selector
 
 _CENTRAL = "us-central1"
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
 }
-
-
-def select(p: Selector[D], xs: List[D]) -> List[D]:
-    return [x for x in xs if p(x)]
 
 
 deployments = list(_DEPLOYMENT_TO_REGION.keys())
@@ -89,7 +84,7 @@ def _create_prompt(n: int) -> Tuple[str, Dict[int, int]]:
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
-async def test_caching(chat: Chat):
+async def test_implicit_caching(chat: Chat):
     message, answers = _create_prompt(300)
 
     messages: List[ChatCompletionMessageParam] = [sys(message)]
@@ -108,7 +103,7 @@ async def test_caching(chat: Chat):
 
         assert response.usage is not None
 
-        # Make sure that the prompt was over the token threshold that
+        # Make sure that the prompt size is over the token threshold that
         # triggers the implicit caching:
         # https://ai.google.dev/gemini-api/docs/caching?lang=python#implicit-caching
         assert response.usage.prompt_tokens >= 4_096
