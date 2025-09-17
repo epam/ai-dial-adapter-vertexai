@@ -114,16 +114,19 @@ class VertexAIChatCompletion(ChatCompletion):
                 prompt, params.max_prompt_tokens
             )
 
-        async def _get_request_tokens() -> int:
-            return await model.count_prompt_tokens(truncated_prompt)
+        async def set_response_headers(prompt_tokens: int | None = None):
+            async def _get_request_tokens() -> int:
+                return prompt_tokens or await model.count_prompt_tokens(
+                    truncated_prompt.prompt
+                )
 
-        await set_response_headers_for_caching(
-            response,
-            deployment=self.deployment.reference_deployment_id,
-            request_headers=request.headers,
-            request_body=await request.original_request.json(),
-            get_request_tokens=_get_request_tokens,
-        )
+            await set_response_headers_for_caching(
+                response,
+                deployment=self.deployment.reference_deployment_id,
+                request_headers=request.headers,
+                request_body=await request.original_request.json(),
+                get_request_tokens=_get_request_tokens,
+            )
 
         async def generate_response(usage: TokenUsage) -> None:
             with ChoiceConsumer(response=response) as consumer:
@@ -134,12 +137,18 @@ class VertexAIChatCompletion(ChatCompletion):
                 f"finish_reason[{consumer.choice_idx}]: {consumer.finish_reason}"
             )
 
+        if request.stream:
+            await set_response_headers()
+
         usage = TokenUsage()
 
         await asyncio.gather(*(generate_response(usage) for _ in range(n)))
 
         log.debug(f"usage: {usage}")
         usage.set_response_usage(response)
+
+        if not request.stream:
+            await set_response_headers(usage.prompt_tokens)
 
         if params.max_prompt_tokens is not None:
             response.set_discarded_messages(truncated_prompt.discarded_messages)

@@ -14,7 +14,7 @@ _DIAL_CACHE_EXPIRE_AT = "X-DIAL-CACHE-EXPIRE-AT"
 _DEFAULT_TTL_SEC = 5 * 60  # 5 minutes
 
 
-def _get_prompt_token_threshold(deployment: D) -> int | None:
+def _get_prompt_tokens_threshold(deployment: D) -> int | None:
     """
     https://ai.google.dev/gemini-api/docs/caching?lang=python#implicit-caching
 
@@ -58,7 +58,7 @@ async def set_response_headers_for_caching(
     if request_headers.get(_DIAL_CACHE_BREAKPOINT_PATH) is None:
         return
 
-    if (threshold := _get_prompt_token_threshold(deployment)) is None:
+    if (threshold := _get_prompt_tokens_threshold(deployment)) is None:
         return
 
     if (last_message_idx := _get_last_message_idx(request_body)) is None:
