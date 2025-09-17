@@ -112,7 +112,7 @@ async def _message_to_parts(
                     ]
                 )
             else:
-                if not content:
+                if content is None:
                     raise ValidationError(
                         "Assistant message content must be present"
                     )
