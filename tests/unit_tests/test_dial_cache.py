@@ -14,6 +14,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
+from aidial_adapter_vertexai.dial_api.caching import get_prompt_tokens_threshold
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from tests.utils.openai import sanitize_test_name, sys, user
@@ -24,19 +25,10 @@ _DEPLOYMENTS = [
 ]
 
 
-@pytest.fixture
-def deployment(request) -> D:
-    return request.param
+_MockPrompt = Tuple[str, dict | None]
 
 
-def display_deployment(dep: D):
-    return sanitize_test_name(dep.value)
-
-
-MockPrompt = Tuple[str, dict | None]
-
-
-class MockChatCompletionAdapter(ChatCompletionAdapter[MockPrompt]):
+class _MockChatCompletionAdapter(ChatCompletionAdapter[_MockPrompt]):
     deployment: AdapterChatCompletionDeployment
 
     def __init__(self, deployment: AdapterChatCompletionDeployment) -> None:
@@ -44,11 +36,11 @@ class MockChatCompletionAdapter(ChatCompletionAdapter[MockPrompt]):
 
     async def parse_prompt(
         self, params: ModelParameters, tools, static_tools, messages
-    ) -> MockPrompt | UserError:
+    ) -> _MockPrompt | UserError:
         return str(messages[-1].content), params.configuration
 
     async def chat(
-        self, params, consumer: Consumer, prompt: MockPrompt
+        self, params, consumer: Consumer, prompt: _MockPrompt
     ) -> None:
         await consumer.append_content("hello world")
 
@@ -60,7 +52,7 @@ class MockChatCompletionAdapter(ChatCompletionAdapter[MockPrompt]):
                 )
             )
 
-    async def count_prompt_tokens(self, prompt: MockPrompt) -> int:
+    async def count_prompt_tokens(self, prompt: _MockPrompt) -> int:
         return len(prompt[0].split())
 
 
@@ -69,7 +61,7 @@ def mock_adapter():
     async def _mock_adapter(
         *, api_key, upstream_config, deployment: AdapterChatCompletionDeployment
     ):
-        return MockChatCompletionAdapter(deployment=deployment)
+        return _MockChatCompletionAdapter(deployment=deployment)
 
     with patch(
         "aidial_adapter_vertexai.adapters.get_chat_completion_model",
@@ -78,42 +70,59 @@ def mock_adapter():
         yield
 
 
-token_threshold = 4_096
-big_content = "cat " * 10_000  # #tokens >= token_threshold
-small_content = "cat"  # #tokens < token_threshold
-
-big_usage = {
-    "prompt_tokens": token_threshold,
-    "completion_tokens": 1,
-    "total_tokens": token_threshold + 1,
-}
-
-small_usage = {
-    "prompt_tokens": big_usage["prompt_tokens"] - 1,
-    "completion_tokens": 1,
-    "total_tokens": big_usage["total_tokens"] - 1,
-}
-
-
 @dataclasses.dataclass
 class DialCacheTestCase:
     __test__ = False
 
+    deployment: D
     stream: bool
-    request_content: str
-    request_usage: dict | None
+    is_big_content: bool
+    is_big_usage: bool | None
     caching_enabled: bool
 
     expected_caching_response: bool
 
+    @property
+    def request_content(self) -> str:
+        if self.is_big_content:
+            return "cat " * (self.token_threshold + 1)
+        else:
+            return "cat"
+
+    @property
+    def request_usage(self) -> dict | None:
+        if self.is_big_usage is None:
+            return None
+        if self.is_big_usage:
+            return {
+                "prompt_tokens": self.token_threshold,
+                "completion_tokens": 1,
+                "total_tokens": self.token_threshold + 1,
+            }
+        else:
+            return {
+                "prompt_tokens": self.token_threshold - 1,
+                "completion_tokens": 1,
+                "total_tokens": self.token_threshold,
+            }
+
+    @property
+    def token_threshold(self) -> int:
+        ret = get_prompt_tokens_threshold(self.deployment)
+        assert ret is not None
+        return ret
+
     def get_name(self):
         xs = []
+
+        xs.append(self.deployment.value)
+
         if self.stream:
             xs.append("stream")
         else:
             xs.append("block")
 
-        if len(self.request_content) >= token_threshold:
+        if self.is_big_content:
             xs.append("big-content")
         else:
             xs.append("small-content")
@@ -123,47 +132,47 @@ class DialCacheTestCase:
         else:
             xs.append("no-caching")
 
-        if self.request_usage:
-            if self.request_usage["prompt_tokens"] >= token_threshold:
+        if self.is_big_usage is not None:
+            if self.is_big_usage:
                 xs.append("big-usage")
             else:
                 xs.append("small-usage")
         else:
             xs.append("no-usage")
 
-        return "/".join(xs)
+        return sanitize_test_name("/".join(xs))
 
 
-@pytest.mark.parametrize("deployment", _DEPLOYMENTS, ids=display_deployment)
 @pytest.mark.parametrize(
     "ts",
     [
         ts
         for stream in [True, False]
+        for deployment in _DEPLOYMENTS
         for ts in [
-            DialCacheTestCase(stream, big_content, None, True, True),
-            DialCacheTestCase(stream, big_content, None, False, False),
-            DialCacheTestCase(stream, small_content, None, True, False),
-            DialCacheTestCase(stream, small_content, None, False, False),
-            DialCacheTestCase(stream, big_content, small_usage, True, stream),
-            DialCacheTestCase(stream, big_content, small_usage, False, False),
+            DialCacheTestCase(deployment, stream, True, None, True, True),
+            DialCacheTestCase(deployment, stream, True, None, False, False),
+            DialCacheTestCase(deployment, stream, False, None, True, False),
+            DialCacheTestCase(deployment, stream, False, None, False, False),
+            DialCacheTestCase(deployment, stream, True, False, True, stream),
+            DialCacheTestCase(deployment, stream, True, False, False, False),
             DialCacheTestCase(
-                stream, small_content, big_usage, True, not stream
+                deployment, stream, False, True, True, not stream
             ),
-            DialCacheTestCase(stream, small_content, big_usage, False, False),
+            DialCacheTestCase(deployment, stream, False, True, False, False),
         ]
     ],
     ids=lambda x: x.get_name(),
 )
 async def test_dial_cache(
-    test_http_client: httpx.AsyncClient, deployment: D, ts: DialCacheTestCase
+    test_http_client: httpx.AsyncClient, ts: DialCacheTestCase
 ):
     headers = {}
     if ts.caching_enabled:
         headers["X-DIAL-CACHE-BREAKPOINT-PATH"] = "whatever"
 
     response = await test_http_client.post(
-        url=f"/openai/deployments/{deployment.value}/chat/completions",
+        url=f"/openai/deployments/{ts.deployment.value}/chat/completions",
         json={
             "messages": [sys("be helpful"), user(ts.request_content)],
             "custom_fields": {"configuration": ts.request_usage},
