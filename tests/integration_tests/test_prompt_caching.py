@@ -103,8 +103,7 @@ async def test_implicit_caching(chat: Chat):
 
         assert response.usage is not None
 
-        # Make sure that the prompt size is over the token threshold that
-        # triggers the implicit caching:
+        # Make sure the prompt size is over the token threshold that triggers the implicit caching:
         # https://ai.google.dev/gemini-api/docs/caching?lang=python#implicit-caching
         assert response.usage.prompt_tokens >= 4_096
 
