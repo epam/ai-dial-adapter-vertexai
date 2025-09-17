@@ -22,6 +22,7 @@ from tests.utils.openai import sanitize_test_name, sys, user
 _DEPLOYMENTS = [
     D.GEMINI_2_5_PRO,
     D.GEMINI_2_5_FLASH,
+    D.CLAUDE_3_5_HAIKU,  # The deployment that doesn't support implicit caching
 ]
 
 
@@ -80,7 +81,13 @@ class DialCacheTestCase:
     is_big_usage: bool | None
     caching_enabled: bool
 
-    expected_caching_response: bool
+    expected_caching_headers: bool
+
+    @property
+    def are_caching_headers_expected(self) -> bool:
+        if get_prompt_tokens_threshold(self.deployment) is None:
+            return False
+        return self.expected_caching_headers
 
     @property
     def request_content(self) -> str:
@@ -108,9 +115,7 @@ class DialCacheTestCase:
 
     @property
     def token_threshold(self) -> int:
-        ret = get_prompt_tokens_threshold(self.deployment)
-        assert ret is not None
-        return ret
+        return get_prompt_tokens_threshold(self.deployment) or 10
 
     def get_name(self):
         xs = []
@@ -186,7 +191,7 @@ async def test_dial_cache(
     cache_path = response.headers.get("X-DIAL-CACHE-BREAKPOINT-PATH")
     expire_at = response.headers.get("X-DIAL-CACHE-EXPIRE-AT")
 
-    if ts.expected_caching_response:
+    if ts.are_caching_headers_expected:
         assert cache_path == "prefix.body.messages[1]"
         assert expire_at is not None
     else:
