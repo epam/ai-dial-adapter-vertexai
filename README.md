@@ -37,12 +37,6 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 3.0|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
-|PaLM 2 Chat Bison|chat-bison@001|text-to-text|✅|✅|❌|❌|
-|PaLM 2 Chat Bison|chat-bison@002|text-to-text|✅|✅|❌|❌|
-|PaLM 2 Chat Bison|chat-bison-32k@002|text-to-text|✅|✅|❌|❌|
-|Codey for Code Chat|codechat-bison@001|text-to-text|✅|✅|❌|❌|
-|Codey for Code Chat|codechat-bison@002|text-to-text|✅|✅|❌|❌|
-|Codey for Code Chat|codechat-bison-32k@002|text-to-text|✅|✅|❌|❌|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
