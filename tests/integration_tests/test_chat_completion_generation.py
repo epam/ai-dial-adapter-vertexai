@@ -28,6 +28,7 @@ from tests.utils.tools import ToolCallTest
 _CENTRAL = "us-central1"
 _EAST = "us-east5"
 _GLOBAL = "global"
+
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.CHAT_BISON_1: _CENTRAL,
     D.CHAT_BISON_2: _CENTRAL,
@@ -35,6 +36,13 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.CODECHAT_BISON_1: _CENTRAL,
     D.CODECHAT_BISON_2: _CENTRAL,
     D.CODECHAT_BISON_2_32K: _CENTRAL,
+    D.GEMINI_2_5_PRO_PREVIEW_03_25: _CENTRAL,
+    D.GEMINI_FLASH_1_5_V1: _CENTRAL,
+    D.GEMINI_PRO_1_5_PREVIEW: _CENTRAL,
+    D.GEMINI_PRO_1_5_V1: _CENTRAL,
+    D.GEMINI_PRO: _CENTRAL,
+    D.GEMINI_2_5_FLASH_PREVIEW_04_17: _CENTRAL,
+    D.GEMINI_2_0_PRO_EXP_02_05: _CENTRAL,
     D.GEMINI_PRO_1: _CENTRAL,
     D.GEMINI_FLASH_1_5_V2: _CENTRAL,
     D.GEMINI_PRO_VISION_1: _CENTRAL,
@@ -68,6 +76,7 @@ def is_retired_model(deployment: D) -> bool:
         D.CODECHAT_BISON_1,
         D.CODECHAT_BISON_2,
         D.CODECHAT_BISON_2_32K,
+        D.GEMINI_PRO,
         D.GEMINI_PRO_1,
         D.GEMINI_PRO_VISION_1,
         D.GEMINI_PRO_1_5_PREVIEW,
@@ -75,7 +84,10 @@ def is_retired_model(deployment: D) -> bool:
         D.GEMINI_FLASH_1_5_V1,
         D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
         D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
+        D.GEMINI_2_0_PRO_EXP_02_05,
         D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
+        D.GEMINI_2_5_PRO_PREVIEW_03_25,
     }
 
 
