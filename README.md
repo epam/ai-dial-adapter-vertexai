@@ -14,18 +14,13 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
-|Gemini 2.5 Flash|gemini-2.5-(flash\|flash-preview-04-17)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|Gemini 2.5 Flash|gemini-2.5-flash|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.5 Flash Image|gemini-2.5-flash-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
-|Gemini 2.5 Pro|gemini-2.5-(pro\|pro-exp-03-25\|pro-preview-03-25)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.5 Pro|gemini-2.5-pro|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-01-21|text-to-text|✅|✅|❌|❌|
 |Gemini 2.0 Flash|gemini-2.0-flash-(exp\|001)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-preview-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|❌|❌|
-|Gemini 1.5 Pro|gemini-1.5-pro-(preview-0409\|001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 1.5 Flash|gemini-1.5-flash-(001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|❌|
-|Gemini 1.0 Pro|gemini-1.0-pro|text-to-text|✅|✅|✅|❌|
+|Gemini 1.5 Pro|gemini-1.5-pro-002|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 1.5 Flash|gemini-1.5-flash-002|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Claude 4 Opus|claude-opus-4@20250514|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 4 Sonnet|claude-sonnet-4@20250514|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 3.7 Sonnet|claude-3-7-sonnet@20250219|(pdf/text/image)-to-text|✅|✅|✅|✅|
