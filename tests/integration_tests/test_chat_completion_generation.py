@@ -11,6 +11,7 @@ from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
+    GET_WEATHER_TOOL_WITH_REFERENCES,
     ChatCompletionArgs,
     ChatCompletionResult,
     ai,
@@ -585,6 +586,21 @@ async def test_tool_call(deployment: D, test: ToolCallTest, chat: Chat):
 
         function_args = json.loads(function_call.arguments)
         assert match_objects(test.expected_function_args(idx), function_args)
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_with_schema_references(chat: Chat):
+    response = await chat(
+        messages=[user("Tell me what's the temperature in London in celsius?")],
+        tools=[GET_WEATHER_TOOL_WITH_REFERENCES],
+    )
+
+    tool_calls = response.tool_calls
+    assert tool_calls is not None, "Tool calls are missing"
 
 
 @pytest.mark.parametrize(

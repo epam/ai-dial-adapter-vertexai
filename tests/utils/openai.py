@@ -346,6 +346,35 @@ async def chat_completion(
     return ChatCompletionResult(response=response)
 
 
+GET_WEATHER_FUNCTION_WITH_REFERENCES: FunctionDefinition = {
+    "name": "get_temperature",
+    "description": "Get reliable information about the temperature in the given city",
+    "strict": True,
+    "parameters": {
+        "$defs": {
+            "Location": {
+                "type": "string",
+                "description": "The city, e.g. San Francisco",
+            },
+            "Unit": {
+                "type": "string",
+                "enum": ["celsius", "fahrenheit"],
+                "description": "The temperature unit to use. Infer this from the location.",
+            },
+        },
+        "type": "object",
+        "properties": {
+            "location": {"$ref": "#/$defs/Location"},
+            "unit": {"$ref": "#/$defs/Unit"},
+        },
+        "required": ["location", "unit"],
+    },
+}
+
+GET_WEATHER_TOOL_WITH_REFERENCES: ChatCompletionToolParam = function_to_tool(
+    GET_WEATHER_FUNCTION_WITH_REFERENCES
+)
+
 GET_WEATHER_FUNCTION: FunctionDefinition = {
     "name": "get_temperature",
     "description": "Get reliable information about the temperature in the given city",
