@@ -1,4 +1,3 @@
 from .genai_lib import GeminiGenAIChatCompletionAdapter
-from .vertex_lib import GeminiChatCompletionAdapter
 
-__all__ = ["GeminiChatCompletionAdapter", "GeminiGenAIChatCompletionAdapter"]
+__all__ = ["GeminiGenAIChatCompletionAdapter"]

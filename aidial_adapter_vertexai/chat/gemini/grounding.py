@@ -8,56 +8,32 @@ from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     GeminiDeployment,
-    GeminiLegacyDeployment,
 )
 
 
-def google_search_grounding_tokens(
-    deployment: GeminiLegacyDeployment | GeminiDeployment,
-) -> int:
+def google_search_grounding_tokens(deployment: GeminiDeployment) -> int:
     # Grounding is $35 / 1K requests, so it's 0.035$ / 1 request
     match deployment:
-        case (
-            ChatCompletionDeployment.GEMINI_FLASH_1_5_V1
-            | ChatCompletionDeployment.GEMINI_FLASH_1_5_V2
-        ):
+        case ChatCompletionDeployment.GEMINI_FLASH_1_5_V2:
             # $0.30 / 1 million tokens
             # So 0.035$ = (0.035 / 0.3) * 1M tokens = 116,667 tokens
             return 116_667
-        case (
-            ChatCompletionDeployment.GEMINI_PRO_1_5_V1
-            | ChatCompletionDeployment.GEMINI_PRO_1_5_V2
-            | ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW
-        ):
+        case ChatCompletionDeployment.GEMINI_PRO_1_5_V2:
             # $5.00 / 1 million tokens
             # So 0.035$ = (0.035 / 5) * 1M tokens = 7,000 tokens
             return 7_000
         case (
-            ChatCompletionDeployment.GEMINI_PRO
-            | ChatCompletionDeployment.GEMINI_PRO_1
-        ):
-            #  $1.50 / 1 million tokens
-            # So 0.035$ = (0.035 / 1.5) * 1M tokens = 23,333 tokens
-            return 23_333
-        case (
             ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_001
-            | ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05
-            | ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21
-            | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
             | ChatCompletionDeployment.GEMINI_2_5_PRO
-            | ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25
             | ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25
             | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1
             | ChatCompletionDeployment.GEMINI_2_5_FLASH
-            | ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17
             | ChatCompletionDeployment.GEMINI_2_5_FLASH_IMAGE_PREVIEW
         ):
             # TODO: Add pricing, when it will be available.
             # Currently, while this models are in experimental mode, there is no pricing information.
             return 0
-        case ChatCompletionDeployment.GEMINI_PRO_VISION_1:
-            raise RuntimeError("Gemini Pro Vision 1 does not support grounding")
 
         case _:
             assert_never(deployment)
