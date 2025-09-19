@@ -1184,14 +1184,14 @@ testing = ["pytest"]
 
 [[package]]
 name = "google-genai"
-version = "1.36.0"
+version = "1.38.0"
 description = "GenAI Python SDK"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "google_genai-1.36.0-py3-none-any.whl", hash = "sha256:bd48d800547cb90e40648178620c89474807305b03f6cd147fb3cc7faab27670"},
-    {file = "google_genai-1.36.0.tar.gz", hash = "sha256:6501f18cbf44488becab6fbff09529ff77e856f1baa65d55686261e4677cec3f"},
+    {file = "google_genai-1.38.0-py3-none-any.whl", hash = "sha256:95407425132d42b3fa11bc92b3f5cf61a0fbd8d9add1f0e89aac52c46fbba090"},
+    {file = "google_genai-1.38.0.tar.gz", hash = "sha256:363272fc4f677d0be6a1aed7ebabe8adf45e1626a7011a7886a587e9464ca9ec"},
 ]
 
 [package.dependencies]
@@ -3528,4 +3528,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "451a9f16a50a6cc0a1943624d8adef7eddb17187c36ef506e43fcfa89d85f98f"
+content-hash = "c87b1da12f78ec8409815cfbe2a1c4efc4aa5241f259a377dcb749594f069c83"
