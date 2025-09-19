@@ -117,7 +117,9 @@ async def create_function_calls_from_genai(
         return
 
     function_args = (
-        json.dumps(function_call.args) if function_call.args else None
+        json.dumps(function_call.args)
+        if function_call.args is not None
+        else None
     )
     if tools.is_tool:
         await consumer.create_tool_call(

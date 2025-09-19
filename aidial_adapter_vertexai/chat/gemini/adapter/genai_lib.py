@@ -236,9 +236,7 @@ class GeminiGenAIChatCompletionAdapter(
         try:
             async for chunk in generator():
                 if log.isEnabledFor(DEBUG):
-                    chunk_str = json_dumps(
-                        chunk, exclude_none=True, exclude_empty_dict=True
-                    )
+                    chunk_str = json_dumps(chunk, exclude_none=True)
                     log.debug(f"response chunk: {chunk_str}")
 
                 if chunk.prompt_feedback:
