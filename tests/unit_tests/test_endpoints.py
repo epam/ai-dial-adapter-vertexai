@@ -23,12 +23,6 @@ class TestCase:
 
 
 test_cases: List[TestCase] = [
-    TestCase(D.CHAT_BISON_1, True, True, False),
-    TestCase(D.CHAT_BISON_2, True, True, False),
-    TestCase(D.CHAT_BISON_2_32K, True, True, False),
-    TestCase(D.CODECHAT_BISON_1, True, True, False),
-    TestCase(D.CODECHAT_BISON_2, True, True, False),
-    TestCase(D.CODECHAT_BISON_2_32K, True, True, False),
     TestCase(D.GEMINI_PRO_1_5_V2, True, True, False),
     TestCase(D.GEMINI_FLASH_1_5_V2, True, True, False),
     TestCase(D.IMAGEN_005, True, True, True),

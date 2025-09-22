@@ -64,6 +64,9 @@ class TestCase:
     checks: List[Checker] = field(default_factory=list)
 
 
+_chat_deployment = ChatCompletionDeployment.CLAUDE_3_5_HAIKU
+_embedding_deployment = EmbeddingsDeployment.TEXT_EMBEDDING_4
+
 test_cases: List[TestCase] = [
     TestCase(
         desc="invalid compat",
@@ -74,49 +77,49 @@ test_cases: List[TestCase] = [
         desc="partially invalid compat",
         compat={
             "xxx": "yyy",
-            "zzz": ChatCompletionDeployment.CODECHAT_BISON_1.value,
+            "zzz": _chat_deployment.value,
         },
         error='None of the values in the following compatibility mapping corresponds to a VertexAI deployment supported by the adapter: {"xxx": "yyy"}. Remap the deployments to the supported VertexAI deployments to fix the error.',
     ),
     TestCase(
         desc="compat chat+embeddings",
         compat={
-            "xxx": ChatCompletionDeployment.CODECHAT_BISON_1.value,
-            "yyy": EmbeddingsDeployment.TEXT_EMBEDDING_4.value,
+            "xxx": _chat_deployment.value,
+            "yyy": _embedding_deployment.value,
         },
         checks=[
-            supported(ChatCompletionDeployment.CODECHAT_BISON_1),
-            supported(EmbeddingsDeployment.TEXT_EMBEDDING_4),
-            compat("xxx", ChatCompletionDeployment.CODECHAT_BISON_1),
-            compat("yyy", EmbeddingsDeployment.TEXT_EMBEDDING_4),
+            supported(_chat_deployment),
+            supported(_embedding_deployment),
+            compat("xxx", _chat_deployment),
+            compat("yyy", _embedding_deployment),
         ],
     ),
     TestCase(
         desc="compat supported deployment",
         compat={
-            ChatCompletionDeployment.IMAGEN_005.value: ChatCompletionDeployment.CODECHAT_BISON_1.value,
+            ChatCompletionDeployment.IMAGEN_005.value: _chat_deployment.value,
         },
         checks=[
-            supported(ChatCompletionDeployment.CODECHAT_BISON_1),
+            supported(_chat_deployment),
             compat(
                 ChatCompletionDeployment.IMAGEN_005.value,
-                ChatCompletionDeployment.CODECHAT_BISON_1,
+                _chat_deployment,
             ),
         ],
     ),
     TestCase(
         desc="compat mismatching supported deployments #1",
         compat={
-            ChatCompletionDeployment.CODECHAT_BISON_1.value: EmbeddingsDeployment.TEXT_EMBEDDING_4.value,
+            _chat_deployment.value: _embedding_deployment.value,
         },
-        error="The chat completion deployment 'codechat-bison@001' is mapped onto the embeddings deployment 'text-embedding-004'",
+        error="The chat completion deployment 'claude-3-5-haiku@20241022' is mapped onto the embeddings deployment 'text-embedding-004'",
     ),
     TestCase(
         desc="compat mismatching supported deployments #2",
         compat={
-            EmbeddingsDeployment.TEXT_EMBEDDING_4.value: ChatCompletionDeployment.CODECHAT_BISON_1.value,
+            _embedding_deployment.value: _chat_deployment.value,
         },
-        error="The embeddings deployment 'text-embedding-004' is mapped onto the chat completion deployment 'codechat-bison@001'",
+        error="The embeddings deployment 'text-embedding-004' is mapped onto the chat completion deployment 'claude-3-5-haiku@20241022'",
     ),
 ]
 

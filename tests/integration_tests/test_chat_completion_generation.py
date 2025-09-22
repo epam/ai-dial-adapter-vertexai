@@ -30,18 +30,12 @@ _EAST = "us-east5"
 _GLOBAL = "global"
 
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
-    D.CHAT_BISON_1: _CENTRAL,
-    D.CHAT_BISON_2: _CENTRAL,
-    D.CHAT_BISON_2_32K: _CENTRAL,
-    D.CODECHAT_BISON_1: _CENTRAL,
-    D.CODECHAT_BISON_2: _CENTRAL,
-    D.CODECHAT_BISON_2_32K: _CENTRAL,
-    D.GEMINI_2_5_PRO_PREVIEW_03_25: _CENTRAL,
     D.GEMINI_FLASH_1_5_V2: _CENTRAL,
     D.GEMINI_PRO_1_5_V2: _CENTRAL,
     D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     D.GEMINI_2_0_FLASH_001: _CENTRAL,
     D.GEMINI_2_5_PRO: _CENTRAL,
+    D.GEMINI_2_5_PRO_PREVIEW_03_25: _CENTRAL,
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
@@ -59,12 +53,6 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
 def is_retired_model(deployment: D) -> bool:
     # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     return deployment in {
-        D.CHAT_BISON_1,
-        D.CHAT_BISON_2,
-        D.CHAT_BISON_2_32K,
-        D.CODECHAT_BISON_1,
-        D.CODECHAT_BISON_2,
-        D.CODECHAT_BISON_2_32K,
         D.GEMINI_2_5_PRO_PREVIEW_03_25,
     }
 
