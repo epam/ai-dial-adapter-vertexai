@@ -19,10 +19,7 @@ from aidial_adapter_vertexai.chat.gemini.grounding import (
     google_search_grounding_tokens,
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.deployments import (
-    GeminiDeployment,
-    GeminiLegacyDeployment,
-)
+from aidial_adapter_vertexai.deployments import GeminiDeployment
 from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
     compute_hash_digest,
@@ -63,7 +60,7 @@ async def create_citations(
 async def set_usage(
     usage: GenerateContentResponse.UsageMetadata | GenAIUsageMetadata,
     consumer: Consumer,
-    deployment: GeminiLegacyDeployment | GeminiDeployment,
+    deployment: GeminiDeployment,
     is_grounding_added: bool,
 ) -> None:
     if log.isEnabledFor(DEBUG):

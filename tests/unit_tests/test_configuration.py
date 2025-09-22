@@ -25,7 +25,6 @@ _claude_deployments: Mapping[D, str] = {
 _gemini_2_5_deployments: Mapping[D, str] = {
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
-    D.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
 }
 
 

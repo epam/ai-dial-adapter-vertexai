@@ -3,37 +3,17 @@ from typing import Literal
 
 
 class ChatCompletionDeployment(Enum):
-    CHAT_BISON_1 = "chat-bison@001"
-    CHAT_BISON_2 = "chat-bison@002"
-    CHAT_BISON_2_32K = "chat-bison-32k@002"
-
-    CODECHAT_BISON_1 = "codechat-bison@001"
-    CODECHAT_BISON_2 = "codechat-bison@002"
-    CODECHAT_BISON_2_32K = "codechat-bison-32k@002"
-
-    GEMINI_PRO = "gemini-pro"
-    GEMINI_PRO_1 = "gemini-1.0-pro"
-    GEMINI_PRO_VISION_1 = "gemini-pro-vision"
-
-    GEMINI_PRO_1_5_PREVIEW = "gemini-1.5-pro-preview-0409"
-    GEMINI_PRO_1_5_V1 = "gemini-1.5-pro-001"
     GEMINI_PRO_1_5_V2 = "gemini-1.5-pro-002"
-    GEMINI_FLASH_1_5_V1 = "gemini-1.5-flash-001"
     GEMINI_FLASH_1_5_V2 = "gemini-1.5-flash-002"
 
     GEMINI_2_0_FLASH_LITE_1 = "gemini-2.0-flash-lite-001"
-    GEMINI_2_0_FLASH_THINKING_EXP_01_21 = "gemini-2.0-flash-thinking-exp-01-21"
-    GEMINI_2_0_PRO_EXP_02_05 = "gemini-2.0-pro-exp-02-05"
     GEMINI_2_0_FLASH_EXP = "gemini-2.0-flash-exp"
     GEMINI_2_0_FLASH_001 = "gemini-2.0-flash-001"
-    GEMINI_2_0_FLASH_LITE_PREVIEW_02_05 = "gemini-2.0-flash-lite-preview-02-05"
 
     GEMINI_2_5_PRO = "gemini-2.5-pro"
-    GEMINI_2_5_PRO_EXP_03_25 = "gemini-2.5-pro-exp-03-25"
     GEMINI_2_5_PRO_PREVIEW_03_25 = "gemini-2.5-pro-preview-03-25"
 
     GEMINI_2_5_FLASH = "gemini-2.5-flash"
-    GEMINI_2_5_FLASH_PREVIEW_04_17 = "gemini-2.5-flash-preview-04-17"
     GEMINI_2_5_FLASH_IMAGE_PREVIEW = "gemini-2.5-flash-image-preview"
 
     IMAGEN_005 = "imagegeneration@005"
@@ -57,11 +37,6 @@ class ChatCompletionDeployment(Enum):
     CLAUDE_4_OPUS = "claude-opus-4@20250514"
     CLAUDE_4_SONNET = "claude-sonnet-4@20250514"
 
-
-# Redirect deprecated 'gemini-pro' alias to 'gemini-1.0-pro'
-CHAT_COMPLETION_REDIRECTS = {
-    ChatCompletionDeployment.GEMINI_PRO: ChatCompletionDeployment.GEMINI_PRO_1
-}
 
 ImagenDeployment = Literal[
     ChatCompletionDeployment.IMAGEN_005,
@@ -87,30 +62,15 @@ ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_4_SONNET,
 ]
 
-GeminiLegacyDeployment = Literal[
-    ChatCompletionDeployment.GEMINI_PRO,
-    ChatCompletionDeployment.GEMINI_PRO_1,
-    ChatCompletionDeployment.GEMINI_PRO_VISION_1,
-]
-
-
 GeminiDeployment = Literal[
-    ChatCompletionDeployment.GEMINI_PRO_1_5_PREVIEW,
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V1,
     ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V1,
     ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-    ChatCompletionDeployment.GEMINI_2_0_PRO_EXP_02_05,
-    ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
     ChatCompletionDeployment.GEMINI_2_5_PRO,
-    ChatCompletionDeployment.GEMINI_2_5_PRO_EXP_03_25,
     ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1,
     ChatCompletionDeployment.GEMINI_2_5_FLASH,
-    ChatCompletionDeployment.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ChatCompletionDeployment.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
 ]
 

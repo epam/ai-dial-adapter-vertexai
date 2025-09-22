@@ -135,27 +135,16 @@ class GeminiGenAIChatCompletionAdapter(
         messages: List[Message],
     ) -> GeminiPromptGenAI | UserError:
         match self.deployment.reference_deployment_id:
-            case (
-                D.GEMINI_PRO_1_5_PREVIEW
-                | D.GEMINI_PRO_1_5_V1
-                | D.GEMINI_PRO_1_5_V2
-                | D.GEMINI_FLASH_1_5_V1
-                | D.GEMINI_FLASH_1_5_V2
-            ):
+            case D.GEMINI_PRO_1_5_V2 | D.GEMINI_FLASH_1_5_V2:
                 return await Gemini_1_5_Prompt.parse(
                     self.file_storage, tools, static_tools, messages
                 )
             case (
                 D.GEMINI_2_0_FLASH_EXP
                 | D.GEMINI_2_0_FLASH_001
-                | D.GEMINI_2_0_FLASH_THINKING_EXP_01_21
-                | D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
-                | D.GEMINI_2_0_PRO_EXP_02_05
                 | D.GEMINI_2_5_PRO
-                | D.GEMINI_2_5_PRO_EXP_03_25
                 | D.GEMINI_2_5_PRO_PREVIEW_03_25
                 | D.GEMINI_2_0_FLASH_LITE_1
-                | D.GEMINI_2_5_FLASH_PREVIEW_04_17
                 | D.GEMINI_2_5_FLASH
                 | D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
             ):
