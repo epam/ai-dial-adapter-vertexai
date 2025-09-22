@@ -14,18 +14,13 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
-|Gemini 2.5 Flash|gemini-2.5-(flash\|flash-preview-04-17)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|Gemini 2.5 Flash|gemini-2.5-flash|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.5 Flash Image|gemini-2.5-flash-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
-|Gemini 2.5 Pro|gemini-2.5-(pro\|pro-exp-03-25\|pro-preview-03-25)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|Gemini 2.0 Pro|gemini-2.0-pro-exp-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 2.5 Pro|gemini-2.5-pro|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 2.0 Flash Thinking|gemini-2.0-flash-thinking-exp-01-21|text-to-text|✅|✅|❌|❌|
 |Gemini 2.0 Flash|gemini-2.0-flash-(exp\|001)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-preview-02-05|(text/pdf/image/audio/video)-to-text|✅|✅|❌|❌|
-|Gemini 1.5 Pro|gemini-1.5-pro-(preview-0409\|001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 1.5 Flash|gemini-1.5-flash-(001\|002)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 1.0 Pro Vision|gemini-pro-vision|(text/pdf/image/video)-to-text|✅|✅|❌|❌|
-|Gemini 1.0 Pro|gemini-1.0-pro|text-to-text|✅|✅|✅|❌|
+|Gemini 1.5 Pro|gemini-1.5-pro-002|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|Gemini 1.5 Flash|gemini-1.5-flash-002|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Claude 4 Opus|claude-opus-4@20250514|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 4 Sonnet|claude-sonnet-4@20250514|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 3.7 Sonnet|claude-3-7-sonnet@20250219|(pdf/text/image)-to-text|✅|✅|✅|✅|
@@ -34,7 +29,7 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 3.5 Haiku|claude-3-5-haiku@20241022|(pdf/text)-to-text|✅|✅|✅|✅|
 |Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|✅|
-|Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
+|Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06\|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 3.0|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
 
@@ -187,7 +182,7 @@ The `COMPATIBILITY_MAPPING` env variable enables exactly this scenario.
 
 When it's defined like this:
 
-```
+```txt
 COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "gemini-2.0-flash-001"}
 ```
 
@@ -203,7 +198,7 @@ When a version of the Adapter supporting the v6 model is released, you may migra
 
 Note that a mapping such as this one would be ineffectual:
 
-```
+```txt
 COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "imagegeneration@005"}
 ```
 
@@ -351,7 +346,7 @@ E.g. `claude-3-5-sonnet-v2@20241022` in GCP Vertex AI corresponds to `claude-3-5
 The adapter uses deployment identifiers from **GCP Vertex AI**.
 Therefore, in order to use Anthropic API model you need to map its identifier to a corresponding identifier in GCP Vertex AI using the [compatibility mapping](#compatibility-mode):
 
-```
+```txt
 COMPATIBILITY_MAPPING={"claude-3-5-sonnet-20241022":"claude-3-5-sonnet-v2@20241022"}
 ```
 

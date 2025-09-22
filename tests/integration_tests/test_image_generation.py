@@ -153,7 +153,9 @@ async def test_edit_image_from_assistant(
         model=deployment.value, messages=messages
     )
 
-    assistant_message = response1.choices[0].message.model_dump()
+    assistant_message = response1.choices[0].message.model_dump(
+        exclude_none=True
+    )
 
     messages.append(assistant_message)
     messages.append(

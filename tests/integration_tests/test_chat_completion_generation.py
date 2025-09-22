@@ -30,16 +30,12 @@ _EAST = "us-east5"
 _GLOBAL = "global"
 
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
-    D.GEMINI_PRO_1: _CENTRAL,
     D.GEMINI_FLASH_1_5_V2: _CENTRAL,
-    D.GEMINI_PRO_VISION_1: _CENTRAL,
     D.GEMINI_PRO_1_5_V2: _CENTRAL,
     D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     D.GEMINI_2_0_FLASH_001: _CENTRAL,
-    D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
     D.GEMINI_2_5_PRO: _CENTRAL,
-    D.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
-    D.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
+    D.GEMINI_2_5_PRO_PREVIEW_03_25: _CENTRAL,
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
@@ -57,29 +53,17 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
 def is_retired_model(deployment: D) -> bool:
     # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     return deployment in {
-        D.GEMINI_PRO_1,
-        D.GEMINI_PRO_VISION_1,
-        D.GEMINI_PRO_1_5_PREVIEW,
-        D.GEMINI_PRO_1_5_V1,
-        D.GEMINI_FLASH_1_5_V1,
-        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-        D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_5_PRO_PREVIEW_03_25,
     }
 
 
 def is_vision_model(deployment: D) -> bool:
     return deployment in [
-        D.GEMINI_PRO_VISION_1,
         D.GEMINI_PRO_1_5_V2,
         D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_PRO_EXP_03_25,
-        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        D.GEMINI_2_0_PRO_EXP_02_05,
-        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
         D.CLAUDE_3_5_SONNET_V2,
@@ -109,11 +93,7 @@ def supports_json_object_response_format(
     deployment: D,
 ) -> bool:
     return deployment in [
-        D.GEMINI_PRO_1,
-        D.GEMINI_PRO_1_5_PREVIEW,
-        D.GEMINI_PRO_1_5_V1,
         D.GEMINI_PRO_1_5_V2,
-        D.GEMINI_FLASH_1_5_V1,
         D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
@@ -121,11 +101,7 @@ def supports_json_object_response_format(
 
 
 def supports_json_schema_response_format(deployment: D) -> bool:
-    return supports_json_object_response_format(
-        deployment
-    ) and deployment not in [
-        D.GEMINI_PRO_1,
-    ]
+    return supports_json_object_response_format(deployment)
 
 
 def is_claude(deployment: D) -> bool:
@@ -134,16 +110,11 @@ def is_claude(deployment: D) -> bool:
 
 def supports_tools(deployment: D) -> bool:
     return is_claude(deployment) or deployment in [
-        D.GEMINI_PRO_1,
-        D.GEMINI_PRO_1_5_V1,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
-        D.GEMINI_2_0_PRO_EXP_02_05,
         D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_FLASH,
-        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
@@ -156,10 +127,8 @@ def supports_parallel_tool_calls(deployment: D) -> bool:
         D.CLAUDE_3_5_SONNET,
         # D.CLAUDE_3_7_SONNET,
         D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_FLASH,
-        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
@@ -175,12 +144,7 @@ def supports_grounding(deployment: D) -> bool:
 
 
 def supports_thinking(deployment: D) -> bool:
-    return deployment in [
-        D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_PRO_EXP_03_25,
-        D.GEMINI_2_5_FLASH,
-        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
-    ]
+    return deployment in [D.GEMINI_2_5_PRO, D.GEMINI_2_5_FLASH]
 
 
 def is_gemini_2(deployment: D) -> bool:
