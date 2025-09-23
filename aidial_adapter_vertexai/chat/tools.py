@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Literal, Self, Tuple, assert_never, cast
+from typing import Dict, List, Literal, Self, Tuple, assert_never
 
 from aidial_sdk.chat_completion import (
     Function,
@@ -20,10 +20,8 @@ from google.genai.types import (
 from google.genai.types import (
     FunctionDeclarationDict as GenAIFunctionDeclaration,
 )
-from google.genai.types import SchemaDict as GenAISchema
 from google.genai.types import ToolConfigDict as GenAIToolConfig
 from google.genai.types import ToolDict as GenAITool
-from google.genai.types import Type as GenAIType
 from pydantic.v1 import BaseModel
 from vertexai.preview.generative_models import (
     FunctionDeclaration as GeminiFunction,
@@ -39,6 +37,9 @@ FunctionCallingConfig = GeminiToolConfig.FunctionCallingConfig
 class ToolsMode(Enum):
     TOOLS = "TOOLS"
     FUNCTIONS = "FUNCTIONS"
+
+
+_EMPTY_OBJECT_JSON_SCHEMA = {"type": "object", "properties": {}}
 
 
 class ToolsConfig(BaseModel):
@@ -181,8 +182,7 @@ class ToolsConfig(BaseModel):
         def _create_tool(func: Function) -> ClaudeTool:
             tool: ClaudeTool = {
                 "name": func.name,
-                "input_schema": func.parameters
-                or {"type": "object", "properties": {}},
+                "input_schema": func.parameters or _EMPTY_OBJECT_JSON_SCHEMA,
             }
             if func.description:
                 tool["description"] = func.description
@@ -208,8 +208,7 @@ class ToolsConfig(BaseModel):
                 function_declarations=[
                     GeminiFunction(
                         name=func.name,
-                        parameters=func.parameters
-                        or {"type": "object", "properties": {}},
+                        parameters=func.parameters or _EMPTY_OBJECT_JSON_SCHEMA,
                         description=func.description,
                     )
                     for func in self.functions
@@ -246,13 +245,8 @@ class ToolsConfig(BaseModel):
                 function_declarations=[
                     GenAIFunctionDeclaration(
                         name=func.name,
-                        parameters=(
-                            _convert_genai_function_parameters(func.parameters)
-                            if func.parameters
-                            else GenAISchema(
-                                type=GenAIType.OBJECT, properties={}
-                            )
-                        ),
+                        parameters_json_schema=func.parameters
+                        or _EMPTY_OBJECT_JSON_SCHEMA,
                         description=func.description,
                     )
                     for func in self.functions
@@ -322,31 +316,3 @@ def collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
                 ret[tool_call.id] = tool_call.function.name
 
     return ret
-
-
-_JSON_SCHEMA_TYPES = [
-    "string",
-    "number",
-    "integer",
-    "boolean",
-    "array",
-    "object",
-]
-
-
-def _convert_genai_function_parameters(function_schema: dict) -> GenAISchema:
-    def _convert(value):
-        match value:
-            case dict():
-                d = {k: _convert(v) for k, v in value.items()}
-
-                # GenAI lib requires property types to be in uppercase
-                if (ty := d.get("type")) in _JSON_SCHEMA_TYPES:
-                    d["type"] = ty.upper()
-                return d
-            case list():
-                return [_convert(item) for item in value]
-            case _:
-                return value
-
-    return cast(GenAISchema, _convert(function_schema))

@@ -11,10 +11,12 @@ from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
+    GET_WEATHER_TOOL_WITH_REFERENCES,
     ChatCompletionArgs,
     ChatCompletionResult,
     ai,
     chat_completion,
+    function_to_tool,
     sanitize_test_name,
     sys,
     user,
@@ -559,6 +561,45 @@ async def test_tool_response(test: ToolCallTest, chat: Chat):
 
     for temp in test.city_temps:
         assert str(temp) in response.content
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_with_schema_references(chat: Chat):
+    response = await chat(
+        messages=[user("Tell me what's the temperature in London in celsius?")],
+        tools=[GET_WEATHER_TOOL_WITH_REFERENCES],
+    )
+
+    tool_calls = response.tool_calls
+    assert tool_calls is not None, "Tool calls are missing"
+    assert tool_calls[0].function.name == "get_temperature"
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_zero_parameters(chat: Chat):
+    response = await chat(
+        messages=[user("What time is it?")],
+        tools=[
+            function_to_tool(
+                {
+                    "name": "get_current_time",
+                    "description": "return the current time",
+                }
+            )
+        ],
+    )
+
+    tool_calls = response.tool_calls
+    assert tool_calls is not None, "Tool calls are missing"
+    assert tool_calls[0].function.name == "get_current_time"
 
 
 @pytest.mark.parametrize(
