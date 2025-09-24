@@ -39,7 +39,7 @@ def create_chat_params(
 ) -> ChatParameters:
     system = none_to_not_given(prompt.system)
     tools = none_to_not_given(prompt.tools.to_claude_tools())
-    tool_choice = none_to_not_given(prompt.tools.to_claude_tool_config())
+    tool_choice = none_to_not_given(prompt.tools.to_claude_tool_choice())
 
     temperature = none_to_not_given(params.temperature)
     stop_sequences = none_to_not_given(params.stop)

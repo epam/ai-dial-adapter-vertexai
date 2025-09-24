@@ -355,7 +355,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                 system=none_to_not_given(prompt.system),
                 tools=none_to_not_given(prompt.tools.to_claude_tools()),
                 tool_choice=none_to_not_given(
-                    prompt.tools.to_claude_tool_config()
+                    prompt.tools.to_claude_tool_choice()
                 ),
             )
         ).input_tokens
