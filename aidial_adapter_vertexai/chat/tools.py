@@ -122,13 +122,26 @@ class ToolsConfig(BaseModel):
                 return function_call
 
     @staticmethod
-    def _get_tool_from_function(tool: Function | Tool | StaticTool) -> Tool:
+    def _get_tool_from_function(
+        tool: Function | Tool | StaticTool,
+    ) -> Tool | None:
         if isinstance(tool, StaticTool):
-            raise ValidationError("Static tools aren't supported")
+            # Static tools are handled separately in StaticToolsConfig
+            return None
         if isinstance(tool, Function):
             return Tool(type="function", function=tool)
         else:
             return tool
+
+    @staticmethod
+    def _get_tools_from_functions(
+        tools: List[Function] | List[Tool | StaticTool],
+    ) -> List[Tool]:
+        return [
+            elem
+            for tool in tools
+            if (elem := ToolsConfig._get_tool_from_function(tool)) is not None
+        ]
 
     @classmethod
     def noop(cls) -> Self:
@@ -142,21 +155,15 @@ class ToolsConfig(BaseModel):
         validate_messages(request)
 
         if request.functions is not None:
-            tools = [
-                cls._get_tool_from_function(tool) for tool in request.functions
-            ]
+            tools = cls._get_tools_from_functions(request.functions)
             tool_choice = cls._function_call_to_tool_choice(
                 request.function_call
             )
             tool_ids = None
-
         elif request.tools is not None:
-            tools = [
-                cls._get_tool_from_function(tool) for tool in request.tools
-            ]
+            tools = cls._get_tools_from_functions(request.tools)
             tool_choice = request.tool_choice
             tool_ids = collect_tool_ids(request.messages)
-
         else:
             return cls.noop()
 
