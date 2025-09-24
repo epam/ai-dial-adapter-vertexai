@@ -23,15 +23,8 @@ from google.genai.types import (
 from google.genai.types import ToolConfigDict as GenAIToolConfig
 from google.genai.types import ToolDict as GenAITool
 from pydantic.v1 import BaseModel
-from vertexai.preview.generative_models import (
-    FunctionDeclaration as GeminiFunction,
-)
-from vertexai.preview.generative_models import Tool as GeminiTool
-from vertexai.preview.generative_models import ToolConfig as GeminiToolConfig
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-
-FunctionCallingConfig = GeminiToolConfig.FunctionCallingConfig
 
 
 class ToolsMode(Enum):
@@ -198,43 +191,6 @@ class ToolsConfig(BaseModel):
             return {"type": "any"}
         else:
             return {"type": "auto"}
-
-    def to_gemini_tools(self) -> List[GeminiTool]:
-        if not self.functions:
-            return []
-
-        return [
-            GeminiTool(
-                function_declarations=[
-                    GeminiFunction(
-                        name=func.name,
-                        parameters=func.parameters or _EMPTY_OBJECT_JSON_SCHEMA,
-                        description=func.description,
-                    )
-                    for func in self.functions
-                ]
-            )
-        ]
-
-    def to_gemini_tool_config(self) -> GeminiToolConfig | None:
-        if not self.functions:
-            return None
-
-        if self.required:
-            return GeminiToolConfig(
-                function_calling_config=FunctionCallingConfig(
-                    mode=FunctionCallingConfig.Mode.ANY,
-                    allowed_function_names=[
-                        func.name for func in self.functions
-                    ],
-                )
-            )
-        else:
-            return GeminiToolConfig(
-                function_calling_config=FunctionCallingConfig(
-                    mode=FunctionCallingConfig.Mode.AUTO
-                )
-            )
 
     def to_gemini_genai_tools(self) -> List[GenAITool]:
         if not self.functions:
