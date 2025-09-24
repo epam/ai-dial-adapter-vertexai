@@ -1,5 +1,5 @@
 import json
-from typing import Awaitable, Callable, List, Mapping, Unpack
+from typing import Awaitable, Callable, List, Mapping, Protocol, Unpack
 
 import openai
 import pytest
@@ -194,7 +194,10 @@ def create_message_with_image(request) -> Callable:
     return request.param
 
 
-Chat = Callable[..., Awaitable[ChatCompletionResult]]
+class Chat(Protocol):
+    def __call__(
+        self, **kwargs: Unpack[ChatCompletionArgs]
+    ) -> Awaitable[ChatCompletionResult]: ...
 
 
 @pytest.fixture
@@ -599,6 +602,30 @@ async def test_tool_call_zero_parameters(chat: Chat):
 
     tool_calls = response.tool_calls
     assert tool_calls is not None, "Tool calls are missing"
+    assert tool_calls[0].function.name == "get_current_time"
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_required(chat: Chat):
+    response = await chat(
+        messages=[user("How are you?")],
+        tools=[
+            function_to_tool(
+                {
+                    "name": "get_current_time",
+                    "description": "return the current time",
+                }
+            )
+        ],
+        tool_choice="required",
+    )
+
+    tool_calls = response.tool_calls
+    assert tool_calls is not None, "Tool call is missing"
     assert tool_calls[0].function.name == "get_current_time"
 
 

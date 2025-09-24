@@ -62,9 +62,12 @@ def create_genai_generation_config(
     if supports_image_generation:
         response_modalities = ["TEXT", "IMAGE"]
 
+    tool_config = tools.to_gemini_genai_tool_config()
+
     return GenAIGenerationConfig(
         system_instruction=config.get("system_instruction"),
         tools=config.get("tools"),  # type: ignore
+        tool_config=tool_config,
         max_output_tokens=params.max_tokens,
         temperature=params.temperature,
         stop_sequences=params.stop,

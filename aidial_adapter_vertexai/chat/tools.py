@@ -259,20 +259,16 @@ class ToolsConfig(BaseModel):
             return None
 
         if self.required:
-            return GenAIToolConfig(
-                function_calling_config=GenAIFunctionCallingConfig(
-                    mode=GenAIFunctionCallingConfigMode.ANY,
-                    allowed_function_names=[
-                        func.name for func in self.functions
-                    ],
-                )
+            config = GenAIFunctionCallingConfig(
+                mode=GenAIFunctionCallingConfigMode.ANY,
+                allowed_function_names=[func.name for func in self.functions],
             )
         else:
-            return GenAIToolConfig(
-                function_calling_config=GenAIFunctionCallingConfig(
-                    mode=GenAIFunctionCallingConfigMode.AUTO,
-                )
+            config = GenAIFunctionCallingConfig(
+                mode=GenAIFunctionCallingConfigMode.AUTO
             )
+
+        return GenAIToolConfig(function_calling_config=config)
 
 
 def validate_messages(request: AzureChatCompletionRequest) -> None:

@@ -8,7 +8,7 @@ from openai.types.chat import (
     ChatCompletionMessageParam,
     ChatCompletionToolParam,
 )
-from openai.types.chat.completion_create_params import Function
+from openai.types.shared_params.function_definition import FunctionDefinition
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from tests.conftest import get_extra_headers
@@ -49,7 +49,7 @@ class TestCase:
     messages: List[ChatCompletionMessageParam]
     expected_error: str | None
 
-    functions: List[Function] | None
+    functions: List[FunctionDefinition] | None
     tools: List[ChatCompletionToolParam] | None
 
     def get_id(self):
@@ -93,7 +93,7 @@ def get_test_cases(
         name: str,
         messages: List[ChatCompletionMessageParam],
         error: str | None = None,
-        functions: List[Function] | None = None,
+        functions: List[FunctionDefinition] | None = None,
         tools: List[ChatCompletionToolParam] | None = None,
     ) -> None:
         test_cases.append(
