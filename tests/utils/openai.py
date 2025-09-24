@@ -33,7 +33,6 @@ from openai.types.chat.chat_completion_message import (
 from openai.types.chat.chat_completion_message_tool_call_param import (
     Function as ToolFunction,
 )
-from openai.types.chat.completion_create_params import Function
 from openai.types.shared_params.function_definition import FunctionDefinition
 from pydantic.v1 import BaseModel
 
@@ -222,7 +221,7 @@ async def tokenize_request(
     http_client: httpx.AsyncClient,
     model_id: str,
     messages: List[ChatCompletionMessageParam],
-    functions: List[Function] | None,
+    functions: List[FunctionDefinition] | None,
     tools: List[ChatCompletionToolParam] | None,
     extra_headers: Mapping[str, str] | None = None,
 ) -> TokenizeResponse:
@@ -271,7 +270,7 @@ class ChatCompletionArgs(TypedDict, total=False):
     stop: List[str] | None
     max_tokens: int | None
     n: int | None
-    functions: List[Function] | None
+    functions: List[FunctionDefinition] | None
     tools: List[ChatCompletionToolParam] | None
     tool_choice: ChatCompletionToolChoiceOptionParam | None
     static_tools: StaticToolsConfig | None
