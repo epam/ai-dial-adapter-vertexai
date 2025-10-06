@@ -66,7 +66,7 @@ def create_genai_generation_config(
 
     return GenAIGenerationConfig(
         system_instruction=config.get("system_instruction"),
-        tools=config.get("tools"),  # type: ignore
+        tools=config.get("tools"),
         tool_config=tool_config,
         max_output_tokens=params.max_tokens,
         temperature=params.temperature,

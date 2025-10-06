@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Literal, Self, Tuple, assert_never
+from typing import Dict, List, Literal, Self, assert_never
 
 from aidial_sdk.chat_completion import (
     Function,
@@ -8,8 +8,24 @@ from aidial_sdk.chat_completion import (
     Role,
     ToolChoice,
 )
-from aidial_sdk.chat_completion.request import AzureChatCompletionRequest, Tool
-from anthropic.types.beta import BetaToolChoiceParam as ClaudeToolConfig
+from aidial_sdk.chat_completion.request import (
+    AzureChatCompletionRequest,
+    StaticTool,
+    Tool,
+)
+from anthropic.types.beta import (
+    BetaToolChoiceAnyParam as ClaudeToolChoiceAnyParam,
+)
+from anthropic.types.beta import (
+    BetaToolChoiceAutoParam as ClaudeToolChoiceAutoParam,
+)
+from anthropic.types.beta import (
+    BetaToolChoiceNoneParam as ClaudeToolChoiceNoneParam,
+)
+from anthropic.types.beta import BetaToolChoiceParam as ClaudeToolChoice
+from anthropic.types.beta import (
+    BetaToolChoiceToolParam as ClaudeToolChoiceToolParam,
+)
 from anthropic.types.beta import BetaToolParam as ClaudeTool
 from google.genai.types import (
     FunctionCallingConfigDict as GenAIFunctionCallingConfig,
@@ -43,17 +59,12 @@ _EMPTY_OBJECT_JSON_SCHEMA = {"type": "object", "properties": {}}
 
 
 class ToolsConfig(BaseModel):
-    functions: List[Function]
+    tools: List[Tool]
     """
     List of functions/tools.
     """
 
-    required: bool
-    """
-    True forces the model to call one of the available functions.
-    False allows the model to pick between generating a message or
-    calling one or more tools/functions.
-    """
+    tool_choice: Literal["auto", "none", "required"] | ToolChoice
 
     tool_ids: Dict[str, str] | None
     """
@@ -73,7 +84,7 @@ class ToolsConfig(BaseModel):
         return self.tool_ids is not None
 
     def not_supported(self) -> None:
-        if self.functions:
+        if self.tools:
             if self.is_tool:
                 raise ValidationError("The tools aren't supported")
             else:
@@ -101,131 +112,129 @@ class ToolsConfig(BaseModel):
         return tool_name
 
     @staticmethod
-    def filter_functions(
-        function_call: Literal["auto", "none", "required"] | FunctionChoice,
-        functions: List[Function],
-    ) -> Tuple[bool, List[Function]]:
+    def _function_call_to_tool_choice(
+        function_call: Literal["auto", "none"] | FunctionChoice | None,
+    ) -> Literal["auto", "none", "required"] | ToolChoice | None:
         match function_call:
-            case "none":
-                return False, []
-            case "auto":
-                return False, functions
-            case "required":
-                return True, functions
-            case FunctionChoice(name=name):
-                new_functions = [
-                    func for func in functions if func.name == name
-                ]
-                if not new_functions:
-                    raise ValidationError(
-                        f"Function {name!r} is not on the list of available functions"
-                    )
-                return True, new_functions
+            case FunctionChoice():
+                return ToolChoice(type="function", function=function_call)
             case _:
-                assert_never(function_call)
+                return function_call
 
     @staticmethod
-    def tool_choice_to_function_call(
-        tool_choice: Literal["auto", "none", "required"] | ToolChoice | None,
-    ) -> Literal["auto", "none", "required"] | FunctionChoice | None:
-        match tool_choice:
-            case ToolChoice(function=FunctionChoice(name=name)):
-                return FunctionChoice(name=name)
-            case _:
-                return tool_choice
+    def _get_tool_from_function(
+        tool: Function | Tool | StaticTool,
+    ) -> Tool | None:
+        if isinstance(tool, StaticTool):
+            # Static tools are handled separately in StaticToolsConfig
+            return None
+        if isinstance(tool, Function):
+            return Tool(type="function", function=tool)
+        else:
+            return tool
+
+    @staticmethod
+    def _get_tools_from_functions(
+        tools: List[Function] | List[Tool | StaticTool],
+    ) -> List[Tool]:
+        return [
+            elem
+            for tool in tools
+            if (elem := ToolsConfig._get_tool_from_function(tool)) is not None
+        ]
 
     @classmethod
     def noop(cls) -> Self:
-        return cls(functions=[], required=False, tool_ids=None)
+        return cls(tools=[], tool_choice="auto", tool_ids=None)
 
     def is_empty(self) -> bool:
-        return not self.functions
+        return not self.tools
 
     @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
         validate_messages(request)
 
         if request.functions is not None:
-            functions = request.functions
-            function_call = request.function_call
-            tool_ids = None
-
-        elif request.tools is not None:
-            functions = [
-                tool.function
-                for tool in request.tools
-                if isinstance(tool, Tool)
-            ]
-            function_call = ToolsConfig.tool_choice_to_function_call(
-                request.tool_choice
+            tools = cls._get_tools_from_functions(request.functions)
+            tool_choice = cls._function_call_to_tool_choice(
+                request.function_call
             )
-            tool_ids = collect_tool_ids(request.messages)
-
-        else:
-            functions = []
-            function_call = None
             tool_ids = None
+        elif request.tools is not None:
+            tools = cls._get_tools_from_functions(request.tools)
+            tool_choice = request.tool_choice
+            tool_ids = collect_tool_ids(request.messages)
+        else:
+            return cls.noop()
 
-        if function_call is None:
-            function_call = "auto" if functions else "none"
-
-        required, selected = ToolsConfig.filter_functions(
-            function_call, functions
+        return cls(
+            tools=tools,
+            tool_choice=tool_choice or "auto",
+            tool_ids=tool_ids,
         )
 
-        return cls(functions=selected, required=required, tool_ids=tool_ids)
-
     def to_claude_tools(self) -> List[ClaudeTool] | None:
-        if not self.functions:
+        if not self.tools:
             return None
 
-        def _create_tool(func: Function) -> ClaudeTool:
-            tool: ClaudeTool = {
+        def _create_tool(tool: Tool) -> ClaudeTool:
+            func = tool.function
+            ret: ClaudeTool = {
                 "name": func.name,
                 "input_schema": func.parameters or _EMPTY_OBJECT_JSON_SCHEMA,
             }
             if func.description:
-                tool["description"] = func.description
-            return tool
+                ret["description"] = func.description
+            return ret
 
-        return [_create_tool(func) for func in self.functions]
+        return [_create_tool(tool) for tool in self.tools]
 
-    def to_claude_tool_config(self) -> ClaudeToolConfig | None:
-        if not self.functions:
+    def to_claude_tool_choice(self) -> ClaudeToolChoice | None:
+        if not self.tools:
             return None
 
-        if self.required:
-            return {"type": "any"}
-        else:
-            return {"type": "auto"}
+        match self.tool_choice:
+            case "auto":
+                return ClaudeToolChoiceAutoParam(type="auto")
+            case "none":
+                return ClaudeToolChoiceNoneParam(type="none")
+            case "required":
+                return ClaudeToolChoiceAnyParam(type="any")
+            case ToolChoice(function=function):
+                return ClaudeToolChoiceToolParam(
+                    type="tool", name=function.name
+                )
+            case _:
+                assert_never(self.tool_choice)
 
     def to_gemini_tools(self) -> List[GeminiTool]:
-        if not self.functions:
+        if not self.tools:
             return []
 
         return [
             GeminiTool(
                 function_declarations=[
                     GeminiFunction(
-                        name=func.name,
-                        parameters=func.parameters or _EMPTY_OBJECT_JSON_SCHEMA,
-                        description=func.description,
+                        name=tool.function.name,
+                        parameters=tool.function.parameters
+                        or _EMPTY_OBJECT_JSON_SCHEMA,
+                        description=tool.function.description,
                     )
-                    for func in self.functions
+                    for tool in self.tools
                 ]
             )
         ]
 
     def to_gemini_tool_config(self) -> GeminiToolConfig | None:
-        if not self.functions:
+        if not self.tools:
             return None
 
-        if self.required:
+        if self.tool_choice == "required":
             return GeminiToolConfig(
                 function_calling_config=FunctionCallingConfig(
                     mode=FunctionCallingConfig.Mode.ANY,
                     allowed_function_names=[
-                        func.name for func in self.functions
+                        tool.function.name for tool in self.tools
                     ],
                 )
             )
@@ -237,38 +246,44 @@ class ToolsConfig(BaseModel):
             )
 
     def to_gemini_genai_tools(self) -> List[GenAITool]:
-        if not self.functions:
+        if not self.tools:
             return []
 
         return [
             GenAITool(
                 function_declarations=[
                     GenAIFunctionDeclaration(
-                        name=func.name,
-                        parameters_json_schema=func.parameters
+                        name=tool.function.name,
+                        parameters_json_schema=tool.function.parameters
                         or _EMPTY_OBJECT_JSON_SCHEMA,
-                        description=func.description,
+                        description=tool.function.description,
                     )
-                    for func in self.functions
+                    for tool in self.tools
                 ]
             )
         ]
 
     def to_gemini_genai_tool_config(self) -> GenAIToolConfig | None:
-        if not self.functions:
+        if not self.tools:
             return None
 
-        if self.required:
-            config = GenAIFunctionCallingConfig(
-                mode=GenAIFunctionCallingConfigMode.ANY,
-                allowed_function_names=[func.name for func in self.functions],
-            )
-        else:
-            config = GenAIFunctionCallingConfig(
-                mode=GenAIFunctionCallingConfigMode.AUTO
-            )
+        match self.tool_choice:
+            case "auto":
+                mode, names = GenAIFunctionCallingConfigMode.AUTO, None
+            case "none":
+                mode, names = GenAIFunctionCallingConfigMode.NONE, None
+            case "required":
+                mode, names = GenAIFunctionCallingConfigMode.ANY, None
+            case ToolChoice(function=function):
+                mode, names = GenAIFunctionCallingConfigMode.ANY, [
+                    function.name
+                ]
 
-        return GenAIToolConfig(function_calling_config=config)
+        return GenAIToolConfig(
+            function_calling_config=GenAIFunctionCallingConfig(
+                mode=mode, allowed_function_names=names
+            )
+        )
 
 
 def validate_messages(request: AzureChatCompletionRequest) -> None:

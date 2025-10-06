@@ -310,6 +310,7 @@ async def chat_completion(
     async def get_response() -> ChatCompletion:
         functions = kwargs.get("functions")
         tools = kwargs.get("tools")
+        tool_choice = kwargs.get("tool_choice")
 
         response = await client.chat.completions.create(
             model="dummy-model",
@@ -321,7 +322,7 @@ async def chat_completion(
             n=kwargs.get("n"),
             function_call=NOT_GIVEN,
             functions=functions or NOT_GIVEN,
-            tool_choice=kwargs.get("tool_choice") or NOT_GIVEN,
+            tool_choice=tool_choice or NOT_GIVEN,
             tools=tools or NOT_GIVEN,
             extra_body=extra_body,
         )
