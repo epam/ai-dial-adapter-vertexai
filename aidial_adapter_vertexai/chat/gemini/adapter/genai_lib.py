@@ -228,7 +228,9 @@ class GeminiGenAIChatCompletionAdapter(
                     chunk_str = json_dumps(chunk, exclude_none=True)
                     log.debug(f"response chunk: {chunk_str}")
 
-                if chunk.prompt_feedback:
+                if (feedback := chunk.prompt_feedback) and (
+                    feedback.block_reason or feedback.block_reason_message
+                ):
                     await consumer.set_finish_reason(
                         FinishReason.CONTENT_FILTER
                     )
