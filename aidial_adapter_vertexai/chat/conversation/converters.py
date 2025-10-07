@@ -16,9 +16,6 @@ from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import is_system_role
 
-FunctionName = str
-FunctionArgs = str
-
 
 class Counter:
     count: int = 0

@@ -39,15 +39,8 @@ from google.genai.types import (
 from google.genai.types import ToolConfigDict as GenAIToolConfig
 from google.genai.types import ToolDict as GenAITool
 from pydantic.v1 import BaseModel
-from vertexai.preview.generative_models import (
-    FunctionDeclaration as GeminiFunction,
-)
-from vertexai.preview.generative_models import Tool as GeminiTool
-from vertexai.preview.generative_models import ToolConfig as GeminiToolConfig
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-
-FunctionCallingConfig = GeminiToolConfig.FunctionCallingConfig
 
 
 class ToolsMode(Enum):
@@ -206,44 +199,6 @@ class ToolsConfig(BaseModel):
                 )
             case _:
                 assert_never(self.tool_choice)
-
-    def to_gemini_tools(self) -> List[GeminiTool]:
-        if not self.tools:
-            return []
-
-        return [
-            GeminiTool(
-                function_declarations=[
-                    GeminiFunction(
-                        name=tool.function.name,
-                        parameters=tool.function.parameters
-                        or _EMPTY_OBJECT_JSON_SCHEMA,
-                        description=tool.function.description,
-                    )
-                    for tool in self.tools
-                ]
-            )
-        ]
-
-    def to_gemini_tool_config(self) -> GeminiToolConfig | None:
-        if not self.tools:
-            return None
-
-        if self.tool_choice == "required":
-            return GeminiToolConfig(
-                function_calling_config=FunctionCallingConfig(
-                    mode=FunctionCallingConfig.Mode.ANY,
-                    allowed_function_names=[
-                        tool.function.name for tool in self.tools
-                    ],
-                )
-            )
-        else:
-            return GeminiToolConfig(
-                function_calling_config=FunctionCallingConfig(
-                    mode=FunctionCallingConfig.Mode.AUTO
-                )
-            )
 
     def to_gemini_genai_tools(self) -> List[GenAITool]:
         if not self.tools:
