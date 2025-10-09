@@ -631,6 +631,30 @@ async def test_tool_call_required(chat: Chat):
 
 @pytest.mark.parametrize(
     "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_choice_none(chat: Chat):
+    response = await chat(
+        messages=[user("What time is it?")],
+        tools=[
+            function_to_tool(
+                {
+                    "name": "get_current_time",
+                    "description": "return the current time",
+                }
+            )
+        ],
+        tool_choice="none",
+    )
+
+    assert (
+        response.tool_calls is None
+    ), "No tools are expected to be called with tool_choice='none'"
+
+
+@pytest.mark.parametrize(
+    "deployment",
     select(pred(supports_json_object_response_format), deployments),
     ids=display_deployment,
 )

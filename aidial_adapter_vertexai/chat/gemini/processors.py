@@ -1,7 +1,6 @@
 from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion import Role as DialRole
 from google.genai.types import Part as GenAIPart
-from vertexai.preview.generative_models import Part as LegacyPart
 
 from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessor,
@@ -22,18 +21,6 @@ from aidial_adapter_vertexai.chat.conversation.factory import Parts
 # Text/Code processing:
 # 1.0: max_total_tokens: 16384, max_completion_tokens: 2048
 # 1.5: max_total_tokens ~: 1M, max_completion_tokens: not specified
-
-
-class GeminiAttachmentProcessorsLegacy(AttachmentProcessorsBase[LegacyPart]):
-    async def process_message(self, message: DialMessage) -> Parts[LegacyPart]:
-        parts = await super().process_message(message)
-        # Gemini requires some non-system text input to be always supplied -
-        # adding a fake single-space one when needed.
-        if message.role == DialRole.USER and not parts.has_text_parts():
-            parts.append_text_part(
-                self.conversation_factory.create_text_part(" ")
-            )
-        return parts
 
 
 class GeminiAttachmentProcessorsGenAI(AttachmentProcessorsBase[GenAIPart]):

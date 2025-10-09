@@ -124,7 +124,6 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
     conversation_factory: ConversationFactoryBase[PartT, Any, Any]
 
     errors: Set[ProcessingError] = Field(default_factory=set)
-    resource_count: int = 0
 
     def get_error_message(self) -> str | None:
         error_list = sorted(list(self.errors))
@@ -141,9 +140,6 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
     def get_file_exts(self) -> List[str]:
         return sorted({ext for p in self.processors for ext in p.file_exts})
 
-    def get_mime_types(self) -> List[str]:
-        return sorted({ty for p in self.processors for ty in p.mime_types})
-
     async def _collect_resource(
         self, dial_resource: DialResource, resource: Resource | str
     ) -> Resource | None:
@@ -156,7 +152,6 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
             self.errors.add(ProcessingError(name=name, message=resource))
             return None
         else:
-            self.resource_count += 1
             return resource
 
     async def process_resource(
