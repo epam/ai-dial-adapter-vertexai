@@ -21,6 +21,7 @@ from openai.types.chat import (
     ChatCompletionMessageToolCall,
     ChatCompletionMessageToolCallParam,
     ChatCompletionSystemMessageParam,
+    ChatCompletionToolChoiceOptionParam,
     ChatCompletionToolMessageParam,
     ChatCompletionToolParam,
     ChatCompletionUserMessageParam,
@@ -32,7 +33,6 @@ from openai.types.chat.chat_completion_message import (
 from openai.types.chat.chat_completion_message_tool_call_param import (
     Function as ToolFunction,
 )
-from openai.types.chat.completion_create_params import Function
 from openai.types.shared_params.function_definition import FunctionDefinition
 from pydantic.v1 import BaseModel
 
@@ -221,7 +221,7 @@ async def tokenize_request(
     http_client: httpx.AsyncClient,
     model_id: str,
     messages: List[ChatCompletionMessageParam],
-    functions: List[Function] | None,
+    functions: List[FunctionDefinition] | None,
     tools: List[ChatCompletionToolParam] | None,
     extra_headers: Mapping[str, str] | None = None,
 ) -> TokenizeResponse:
@@ -270,8 +270,9 @@ class ChatCompletionArgs(TypedDict, total=False):
     stop: List[str] | None
     max_tokens: int | None
     n: int | None
-    functions: List[Function] | None
+    functions: List[FunctionDefinition] | None
     tools: List[ChatCompletionToolParam] | None
+    tool_choice: ChatCompletionToolChoiceOptionParam | None
     static_tools: StaticToolsConfig | None
     configuration: dict | None
     extra_body: dict | None
@@ -309,6 +310,7 @@ async def chat_completion(
     async def get_response() -> ChatCompletion:
         functions = kwargs.get("functions")
         tools = kwargs.get("tools")
+        tool_choice = kwargs.get("tool_choice")
 
         response = await client.chat.completions.create(
             model="dummy-model",
@@ -318,9 +320,9 @@ async def chat_completion(
             max_tokens=kwargs.get("max_tokens"),
             temperature=0.0,
             n=kwargs.get("n"),
-            function_call="auto" if functions is not None else NOT_GIVEN,
+            function_call=NOT_GIVEN,
             functions=functions or NOT_GIVEN,
-            tool_choice="auto" if tools is not None else NOT_GIVEN,
+            tool_choice=tool_choice or NOT_GIVEN,
             tools=tools or NOT_GIVEN,
             extra_body=extra_body,
         )
@@ -345,6 +347,35 @@ async def chat_completion(
     response = await get_response()
     return ChatCompletionResult(response=response)
 
+
+GET_WEATHER_FUNCTION_WITH_REFERENCES: FunctionDefinition = {
+    "name": "get_temperature",
+    "description": "Get reliable information about the temperature in the given city",
+    "strict": True,
+    "parameters": {
+        "$defs": {
+            "Location": {
+                "type": "string",
+                "description": "The city, e.g. San Francisco",
+            },
+            "Unit": {
+                "type": "string",
+                "enum": ["celsius", "fahrenheit"],
+                "description": "The temperature unit to use. Infer this from the location.",
+            },
+        },
+        "type": "object",
+        "properties": {
+            "location": {"$ref": "#/$defs/Location"},
+            "unit": {"$ref": "#/$defs/Unit"},
+        },
+        "required": ["location", "unit"],
+    },
+}
+
+GET_WEATHER_TOOL_WITH_REFERENCES: ChatCompletionToolParam = function_to_tool(
+    GET_WEATHER_FUNCTION_WITH_REFERENCES
+)
 
 GET_WEATHER_FUNCTION: FunctionDefinition = {
     "name": "get_temperature",

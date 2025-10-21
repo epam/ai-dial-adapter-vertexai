@@ -4,9 +4,6 @@ from logging import DEBUG
 from urllib.parse import urlparse
 
 from aidial_sdk.chat_completion import Attachment
-from google.cloud.aiplatform_v1beta1.types.prediction_service import (
-    GenerateContentResponse,
-)
 from google.genai.types import Candidate as GenAICandidate
 from google.genai.types import (
     GenerateContentResponseUsageMetadata as GenAIUsageMetadata,
@@ -19,10 +16,7 @@ from aidial_adapter_vertexai.chat.gemini.grounding import (
     google_search_grounding_tokens,
 )
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
-from aidial_adapter_vertexai.deployments import (
-    GeminiDeployment,
-    GeminiLegacyDeployment,
-)
+from aidial_adapter_vertexai.deployments import GeminiDeployment
 from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
     compute_hash_digest,
@@ -30,7 +24,6 @@ from aidial_adapter_vertexai.dial_api.storage import (
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.utils.json import json_dumps
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.utils.protobuf import recurse_proto_marshal_to_dict
 
 
 def _is_absolute_url(uri: str) -> bool:
@@ -61,9 +54,9 @@ async def create_citations(
 
 
 async def set_usage(
-    usage: GenerateContentResponse.UsageMetadata | GenAIUsageMetadata,
+    usage: GenAIUsageMetadata,
     consumer: Consumer,
-    deployment: GeminiLegacyDeployment | GeminiDeployment,
+    deployment: GeminiDeployment,
     is_grounding_added: bool,
 ) -> None:
     if log.isEnabledFor(DEBUG):
@@ -84,30 +77,6 @@ async def set_usage(
     )
 
 
-async def create_function_calls(
-    candidate: Candidate, consumer: Consumer, tools: ToolsConfig
-) -> None:
-    for call in candidate.function_calls:
-        arguments = json.dumps(recurse_proto_marshal_to_dict(call.args))
-
-        if tools.is_tool:
-            id = tools.create_fresh_tool_call_id(call.name)
-            if log.isEnabledFor(DEBUG):
-                log.debug(f"tool call: id={id}, {json_dumps(call)}")
-            await consumer.create_tool_call(
-                id=id,
-                name=call.name,
-                arguments=arguments,
-            )
-        else:
-            if log.isEnabledFor(DEBUG):
-                log.debug(f"function call: {json_dumps(call)}")
-            await consumer.create_function_call(
-                name=call.name,
-                arguments=arguments,
-            )
-
-
 async def create_function_calls_from_genai(
     part: GenAIPart, consumer: Consumer, tools: ToolsConfig
 ) -> None:
@@ -117,7 +86,9 @@ async def create_function_calls_from_genai(
         return
 
     function_args = (
-        json.dumps(function_call.args) if function_call.args else None
+        json.dumps(function_call.args)
+        if function_call.args is not None
+        else None
     )
     if tools.is_tool:
         await consumer.create_tool_call(

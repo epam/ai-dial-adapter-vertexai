@@ -4,10 +4,6 @@ from aidial_adapter_vertexai.adapter_deployments import (
     AdapterChatCompletionDeployment,
     AdapterEmbeddingsDeployment,
 )
-from aidial_adapter_vertexai.chat.bison.adapter import (
-    BisonChatAdapter,
-    BisonCodeChatAdapter,
-)
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -15,7 +11,6 @@ from aidial_adapter_vertexai.chat.claude.adapter import (
     ClaudeChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.gemini.adapter import (
-    GeminiChatCompletionAdapter,
     GeminiGenAIChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.imagen.adapter import (
@@ -42,37 +37,16 @@ async def get_chat_completion_model(
 ) -> ChatCompletionAdapter:
     storage = create_file_storage(api_key)
 
-    model_id = deployment.upstream_deployment_id
     match deployment.reference_deployment_id:
-        case D.CHAT_BISON_1 | D.CHAT_BISON_2 | D.CHAT_BISON_2_32K:
-            upstream_config.per_request_configuration_not_supported()
-            return await BisonChatAdapter.create(model_id)
-        case D.CODECHAT_BISON_1 | D.CODECHAT_BISON_2 | D.CODECHAT_BISON_2_32K:
-            upstream_config.per_request_configuration_not_supported()
-            return await BisonCodeChatAdapter.create(model_id)
-        case D.GEMINI_PRO | D.GEMINI_PRO_1 | D.GEMINI_PRO_VISION_1:
-            upstream_config.per_request_configuration_not_supported()
-            return await GeminiChatCompletionAdapter.create(
-                storage,
-                deployment.clone(deployment.reference_deployment_id),
-            )
         case (
-            D.GEMINI_PRO_1_5_PREVIEW
-            | D.GEMINI_PRO_1_5_V1
-            | D.GEMINI_PRO_1_5_V2
-            | D.GEMINI_FLASH_1_5_V1
+            D.GEMINI_PRO_1_5_V2
             | D.GEMINI_FLASH_1_5_V2
             | D.GEMINI_2_0_FLASH_EXP
             | D.GEMINI_2_0_FLASH_001
-            | D.GEMINI_2_0_FLASH_THINKING_EXP_01_21
-            | D.GEMINI_2_0_PRO_EXP_02_05
-            | D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05
             | D.GEMINI_2_5_PRO
-            | D.GEMINI_2_5_PRO_EXP_03_25
             | D.GEMINI_2_5_PRO_PREVIEW_03_25
             | D.GEMINI_2_0_FLASH_LITE_1
             | D.GEMINI_2_5_FLASH
-            | D.GEMINI_2_5_FLASH_PREVIEW_04_17
             | D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
         ):
             return await GeminiGenAIChatCompletionAdapter.create(

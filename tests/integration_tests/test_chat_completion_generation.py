@@ -1,5 +1,5 @@
 import json
-from typing import Awaitable, Callable, List, Mapping, Unpack
+from typing import Awaitable, Callable, List, Mapping, Protocol, Unpack
 
 import openai
 import pytest
@@ -11,10 +11,12 @@ from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
+    GET_WEATHER_TOOL_WITH_REFERENCES,
     ChatCompletionArgs,
     ChatCompletionResult,
     ai,
     chat_completion,
+    function_to_tool,
     sanitize_test_name,
     sys,
     user,
@@ -28,23 +30,14 @@ from tests.utils.tools import ToolCallTest
 _CENTRAL = "us-central1"
 _EAST = "us-east5"
 _GLOBAL = "global"
+
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
-    D.CHAT_BISON_1: _CENTRAL,
-    D.CHAT_BISON_2: _CENTRAL,
-    D.CHAT_BISON_2_32K: _CENTRAL,
-    D.CODECHAT_BISON_1: _CENTRAL,
-    D.CODECHAT_BISON_2: _CENTRAL,
-    D.CODECHAT_BISON_2_32K: _CENTRAL,
-    D.GEMINI_PRO_1: _CENTRAL,
     D.GEMINI_FLASH_1_5_V2: _CENTRAL,
-    D.GEMINI_PRO_VISION_1: _CENTRAL,
     D.GEMINI_PRO_1_5_V2: _CENTRAL,
     D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     D.GEMINI_2_0_FLASH_001: _CENTRAL,
-    D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05: _CENTRAL,
     D.GEMINI_2_5_PRO: _CENTRAL,
-    D.GEMINI_2_5_PRO_EXP_03_25: _CENTRAL,
-    D.GEMINI_2_0_FLASH_THINKING_EXP_01_21: _CENTRAL,
+    D.GEMINI_2_5_PRO_PREVIEW_03_25: _CENTRAL,
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
@@ -62,35 +55,17 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
 def is_retired_model(deployment: D) -> bool:
     # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     return deployment in {
-        D.CHAT_BISON_1,
-        D.CHAT_BISON_2,
-        D.CHAT_BISON_2_32K,
-        D.CODECHAT_BISON_1,
-        D.CODECHAT_BISON_2,
-        D.CODECHAT_BISON_2_32K,
-        D.GEMINI_PRO_1,
-        D.GEMINI_PRO_VISION_1,
-        D.GEMINI_PRO_1_5_PREVIEW,
-        D.GEMINI_PRO_1_5_V1,
-        D.GEMINI_FLASH_1_5_V1,
-        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
-        D.GEMINI_2_5_PRO_EXP_03_25,
+        D.GEMINI_2_5_PRO_PREVIEW_03_25,
     }
 
 
 def is_vision_model(deployment: D) -> bool:
     return deployment in [
-        D.GEMINI_PRO_VISION_1,
         D.GEMINI_PRO_1_5_V2,
         D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_PRO_EXP_03_25,
-        D.GEMINI_2_0_FLASH_LITE_PREVIEW_02_05,
-        D.GEMINI_2_0_PRO_EXP_02_05,
-        D.GEMINI_2_0_FLASH_THINKING_EXP_01_21,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
         D.CLAUDE_3_5_SONNET_V2,
@@ -120,11 +95,7 @@ def supports_json_object_response_format(
     deployment: D,
 ) -> bool:
     return deployment in [
-        D.GEMINI_PRO_1,
-        D.GEMINI_PRO_1_5_PREVIEW,
-        D.GEMINI_PRO_1_5_V1,
         D.GEMINI_PRO_1_5_V2,
-        D.GEMINI_FLASH_1_5_V1,
         D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
@@ -132,11 +103,7 @@ def supports_json_object_response_format(
 
 
 def supports_json_schema_response_format(deployment: D) -> bool:
-    return supports_json_object_response_format(
-        deployment
-    ) and deployment not in [
-        D.GEMINI_PRO_1,
-    ]
+    return supports_json_object_response_format(deployment)
 
 
 def is_claude(deployment: D) -> bool:
@@ -145,16 +112,11 @@ def is_claude(deployment: D) -> bool:
 
 def supports_tools(deployment: D) -> bool:
     return is_claude(deployment) or deployment in [
-        D.GEMINI_PRO_1,
-        D.GEMINI_PRO_1_5_V1,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
-        D.GEMINI_2_0_PRO_EXP_02_05,
         D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_FLASH,
-        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
@@ -167,10 +129,8 @@ def supports_parallel_tool_calls(deployment: D) -> bool:
         D.CLAUDE_3_5_SONNET,
         # D.CLAUDE_3_7_SONNET,
         D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_PRO_EXP_03_25,
         D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_FLASH,
-        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
     ]
 
 
@@ -186,12 +146,7 @@ def supports_grounding(deployment: D) -> bool:
 
 
 def supports_thinking(deployment: D) -> bool:
-    return deployment in [
-        D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_PRO_EXP_03_25,
-        D.GEMINI_2_5_FLASH,
-        D.GEMINI_2_5_FLASH_PREVIEW_04_17,
-    ]
+    return deployment in [D.GEMINI_2_5_PRO, D.GEMINI_2_5_FLASH]
 
 
 def is_gemini_2(deployment: D) -> bool:
@@ -239,7 +194,10 @@ def create_message_with_image(request) -> Callable:
     return request.param
 
 
-Chat = Callable[..., Awaitable[ChatCompletionResult]]
+class Chat(Protocol):
+    def __call__(
+        self, **kwargs: Unpack[ChatCompletionArgs]
+    ) -> Awaitable[ChatCompletionResult]: ...
 
 
 @pytest.fixture
@@ -606,6 +564,93 @@ async def test_tool_response(test: ToolCallTest, chat: Chat):
 
     for temp in test.city_temps:
         assert str(temp) in response.content
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_with_schema_references(chat: Chat):
+    response = await chat(
+        messages=[user("Tell me what's the temperature in London in celsius?")],
+        tools=[GET_WEATHER_TOOL_WITH_REFERENCES],
+    )
+
+    tool_calls = response.tool_calls
+    assert tool_calls is not None, "Tool calls are missing"
+    assert tool_calls[0].function.name == "get_temperature"
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_zero_parameters(chat: Chat):
+    response = await chat(
+        messages=[user("What time is it?")],
+        tools=[
+            function_to_tool(
+                {
+                    "name": "get_current_time",
+                    "description": "return the current time",
+                }
+            )
+        ],
+    )
+
+    tool_calls = response.tool_calls
+    assert tool_calls is not None, "Tool calls are missing"
+    assert tool_calls[0].function.name == "get_current_time"
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_required(chat: Chat):
+    response = await chat(
+        messages=[user("How are you?")],
+        tools=[
+            function_to_tool(
+                {
+                    "name": "get_current_time",
+                    "description": "return the current time",
+                }
+            )
+        ],
+        tool_choice="required",
+    )
+
+    tool_calls = response.tool_calls
+    assert tool_calls is not None, "Tool call is missing"
+    assert tool_calls[0].function.name == "get_current_time"
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_choice_none(chat: Chat):
+    response = await chat(
+        messages=[user("What time is it?")],
+        tools=[
+            function_to_tool(
+                {
+                    "name": "get_current_time",
+                    "description": "return the current time",
+                }
+            )
+        ],
+        tool_choice="none",
+    )
+
+    assert (
+        response.tool_calls is None
+    ), "No tools are expected to be called with tool_choice='none'"
 
 
 @pytest.mark.parametrize(

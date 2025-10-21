@@ -22,7 +22,6 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 class UpstreamConfig(Protocol):
     def get_genai_client(self) -> GenAIClient: ...
     def get_anthropic_client(self) -> AsyncAnthropicVertex | AsyncAnthropic: ...
-    def per_request_configuration_not_supported(self): ...
 
 
 def parse_upstream_config(
@@ -49,11 +48,6 @@ class _ApiKeyUpstreamConfig(BaseModel):
     ) -> _ApiKeyUpstreamConfig | None:
         key = request.headers.get(_UPSTREAM_API_KEY_HEADER_NAME)
         return None if key is None else cls(api_key=key)
-
-    def per_request_configuration_not_supported(self):
-        raise ValueError(
-            "Access to this deployment via api-key isn't supported."
-        )
 
     def get_genai_client(self) -> GenAIClient:
         return GenAIClient(api_key=self.api_key)
@@ -99,16 +93,6 @@ class _CloudUpstreamConfig(BaseModel):
             )
 
         return cls.model_validate(conf)
-
-    def per_request_configuration_not_supported(self):
-        if self.region != DEFAULT_REGION or self.project != DEFAULT_PROJECT:
-            log.warning(
-                f"Per-request region configuration isn't supported for this deployment:\n"
-                f"* The default region configured by the {DEFAULT_REGION_ENV_VAR!r}={DEFAULT_REGION!r} "
-                f"env var will be used instead of the requested {self.region!r}.\n"
-                f"* The default project configured by the {DEFAULT_PROJECT_ENV_VAR!r}={DEFAULT_PROJECT!r} "
-                f"env var will be used instead of the requested {self.project!r}."
-            )
 
     def get_genai_client(self) -> GenAIClient:
         return get_genai_client(self.project, self.region)

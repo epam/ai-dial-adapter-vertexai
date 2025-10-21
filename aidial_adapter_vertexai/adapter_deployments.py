@@ -5,7 +5,6 @@ from typing import Dict, Generic, Iterable, Self, Tuple, TypeVar
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.deployments import (
-    CHAT_COMPLETION_REDIRECTS,
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
@@ -97,9 +96,7 @@ class AdapterDeployments(BaseModel):
                     )
 
         compat_mapping, chat_completions = _create_deployments(
-            compat_mapping,
-            ChatCompletionDeployment,
-            redirects=CHAT_COMPLETION_REDIRECTS,
+            compat_mapping, ChatCompletionDeployment
         )
         compat_mapping, embeddings = _create_deployments(
             compat_mapping, EmbeddingsDeployment
