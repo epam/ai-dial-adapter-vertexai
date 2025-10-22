@@ -23,7 +23,7 @@ Repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
 package-mode = false
 
 [tool.poetry.dependencies]
-aidial-sdk = { version = "0.25.1", extras = ["telemetry"] }
+aidial-sdk = { version = "0.27.0", extras = ["telemetry"] }
 fastapi = "0.116.1"
 google-cloud-aiplatform = "1.70.0"
 google-auth = "2.40.3"
