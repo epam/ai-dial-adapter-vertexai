@@ -770,3 +770,45 @@ async def test_static_google_search_with_dynamic_config(
     )
 
     _check_response_with_grounding(deployment, response, "4")
+
+
+@pytest.mark.parametrize(
+    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+)
+async def test_allow_stream_options(chat: Chat):
+    response = await chat(
+        messages=[{"role": "user", "content": "2+2=?"}],
+        max_tokens=10,
+        extra_body={"stream_options": {"include_usage": True}},
+    )
+    assert "4" in response.content
+
+
+@pytest.mark.parametrize(
+    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+)
+async def test_reject_extra_top_level_fields(chat: Chat):
+    async with expected_exception(
+        cls=openai.BadRequestError,
+        status_code=400,
+        message="Your request contained invalid structure on path extra-top-field. extra fields not permitted",
+    ):
+        await chat(
+            messages=[{"role": "user", "content": "2+2=?"}],
+            max_tokens=1,
+            extra_body={"extra-top-field": "extra-top-value"},
+        )
+
+
+@pytest.mark.parametrize(
+    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+)
+async def test_reject_extra_message_fields(chat: Chat):
+    async with expected_exception(
+        cls=openai.BadRequestError,
+        status_code=400,
+        message="Your request contained invalid structure on path messages.0.extra-message-field. extra fields not permitted",
+    ):
+        extra_message = {"extra-message-field": "extra-message-value"}
+        messages = [{"role": "user", "content": "2+2=?", **extra_message}]
+        await chat(messages=messages, max_tokens=1)  # type: ignore
