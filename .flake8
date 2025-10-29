@@ -8,4 +8,5 @@ exclude =
     .venv,
     .nox,
     allure-results,
-    __pycache__
+    __pycache__,
+    ~*
