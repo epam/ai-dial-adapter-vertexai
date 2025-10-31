@@ -70,8 +70,6 @@ env_override_existing_values = 1
 testpaths = ["tests"]
 filterwarnings = [
   "error",
-  # muting warnings like this: ResourceWarning: unclosed <socket.socket fd=13...
-  "ignore::ResourceWarning:",
   # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
   "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
   "ignore::DeprecationWarning:google.rpc",

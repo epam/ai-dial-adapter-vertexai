@@ -46,12 +46,6 @@ def disable_caches():
     # Disable `aiocache`` caches
     os.environ["AIOCACHE_DISABLE"] = "1"
 
-    # Disable `functools.cache`` caches
-    import aidial_adapter_vertexai.app_config as caches
-
-    caches.get_genai_client.cache_clear()
-    caches.get_anthropic_client.cache_clear()
-
 
 @pytest.fixture()
 async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:

@@ -163,7 +163,8 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         deployment: AdapterDeployment[ImagenDeployment],
         config: UpstreamConfig,
     ) -> "ImagenChatCompletionAdapter":
-        return cls(file_storage, config.get_genai_client(), deployment)
+        client = await config.get_genai_client()
+        return cls(file_storage, client, deployment)
 
 
 def _prepare_generation_config(

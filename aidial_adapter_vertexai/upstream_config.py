@@ -20,8 +20,11 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
 class UpstreamConfig(Protocol):
-    def get_genai_client(self) -> GenAIClient: ...
-    def get_anthropic_client(self) -> AsyncAnthropicVertex | AsyncAnthropic: ...
+    async def get_genai_client(self) -> GenAIClient: ...
+
+    async def get_anthropic_client(
+        self,
+    ) -> AsyncAnthropicVertex | AsyncAnthropic: ...
 
 
 def parse_upstream_config(
@@ -49,10 +52,12 @@ class _ApiKeyUpstreamConfig(BaseModel):
         key = request.headers.get(_UPSTREAM_API_KEY_HEADER_NAME)
         return None if key is None else cls(api_key=key)
 
-    def get_genai_client(self) -> GenAIClient:
+    async def get_genai_client(self) -> GenAIClient:
         return GenAIClient(api_key=self.api_key)
 
-    def get_anthropic_client(self) -> AsyncAnthropicVertex | AsyncAnthropic:
+    async def get_anthropic_client(
+        self,
+    ) -> AsyncAnthropicVertex | AsyncAnthropic:
         return AsyncAnthropic(api_key=self.api_key)
 
 
@@ -94,8 +99,10 @@ class _CloudUpstreamConfig(BaseModel):
 
         return cls.model_validate(conf)
 
-    def get_genai_client(self) -> GenAIClient:
-        return get_genai_client(self.project, self.region)
+    async def get_genai_client(self) -> GenAIClient:
+        return await get_genai_client(self.project, self.region)
 
-    def get_anthropic_client(self) -> AsyncAnthropicVertex | AsyncAnthropic:
-        return get_anthropic_client(self.project, self.region)
+    async def get_anthropic_client(
+        self,
+    ) -> AsyncAnthropicVertex | AsyncAnthropic:
+        return await get_anthropic_client(self.project, self.region)
