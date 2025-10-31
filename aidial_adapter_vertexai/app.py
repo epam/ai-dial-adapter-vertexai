@@ -18,6 +18,10 @@ from aidial_adapter_vertexai.dial_api.response import (
 from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
 from aidial_adapter_vertexai.utils.env import get_str_dict
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
+from aidial_adapter_vertexai.vertex_ai import (
+    get_multi_modal_embedding_model,
+    get_text_embedding_model,
+)
 
 
 @asynccontextmanager
@@ -26,6 +30,8 @@ async def lifespan(app: DIALApp):
     yield
     await get_genai_client.clear()
     await get_anthropic_client.clear()
+    await get_text_embedding_model.clear()
+    await get_multi_modal_embedding_model.clear()
 
 
 app = DIALApp(

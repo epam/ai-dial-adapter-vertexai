@@ -23,7 +23,7 @@ class CachedFunction(Protocol, Generic[_P, _R]):
 
 
 def cache(
-    close: Callable[[_R], Coroutine[Any, Any, None]],
+    close: Callable[[_R], Coroutine[Any, Any, None]] | None = None,
 ) -> Callable[[Callable[_P, Coroutine[Any, Any, _R]]], CachedFunction[_P, _R]]:
 
     def wrapper(
@@ -53,7 +53,8 @@ def cache(
                         log.debug(
                             f"Closing cached value ({value}) corresponding to the key {key}."
                         )
-                        await close(value)
+                        if close:
+                            await close(value)
                     self.entries.clear()
 
         return wrapped()
