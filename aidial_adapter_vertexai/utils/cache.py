@@ -49,13 +49,18 @@ def cache(
 
             async def clear(self):
                 with self.lock:
-                    for key, value in self.entries.items():
-                        log.debug(
-                            f"Closing cached value ({value}) corresponding to the key {key}."
-                        )
-                        if close:
+                    entries = self.entries
+                    self.entries = {}
+
+                for key, value in entries.items():
+                    log.debug(
+                        f"Closing cached value ({value}) corresponding to the key {key}."
+                    )
+                    if close:
+                        try:
                             await close(value)
-                    self.entries.clear()
+                        except Exception as e:
+                            log.error(f"Error on closing: {e}")
 
         return wrapped()
 
