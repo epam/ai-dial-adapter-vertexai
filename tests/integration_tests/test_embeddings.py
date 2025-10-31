@@ -38,6 +38,13 @@ embedding_types: Set[str] = {
 
 specs: List[ModelSpec] = [
     ModelSpec(
+        deployment=EmbeddingsDeployment.TEXT_GEMINI_EMBEDDING_1,
+        supports_types=embedding_types,
+        supports_instr=False,
+        default_dimensions=3072,
+        supports_dimensions=True,
+    ),
+    ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
         supports_types=embedding_types,
         supports_instr=False,

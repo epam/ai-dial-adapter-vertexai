@@ -76,15 +76,17 @@ GeminiDeployment = Literal[
 
 
 class EmbeddingsDeployment(Enum):
-    # English models
+    # Text: English models
     TEXT_EMBEDDING_GECKO_1 = "textembedding-gecko@001"
     TEXT_EMBEDDING_GECKO_3 = "textembedding-gecko@003"
     TEXT_EMBEDDING_4 = "text-embedding-004"
 
-    # Multilingual models
+    # Text: Multilingual models
     TEXT_EMBEDDING_GECKO_MULTILINGUAL_1 = "textembedding-gecko-multilingual@001"
     TEXT_MULTILINGUAL_EMBEDDING_2 = "text-multilingual-embedding-002"
+    TEXT_GEMINI_EMBEDDING_1 = "gemini-embedding-001"
 
+    # Text/Image models
     MULTI_MODAL_EMBEDDING_1 = "multimodalembedding@001"
 
 
@@ -94,4 +96,5 @@ TextEmbeddingDeployment = Literal[
     EmbeddingsDeployment.TEXT_EMBEDDING_4,
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
     EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
+    EmbeddingsDeployment.TEXT_GEMINI_EMBEDDING_1,
 ]
