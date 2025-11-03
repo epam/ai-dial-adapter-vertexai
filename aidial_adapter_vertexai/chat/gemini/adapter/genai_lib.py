@@ -120,7 +120,8 @@ class GeminiGenAIChatCompletionAdapter(
         deployment: AdapterDeployment[GeminiDeployment],
         config: UpstreamConfig,
     ) -> "GeminiGenAIChatCompletionAdapter":
-        return cls(file_storage, deployment, config.get_genai_client())
+        client = await config.get_genai_client()
+        return cls(file_storage, deployment, client)
 
     @property
     def model_id(self) -> str:

@@ -114,7 +114,9 @@ class TextEmbeddingsAdapter(EmbeddingsAdapter):
         deployment: AdapterDeployment[TextEmbeddingDeployment],
         config: UpstreamConfig,
     ) -> "EmbeddingsAdapter":
-        return cls(deployment=deployment, client=config.get_genai_client())
+        return cls(
+            deployment=deployment, client=await config.get_genai_client()
+        )
 
     @property
     def model_id(self) -> str:
