@@ -60,8 +60,6 @@ _CENTRAL = "us-central1"
 _EAST = "us-east5"
 
 chat_deployments: Mapping[ChatCompletionDeployment, str] = {
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V2: _CENTRAL,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2: _CENTRAL,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,

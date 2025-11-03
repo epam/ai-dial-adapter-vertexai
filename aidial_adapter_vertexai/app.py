@@ -4,7 +4,11 @@ from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
 
 from aidial_adapter_vertexai.adapter_deployments import AdapterDeployments
-from aidial_adapter_vertexai.app_config import init_vertex_ai
+from aidial_adapter_vertexai.app_config import (
+    get_anthropic_client,
+    get_genai_client,
+    init_vertex_ai,
+)
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.response import (
@@ -14,12 +18,20 @@ from aidial_adapter_vertexai.dial_api.response import (
 from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
 from aidial_adapter_vertexai.utils.env import get_str_dict
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
+from aidial_adapter_vertexai.vertex_ai import (
+    get_multi_modal_embedding_model,
+    get_text_embedding_model,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: DIALApp):
     init_vertex_ai()
     yield
+    await get_genai_client.clear()
+    await get_anthropic_client.clear()
+    await get_text_embedding_model.clear()
+    await get_multi_modal_embedding_model.clear()
 
 
 app = DIALApp(
