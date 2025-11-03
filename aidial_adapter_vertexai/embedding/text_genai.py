@@ -87,6 +87,11 @@ async def get_embedding_inputs(
             title, text = None, texts[0]
         elif len(texts) == 2:
             title, text = texts
+            if task_type != "RETRIEVAL_DOCUMENT":
+                raise ValidationError(
+                    "The model does not support inputs with titles "
+                    "unless the type is RETRIEVAL_DOCUMENT"
+                )
         else:
             raise ValidationError(
                 "No more than two elements are allowed in an element of custom_input list - one for title and one for text."

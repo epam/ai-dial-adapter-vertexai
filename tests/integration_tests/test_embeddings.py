@@ -151,15 +151,10 @@ def get_test_case(
             "The embedding model does not support embedding types"
         )
     elif has_titles and embedding_type != "RETRIEVAL_DOCUMENT":
-        if spec.deployment == EmbeddingsDeployment.TEXT_GEMINI_EMBEDDING_1:
-            expected = Exception(
-                "the model does not support the title parameter unless the task_type is RETRIEVAL_DOCUMENT"
-            )
-        else:
-            expected = Exception(
-                "The model does not support inputs with titles "
-                "unless the type is RETRIEVAL_DOCUMENT"
-            )
+        expected = Exception(
+            "The model does not support inputs with titles "
+            "unless the type is RETRIEVAL_DOCUMENT"
+        )
     elif embedding_type and embedding_type not in spec.supports_types:
         # NOTE: error coming directly from Bedrock
         expected = Exception(
