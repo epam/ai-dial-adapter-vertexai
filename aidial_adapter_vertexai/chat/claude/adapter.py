@@ -134,7 +134,8 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         deployment: AdapterDeployment[ClaudeDeployment],
         config: UpstreamConfig,
     ) -> "ClaudeChatCompletionAdapter":
-        return cls(file_storage, deployment, config.get_anthropic_client())
+        client = await config.get_anthropic_client()
+        return cls(file_storage, deployment, client)
 
     @override
     async def configuration(self) -> Type[ClaudeConfiguration]:

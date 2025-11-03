@@ -54,8 +54,12 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
 
 def is_retired_model(deployment: D) -> bool:
     # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
+    # Find the list of retired models at
+    # https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions#retired-models
     return deployment in {
         D.GEMINI_2_5_PRO_PREVIEW_03_25,
+        D.GEMINI_FLASH_1_5_V2,
+        D.GEMINI_PRO_1_5_V2,
     }
 
 
@@ -149,8 +153,8 @@ def supports_thinking(deployment: D) -> bool:
     return deployment in [D.GEMINI_2_5_PRO, D.GEMINI_2_5_FLASH]
 
 
-def is_gemini_2(deployment: D) -> bool:
-    return "gemini-2." in deployment.value
+def is_gemini(deployment: D) -> bool:
+    return "gemini" in deployment.value
 
 
 @pytest.fixture
@@ -306,7 +310,7 @@ async def test_empty_user_message(deployment: D, chat: Chat):
 async def test_multiple_candidates(deployment: D, chat: Chat):
     max_tokens = 10 if not supports_thinking(deployment) else 250
     # Gemini 2.0 rate-limits always fail on such concurrency
-    n = 5 if not is_gemini_2(deployment) else 2
+    n = 5 if not is_gemini(deployment) else 2
 
     response = await chat(
         messages=[user("2+7=? Reply with a single number")],
@@ -711,7 +715,7 @@ def _check_response_with_grounding(
     assert response.usage is not None, "Usage is missing"
     assert (
         response.usage.total_tokens > 7000
-        if not is_gemini_2(deployment)
+        if not is_gemini(deployment)
         else True
     )
 
@@ -739,34 +743,42 @@ async def test_static_google_search(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
-    select(pred(supports_grounding) & ~pred(is_gemini_2), deployments),
-    ids=display_deployment,
+    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
 )
-@pytest.mark.parametrize(
-    "search_config",
-    [
-        {"mode": "MODE_DYNAMIC", "dynamic_threshold": 0.01},
-        {"mode": "MODE_UNSPECIFIED"},
-    ],
-    ids=["dynamic-mode", "unspecified-mode"],
-)
-async def test_static_google_search_with_dynamic_config(
-    deployment: D, chat: Chat, search_config: dict
-):
-
+async def test_allow_stream_options(chat: Chat):
     response = await chat(
-        messages=[user("2+2=?")],
-        static_tools=StaticToolsConfig(
-            functions=[
-                StaticFunction(
-                    name="google_search",
-                    description="Search the web",
-                    configuration={"dynamic_retrieval_config": search_config},
-                ),
-            ]
-        ),
-        max_tokens=100,
+        messages=[{"role": "user", "content": "2+2=?"}],
+        max_tokens=10,
+        extra_body={"stream_options": {"include_usage": True}},
     )
+    assert "4" in response.content
 
-    _check_response_with_grounding(deployment, response, "4")
+
+@pytest.mark.parametrize(
+    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+)
+async def test_reject_extra_top_level_fields(chat: Chat):
+    async with expected_exception(
+        cls=openai.BadRequestError,
+        status_code=400,
+        message="Your request contained invalid structure on path extra-top-field. extra fields not permitted",
+    ):
+        await chat(
+            messages=[{"role": "user", "content": "2+2=?"}],
+            max_tokens=1,
+            extra_body={"extra-top-field": "extra-top-value"},
+        )
+
+
+@pytest.mark.parametrize(
+    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+)
+async def test_reject_extra_message_fields(chat: Chat):
+    async with expected_exception(
+        cls=openai.BadRequestError,
+        status_code=400,
+        message="Your request contained invalid structure on path messages.0.extra-message-field. extra fields not permitted",
+    ):
+        extra_message = {"extra-message-field": "extra-message-value"}
+        messages = [{"role": "user", "content": "2+2=?", **extra_message}]
+        await chat(messages=messages, max_tokens=1)  # type: ignore

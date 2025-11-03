@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "aidial-adapter-vertexai"
-version = "0.28.0rc"
+version = "0.29.0rc"
 description = "DIAL adapter for Google Vertex AI"
 authors = [{ name = "EPAM RAIL", email = "SpecialEPM-DIALDevTeam@epam.com" }]
 license = "Apache-2.0"
@@ -23,8 +23,8 @@ Repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
 package-mode = false
 
 [tool.poetry.dependencies]
-aidial-sdk = { version = "0.25.1", extras = ["telemetry"] }
-fastapi = "0.116.1"
+aidial-sdk = { version = "0.27.0", extras = ["telemetry"] }
+fastapi = "0.120.2"
 google-cloud-aiplatform = "1.70.0"
 google-auth = "2.40.3"
 google-genai = "1.38.0"
@@ -32,9 +32,8 @@ openai = "1.107.3"
 anthropic = { version = "0.52.0", extras = ["vertex"] }
 pydantic = "2.10.4"
 uvicorn = "0.22.0"
-aiocache = "0.12.2"
 pillow = "10.3.0"
-pypdf = { version = "6.0.0", extras = ["crypto"] }
+pypdf = { version = "6.1.3", extras = ["crypto"] }
 numpy = "2.0.0"
 aiohttp = "3.12.14"
 urllib3 = "2.5.0"
@@ -70,8 +69,8 @@ env_override_existing_values = 1
 testpaths = ["tests"]
 filterwarnings = [
   "error",
-  # muting warnings like this: ResourceWarning: unclosed <socket.socket fd=13...
-  "ignore::ResourceWarning:",
+  # Warning from aiohttp
+  "ignore:Sending a large body directly with raw bytes might lock the event loop. You should probably pass an io.BytesIO object instead:ResourceWarning",
   # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
   "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
   "ignore::DeprecationWarning:google.rpc",
