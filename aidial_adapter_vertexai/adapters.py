@@ -107,14 +107,17 @@ async def get_embeddings_model(
         case (
             E.TEXT_EMBEDDING_GECKO_1
             | E.TEXT_EMBEDDING_GECKO_3
-            | E.TEXT_EMBEDDING_4
             | E.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1
-            | E.TEXT_MULTILINGUAL_EMBEDDING_2
         ):
             return await LegacyTextEmbeddingsAdapter.create(
                 deployment.clone(deployment.reference_deployment_id)
             )
-        case E.TEXT_GEMINI_EMBEDDING_1 | E.TEXT_EMBEDDING_5:
+        case (
+            E.TEXT_GEMINI_EMBEDDING_1
+            | E.TEXT_EMBEDDING_4
+            | E.TEXT_EMBEDDING_5
+            | E.TEXT_MULTILINGUAL_EMBEDDING_2
+        ):
             return await GenAITextEmbeddingsAdapter.create(
                 deployment.clone(deployment.reference_deployment_id),
                 config=upstream_config,
