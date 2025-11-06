@@ -3,9 +3,6 @@ from typing import Literal
 
 
 class ChatCompletionDeployment(Enum):
-    GEMINI_PRO_1_5_V2 = "gemini-1.5-pro-002"
-    GEMINI_FLASH_1_5_V2 = "gemini-1.5-flash-002"
-
     GEMINI_2_0_FLASH_LITE_1 = "gemini-2.0-flash-lite-001"
     GEMINI_2_0_FLASH_EXP = "gemini-2.0-flash-exp"
     GEMINI_2_0_FLASH_001 = "gemini-2.0-flash-001"
@@ -63,8 +60,6 @@ ClaudeDeployment = Literal[
 ]
 
 GeminiDeployment = Literal[
-    ChatCompletionDeployment.GEMINI_PRO_1_5_V2,
-    ChatCompletionDeployment.GEMINI_FLASH_1_5_V2,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP,
     ChatCompletionDeployment.GEMINI_2_0_FLASH_001,
     ChatCompletionDeployment.GEMINI_2_5_PRO,

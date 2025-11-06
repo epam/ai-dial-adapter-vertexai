@@ -43,7 +43,6 @@ def create_generation_config(params: ModelParameters) -> GenerationConfig:
 def create_genai_generation_config(
     params: ModelParameters,
     *,
-    is_gemini_1_5: bool,
     supports_image_generation: bool,
     tools: ToolsConfig,
     static_tools: StaticToolsConfig,
@@ -53,7 +52,7 @@ def create_genai_generation_config(
     validate_n_parameter(params)
 
     config = create_genai_count_tokens_config(
-        is_gemini_1_5, tools, static_tools, system_instruction
+        tools, static_tools, system_instruction
     )
 
     response_mime_type, response_schema = _get_response_format(params)
@@ -82,7 +81,6 @@ def create_genai_generation_config(
 
 
 def create_genai_count_tokens_config(
-    is_gemini_1_5: bool,
     tools: ToolsConfig,
     static_tools: StaticToolsConfig,
     system_instruction: List[GenAIPart] | None = None,
@@ -95,7 +93,7 @@ def create_genai_count_tokens_config(
     elif not tools.is_empty():
         genai_tools = tools.to_gemini_genai_tools()
     elif not static_tools.is_empty():
-        genai_tools = static_tools.to_gemini_genai_tools(is_gemini_1_5)
+        genai_tools = static_tools.to_gemini_genai_tools()
 
     return GenAICountTokensConfig(
         system_instruction=(

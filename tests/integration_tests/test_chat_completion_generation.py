@@ -32,8 +32,6 @@ _EAST = "us-east5"
 _GLOBAL = "global"
 
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
-    D.GEMINI_FLASH_1_5_V2: _CENTRAL,
-    D.GEMINI_PRO_1_5_V2: _CENTRAL,
     D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     D.GEMINI_2_0_FLASH_001: _CENTRAL,
     D.GEMINI_2_5_PRO: _CENTRAL,
@@ -58,15 +56,11 @@ def is_retired_model(deployment: D) -> bool:
     # https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions#retired-models
     return deployment in {
         D.GEMINI_2_5_PRO_PREVIEW_03_25,
-        D.GEMINI_FLASH_1_5_V2,
-        D.GEMINI_PRO_1_5_V2,
     }
 
 
 def is_vision_model(deployment: D) -> bool:
     return deployment in [
-        D.GEMINI_PRO_1_5_V2,
-        D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_2_5_PRO,
@@ -99,8 +93,6 @@ def supports_json_object_response_format(
     deployment: D,
 ) -> bool:
     return deployment in [
-        D.GEMINI_PRO_1_5_V2,
-        D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
     ]
