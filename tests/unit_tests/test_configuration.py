@@ -20,6 +20,9 @@ _claude_deployments: Mapping[D, str] = {
     D.CLAUDE_3_7_SONNET: _EAST,
     D.CLAUDE_4_SONNET: _EAST,
     D.CLAUDE_4_OPUS: _EAST,
+    D.CLAUDE_4_1_OPUS: _EAST,
+    D.CLAUDE_4_5_HAIKU: _EAST,
+    D.CLAUDE_4_5_SONNET: _EAST,
 }
 
 _gemini_2_5_deployments: Mapping[D, str] = {

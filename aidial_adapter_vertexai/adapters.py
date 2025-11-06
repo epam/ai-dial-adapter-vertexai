@@ -63,6 +63,9 @@ async def get_chat_completion_model(
             | D.CLAUDE_3_7_SONNET
             | D.CLAUDE_4_OPUS
             | D.CLAUDE_4_SONNET
+            | D.CLAUDE_4_1_OPUS
+            | D.CLAUDE_4_5_HAIKU
+            | D.CLAUDE_4_5_SONNET
         ):
             return await ClaudeChatCompletionAdapter.create(
                 storage,

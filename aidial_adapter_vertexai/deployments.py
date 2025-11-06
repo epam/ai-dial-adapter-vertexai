@@ -36,6 +36,9 @@ class ChatCompletionDeployment(Enum):
     CLAUDE_3_7_SONNET = "claude-3-7-sonnet@20250219"
     CLAUDE_4_OPUS = "claude-opus-4@20250514"
     CLAUDE_4_SONNET = "claude-sonnet-4@20250514"
+    CLAUDE_4_1_OPUS = "claude-opus-4-1@20250805"
+    CLAUDE_4_5_HAIKU = "claude-haiku-4-5@20251001"
+    CLAUDE_4_5_SONNET = "claude-sonnet-4-5@20250929"
 
 
 ImagenDeployment = Literal[
@@ -60,6 +63,9 @@ ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_3_7_SONNET,
     ChatCompletionDeployment.CLAUDE_4_OPUS,
     ChatCompletionDeployment.CLAUDE_4_SONNET,
+    ChatCompletionDeployment.CLAUDE_4_1_OPUS,
+    ChatCompletionDeployment.CLAUDE_4_5_HAIKU,
+    ChatCompletionDeployment.CLAUDE_4_5_SONNET,
 ]
 
 GeminiDeployment = Literal[

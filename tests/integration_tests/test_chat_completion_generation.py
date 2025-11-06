@@ -49,6 +49,9 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.CLAUDE_3_7_SONNET: _EAST,
     D.CLAUDE_4_SONNET: _EAST,
     D.CLAUDE_4_OPUS: _EAST,
+    D.CLAUDE_4_1_OPUS: _EAST,
+    D.CLAUDE_4_5_HAIKU: _EAST,
+    D.CLAUDE_4_5_SONNET: _EAST,
 }
 
 
@@ -82,6 +85,9 @@ def is_vision_model(deployment: D) -> bool:
         D.CLAUDE_3_7_SONNET,
         D.CLAUDE_4_OPUS,
         D.CLAUDE_4_SONNET,
+        D.CLAUDE_4_1_OPUS,
+        D.CLAUDE_4_5_HAIKU,
+        D.CLAUDE_4_5_SONNET,
     ]
 
 
