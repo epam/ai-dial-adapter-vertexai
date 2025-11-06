@@ -55,9 +55,7 @@ async def compute_embeddings(
     responses: List[EmbedContentResponse] = await asyncio.gather(*tasks)
 
     if log.isEnabledFor(DEBUG):
-        # excluded_keys=["_prediction_response"]
-        msg = json_dumps_short(responses)
-        log.debug(f"responses: {msg}")
+        log.debug(f"responses: {json_dumps_short(responses)}")
 
     embeddings: List[Embedding] = []
     tokens = 0
@@ -98,7 +96,9 @@ async def get_embedding_inputs(
             )
 
         return text, EmbedContentConfig(
-            task_type=task_type, title=title, output_dimensionality=dimensions
+            title=title,
+            task_type=task_type,
+            output_dimensionality=dimensions,
         )
 
     iterator = collect_embedding_inputs_without_attachments(
