@@ -59,6 +59,13 @@ specs: List[ModelSpec] = [
         supports_dimensions=True,
     ),
     ModelSpec(
+        deployment=EmbeddingsDeployment.TEXT_EMBEDDING_5,
+        supports_types=embedding_types,
+        supports_instr=False,
+        default_dimensions=768,
+        supports_dimensions=True,
+    ),
+    ModelSpec(
         deployment=EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
         supports_types=embedding_types,
         supports_instr=False,

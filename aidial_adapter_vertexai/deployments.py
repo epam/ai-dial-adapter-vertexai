@@ -80,6 +80,7 @@ class EmbeddingsDeployment(Enum):
     TEXT_EMBEDDING_GECKO_1 = "textembedding-gecko@001"
     TEXT_EMBEDDING_GECKO_3 = "textembedding-gecko@003"
     TEXT_EMBEDDING_4 = "text-embedding-004"
+    TEXT_EMBEDDING_5 = "text-embedding-005"
 
     # Text: Multilingual models
     TEXT_EMBEDDING_GECKO_MULTILINGUAL_1 = "textembedding-gecko-multilingual@001"
@@ -94,6 +95,7 @@ TextEmbeddingDeployment = Literal[
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1,
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
     EmbeddingsDeployment.TEXT_EMBEDDING_4,
+    EmbeddingsDeployment.TEXT_EMBEDDING_5,
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
     EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
     EmbeddingsDeployment.TEXT_GEMINI_EMBEDDING_1,

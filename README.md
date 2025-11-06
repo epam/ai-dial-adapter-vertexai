@@ -113,9 +113,10 @@ The following models support `$SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME
 
 |Model|Deployment name|Language support|Modality|
 |---|---|---|---|
+|Gemini Embeddings|gemini-embedding-001|Multilingual|text-to-embedding|
 |Gecko Embeddings for Text V1|textembedding-gecko@001|English|text-to-embedding|
 |Gecko Embeddings for Text V3|textembedding-gecko@003|English|text-to-embedding|
-|Embeddings for Text|text-embedding-004|English|text-to-embedding|
+|Embeddings for Text|text-embedding-(004\|005)|English|text-to-embedding|
 |Gecko Embeddings for Text Multilingual|textembedding-gecko-multilingual@001|Multilingual|text-to-embedding|
 |Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
 |Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
