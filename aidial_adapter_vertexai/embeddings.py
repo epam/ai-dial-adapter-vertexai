@@ -5,6 +5,7 @@ from aidial_adapter_vertexai.adapter_deployments import (
 )
 from aidial_adapter_vertexai.adapters import get_embeddings_model
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
+from aidial_adapter_vertexai.upstream_config import parse_upstream_config
 
 
 class VertexAIEmbeddings(Embeddings):
@@ -16,6 +17,8 @@ class VertexAIEmbeddings(Embeddings):
     @dial_exception_decorator
     async def embeddings(self, request: Request) -> Response:
         model = await get_embeddings_model(
-            api_key=request.api_key, deployment=self.deployment
+            api_key=request.api_key,
+            deployment=self.deployment,
+            upstream_config=parse_upstream_config(request),
         )
         return await model.embeddings(request)

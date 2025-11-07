@@ -25,7 +25,12 @@ from aidial_adapter_vertexai.embedding.embeddings_adapter import (
 from aidial_adapter_vertexai.embedding.multi_modal import (
     MultiModalEmbeddingsAdapter,
 )
-from aidial_adapter_vertexai.embedding.text import TextEmbeddingsAdapter
+from aidial_adapter_vertexai.embedding.text_genai import (
+    TextEmbeddingsAdapter as GenAITextEmbeddingsAdapter,
+)
+from aidial_adapter_vertexai.embedding.text_legacy import (
+    TextEmbeddingsAdapter as LegacyTextEmbeddingsAdapter,
+)
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 
 
@@ -89,7 +94,10 @@ async def get_chat_completion_model(
 
 
 async def get_embeddings_model(
-    *, api_key: str, deployment: AdapterEmbeddingsDeployment
+    *,
+    api_key: str,
+    upstream_config: UpstreamConfig,
+    deployment: AdapterEmbeddingsDeployment,
 ) -> EmbeddingsAdapter:
     storage = create_file_storage(api_key)
 
@@ -97,12 +105,20 @@ async def get_embeddings_model(
         case (
             E.TEXT_EMBEDDING_GECKO_1
             | E.TEXT_EMBEDDING_GECKO_3
-            | E.TEXT_EMBEDDING_4
             | E.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1
+        ):
+            return await LegacyTextEmbeddingsAdapter.create(
+                deployment.clone(deployment.reference_deployment_id)
+            )
+        case (
+            E.TEXT_GEMINI_EMBEDDING_1
+            | E.TEXT_EMBEDDING_4
+            | E.TEXT_EMBEDDING_5
             | E.TEXT_MULTILINGUAL_EMBEDDING_2
         ):
-            return await TextEmbeddingsAdapter.create(
-                deployment.clone(deployment.reference_deployment_id)
+            return await GenAITextEmbeddingsAdapter.create(
+                deployment.clone(deployment.reference_deployment_id),
+                config=upstream_config,
             )
         case E.MULTI_MODAL_EMBEDDING_1:
             return await MultiModalEmbeddingsAdapter.create(
