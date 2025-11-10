@@ -1,6 +1,8 @@
 import json
 from typing import Awaitable, Callable, List, Mapping, Protocol, Unpack
+from unittest.mock import patch
 
+import anthropic
 import openai
 import pytest
 from aidial_sdk.chat_completion.request import StaticFunction
@@ -782,3 +784,42 @@ async def test_reject_extra_message_fields(chat: Chat):
         extra_message = {"extra-message-field": "extra-message-value"}
         messages = [{"role": "user", "content": "2+2=?", **extra_message}]
         await chat(messages=messages, max_tokens=1)  # type: ignore
+
+
+async def run_block_and_large_max_tokens_success(chat: Chat):
+    """
+    Testing behavior of Anthropic SDK in non-streaming mode with
+    sufficiently large max_tokens value.
+    """
+    messages = [{"role": "user", "content": "2+3=?"}]
+    return await chat(messages=messages, max_tokens=30_000)  # type: ignore
+
+
+@pytest.mark.parametrize(
+    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+)
+@pytest.mark.parametrize("stream", [False], ids=["block"])
+async def test_block_and_large_max_tokens_success(chat: Chat):
+    response = await run_block_and_large_max_tokens_success(chat)
+    assert "5" in response.content
+
+
+@pytest.mark.parametrize(
+    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+)
+@pytest.mark.parametrize("stream", [False], ids=["block"])
+async def test_block_and_large_max_tokens_fail(chat: Chat):
+    with patch(
+        "aidial_adapter_vertexai.app_config._get_default_anthropic_timeout",
+        return_value=anthropic._constants.DEFAULT_TIMEOUT,
+    ):
+        with pytest.raises(openai.InternalServerError) as exc:
+            await run_block_and_large_max_tokens_success(chat)
+
+        e = exc.value
+        assert e.status_code == 500
+        assert e.body == {
+            "code": "500",
+            "type": "internal_server_error",
+            "message": "Streaming is strongly recommended for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-python#long-requests for more details",
+        }
