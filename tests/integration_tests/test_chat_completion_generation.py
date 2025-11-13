@@ -15,10 +15,12 @@ from tests.utils.openai import (
     ChatCompletionArgs,
     ChatCompletionResult,
     ai,
+    ai_tools,
     chat_completion,
     function_to_tool,
     sanitize_test_name,
     sys,
+    tool_response,
     user,
     user_with_attachment_data,
     user_with_attachment_url,
@@ -606,7 +608,49 @@ async def test_tool_call_zero_parameters(chat: Chat):
 
     tool_calls = response.tool_calls
     assert tool_calls is not None, "Tool calls are missing"
-    assert tool_calls[0].function.name == "get_current_time"
+    assert tool_calls[0].type == "function"
+    function = tool_calls[0].function
+    assert function.name == "get_current_time"
+    assert function.arguments == "{}"
+    assert response.finish_reasons == ["tool_calls"]
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_calls_without_tool_definitions(deployment: D, chat: Chat):
+    if deployment == D.CLAUDE_3_OPUS:
+        pytest.skip(
+            "Claude 3 Opus doesn't handle well inconsistent requests. "
+            "It finishes with the stop reason `stop_sequence` where stop "
+            "sequence is `<antml:function_calls>` which is a keyword from the Anthropic Claude system prompt."
+        )
+
+    response = await chat(
+        messages=[
+            user("what time is it?"),
+            ai_tools(
+                [
+                    {
+                        "type": "function",
+                        "id": "tool-call-id1",
+                        "function": {
+                            "name": "get_current_time",
+                            "arguments": "{}",
+                        },
+                    }
+                ]
+            ),
+            tool_response(id="tool-call-id1", content="01:22 AM"),
+            ai("It's 01:22 AM"),
+            user("Now compute (2+3). Reply with a single digit"),
+        ],
+    )
+
+    assert "5" in response.content
+    assert response.finish_reasons == ["stop"]
 
 
 @pytest.mark.parametrize(

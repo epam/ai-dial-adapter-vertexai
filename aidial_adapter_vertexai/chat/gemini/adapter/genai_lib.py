@@ -197,11 +197,19 @@ class GeminiGenAIChatCompletionAdapter(
         self, params: ModelParameters, prompt: GeminiPromptGenAI
     ) -> AsyncIterator[GenAIGenerateContentResponse]:
         generation_config = await self._get_generation_config(params, prompt)
+        contents = prompt.messages.raw_list
+
+        if log.isEnabledFor(DEBUG):
+            generation_str = json_dumps_short(
+                {"config": generation_config, "contents": contents},
+                exclude_none=True,
+            )
+            log.debug(f"generation: {generation_str}")
 
         if params.stream:
             gen = await self.client.aio.models.generate_content_stream(
                 model=self.model_id,
-                contents=list(prompt.messages.raw_list),
+                contents=list(contents),
                 config=generation_config,
             )
             async for chunk in gen:  # type: ignore
@@ -209,7 +217,7 @@ class GeminiGenAIChatCompletionAdapter(
         else:
             yield await self.client.aio.models.generate_content(
                 model=self.model_id,
-                contents=list(prompt.messages.raw_list),
+                contents=list(contents),
                 config=generation_config,
             )
 
@@ -346,10 +354,10 @@ class GeminiGenAIChatCompletionAdapter(
 
         with Timer("predict timing: {time}", log.debug):
             if log.isEnabledFor(DEBUG):
-                log.debug(
-                    "predict request: "
-                    + json_dumps_short({"parameters": params, "prompt": prompt})
+                request_str = json_dumps_short(
+                    {"parameters": params, "prompt": prompt}, exclude_none=True
                 )
+                log.debug(f"predict request: {request_str}")
 
             completion = ""
             async for content in generate_with_retries(
