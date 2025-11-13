@@ -1,5 +1,7 @@
 import os
 
+import anthropic
+import httpx
 import vertexai
 from anthropic import AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
@@ -41,4 +43,18 @@ async def _close_anthropic_client(client: AsyncAnthropicVertex) -> None:
 async def get_anthropic_client(
     project: str, region: str
 ) -> AsyncAnthropicVertex:
-    return AsyncAnthropicVertex(project_id=project, region=region)
+    http_client = httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
+    return AsyncAnthropicVertex(
+        project_id=project, region=region, http_client=http_client
+    )
+
+
+def _get_default_anthropic_timeout() -> httpx.Timeout:
+    # Providing a timeout marginally different from the default Anthropic timeout
+    # in order to disable the check that throws an error when
+    # stream=False & max_tokens>=128K/6:
+    # https://github.com/anthropics/anthropic-sdk-python/blob/f5bdf5137cc3da4d3663aedb8c63d54652981c3b/src/anthropic/resources/beta/messages/messages.py#L2175-L2176
+
+    timeout = anthropic._constants.DEFAULT_TIMEOUT.as_dict()
+    timeout["connect"] *= 1.0001  # type: ignore
+    return httpx.Timeout(**timeout)
