@@ -142,7 +142,7 @@ class ToolsConfig(BaseModel):
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
         validate_messages(request)
 
-        tool_ids = collect_tool_ids(request.messages)
+        tool_ids = _collect_tool_ids(request.messages)
 
         if request.functions is not None:
             tools_mode = ToolsMode.FUNCTIONS
@@ -248,44 +248,46 @@ def validate_messages(request: AzureChatCompletionRequest) -> None:
     if decl_functions and decl_tools:
         raise ValidationError("Both functions and tools are not allowed")
 
-    def _warn(msg: str):
+    def warn(msg: str):
         log.warning(
-            f"The request is incomplete. {msg}. The model may misbehave."
+            f"The request is incomplete: {msg}. The model may misbehave."
         )
 
     tool_defs_are_missing = (
-        "the request is missing tool definitions in the `tools` field"
+        "the request is missing tool definitions in the 'tools' field"
     )
     func_defs_are_missing = (
-        "the request is missing function definitions in the `functions` field"
+        "the request is missing function definitions in the 'functions' field"
     )
 
-    for message in request.messages:
-        if message.role == Role.ASSISTANT:
-            use_tools = message.tool_calls is not None
-            if use_tools and not decl_tools:
-                _warn(
-                    f"One of the Assistant messages calls a tool, but {tool_defs_are_missing}"
-                )
+    for idx, message in enumerate(request.messages):
+        if (
+            message.role == Role.ASSISTANT
+            and message.tool_calls is not None
+            and not decl_tools
+        ):
+            warn(
+                f"'messages[{idx}]' is an Assistant message with a tool call, but {tool_defs_are_missing}"
+            )
+        if (
+            message.role == Role.ASSISTANT
+            and message.function_call is not None
+            and not decl_functions
+        ):
+            warn(
+                f"'messages[{idx}]' is an Assistant messages with a function call, but {func_defs_are_missing}"
+            )
+        if message.role == Role.FUNCTION and not decl_functions:
+            warn(
+                f"'messages[{idx}]' is a Function message, but {func_defs_are_missing}"
+            )
+        if message.role == Role.TOOL and not decl_tools:
+            warn(
+                f"'messages[{idx}]' is a Tool message, but {tool_defs_are_missing}"
+            )
 
-            use_functions = message.function_call is not None
-            if use_functions and not decl_functions:
-                _warn(
-                    f"One of the Assistant messages calls a function, but {func_defs_are_missing}"
-                )
-        if message.role == Role.FUNCTION:
-            if not decl_functions:
-                _warn(
-                    f"One of the messages is a Function message, but {func_defs_are_missing}"
-                )
-        if message.role == Role.TOOL:
-            if not decl_tools:
-                _warn(
-                    f"One of the message is a Tool message, but {tool_defs_are_missing}"
-                )
 
-
-def collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
+def _collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
     ret: Dict[str, str] = {}
 
     for message in messages:
