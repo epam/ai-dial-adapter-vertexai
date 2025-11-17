@@ -22,25 +22,17 @@ class ToolName(str, Enum):
 class GenAIGoogleSearchTool:
     @staticmethod
     def parse_gemini_tools(
-        is_gemini_1_5: bool,
         static_function: StaticFunction,
     ) -> List[GenAITool] | None:
         if static_function.name == ToolName.GOOGLE_SEARCH:
             config = static_function.configuration
-            if is_gemini_1_5:
-                return [GenAITool(google_search_retrieval=config)]  # type: ignore
-            else:
-                if config:
-                    raise ValidationError(
-                        "Model doesn't support configuration for Google search tool"
-                    )
-                return [GenAITool(google_search=GenAIGoogleSearch())]
+            if config:
+                raise ValidationError("Google search tool isn't configurable")
+            return [GenAITool(google_search=GenAIGoogleSearch())]
         return None
 
 
-def unknown_tool_name(
-    static_function: StaticFunction,
-) -> NoReturn:
+def unknown_tool_name(static_function: StaticFunction) -> NoReturn:
     raise ValidationError(
         f"Unsupported static function: {static_function.name}"
     )
@@ -66,11 +58,11 @@ class StaticToolsConfig(BaseModel):
     def noop(cls) -> Self:
         return cls(functions=[])
 
-    def to_gemini_genai_tools(self, is_gemini_1_5: bool) -> List[GenAITool]:
+    def to_gemini_genai_tools(self) -> List[GenAITool]:
         ret: List[GenAITool] = []
         for tool in self.functions:
             ret.extend(
-                GenAIGoogleSearchTool.parse_gemini_tools(is_gemini_1_5, tool)
+                GenAIGoogleSearchTool.parse_gemini_tools(tool)
                 or unknown_tool_name(tool)
             )
         return ret

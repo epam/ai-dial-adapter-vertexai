@@ -44,9 +44,7 @@ async def get_chat_completion_model(
 
     match deployment.reference_deployment_id:
         case (
-            D.GEMINI_PRO_1_5_V2
-            | D.GEMINI_FLASH_1_5_V2
-            | D.GEMINI_2_0_FLASH_EXP
+            D.GEMINI_2_0_FLASH_EXP
             | D.GEMINI_2_0_FLASH_001
             | D.GEMINI_2_5_PRO
             | D.GEMINI_2_5_PRO_PREVIEW_03_25

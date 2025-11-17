@@ -115,7 +115,7 @@ def get_test_cases(
 
 
 async def test_gemini_pdf_page_overflow_for_document(get_openai_client):
-    client = get_openai_client(ChatCompletionDeployment.GEMINI_PRO_1_5_V2.value)
+    client = get_openai_client(ChatCompletionDeployment.GEMINI_2_5_FLASH.value)
 
     doc = Resource(type="application/pdf", data=gen_pdf(["a"] * 2_000))
 
@@ -135,7 +135,7 @@ async def test_gemini_pdf_page_overflow_for_document(get_openai_client):
 
 
 async def test_gemini_pdf_page_overflow_for_request(get_openai_client):
-    client = get_openai_client(ChatCompletionDeployment.GEMINI_PRO_1_5_V2.value)
+    client = get_openai_client(ChatCompletionDeployment.GEMINI_2_5_FLASH.value)
 
     doc = Resource(type="application/pdf", data=gen_pdf(["a"] * 1_000))
 
