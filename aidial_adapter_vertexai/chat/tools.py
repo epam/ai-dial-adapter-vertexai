@@ -211,7 +211,7 @@ class ToolsConfig(BaseModel):
                         name=tool.function.name,
                         parameters_json_schema=tool.function.parameters
                         or _EMPTY_OBJECT_JSON_SCHEMA,
-                        description=tool.function.description,
+                        description=tool.function.description or None,
                     )
                     for tool in self.tools
                 ]

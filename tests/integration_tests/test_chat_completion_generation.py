@@ -13,6 +13,7 @@ from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
+    GET_CURRENT_TIME_FUNCTION,
     GET_WEATHER_TOOL_WITH_REFERENCES,
     ChatCompletionArgs,
     ChatCompletionResult,
@@ -596,19 +597,39 @@ async def test_tool_call_with_schema_references(chat: Chat):
 async def test_tool_call_zero_parameters(chat: Chat):
     response = await chat(
         messages=[user("What time is it?")],
-        tools=[
-            function_to_tool(
-                {
-                    "name": "get_current_time",
-                    "description": "return the current time",
-                }
-            )
-        ],
+        tools=[function_to_tool(GET_CURRENT_TIME_FUNCTION)],
     )
 
     tool_calls = response.tool_calls
     assert tool_calls is not None, "Tool calls are missing"
     assert tool_calls[0].function.name == "get_current_time"
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+@pytest.mark.parametrize("stream", [True], ids=["stream"])
+@pytest.mark.parametrize(
+    "description", ["", " \n\t", None], ids=["empty", "whitespace", "missing"]
+)
+async def test_tool_call_with_vacuous_description(
+    description: str | None, chat: Chat
+):
+    func_def = GET_CURRENT_TIME_FUNCTION.copy()
+    if description is None:
+        func_def.pop("description")
+    else:
+        func_def["description"] = description
+
+    response = await chat(
+        messages=[user("what time is it?")],
+        tools=[function_to_tool(func_def)],
+    )
+    assert response.finish_reasons == ["tool_calls"]
+    assert response.tool_calls is not None, "Tool calls are missing"
+    assert response.tool_calls[0].function.name == "get_current_time"
 
 
 @pytest.mark.parametrize(
