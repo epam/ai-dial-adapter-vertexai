@@ -69,6 +69,9 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_4_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_4_OPUS: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_1_OPUS: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_5_HAIKU: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_5_SONNET: _EAST,
 }
 
 _tolerance: Mapping[ChatCompletionDeployment, int] = {
