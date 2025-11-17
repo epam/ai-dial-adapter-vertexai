@@ -41,6 +41,7 @@ from google.genai.types import ToolDict as GenAITool
 from pydantic.v1 import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
 class ToolsMode(Enum):
@@ -57,24 +58,19 @@ class ToolsConfig(BaseModel):
     List of functions/tools.
     """
 
+    tools_mode: ToolsMode
+
     tool_choice: Literal["auto", "none", "required"] | ToolChoice
 
-    tool_ids: Dict[str, str] | None
+    tool_ids: Dict[str, str]
     """
     Mapping from tool call IDs to corresponding tool names.
-    None means that functions are used, not tools.
+    Empty when there are no tool calls in the messages.
     """
-
-    @property
-    def tools_mode(self) -> ToolsMode:
-        if self.tool_ids is not None:
-            return ToolsMode.TOOLS
-        else:
-            return ToolsMode.FUNCTIONS
 
     @property
     def is_tool(self) -> bool:
-        return self.tool_ids is not None
+        return self.tools_mode == ToolsMode.TOOLS
 
     def not_supported(self) -> None:
         if self.tools:
@@ -84,9 +80,6 @@ class ToolsConfig(BaseModel):
                 raise ValidationError("The functions aren't supported")
 
     def create_fresh_tool_call_id(self, tool_name: str) -> str:
-        if self.tool_ids is None:
-            raise ValidationError("Function are used, but requested tool id")
-
         idx = 1
         while True:
             id = f"{tool_name}_{idx}"
@@ -96,9 +89,6 @@ class ToolsConfig(BaseModel):
             idx += 1
 
     def get_tool_name(self, tool_call_id: str) -> str:
-        if self.tool_ids is None:
-            raise ValidationError("Function are used, but requested tool name")
-
         tool_name = self.tool_ids.get(tool_call_id)
         if tool_name is None:
             raise ValidationError(f"Tool call ID not found: {self.tool_ids}")
@@ -138,7 +128,12 @@ class ToolsConfig(BaseModel):
 
     @classmethod
     def noop(cls) -> Self:
-        return cls(tools=[], tool_choice="auto", tool_ids=None)
+        return cls(
+            tools=[],
+            tool_choice="auto",
+            tool_ids={},
+            tools_mode=ToolsMode.TOOLS,
+        )
 
     def is_empty(self) -> bool:
         return not self.tools
@@ -147,22 +142,27 @@ class ToolsConfig(BaseModel):
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
         validate_messages(request)
 
+        tool_ids = _collect_tool_ids(request.messages)
+
         if request.functions is not None:
+            tools_mode = ToolsMode.FUNCTIONS
             tools = cls._get_tools_from_functions(request.functions)
             tool_choice = cls._function_call_to_tool_choice(
                 request.function_call
             )
-            tool_ids = None
         elif request.tools is not None:
+            tools_mode = ToolsMode.TOOLS
             tools = cls._get_tools_from_functions(request.tools)
             tool_choice = request.tool_choice
-            tool_ids = collect_tool_ids(request.messages)
         else:
-            return cls.noop()
+            tools_mode = ToolsMode.TOOLS
+            tools = []
+            tool_choice = None
 
         return cls(
             tools=tools,
             tool_choice=tool_choice or "auto",
+            tools_mode=tools_mode,
             tool_ids=tool_ids,
         )
 
@@ -248,32 +248,46 @@ def validate_messages(request: AzureChatCompletionRequest) -> None:
     if decl_functions and decl_tools:
         raise ValidationError("Both functions and tools are not allowed")
 
-    for message in request.messages:
-        if message.role == Role.ASSISTANT:
-            use_tools = message.tool_calls is not None
-            if use_tools and not decl_tools:
-                raise ValidationError(
-                    "Assistant message uses tools, but tools are not declared"
-                )
+    def warn(msg: str):
+        log.warning(
+            f"The request is incomplete: {msg}. The model may misbehave."
+        )
 
-            use_functions = message.function_call is not None
-            if use_functions and not decl_functions:
-                raise ValidationError(
-                    "Assistant message uses functions, but functions are not declared"
-                )
-        if message.role == Role.FUNCTION:
-            if not decl_functions:
-                raise ValidationError(
-                    "Function message is used, but functions are not declared"
-                )
-        if message.role == Role.TOOL:
-            if not decl_tools:
-                raise ValidationError(
-                    "Tool message is used, but tools are not declared"
-                )
+    tool_defs_are_missing = (
+        "the request is missing tool definitions in the 'tools' field"
+    )
+    func_defs_are_missing = (
+        "the request is missing function definitions in the 'functions' field"
+    )
+
+    for idx, message in enumerate(request.messages):
+        if (
+            message.role == Role.ASSISTANT
+            and message.tool_calls is not None
+            and not decl_tools
+        ):
+            warn(
+                f"'messages[{idx}]' is an Assistant message with a tool call, but {tool_defs_are_missing}"
+            )
+        if (
+            message.role == Role.ASSISTANT
+            and message.function_call is not None
+            and not decl_functions
+        ):
+            warn(
+                f"'messages[{idx}]' is an Assistant messages with a function call, but {func_defs_are_missing}"
+            )
+        if message.role == Role.FUNCTION and not decl_functions:
+            warn(
+                f"'messages[{idx}]' is a Function message, but {func_defs_are_missing}"
+            )
+        if message.role == Role.TOOL and not decl_tools:
+            warn(
+                f"'messages[{idx}]' is a Tool message, but {tool_defs_are_missing}"
+            )
 
 
-def collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
+def _collect_tool_ids(messages: List[Message]) -> Dict[str, str]:
     ret: Dict[str, str] = {}
 
     for message in messages:
