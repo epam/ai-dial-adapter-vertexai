@@ -256,6 +256,7 @@ class GeminiGenAIChatCompletionAdapter(
                 await create_citations(candidate, consumer)
                 if openai_reason := genai_to_openai_finish_reason(
                     candidate.finish_reason,
+                    candidate.finish_message,
                     consumer.is_empty(),
                 ):
                     await consumer.set_finish_reason(openai_reason)
