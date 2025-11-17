@@ -348,6 +348,11 @@ async def chat_completion(
     return ChatCompletionResult(response=response)
 
 
+GET_CURRENT_TIME_FUNCTION: FunctionDefinition = {
+    "name": "get_current_time",
+    "description": "return the current time",
+}
+
 GET_WEATHER_FUNCTION_WITH_REFERENCES: FunctionDefinition = {
     "name": "get_temperature",
     "description": "Get reliable information about the temperature in the given city",
