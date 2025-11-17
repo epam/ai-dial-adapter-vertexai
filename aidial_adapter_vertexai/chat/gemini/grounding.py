@@ -1,42 +1,18 @@
-from typing import assert_never
-
 from aidial_sdk.chat_completion import Attachment
 from google.genai.types import Candidate as GenAICandidate
 from vertexai.preview.generative_models import Candidate
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
-from aidial_adapter_vertexai.deployments import (
-    ChatCompletionDeployment,
-    GeminiDeployment,
-)
+from aidial_adapter_vertexai.deployments import GeminiDeployment
 
 
 def google_search_grounding_tokens(deployment: GeminiDeployment) -> int:
-    # Grounding is $35 / 1K requests, so it's 0.035$ / 1 request
-    match deployment:
-        case ChatCompletionDeployment.GEMINI_FLASH_1_5_V2:
-            # $0.30 / 1 million tokens
-            # So 0.035$ = (0.035 / 0.3) * 1M tokens = 116,667 tokens
-            return 116_667
-        case ChatCompletionDeployment.GEMINI_PRO_1_5_V2:
-            # $5.00 / 1 million tokens
-            # So 0.035$ = (0.035 / 5) * 1M tokens = 7,000 tokens
-            return 7_000
-        case (
-            ChatCompletionDeployment.GEMINI_2_0_FLASH_EXP
-            | ChatCompletionDeployment.GEMINI_2_0_FLASH_001
-            | ChatCompletionDeployment.GEMINI_2_5_PRO
-            | ChatCompletionDeployment.GEMINI_2_5_PRO_PREVIEW_03_25
-            | ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1
-            | ChatCompletionDeployment.GEMINI_2_5_FLASH
-            | ChatCompletionDeployment.GEMINI_2_5_FLASH_IMAGE_PREVIEW
-        ):
-            # TODO: Add pricing, when it will be available.
-            # Currently, while this models are in experimental mode, there is no pricing information.
-            return 0
-
-        case _:
-            assert_never(deployment)
+    # https://cloud.google.com/vertex-ai/generative-ai/pricing:
+    # Gemini 2.0 Flash, 2.5 Flash and 2.5 Flash-Lite include a combined 1,500 grounded prompts per day at no additional charge. Gemini 2.5 Pro includes 10,000 grounded prompts per day at no additional charge.
+    # Grounded prompts exceeding those limits are billed at $35 per 1,000 grounded prompts.
+    # NOTE: we need a storage to keep track of #prompts/day,
+    # meantime, the grounding tokens aren't reported
+    return 0
 
 
 async def create_grounding(

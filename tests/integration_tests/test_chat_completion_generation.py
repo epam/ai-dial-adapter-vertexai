@@ -13,14 +13,17 @@ from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
+    GET_CURRENT_TIME_FUNCTION,
     GET_WEATHER_TOOL_WITH_REFERENCES,
     ChatCompletionArgs,
     ChatCompletionResult,
     ai,
+    ai_tools,
     chat_completion,
     function_to_tool,
     sanitize_test_name,
     sys,
+    tool_response,
     user,
     user_with_attachment_data,
     user_with_attachment_url,
@@ -34,8 +37,6 @@ _EAST = "us-east5"
 _GLOBAL = "global"
 
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
-    D.GEMINI_FLASH_1_5_V2: _CENTRAL,
-    D.GEMINI_PRO_1_5_V2: _CENTRAL,
     D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     D.GEMINI_2_0_FLASH_001: _CENTRAL,
     D.GEMINI_2_5_PRO: _CENTRAL,
@@ -63,15 +64,11 @@ def is_retired_model(deployment: D) -> bool:
     # https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions#retired-models
     return deployment in {
         D.GEMINI_2_5_PRO_PREVIEW_03_25,
-        D.GEMINI_FLASH_1_5_V2,
-        D.GEMINI_PRO_1_5_V2,
     }
 
 
 def is_vision_model(deployment: D) -> bool:
     return deployment in [
-        D.GEMINI_PRO_1_5_V2,
-        D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_2_5_PRO,
@@ -107,8 +104,6 @@ def supports_json_object_response_format(
     deployment: D,
 ) -> bool:
     return deployment in [
-        D.GEMINI_PRO_1_5_V2,
-        D.GEMINI_FLASH_1_5_V2,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
     ]
@@ -602,19 +597,81 @@ async def test_tool_call_with_schema_references(chat: Chat):
 async def test_tool_call_zero_parameters(chat: Chat):
     response = await chat(
         messages=[user("What time is it?")],
-        tools=[
-            function_to_tool(
-                {
-                    "name": "get_current_time",
-                    "description": "return the current time",
-                }
-            )
-        ],
+        tools=[function_to_tool(GET_CURRENT_TIME_FUNCTION)],
     )
 
     tool_calls = response.tool_calls
     assert tool_calls is not None, "Tool calls are missing"
-    assert tool_calls[0].function.name == "get_current_time"
+    assert tool_calls[0].type == "function"
+    function = tool_calls[0].function
+    assert function.name == "get_current_time"
+    assert function.arguments == "{}"
+    assert response.finish_reasons == ["tool_calls"]
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_calls_without_tool_definitions(deployment: D, chat: Chat):
+    if deployment == D.CLAUDE_3_OPUS:
+        pytest.skip(
+            "Claude 3 Opus doesn't handle well inconsistent requests. "
+            "It finishes with the stop reason `stop_sequence` where stop "
+            "sequence is `<antml:function_calls>` which is a keyword from the Anthropic Claude system prompt."
+        )
+
+    response = await chat(
+        messages=[
+            user("what time is it?"),
+            ai_tools(
+                [
+                    {
+                        "type": "function",
+                        "id": "tool-call-id1",
+                        "function": {
+                            "name": "get_current_time",
+                            "arguments": "{}",
+                        },
+                    }
+                ]
+            ),
+            tool_response(id="tool-call-id1", content="01:22 AM"),
+            ai("It's 01:22 AM"),
+            user("Now compute (2+3). Reply with a single digit"),
+        ],
+    )
+
+    assert "5" in response.content
+    assert response.finish_reasons == ["stop"]
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+@pytest.mark.parametrize("stream", [True], ids=["stream"])
+@pytest.mark.parametrize(
+    "description", ["", " \n\t", None], ids=["empty", "whitespace", "missing"]
+)
+async def test_tool_call_with_vacuous_description(
+    description: str | None, chat: Chat
+):
+    func_def = GET_CURRENT_TIME_FUNCTION.copy()
+    if description is None:
+        func_def.pop("description")
+    else:
+        func_def["description"] = description
+
+    response = await chat(
+        messages=[user("what time is it?")],
+        tools=[function_to_tool(func_def)],
+    )
+    assert response.finish_reasons == ["tool_calls"]
+    assert response.tool_calls is not None, "Tool calls are missing"
+    assert response.tool_calls[0].function.name == "get_current_time"
 
 
 @pytest.mark.parametrize(

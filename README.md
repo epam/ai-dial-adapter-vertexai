@@ -19,8 +19,6 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Gemini 2.5 Pro|gemini-2.5-pro|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Flash|gemini-2.0-flash-(exp\|001)|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 1.5 Pro|gemini-1.5-pro-002|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|Gemini 1.5 Flash|gemini-1.5-flash-002|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Claude 4.5 Sonnet|claude-sonnet-4-5@20250929|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 4.5 Haiku|claude-haiku-4-5@20251001|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |Claude 4.1 Opus|claude-opus-4-1@20250805|(pdf/text/image)-to-text|✅|✅|✅|✅|

@@ -1,5 +1,5 @@
 from logging import DEBUG
-from typing import AsyncIterator, Callable, List, Type, assert_never
+from typing import AsyncIterator, Callable, List, Type
 
 from aidial_sdk.chat_completion import FinishReason, Message, Stage
 from aidial_sdk.exceptions import RuntimeServerError
@@ -37,9 +37,6 @@ from aidial_adapter_vertexai.chat.gemini.output import (
     set_usage,
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
-from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
-    Gemini_1_5_Prompt,
-)
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -135,25 +132,9 @@ class GeminiGenAIChatCompletionAdapter(
         static_tools: StaticToolsConfig,
         messages: List[Message],
     ) -> GeminiPromptGenAI | UserError:
-        match self.deployment.reference_deployment_id:
-            case D.GEMINI_PRO_1_5_V2 | D.GEMINI_FLASH_1_5_V2:
-                return await Gemini_1_5_Prompt.parse(
-                    self.file_storage, tools, static_tools, messages
-                )
-            case (
-                D.GEMINI_2_0_FLASH_EXP
-                | D.GEMINI_2_0_FLASH_001
-                | D.GEMINI_2_5_PRO
-                | D.GEMINI_2_5_PRO_PREVIEW_03_25
-                | D.GEMINI_2_0_FLASH_LITE_1
-                | D.GEMINI_2_5_FLASH
-                | D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
-            ):
-                return await Gemini_2_Prompt.parse(
-                    self.file_storage, tools, static_tools, messages
-                )
-            case _:
-                assert_never(self.deployment)
+        return await Gemini_2_Prompt.parse(
+            self.file_storage, tools, static_tools, messages
+        )
 
     async def _get_generation_config(
         self, params: ModelParameters, prompt: GeminiPromptGenAI
@@ -165,15 +146,12 @@ class GeminiGenAIChatCompletionAdapter(
             else params.parse_configuration(conf_cls)
         )
 
-        is_gemini_1_5 = isinstance(prompt, Gemini_1_5_Prompt)
-
         thinking_config: ThinkingConfigDict | None = None
         if configuration and configuration.thinking:
             thinking_config = configuration.thinking.to_thinking_config()
 
         return create_genai_generation_config(
             params,
-            is_gemini_1_5=is_gemini_1_5,
             supports_image_generation=self.supports_image_generation,
             tools=prompt.tools,
             static_tools=prompt.static_tools,
@@ -184,10 +162,7 @@ class GeminiGenAIChatCompletionAdapter(
     def _get_token_count_config(
         self, prompt: GeminiPromptGenAI
     ) -> GenAICountTokensConfig:
-        is_gemini_1_5 = isinstance(prompt, Gemini_1_5_Prompt)
-
         return create_genai_count_tokens_config(
-            is_gemini_1_5,
             prompt.tools,
             prompt.static_tools,
             prompt.system,
@@ -197,11 +172,19 @@ class GeminiGenAIChatCompletionAdapter(
         self, params: ModelParameters, prompt: GeminiPromptGenAI
     ) -> AsyncIterator[GenAIGenerateContentResponse]:
         generation_config = await self._get_generation_config(params, prompt)
+        contents = prompt.messages.raw_list
+
+        if log.isEnabledFor(DEBUG):
+            generation_str = json_dumps_short(
+                {"config": generation_config, "contents": contents},
+                exclude_none=True,
+            )
+            log.debug(f"generation: {generation_str}")
 
         if params.stream:
             gen = await self.client.aio.models.generate_content_stream(
                 model=self.model_id,
-                contents=list(prompt.messages.raw_list),
+                contents=list(contents),
                 config=generation_config,
             )
             async for chunk in gen:  # type: ignore
@@ -209,7 +192,7 @@ class GeminiGenAIChatCompletionAdapter(
         else:
             yield await self.client.aio.models.generate_content(
                 model=self.model_id,
-                contents=list(prompt.messages.raw_list),
+                contents=list(contents),
                 config=generation_config,
             )
 
@@ -346,10 +329,10 @@ class GeminiGenAIChatCompletionAdapter(
 
         with Timer("predict timing: {time}", log.debug):
             if log.isEnabledFor(DEBUG):
-                log.debug(
-                    "predict request: "
-                    + json_dumps_short({"parameters": params, "prompt": prompt})
+                request_str = json_dumps_short(
+                    {"parameters": params, "prompt": prompt}, exclude_none=True
                 )
+                log.debug(f"predict request: {request_str}")
 
             completion = ""
             async for content in generate_with_retries(

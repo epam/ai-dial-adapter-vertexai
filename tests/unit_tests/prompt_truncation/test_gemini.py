@@ -7,9 +7,7 @@ from google.genai.types import Content, Part
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
-from aidial_adapter_vertexai.chat.gemini.prompt.gemini_1_5 import (
-    Gemini_1_5_Prompt,
-)
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
 from aidial_adapter_vertexai.chat.gemini.prompt.message import (
     GenAIMessageMerger,
 )
@@ -57,7 +55,7 @@ def mock_tokenize():
 
 
 async def test_history_truncation_cut_nothing_1(mock_tokenize):
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(messages=[user("hello")])
     )
 
@@ -114,7 +112,7 @@ async def test_history_truncation_merge_messages(
 
     system = sys("system") if with_system else None
 
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(system=system, messages=contents)
     )
 
@@ -134,7 +132,7 @@ async def test_history_truncation_cut_nothing_2(mock_tokenize):
         user("message6"),
     ]
 
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(system=None, messages=contents)
     )
 
@@ -153,7 +151,7 @@ async def test_history_truncation_cut_nothing_3(mock_tokenize):
         user("message6"),
     ]
 
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(system=None, messages=contents)
     )
 
@@ -175,7 +173,7 @@ async def test_history_truncation_cut_all_turns(mock_tokenize):
         user("message6"),
     ]
 
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(system=system, messages=contents)
     )
 
@@ -198,7 +196,7 @@ async def test_history_truncation_cut_mid_turn(mock_tokenize):
         user("message6"),
     ]
 
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(system=system, messages=contents)
     )
 
@@ -221,7 +219,7 @@ async def test_history_truncation_cut_last_turn(mock_tokenize):
         user("message6"),
     ]
 
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(system=system, messages=contents)
     )
 
@@ -246,7 +244,7 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
         user("message6"),
     ]
 
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(system=system, messages=contents)
     )
 
@@ -260,7 +258,7 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
 
 
 async def test_history_truncation_last_message_is_too_big(mock_tokenize):
-    prompt = Gemini_1_5_Prompt(
+    prompt = Gemini_2_Prompt(
         conversation=BaseConversation.create(messages=[user("hello hello")])
     )
 
