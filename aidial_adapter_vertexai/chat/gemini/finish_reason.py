@@ -12,10 +12,19 @@ _INVALID_FUNCTION_CALL_ERROR = (
 
 
 def genai_to_openai_finish_reason(
-    finish_reason: GenAIFinishReason | None, retriable: bool
+    finish_reason: GenAIFinishReason | None,
+    finish_message: str | None,
+    retriable: bool,
 ) -> FinishReason | None:
     if not finish_reason:
         return None
+
+    def _add_finish_message(msg: str):
+        if finish_message:
+            return f"{msg}: {finish_message}"
+        else:
+            return msg
+
     match finish_reason:
         case GenAIFinishReason.FINISH_REASON_UNSPECIFIED:
             return None
@@ -35,7 +44,7 @@ def genai_to_openai_finish_reason(
             return FinishReason.CONTENT_FILTER
         case GenAIFinishReason.OTHER:
             raise FinishReasonOtherError(
-                msg=_EARLY_TERMINATION_ERROR,
+                msg=_add_finish_message(_EARLY_TERMINATION_ERROR),
                 retriable=retriable,
             )
         case (
@@ -43,8 +52,14 @@ def genai_to_openai_finish_reason(
             | GenAIFinishReason.UNEXPECTED_TOOL_CALL
         ):
             raise FinishReasonOtherError(
-                msg=_INVALID_FUNCTION_CALL_ERROR,
+                msg=_add_finish_message(_INVALID_FUNCTION_CALL_ERROR),
                 retriable=retriable,
             )
         case _:
+            raise FinishReasonOtherError(
+                msg=_add_finish_message(
+                    f"Unexpected finish reason: {finish_reason.value}"
+                ),
+                retriable=retriable,
+            )
             assert_never(finish_reason)
