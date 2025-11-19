@@ -102,7 +102,8 @@ class GeminiGenAIChatCompletionAdapter(
     @property
     def supports_image_generation(self) -> bool:
         return self.deployment.reference_deployment_id in [
-            D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+            D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+            D.GEMINI_2_0_FLASH_EXP,
         ]
 
     async def configuration(self) -> Type[GeminiConfiguration] | None:
