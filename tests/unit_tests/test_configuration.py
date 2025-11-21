@@ -10,6 +10,7 @@ from tests.utils.openai import chat_completion, configuration, user
 
 _EAST = "us-east5"
 _CENTRAL = "us-central1"
+_GLOBAL = "global"
 
 _claude_deployments: Mapping[D, str] = {
     D.CLAUDE_3_5_SONNET_V2: _EAST,
@@ -28,6 +29,7 @@ _claude_deployments: Mapping[D, str] = {
 _gemini_2_5_deployments: Mapping[D, str] = {
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
+    D.GEMINI_3_PRO_PREVIEW: _GLOBAL,
 }
 
 

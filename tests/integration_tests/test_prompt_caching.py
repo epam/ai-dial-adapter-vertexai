@@ -17,9 +17,11 @@ from tests.utils.openai import (
 )
 
 _CENTRAL = "us-central1"
+_GLOBAL = "global"
 _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
+    D.GEMINI_3_PRO_PREVIEW: _GLOBAL,
 }
 
 
