@@ -28,6 +28,9 @@ def get_prompt_tokens_threshold(deployment: D) -> int | None:
     if "gemini-2.5-pro" in value:
         return 4_096
 
+    if "gemini-3" in value:
+        return 2_048
+
     return None
 
 
