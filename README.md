@@ -61,9 +61,9 @@ The Imagen models support configuration of parameters specific for image-generat
 }
 ```
 
-##### Gemini 2.5 models
+##### Gemini 2.5, Gemini 3 models
 
-The Gemini 2.5 series models support configuration of [thinking](https://ai.google.dev/gemini-api/docs/thinking) parameters:
+The Gemini 2.5 and Gemini 3 series models support configuration of [thinking](https://ai.google.dev/gemini-api/docs/thinking) parameters:
 
 ```json
 {
