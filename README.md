@@ -36,6 +36,36 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
+#### Image editing in Gemini 2.5 Flash Image
+
+Gemini 2.5 Flash Image model supports both image generation and image editing.
+This enables the following use case:
+
+```txt
+user: generate an image of a cat sitting on a sofa
+assistant: <image attachment #1>
+user: replace the cat with a dog
+assistant: <image attachment #2>
+```
+
+This scenario works out of the box with API integrations.
+
+However, it wouldn't work for interactions via [DIAL Chat](https://github.com/epam/ai-dial-chat/tree/0.40.0), since it removes all attachments from the assistant messages by default. To change this default behavior, set the `assistantAttachmentsInRequestSupported` flag to `true` in the [DIAL Core configuration](https://github.com/epam/ai-dial-core/blob/0.37.0/docs/dynamic-settings/models.md#modelsmodel_namefeatures) for the Gemini deployment in question:
+
+```json
+{
+  "models": {
+    "dial-gemini-deployment-id": {
+      "type": "chat",
+      "endpoint": "$VERTEXAI_ADAPTER_ORIGIN/openai/deployments/gemini-2.5-flash-image/chat/completions",
+      "features": {
+        "assistantAttachmentsInRequestSupported": true
+      }
+    }
+  }
+}
+```
+
 #### Configurable models
 
 Certain models support configuration via the `/configuration` endpoint.
