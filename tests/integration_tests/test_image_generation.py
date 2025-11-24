@@ -48,6 +48,7 @@ _IMAGEN_MODELS: Mapping[D, str] = {
 
 _GEMINI_IMAGE_MODELS: Mapping[D, str] = {
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
+    D.GEMINI_2_5_FLASH_IMAGE: _GLOBAL,
 }
 
 

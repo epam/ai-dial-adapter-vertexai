@@ -44,6 +44,7 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
+    D.GEMINI_2_5_FLASH_IMAGE: _GLOBAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
     D.CLAUDE_3_5_HAIKU: _EAST,
     D.CLAUDE_3_OPUS: _EAST,
@@ -71,6 +72,7 @@ def is_vision_model(deployment: D) -> bool:
     return deployment in [
         D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+        D.GEMINI_2_5_FLASH_IMAGE,
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
@@ -145,19 +147,23 @@ def supports_tool_call_ids(deployment: D) -> bool:
     return is_claude(deployment)
 
 
-def supports_grounding(deployment: D) -> bool:
-    return (
-        "gemini" in deployment.value
-        and deployment != D.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+def is_gemini_image(deployment: D) -> bool:
+    return deployment in (
+        D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+        D.GEMINI_2_5_FLASH_IMAGE,
     )
-
-
-def supports_thinking(deployment: D) -> bool:
-    return deployment in [D.GEMINI_2_5_PRO, D.GEMINI_2_5_FLASH]
 
 
 def is_gemini(deployment: D) -> bool:
     return "gemini" in deployment.value
+
+
+def supports_grounding(deployment: D) -> bool:
+    return is_gemini(deployment) and not is_gemini_image(deployment)
+
+
+def supports_thinking(deployment: D) -> bool:
+    return deployment in (D.GEMINI_2_5_PRO, D.GEMINI_2_5_FLASH)
 
 
 @pytest.fixture
@@ -328,7 +334,7 @@ async def test_multiple_candidates(deployment: D, chat: Chat):
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_finish_reason_length(deployment: D, chat: Chat):
-    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+    if is_gemini_image(deployment):
         pytest.skip(
             "Gemini Image doesn't seem to support max_tokens parameter."
         )
@@ -383,7 +389,7 @@ async def test_thinking(deployment: D, chat: Chat):
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_stop_sequence(deployment: D, chat: Chat):
-    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+    if is_gemini_image(deployment):
         pytest.skip("Gemini Image doesn't seem to support stop parameter.")
 
     stop = ["world"]
@@ -428,7 +434,7 @@ async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
 async def test_vision_two_turns(
     deployment: D, chat: Chat, create_message_with_image
 ):
-    if deployment == D.GEMINI_2_5_FLASH_IMAGE_PREVIEW:
+    if is_gemini_image(deployment):
         pytest.skip(
             "Gemini Image generates a variation of the given image with 2+3=5 text embedded into it, instead of describing the given image."
         )
