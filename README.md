@@ -1,3 +1,45 @@
+<h1 align="center">
+         DIAL OpenAI Adapter
+    </h1>
+    <p align="center">
+        <p align="center">
+        <a href="https://dialx.ai/">
+          <img src="https://dialx.ai/dialx_logo.svg" alt="About DIALX">
+        </a>
+    </p>
+<h4 align="center">
+    <a href="https://discord.gg/ukzj9U9tEe">
+        <img src="https://img.shields.io/static/v1?label=DIALX%20Community%20on&message=Discord&color=blue&logo=Discord&style=flat-square" alt="Discord">
+    </a>
+</h4>
+
+- [Overview](#overview)
+  - [Supported models](#supported-models)
+    - [Chat completion models](#chat-completion-models)
+      - [Configurable models](#configurable-models)
+        - [Imagen models](#imagen-models)
+        - [Gemini 2.5 models](#gemini-25-models)
+        - [Claude models](#claude-models)
+    - [Embedding models](#embedding-models)
+  - [Environment variables](#environment-variables)
+  - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
+  - [Compatibility mode](#compatibility-mode)
+  - [Load balancing](#load-balancing)
+    - [Global endpoint](#global-endpoint)
+  - [Prompt caching](#prompt-caching)
+    - [Implicit caching](#implicit-caching)
+  - [Authentication](#authentication)
+    - [GCP Vertex AI](#gcp-vertex-ai)
+    - [Anthropic API / Google AI Platform](#anthropic-api--google-ai-platform)
+  - [Development](#development)
+    - [Development environment](#development-environment)
+    - [IDE configuration](#ide-configuration)
+    - [Make on Windows](#make-on-windows)
+    - [Run](#run)
+    - [Lint](#lint)
+    - [Test](#test)
+    - [Clean](#clean)
+
 # Overview
 
 The project implements [AI DIAL API](https://epam-rail.com/dial_api) for language models and embeddings from [Vertex AI](https://console.cloud.google.com/vertex-ai).
@@ -8,9 +50,9 @@ The project implements [AI DIAL API](https://epam-rail.com/dial_api) for languag
 
 The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/chat/completions` endpoint along with an optional support of the feature endpoints:
 
-* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/tokenize`
-* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
-* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/configuration`
+- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/tokenize`
+- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
+- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/configuration`
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
@@ -356,29 +398,51 @@ Otherwise, the adapter will return 404 on requests to `claude-3-5-sonnet-2024102
 
 ## Development
 
-Frequently used actions are automated via `make` targets.
+### Development environment
 
-### Install
+This project uses [Python>=3.11](https://www.python.org/downloads/) and [Poetry>=2.1.1](https://python-poetry.org/) as a dependency manager.
 
-To install the project dependencies required for running the server, linting and formatting the source code, and running the tests:
+Check out Poetry's [documentation on how to install it](https://python-poetry.org/docs/#installation) on your system before proceeding.
+
+To install requirements:
 
 ```sh
-make install
+poetry install
 ```
 
-### Serve locally
+This will install all requirements for running the package, linting, formatting and tests.
 
-To run the development server:
+### IDE configuration
+
+The recommended IDE is [VS Code](https://code.visualstudio.com/).
+Open the project in VS Code and install the recommended extensions.
+VS Code is configured to use PEP-8 compatible formatter [Black](https://black.readthedocs.io/en/stable/index.html).
+
+Alternatively you can use [PyCharm](https://www.jetbrains.com/pycharm/).
+Set up the Black in PyCharm [manually](https://black.readthedocs.io/en/stable/integrations/editors.html#pycharm-intellij-idea) or
+install PyCharm>=2023.2 with [built-in Black support](https://blog.jetbrains.com/pycharm/2023/07/2023-2/#black).
+
+### Make on Windows
+
+As of now, Windows distributions do not include the make tool. To run make commands, the tool can be installed using
+the following command (since [Windows 10](https://learn.microsoft.com/en-us/windows/package-manager/winget/)):
+
+```sh
+winget install GnuWin32.Make
+```
+
+For convenience, the tool folder can be added to the PATH environment variable as `C:\Program Files (x86)\GnuWin32\bin`.
+The command definitions inside Makefile should be cross-platform to keep the development environment setup simple.
+
+### Run
+
+Run the development server locally:
 
 ```sh
 make serve
 ```
 
-Open `localhost:5001/docs` to make sure the server is up and running.
-
-### Serve from the Docker container
-
-To run the server from the Docker container:
+Run the server from a Docker container:
 
 ```sh
 make docker_serve
@@ -425,15 +489,3 @@ To remove the virtual environment and build artifacts:
 ```sh
 make clean
 ```
-
-### IDE
-
-The recommended IDE is [VSCode](https://code.visualstudio.com/).
-Open the project in VSCode and install the recommended extensions.
-
-The VSCode is configured to use PEP-8 compatible formatter [Black](https://black.readthedocs.io/en/stable/index.html).
-
-Alternatively you can use [PyCharm](https://www.jetbrains.com/pycharm/).
-
-Set-up the Black formatter for PyCharm [manually](https://black.readthedocs.io/en/stable/integrations/editors.html#pycharm-intellij-idea) or
-install PyCharm>=2023.2 with [built-in Black support](https://blog.jetbrains.com/pycharm/2023/07/2023-2/#black).
