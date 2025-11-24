@@ -22,7 +22,7 @@
         - [Claude models](#claude-models)
     - [Embedding models](#embedding-models)
   - [Environment variables](#environment-variables)
-  - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
+    - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
   - [Compatibility mode](#compatibility-mode)
   - [Load balancing](#load-balancing)
     - [Global endpoint](#global-endpoint)
@@ -180,7 +180,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 
-## Default `max_tokens` for Claude models
+### Default `max_tokens` for Claude models
 
 Unlike Gemini models, Claude models require the `max_tokens` parameter in the chat completion request.
 
