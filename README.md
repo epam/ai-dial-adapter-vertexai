@@ -40,9 +40,17 @@
     - [Test](#test)
     - [Clean](#clean)
 
+---
+
 # Overview
 
-The project implements [AI DIAL API](https://epam-rail.com/dial_api) for language models and embeddings from [Vertex AI](https://console.cloud.google.com/vertex-ai).
+LLM Adapters unify the APIs of respective LLMs to align with the Unified Protocol of DIAL Core. Each Adapter operates within a dedicated container. Multi-modality allows supporting non-textual communications such as image-to-text, text-to-image, file transfers and more.
+
+The project implements [AI DIAL API](https://dialx.ai/dial_api) for language models and embedding models from [Vertex AI](https://console.cloud.google.com/vertex-ai).
+
+![ai-dial-core](https://docs.dialx.ai/assets/images/adapters-62587fb74cfb1c4225c20c08273ec5bc.svg)
+
+---
 
 ## Supported models
 
@@ -150,6 +158,8 @@ The most notable beta flags are:
 
 Not every model supports all flags. Refer to the official documentation before utilizing any flags.
 
+---
+
 ### Embedding models
 
 The following models support `$SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:
@@ -163,6 +173,8 @@ The following models support `$SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME
 |Gecko Embeddings for Text Multilingual|textembedding-gecko-multilingual@001|Multilingual|text-to-embedding|
 |Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
 |Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
+
+---
 
 ## Environment variables
 
@@ -395,6 +407,8 @@ COMPATIBILITY_MAPPING={"claude-3-5-sonnet-20241022":"claude-3-5-sonnet-v2@202410
 ```
 
 Otherwise, the adapter will return 404 on requests to `claude-3-5-sonnet-20241022`.
+
+---
 
 ## Development
 
