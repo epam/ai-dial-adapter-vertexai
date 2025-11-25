@@ -12,6 +12,7 @@ from aidial_adapter_vertexai.chat.conversation.factory import (
     Parts,
 )
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.gemini.state import update_with_message_state
 
 GeminiConversationGenAI = BaseConversation[List[GenAIPart], GenAIContent]
 
@@ -73,12 +74,13 @@ class ConversationFactoryGenAI(
         )
 
     def create_content(
-        self, dial_message: DialMessage, parts: Parts[GenAIPart]
+        self, idx: int, dial_message: DialMessage, parts: Parts[GenAIPart]
     ) -> GenAIContent:
-        return GenAIContent(
+        content = GenAIContent(
             role=self.to_gemini_genai_role(dial_message.role),
             parts=parts.parts,
         )
+        return update_with_message_state(idx, dial_message, content)
 
     def create_conversation(
         self,

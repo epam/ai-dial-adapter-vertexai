@@ -131,7 +131,7 @@ class ClaudeConversationFactory(
         )
 
     def create_content(
-        self, dial_message: DialMessage, parts: Parts[ClaudePart]
+        self, idx: int, dial_message: DialMessage, parts: Parts[ClaudePart]
     ) -> ClaudeMessage:
         match dial_message.role:
             case Role.USER | Role.FUNCTION | Role.TOOL:
