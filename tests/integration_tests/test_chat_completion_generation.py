@@ -5,8 +5,13 @@ from unittest.mock import patch
 import anthropic
 import openai
 import pytest
+from aidial_sdk.chat_completion.request import Message as DialMessage
 from aidial_sdk.chat_completion.request import StaticFunction
+from openai.types.chat import ChatCompletionMessageParam
 
+from aidial_adapter_vertexai.chat.gemini.state import (
+    _parse_message_content_from_state,
+)
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
@@ -14,6 +19,7 @@ from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
     GET_CURRENT_TIME_FUNCTION,
+    GET_WEATHER_FUNCTION,
     GET_WEATHER_TOOL_WITH_REFERENCES,
     ChatCompletionArgs,
     ChatCompletionResult,
@@ -620,6 +626,47 @@ async def test_tool_response(test: ToolCallTest, chat: Chat):
 
     for temp in test.city_temps:
         assert str(temp) in response.content
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_and_response(deployment: D, chat: Chat):
+    messages: List[ChatCompletionMessageParam] = [
+        user("Tell me what's the temperature in London, UK in celsius?"),
+    ]
+
+    response = await chat(
+        messages=messages, tools=[function_to_tool(GET_WEATHER_FUNCTION)]
+    )
+
+    assert response.finish_reasons == ["tool_calls"]
+    assert response.tool_calls is not None, "Tool calls are missing"
+    assert response.tool_calls[0].function.name == "get_temperature"
+    tool_call_id = response.tool_calls[0].id
+
+    response_message = response.response.choices[0].message.to_dict()
+
+    if deployment == D.GEMINI_3_PRO_PREVIEW:
+        dial_message = DialMessage.parse_obj(response_message)
+        state = _parse_message_content_from_state(0, dial_message)
+        assert state is not None, "state is missing"
+        content = state.gemini_message_content
+        assert content is not None, "gemini_message_content is missing"
+        sig = (content.parts or [])[0].thought_signature
+        assert sig is not None, "thought_signature is missing"
+
+    messages.append(response_message)  # type: ignore
+    messages.append(tool_response(tool_call_id, "it's 20 degrees celsius"))
+
+    response = await chat(
+        messages=messages, tools=[function_to_tool(GET_WEATHER_FUNCTION)]
+    )
+
+    assert "20" in response.content
+    assert response.finish_reasons == ["stop"]
 
 
 @pytest.mark.parametrize(
