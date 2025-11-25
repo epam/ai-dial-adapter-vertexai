@@ -76,11 +76,10 @@ class ConversationFactoryGenAI(
     def create_content(
         self, idx: int, dial_message: DialMessage, parts: Parts[GenAIPart]
     ) -> GenAIContent:
-        content = GenAIContent(
-            role=self.to_gemini_genai_role(dial_message.role),
-            parts=parts.parts,
-        )
-        return update_with_message_state(idx, dial_message, content)
+        role = self.to_gemini_genai_role(dial_message.role)
+        content = GenAIContent(role=role, parts=parts.parts)
+        update_with_message_state(idx, dial_message, content)
+        return content
 
     def create_conversation(
         self,

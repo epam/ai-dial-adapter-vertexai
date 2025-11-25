@@ -38,6 +38,7 @@ from aidial_adapter_vertexai.chat.gemini.output import (
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
+from aidial_adapter_vertexai.chat.gemini.state import MessageState
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
@@ -204,9 +205,11 @@ class GeminiGenAIChatCompletionAdapter(
         generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
     ):
         thinking_stage: Stage | None = None
+        state = MessageState()
 
         usage_metadata = None
         is_grounding_added = False
+
         try:
             async for chunk in generator():
                 if log.isEnabledFor(DEBUG):
@@ -229,6 +232,9 @@ class GeminiGenAIChatCompletionAdapter(
                 candidate = chunk.candidates[0]
                 if candidate.content and candidate.content.parts:
                     for part in candidate.content.parts:
+                        if part.thought_signature:
+                            state.set_thought_signature(part.thought_signature)
+
                         await create_function_calls_from_genai(
                             part, consumer, tools
                         )
@@ -271,6 +277,8 @@ class GeminiGenAIChatCompletionAdapter(
             # Append empty content, so at least one choice is generated.
             if consumer.get_finish_reason() is not None:
                 await consumer.append_content("")
+
+            await consumer.set_state(state.to_json())
 
         if usage_metadata:
             await set_usage(

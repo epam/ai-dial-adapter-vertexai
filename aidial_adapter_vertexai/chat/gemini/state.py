@@ -9,35 +9,49 @@ from pydantic import BaseModel
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
-class GenAISubPart(BaseModel):
+class _StateModel(BaseModel):
+    model_config = pydantic.ConfigDict(
+        ser_json_bytes="base64",
+        val_json_bytes="base64",
+    )
+
+
+class Part(_StateModel):
+    """Structurally mirrors GenAIPart"""
+
     thought_signature: bytes | None = None
 
-    def merge(self, part: GenAIPart) -> GenAIPart:
-        if self.thought_signature is None:
-            return part
-        part = part.model_copy()
-        part.thought_signature = self.thought_signature
-        return part
+    def update(self, part: GenAIPart) -> None:
+        part.thought_signature = (
+            part.thought_signature or self.thought_signature
+        )
 
 
-class GenAISubContent(BaseModel):
-    parts: List[GenAISubPart] | None = None
+class Content(_StateModel):
+    """Structurally mirrors GenAIContent"""
 
-    def merge(self, parts: List[GenAIPart] | None) -> List[GenAIPart] | None:
-        if self.parts is None or parts is None:
-            return parts
+    parts: List[Part] | None = None
 
-        parts = parts[:]
-        for i in range(min(len(self.parts), len(parts))):
-            parts[i] = self.parts[i].merge(parts[i])
-        return parts
+    def update(self, content: GenAIContent) -> None:
+        if self.parts and (parts := content.parts):
+            for i in range(min(len(self.parts), len(parts))):
+                self.parts[i].update(parts[i])
 
 
-class MessageState(BaseModel):
-    gemini_message_content: GenAISubContent
+class MessageState(_StateModel):
+    gemini_message_content: Content | None = None
+
+    def set_thought_signature(self, thought_signature: bytes) -> None:
+        if not self.gemini_message_content:
+            self.gemini_message_content = Content(
+                parts=[Part(thought_signature=thought_signature)]
+            )
+
+    def to_json(self) -> dict:
+        return self.model_dump(exclude_none=True, mode="json")
 
 
-def _get_message_content_from_state(
+def _parse_message_content_from_state(
     idx: int, message: DialMessage
 ) -> MessageState | None:
     if (cc := message.custom_content) and (state := cc.state):
@@ -53,15 +67,14 @@ def _get_message_content_from_state(
 
 def update_with_message_state(
     idx: int, message: DialMessage, content: GenAIContent
-) -> GenAIContent:
-    state = _get_message_content_from_state(idx, message)
+):
+    state = _parse_message_content_from_state(idx, message)
 
-    if state is not None:
-        content.parts = state.gemini_message_content.merge(content.parts)
+    if state and state.gemini_message_content:
+        state.gemini_message_content.update(content)
     else:
         for part in content.parts or []:
             if part.function_call is not None:
-                # Last resort if thought_signature wasn't provide via state
+                # Last resort if thought_signature wasn't provided via state
                 part.thought_signature = b"skip_thought_signature_validator"
-
-    return content
+                break
