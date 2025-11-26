@@ -163,11 +163,15 @@ def supports_grounding(deployment: D) -> bool:
 
 
 def supports_thinking(deployment: D) -> bool:
-    return deployment in [
+    return deployment in (
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_3_PRO_PREVIEW,
-    ]
+    )
+
+
+def supports_thinking_level(deployment: D) -> bool:
+    return deployment in (D.GEMINI_3_PRO_PREVIEW,)
 
 
 def is_gemini(deployment: D) -> bool:
@@ -363,36 +367,66 @@ async def test_finish_reason_length(deployment: D, chat: Chat):
     assert response.finish_reasons == ["length"]
 
 
+def _check_thinking_response(response: ChatCompletionResult):
+    assert response.usage is not None, "Usage is missing"
+    assert response.usage.completion_tokens > 10
+
+    stages = response.stages
+    assert stages is not None, "Stages are missing"
+    assert len(stages) == 1
+
+    thinking_stage = stages[0]
+    assert thinking_stage.name == "Thinking"
+    assert thinking_stage.content is not None, "Thinking content is missing"
+    assert len(thinking_stage.content) > 10
+
+    assert response.finish_reasons == ["stop"]
+
+
 @pytest.mark.parametrize(
     "deployment",
     select(pred(supports_thinking), deployments),
     ids=display_deployment,
 )
-async def test_thinking(deployment: D, chat: Chat):
+async def test_thinking_budget(chat: Chat):
     response = await chat(
         messages=[user("2+3=?")],
         configuration={
-            "thinking": {
-                "include_thoughts": True,
-                "thinking_budget": 2048,
-            }
+            "thinking": {"include_thoughts": True, "thinking_budget": 2048}
         },
     )
 
     assert "5" in response.content
+    _check_thinking_response(response)
 
-    assert response.usage is not None
-    assert response.usage.completion_tokens > 10
 
-    stages = response.stages
-    assert stages is not None and len(stages) == 1
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_thinking_level), deployments),
+    ids=display_deployment,
+)
+async def test_thinking_level(chat: Chat):
+    thinking = {"include_thoughts": True, "thinking_level": "low"}
+    response = await chat(
+        messages=[user("2+3=?")], configuration={"thinking": thinking}
+    )
+    assert "5" in response.content
+    _check_thinking_response(response)
 
-    thinking_stage = stages[0]
-    assert thinking_stage.name == "Thinking"
-    assert thinking_stage.content is not None
-    assert len(thinking_stage.content) > 10
 
-    assert response.finish_reasons == ["stop"]
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_thinking_level), deployments),
+    ids=display_deployment,
+)
+async def test_reasoning_effort(chat: Chat):
+    response = await chat(
+        messages=[user("2+3=?")],
+        configuration={"thinking": {"include_thoughts": True}},
+        reasoning_effort="low",
+    )
+    assert "5" in response.content
+    _check_thinking_response(response)
 
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)

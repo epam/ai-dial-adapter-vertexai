@@ -30,6 +30,7 @@ from aidial_adapter_vertexai.chat.gemini.generation_config import (
     create_genai_generation_config,
 )
 from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
+from aidial_adapter_vertexai.chat.gemini.input import to_genai_thinking_level
 from aidial_adapter_vertexai.chat.gemini.output import (
     create_citations,
     create_function_calls_from_genai,
@@ -149,8 +150,17 @@ class GeminiGenAIChatCompletionAdapter(
         )
 
         thinking_config: ThinkingConfigDict | None = None
+        if effort := params.reasoning_effort:
+            thinking_config = thinking_config or {}
+            thinking_config = thinking_config | {
+                "thinking_level": to_genai_thinking_level(effort)
+            }
+
         if configuration and configuration.thinking:
-            thinking_config = configuration.thinking.to_thinking_config()
+            thinking_config = thinking_config or {}
+            thinking_config = (
+                thinking_config | configuration.thinking.to_thinking_config()
+            )
 
         return create_genai_generation_config(
             params,
