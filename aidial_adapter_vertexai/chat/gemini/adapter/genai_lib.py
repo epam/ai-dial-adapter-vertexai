@@ -97,13 +97,15 @@ class GeminiGenAIChatCompletionAdapter(
 
     @property
     def supports_thinking(self) -> bool:
-        return "gemini-2.5" in self.deployment.reference_deployment_id.value
+        name = self.deployment.reference_deployment_id.value
+        return "gemini-2.5" in name or "gemini-3" in name
 
     @property
     def supports_image_generation(self) -> bool:
         return self.deployment.reference_deployment_id in (
             D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
             D.GEMINI_2_5_FLASH_IMAGE,
+            D.GEMINI_3_PRO_IMAGE_PREVIEW,
         )
 
     async def configuration(self) -> Type[GeminiConfiguration] | None:

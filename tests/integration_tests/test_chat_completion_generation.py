@@ -44,6 +44,7 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
+    D.GEMINI_3_PRO_IMAGE_PREVIEW: _GLOBAL,
     D.GEMINI_2_5_FLASH_IMAGE: _GLOBAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
     D.CLAUDE_3_5_HAIKU: _EAST,
@@ -72,6 +73,7 @@ def is_vision_model(deployment: D) -> bool:
     return deployment in [
         D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+        D.GEMINI_3_PRO_IMAGE_PREVIEW,
         D.GEMINI_2_5_FLASH_IMAGE,
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_0_FLASH_EXP,
@@ -151,6 +153,7 @@ def is_gemini_image(deployment: D) -> bool:
     return deployment in (
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_2_5_FLASH_IMAGE,
+        D.GEMINI_3_PRO_IMAGE_PREVIEW,
     )
 
 
@@ -248,7 +251,7 @@ async def test_retired_models(deployment: D, chat: Chat):
 
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
 async def test_model_field(deployment: D, chat: Chat):
-    response = await chat(messages=[user("test")], max_tokens=1)
+    response = await chat(messages=[user("2+3=?")], max_tokens=1)
     assert deployment.value == response.response.model
 
 
@@ -475,9 +478,14 @@ async def _run_test(
             await _run()
     else:
         response = await _run()
+        response_content = response.content.lower()
+        for stage in response.stages or []:
+            if stage.content:
+                response_content += "\n" + stage.content
+
         if expected is not None:
             substrings = [expected] if isinstance(expected, str) else expected
-            assert any(s in response.content.lower() for s in substrings)
+            assert any(s in response_content for s in substrings)
 
 
 @pytest.mark.parametrize(

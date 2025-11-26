@@ -14,6 +14,7 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
+|Gemini 3 Pro Image|gemini-3-pro-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
 |Gemini 2.5 Flash|gemini-2.5-flash|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.5 Flash Image|gemini-2.5-flash-image|(text/image)-to-(text/image)|✅|✅|✅|✅|
 |Gemini 2.5 Pro|gemini-2.5-pro|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
@@ -38,7 +39,7 @@ The models that support `/truncate_prompt` do also support `max_prompt_tokens` c
 
 #### Image editing in Gemini 2.5 Flash Image
 
-Gemini 2.5 Flash Image model supports both image generation and image editing.
+Gemini 2.5 Flash Image and Gemini 3 Pro Image models support both image generation and image editing.
 This enables the following use case:
 
 ```txt
