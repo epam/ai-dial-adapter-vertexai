@@ -5,6 +5,7 @@ import httpx
 import vertexai
 from anthropic import AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
+from google.genai.types import HttpOptions, HttpRetryOptions
 
 from aidial_adapter_vertexai.utils.cache import cache
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -32,7 +33,13 @@ async def _close_genai_client(client: GenAIClient) -> None:
 
 @cache(_close_genai_client)
 async def get_genai_client(project: str, location: str) -> GenAIClient:
-    return GenAIClient(vertexai=True, project=project, location=location)
+    opts = HttpOptions(retry_options=HttpRetryOptions(attempts=0))
+    return GenAIClient(
+        vertexai=True,
+        project=project,
+        location=location,
+        http_options=opts,
+    )
 
 
 async def _close_anthropic_client(client: AsyncAnthropicVertex) -> None:
@@ -45,7 +52,10 @@ async def get_anthropic_client(
 ) -> AsyncAnthropicVertex:
     http_client = httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
     return AsyncAnthropicVertex(
-        project_id=project, region=region, http_client=http_client
+        project_id=project,
+        region=region,
+        http_client=http_client,
+        max_retries=0,
     )
 
 
