@@ -75,6 +75,7 @@ filterwarnings = [
   "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
   "ignore::DeprecationWarning:google.rpc",
   "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
+  "ignore:Inheritance class AiohttpClientSession from ClientSession is discouraged:DeprecationWarning",
 ]
 
 [tool.pyright]

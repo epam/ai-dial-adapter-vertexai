@@ -1,4 +1,3 @@
-import tempfile
 from pathlib import Path
 from typing import Callable, List, Mapping
 from unittest.mock import patch
@@ -16,17 +15,15 @@ from tests.utils.openai import chat_completion, user, user_with_image_url
 
 
 @pytest.fixture(autouse=True)
-def mock_storage():
-    storage_dir = Path(__file__).parent / "mock-storage"
-    storage_dir.mkdir(parents=True, exist_ok=True)
-    base_dir = Path(tempfile.mkdtemp(dir=storage_dir))
-    storage = MockFileStorage.create(base_dir)
-    with patch(
-        "aidial_adapter_vertexai.adapters.create_file_storage",
-        return_value=storage,
-    ):
-        yield storage
-        storage.cleanup()  # NOTE: Comment out for debugging
+def mock_storage(request):
+    test_name = request.node.name
+    root_dir = Path(__file__).parent / "mock-storage" / test_name
+    with MockFileStorage.create(root_dir) as storage:
+        with patch(
+            "aidial_adapter_vertexai.adapters.create_file_storage",
+            return_value=storage,
+        ):
+            yield storage
 
 
 _CENTRAL = "us-central1"
@@ -227,10 +224,10 @@ async def _extract_image_bytes(
     assert len(response.choices) > 0
     choice = response.choices[0]
 
-    assert choice.message.content is not None
+    assert choice.message.content is not None, "Message content is missing"
     cc = choice.message.custom_content  # type: ignore
 
-    assert cc is not None
+    assert cc is not None, "Custom content is missing"
 
     for attachment in cc["attachments"]:
         if (
