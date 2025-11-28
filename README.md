@@ -80,6 +80,25 @@ The Gemini 2.5 series models support configuration of [thinking](https://ai.goog
 The thought summaries are printed into a dedicated `Thinking` stage.
 The content of the thinking stage isn't provided to the model in subsequent requests.
 
+##### Gemini 2.5 Flash Image model
+
+The Gemini 2.5 Flash Image support configuration of parameters controlling generation of images:
+
+```json
+{
+  "custom_fields": {
+    "configuration": {
+      "image_config": {
+        "aspect_ratio": "21:9",
+        "image_size": "4K"
+      }
+    }
+  }
+}
+```
+
+Consult the [documentation](https://ai.google.dev/gemini-api/docs/image-generation#aspect_ratios_and_image_size) for the possible values of these parameters and their defaults.
+
 ##### Claude models
 
 The Claude models accept a configuration flag that enables document citations in the generated output. The flag is false by default.

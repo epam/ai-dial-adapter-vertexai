@@ -5,11 +5,11 @@ from google.genai.types import CountTokensConfigDict as GenAICountTokensConfig
 from google.genai.types import (
     GenerateContentConfigDict as GenAIGenerationConfig,
 )
+from google.genai.types import ImageConfigDict
 from google.genai.types import Part as GenAIPart
 from google.genai.types import ThinkingConfigDict
 from google.genai.types import ToolDict as GenAITool
 from typing_extensions import assert_never
-from vertexai.preview.generative_models import GenerationConfig
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -23,23 +23,6 @@ def validate_n_parameter(params: ModelParameters) -> None:
         raise ValueError("n is expected to be 1 or unset")
 
 
-def create_generation_config(params: ModelParameters) -> GenerationConfig:
-    validate_n_parameter(params)
-
-    response_mime_type, response_schema = _get_response_format(params)
-
-    return GenerationConfig(
-        max_output_tokens=params.max_tokens,
-        temperature=params.temperature,
-        stop_sequences=params.stop,
-        top_p=params.top_p,
-        candidate_count=params.n,
-        seed=params.seed,
-        response_mime_type=response_mime_type,
-        response_schema=response_schema,
-    )
-
-
 def create_genai_generation_config(
     params: ModelParameters,
     *,
@@ -48,6 +31,7 @@ def create_genai_generation_config(
     static_tools: StaticToolsConfig,
     system_instruction: List[GenAIPart] | None,
     thinking_config: ThinkingConfigDict | None,
+    image_config: ImageConfigDict | None,
 ) -> GenAIGenerationConfig:
     validate_n_parameter(params)
 
@@ -77,6 +61,7 @@ def create_genai_generation_config(
         response_schema=response_schema,
         response_modalities=response_modalities,
         thinking_config=thinking_config,
+        image_config=image_config,
     )
 
 

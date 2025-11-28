@@ -11,7 +11,7 @@ from google.genai.types import (
 from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
 )
-from google.genai.types import ThinkingConfigDict
+from google.genai.types import ImageConfigDict, ThinkingConfigDict
 from pydantic.v1 import Field
 from typing_extensions import override
 
@@ -55,6 +55,35 @@ from aidial_adapter_vertexai.utils.pydantic import (
 from aidial_adapter_vertexai.utils.timer import Timer
 
 
+class ImageConfig(ExtraAllowModel):
+    """The image generation configuration"""
+
+    aspect_ratio: str | None = Field(
+        default=None,
+        description=(
+            "Aspect ratio of the generated images. "
+            'Supported values are "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", and "21:9".'
+            " If not specified, the model will use default value `1K`."
+        ),
+    )
+
+    image_size: str | None = Field(
+        default=None,
+        description=(
+            "Specifies the size of generated images. "
+            "Supported values are `1K`, `2K`, `4K`. "
+            "If not specified, the model will use default value `1K`."
+        ),
+    )
+
+    def to_image_config(self) -> ImageConfigDict:
+        ret: ImageConfigDict = {
+            "aspect_ratio": self.aspect_ratio,
+            "image_size": self.image_size,
+        }
+        return ret | self.extra_fields  # type: ignore
+
+
 class ThinkingConfig(ExtraAllowModel):
     """The thinking features configuration."""
 
@@ -77,6 +106,7 @@ class ThinkingConfig(ExtraAllowModel):
 
 class GeminiConfiguration(ExtraForbidModel):
     thinking: ThinkingConfig | None = None
+    image_config: ImageConfig | None = None
 
 
 class GeminiGenAIChatCompletionAdapter(
@@ -106,7 +136,7 @@ class GeminiGenAIChatCompletionAdapter(
         ]
 
     async def configuration(self) -> Type[GeminiConfiguration] | None:
-        if self.supports_thinking:
+        if self.supports_thinking or self.supports_image_generation:
             return GeminiConfiguration
         return None
 
@@ -146,6 +176,10 @@ class GeminiGenAIChatCompletionAdapter(
             else params.parse_configuration(conf_cls)
         )
 
+        image_config: ImageConfigDict | None = None
+        if configuration and configuration.image_config:
+            image_config = configuration.image_config.to_image_config()
+
         thinking_config: ThinkingConfigDict | None = None
         if configuration and configuration.thinking:
             thinking_config = configuration.thinking.to_thinking_config()
@@ -157,6 +191,7 @@ class GeminiGenAIChatCompletionAdapter(
             static_tools=prompt.static_tools,
             system_instruction=prompt.system,
             thinking_config=thinking_config,
+            image_config=image_config,
         )
 
     def _get_token_count_config(

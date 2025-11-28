@@ -28,6 +28,11 @@ _claude_deployments: Mapping[D, str] = {
 _gemini_2_5_deployments: Mapping[D, str] = {
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
+    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _CENTRAL,
+}
+
+_gemini_2_5_image_deployments: Mapping[D, str] = {
+    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _CENTRAL,
 }
 
 
@@ -48,6 +53,16 @@ async def test_gemini_2_5_supports_thinking(
     deployment, region = test
     assert await _configuration_has_field(
         test_http_client, region, deployment, "thinking"
+    )
+
+
+@pytest.mark.parametrize("test", _gemini_2_5_image_deployments.items())
+async def test_gemini_2_5_image_supports_image_config(
+    test_http_client: httpx.AsyncClient, test: Tuple[D, str]
+):
+    deployment, region = test
+    assert await _configuration_has_field(
+        test_http_client, region, deployment, "image_config"
     )
 
 
