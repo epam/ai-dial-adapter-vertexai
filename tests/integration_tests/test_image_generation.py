@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 from typing import Callable, List, Mapping
 from unittest.mock import patch
@@ -5,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from openai import AsyncAzureOpenAI, BadRequestError
 from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
+from PIL import Image
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
@@ -60,7 +62,7 @@ def vision_model(get_openai_client: Callable[..., AsyncAzureOpenAI]):
 
 
 @pytest.mark.parametrize("deployment, region", _IMAGE_GENERATION_MODELS.items())
-async def test_text_to_image(
+async def test_text_to_image_default(
     mock_storage: FileStorage,
     vision_model: AsyncAzureOpenAI,
     get_openai_client: Callable[..., AsyncAzureOpenAI],
@@ -90,6 +92,28 @@ async def test_text_to_image(
         ],
     )
     assert "red" in (vision_response.choices[0].message.content or "").lower()
+
+
+@pytest.mark.parametrize("deployment, region", _GEMINI_IMAGE_MODELS.items())
+async def test_text_to_image_aspect_ratio(
+    mock_storage: FileStorage,
+    get_openai_client: Callable[..., AsyncAzureOpenAI],
+    deployment: D,
+    region: str,
+):
+    client = get_openai_client(deployment.value, region=region)
+
+    configuration = {"image_config": {"aspect_ratio": "16:9"}}
+    imagen_response = await client.chat.completions.create(
+        model=deployment.value,
+        messages=[user("most typical image generation query")],
+        extra_body={"custom_fields": {"configuration": configuration}},
+    )
+
+    image_bytes = await _extract_image_bytes(mock_storage, imagen_response)
+
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        assert img.size == (1344, 768)
 
 
 @pytest.mark.parametrize("deployment, region", _IMAGE_TO_IMAGE_MODELS.items())
