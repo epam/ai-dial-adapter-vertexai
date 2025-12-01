@@ -137,6 +137,8 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 |COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
+|GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
+|ANTHROPIC_MAX_RETRY_ATTEMPTS|0|How many times to retry Anthropic chat model requests when the provider returns a retriable error|
 
 ## Default `max_tokens` for Claude models
 
