@@ -22,6 +22,7 @@ from tests.utils.openai import sanitize_test_name, sys, user
 _DEPLOYMENTS = [
     D.GEMINI_2_5_PRO,
     D.GEMINI_2_5_FLASH,
+    D.GEMINI_3_PRO_PREVIEW,
     D.CLAUDE_3_5_HAIKU,  # The deployment that doesn't support implicit caching
 ]
 

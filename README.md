@@ -64,6 +64,7 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
+|Gemini 3 Pro|gemini-3-pro-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.5 Flash|gemini-2.5-flash|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.5 Flash Image|gemini-2.5-flash-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
 |Gemini 2.5 Pro|gemini-2.5-pro|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
@@ -110,9 +111,9 @@ The Imagen models support configuration of parameters specific for image-generat
 }
 ```
 
-##### Gemini 2.5 models
+##### Gemini 2.5, Gemini 3 models
 
-The Gemini 2.5 series models support configuration of [thinking](https://ai.google.dev/gemini-api/docs/thinking) parameters:
+The Gemini 2.5 and Gemini 3 series models support configuration of the [thinking parameters](https://ai.google.dev/gemini-api/docs/thinking):
 
 ```json
 {
@@ -127,8 +128,21 @@ The Gemini 2.5 series models support configuration of [thinking](https://ai.goog
 }
 ```
 
-The thought summaries are printed into a dedicated `Thinking` stage.
-The content of the thinking stage isn't provided to the model in subsequent requests.
+The thought summaries are printed into a dedicated `Thinking` stage given that `include_thoughts` is set to `true`.
+
+The token budget for thinking may be set to be unlimited via `thinking_budget=-1`.
+
+The Gemini 3 series model also supports [thinking_level](https://ai.google.dev/gemini-api/docs/gemini-3?thinking=low#thinking_level) parameter that could be set via the [reasoning_effort](https://platform.openai.com/docs/api-reference/chat/create#chat_create-reasoning_effort) field from the OpenAI API:
+
+```json
+{
+  "messages": [{"role": "user", "content": "Explain quantum computing in simple terms."}],
+  "reasoning_effort": "none|minimum|low|medium|high"
+}
+```
+
+> [!NOTE]
+> You cannot use both `reasoning_effort` and the `thinking_budget` parameters in the same request.
 
 ##### Claude models
 

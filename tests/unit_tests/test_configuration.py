@@ -10,6 +10,7 @@ from tests.utils.openai import chat_completion, configuration, user
 
 _EAST = "us-east5"
 _CENTRAL = "us-central1"
+_GLOBAL = "global"
 
 _claude_deployments: Mapping[D, str] = {
     D.CLAUDE_3_5_SONNET_V2: _EAST,
@@ -25,9 +26,10 @@ _claude_deployments: Mapping[D, str] = {
     D.CLAUDE_4_5_SONNET: _EAST,
 }
 
-_gemini_2_5_deployments: Mapping[D, str] = {
+_gemini_deployments_with_thinking: Mapping[D, str] = {
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
+    D.GEMINI_3_PRO_PREVIEW: _GLOBAL,
 }
 
 
@@ -41,8 +43,8 @@ async def _configuration_has_field(
     return field_name in conf["properties"]
 
 
-@pytest.mark.parametrize("test", _gemini_2_5_deployments.items())
-async def test_gemini_2_5_supports_thinking(
+@pytest.mark.parametrize("test", _gemini_deployments_with_thinking.items())
+async def test_gemini_supports_thinking(
     test_http_client: httpx.AsyncClient, test: Tuple[D, str]
 ):
     deployment, region = test

@@ -20,6 +20,7 @@ from openai.types.chat import (
     ChatCompletionMessageParam,
     ChatCompletionMessageToolCall,
     ChatCompletionMessageToolCallParam,
+    ChatCompletionReasoningEffort,
     ChatCompletionSystemMessageParam,
     ChatCompletionToolChoiceOptionParam,
     ChatCompletionToolMessageParam,
@@ -275,6 +276,7 @@ class ChatCompletionArgs(TypedDict, total=False):
     tool_choice: ChatCompletionToolChoiceOptionParam | None
     static_tools: StaticToolsConfig | None
     configuration: dict | None
+    reasoning_effort: ChatCompletionReasoningEffort | None
     extra_body: dict | None
 
 
@@ -318,6 +320,7 @@ async def chat_completion(
             stream=stream or False,
             stop=kwargs.get("stop"),
             max_tokens=kwargs.get("max_tokens"),
+            reasoning_effort=kwargs.get("reasoning_effort"),
             temperature=0.0,
             n=kwargs.get("n"),
             function_call=NOT_GIVEN,
