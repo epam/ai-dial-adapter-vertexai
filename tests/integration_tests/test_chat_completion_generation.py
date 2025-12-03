@@ -611,12 +611,8 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
 @pytest.mark.parametrize(
     "test", [ToolCallTest(1), ToolCallTest(2)], ids=lambda x: x.get_id()
 )
-async def test_tool_call(deployment: D, test: ToolCallTest, chat: Chat):
-
-    response = await chat(
-        messages=test.messages(True),
-        tools=test.tools,
-    )
+async def test_tool_call_basic(deployment: D, test: ToolCallTest, chat: Chat):
+    response = await chat(messages=test.messages(True), tools=test.tools)
 
     tool_calls = response.tool_calls
     assert tool_calls is not None, "Tool calls are missing"
@@ -637,7 +633,14 @@ async def test_tool_call(deployment: D, test: ToolCallTest, chat: Chat):
         function_call = tool_call.function
         assert function_call.name == test.function_name
 
-        function_args = json.loads(function_call.arguments)
+    # Arguments are needed to be sorted, because sometimes Claude produces tool calls out-of-order
+    tool_args = sorted(
+        [call.function.arguments for call in tool_calls],
+        key=lambda x: json.dumps(json.loads(x), sort_keys=True),
+    )
+
+    for idx, args in enumerate(tool_args):
+        function_args = json.loads(args)
         assert match_objects(test.expected_function_args(idx), function_args)
 
 

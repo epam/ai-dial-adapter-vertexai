@@ -403,6 +403,7 @@ GET_WEATHER_FUNCTION: FunctionDefinition = {
             },
         },
         "required": ["location", "unit"],
+        "additionalProperties": False,
     },
 }
 

@@ -1,6 +1,56 @@
+<h1 align="center">
+  DIAL VertexAI Adapter
+</h1>
+<p align="center">
+  <p align="center">
+  <a href="https://dialx.ai/">
+    <img src="https://dialx.ai/dialx_logo.svg" alt="About DIALX">
+  </a>
+</p>
+<h4 align="center">
+  <a href="https://discord.gg/ukzj9U9tEe">
+    <img src="https://img.shields.io/static/v1?label=DIALX%20Community%20on&message=Discord&color=blue&logo=Discord&style=flat-square" alt="Discord">
+  </a>
+</h4>
+
+- [Overview](#overview)
+  - [Supported models](#supported-models)
+    - [Chat completion models](#chat-completion-models)
+      - [Configurable models](#configurable-models)
+        - [Imagen models](#imagen-models)
+        - [Gemini 2.5 models](#gemini-25-models)
+        - [Claude models](#claude-models)
+    - [Embedding models](#embedding-models)
+  - [Environment variables](#environment-variables)
+    - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
+  - [Compatibility mode](#compatibility-mode)
+  - [Load balancing](#load-balancing)
+    - [Global endpoint](#global-endpoint)
+  - [Prompt caching](#prompt-caching)
+    - [Implicit caching](#implicit-caching)
+  - [Authentication](#authentication)
+    - [GCP Vertex AI](#gcp-vertex-ai)
+    - [Anthropic API / Google AI Platform](#anthropic-api--google-ai-platform)
+  - [Development](#development)
+    - [Development environment](#development-environment)
+    - [IDE configuration](#ide-configuration)
+    - [Make on Windows](#make-on-windows)
+    - [Run](#run)
+    - [Lint](#lint)
+    - [Test](#test)
+    - [Clean](#clean)
+
+---
+
 # Overview
 
-The project implements [AI DIAL API](https://epam-rail.com/dial_api) for language models and embeddings from [Vertex AI](https://console.cloud.google.com/vertex-ai).
+LLM Adapters unify the APIs of respective LLMs to align with the Unified Protocol of DIAL Core. Each Adapter operates within a dedicated container. Multi-modality allows supporting non-textual communications such as image-to-text, text-to-image, file transfers and more.
+
+The project implements [AI DIAL API](https://dialx.ai/dial_api) for language models and embedding models from [Vertex AI](https://console.cloud.google.com/vertex-ai).
+
+![ai-dial-core](https://docs.dialx.ai/assets/images/adapters-62587fb74cfb1c4225c20c08273ec5bc.svg)
+
+---
 
 ## Supported models
 
@@ -8,9 +58,9 @@ The project implements [AI DIAL API](https://epam-rail.com/dial_api) for languag
 
 The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/chat/completions` endpoint along with an optional support of the feature endpoints:
 
-* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/tokenize`
-* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
-* `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/configuration`
+- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/tokenize`
+- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
+- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/configuration`
 
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
@@ -122,6 +172,8 @@ The most notable beta flags are:
 
 Not every model supports all flags. Refer to the official documentation before utilizing any flags.
 
+---
+
 ### Embedding models
 
 The following models support `$SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:
@@ -135,6 +187,8 @@ The following models support `$SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME
 |Gecko Embeddings for Text Multilingual|textembedding-gecko-multilingual@001|Multilingual|text-to-embedding|
 |Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
 |Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
+
+---
 
 ## Environment variables
 
@@ -151,8 +205,10 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 |COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
+|GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
+|ANTHROPIC_MAX_RETRY_ATTEMPTS|0|How many times to retry Anthropic chat model requests when the provider returns a retriable error|
 
-## Default `max_tokens` for Claude models
+### Default `max_tokens` for Claude models
 
 Unlike Gemini models, Claude models require the `max_tokens` parameter in the chat completion request.
 
@@ -368,31 +424,55 @@ COMPATIBILITY_MAPPING={"claude-3-5-sonnet-20241022":"claude-3-5-sonnet-v2@202410
 
 Otherwise, the adapter will return 404 on requests to `claude-3-5-sonnet-20241022`.
 
+---
+
 ## Development
 
-Frequently used actions are automated via `make` targets.
+### Development environment
 
-### Install
+This project uses [Python>=3.11](https://www.python.org/downloads/) and [Poetry>=2.1.1](https://python-poetry.org/) as a dependency manager.
 
-To install the project dependencies required for running the server, linting and formatting the source code, and running the tests:
+Check out Poetry's [documentation on how to install it](https://python-poetry.org/docs/#installation) on your system before proceeding.
+
+To install requirements:
 
 ```sh
-make install
+poetry install
 ```
 
-### Serve locally
+This will install all requirements for running the package, linting, formatting and tests.
 
-To run the development server:
+### IDE configuration
+
+The recommended IDE is [VS Code](https://code.visualstudio.com/).
+Open the project in VS Code and install the recommended extensions.
+VS Code is configured to use PEP-8 compatible formatter [Black](https://black.readthedocs.io/en/stable/index.html).
+
+Alternatively you can use [PyCharm](https://www.jetbrains.com/pycharm/).
+Set up the Black in PyCharm [manually](https://black.readthedocs.io/en/stable/integrations/editors.html#pycharm-intellij-idea) or
+install PyCharm>=2023.2 with [built-in Black support](https://blog.jetbrains.com/pycharm/2023/07/2023-2/#black).
+
+### Make on Windows
+
+As of now, Windows distributions do not include the make tool. To run make commands, the tool can be installed using
+the following command (since [Windows 10](https://learn.microsoft.com/en-us/windows/package-manager/winget/)):
+
+```sh
+winget install GnuWin32.Make
+```
+
+For convenience, the tool folder can be added to the PATH environment variable as `C:\Program Files (x86)\GnuWin32\bin`.
+The command definitions inside Makefile should be cross-platform to keep the development environment setup simple.
+
+### Run
+
+Run the development server locally:
 
 ```sh
 make serve
 ```
 
-Open `localhost:5001/docs` to make sure the server is up and running.
-
-### Serve from the Docker container
-
-To run the server from the Docker container:
+Run the server from a Docker container:
 
 ```sh
 make docker_serve
@@ -439,15 +519,3 @@ To remove the virtual environment and build artifacts:
 ```sh
 make clean
 ```
-
-### IDE
-
-The recommended IDE is [VSCode](https://code.visualstudio.com/).
-Open the project in VSCode and install the recommended extensions.
-
-The VSCode is configured to use PEP-8 compatible formatter [Black](https://black.readthedocs.io/en/stable/index.html).
-
-Alternatively you can use [PyCharm](https://www.jetbrains.com/pycharm/).
-
-Set-up the Black formatter for PyCharm [manually](https://black.readthedocs.io/en/stable/integrations/editors.html#pycharm-intellij-idea) or
-install PyCharm>=2023.2 with [built-in Black support](https://blog.jetbrains.com/pycharm/2023/07/2023-2/#black).
