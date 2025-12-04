@@ -12,7 +12,9 @@ class ChatCompletionDeployment(Enum):
 
     GEMINI_2_5_FLASH = "gemini-2.5-flash"
     GEMINI_2_5_FLASH_IMAGE_PREVIEW = "gemini-2.5-flash-image-preview"
+    GEMINI_2_5_FLASH_IMAGE = "gemini-2.5-flash-image"
     GEMINI_3_PRO_PREVIEW = "gemini-3-pro-preview"
+    GEMINI_3_PRO_IMAGE_PREVIEW = "gemini-3-pro-image-preview"
 
     IMAGEN_005 = "imagegeneration@005"
     IMAGEN_3_GENERATE_001 = "imagen-3.0-generate-001"
@@ -74,7 +76,9 @@ GeminiDeployment = Literal[
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1,
     ChatCompletionDeployment.GEMINI_2_5_FLASH,
     ChatCompletionDeployment.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+    ChatCompletionDeployment.GEMINI_2_5_FLASH_IMAGE,
     ChatCompletionDeployment.GEMINI_3_PRO_PREVIEW,
+    ChatCompletionDeployment.GEMINI_3_PRO_IMAGE_PREVIEW,
 ]
 
 

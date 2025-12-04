@@ -16,9 +16,10 @@
 - [Overview](#overview)
   - [Supported models](#supported-models)
     - [Chat completion models](#chat-completion-models)
+      - [Image editing in Gemini 2.5 Flash Image](#image-editing-in-gemini-25-flash-image)
       - [Configurable models](#configurable-models)
         - [Imagen models](#imagen-models)
-        - [Gemini 2.5 models](#gemini-25-models)
+        - [Gemini 2.5, Gemini 3 models](#gemini-25-gemini-3-models)
         - [Claude models](#claude-models)
     - [Embedding models](#embedding-models)
   - [Environment variables](#environment-variables)
@@ -65,8 +66,9 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
 |Gemini 3 Pro|gemini-3-pro-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|Gemini 3 Pro Image|gemini-3-pro-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
 |Gemini 2.5 Flash|gemini-2.5-flash|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|Gemini 2.5 Flash Image|gemini-2.5-flash-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
+|Gemini 2.5 Flash Image|gemini-2.5-flash-image|(text/image)-to-(text/image)|✅|✅|✅|✅|
 |Gemini 2.5 Pro|gemini-2.5-pro|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 2.0 Flash Lite|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |Gemini 2.0 Flash|gemini-2.0-flash-exp|(text/pdf/image/audio/video)-to-(text/image)|✅|✅|✅|❌|
@@ -87,6 +89,36 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
+
+#### Image editing in Gemini 2.5 Flash Image
+
+Gemini 2.5 Flash Image and Gemini 3 Pro Image models support both image generation and image editing.
+This enables the following use case:
+
+```txt
+user: generate an image of a cat sitting on a sofa
+assistant: <image attachment #1>
+user: replace the cat with a dog
+assistant: <image attachment #2>
+```
+
+This scenario works out of the box with API integrations.
+
+However, it wouldn't work for interactions via [DIAL Chat](https://github.com/epam/ai-dial-chat/tree/0.40.0), since it removes all attachments from the assistant messages by default. To change this default behavior, set the `assistantAttachmentsInRequestSupported` flag to `true` in the [DIAL Core configuration](https://github.com/epam/ai-dial-core/blob/0.37.0/docs/dynamic-settings/models.md#modelsmodel_namefeatures) for the Gemini deployment in question:
+
+```json
+{
+  "models": {
+    "dial-gemini-deployment-id": {
+      "type": "chat",
+      "endpoint": "$VERTEXAI_ADAPTER_ORIGIN/openai/deployments/gemini-2.5-flash-image/chat/completions",
+      "features": {
+        "assistantAttachmentsInRequestSupported": true
+      }
+    }
+  }
+}
+```
 
 #### Configurable models
 

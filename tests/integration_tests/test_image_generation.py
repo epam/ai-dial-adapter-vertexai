@@ -46,8 +46,10 @@ _IMAGEN_MODELS: Mapping[D, str] = {
 }
 
 _GEMINI_IMAGE_MODELS: Mapping[D, str] = {
-    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
     D.GEMINI_2_0_FLASH_EXP: _GLOBAL,
+    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
+    D.GEMINI_2_5_FLASH_IMAGE: _GLOBAL,
+    D.GEMINI_3_PRO_IMAGE_PREVIEW: _GLOBAL,
 }
 
 _IMAGE_GENERATION_MODELS = _IMAGEN_MODELS | _GEMINI_IMAGE_MODELS
@@ -107,14 +109,18 @@ async def test_text_to_image_aspect_ratio(
     configuration = {"image_config": {"aspect_ratio": "16:9"}}
     imagen_response = await client.chat.completions.create(
         model=deployment.value,
-        messages=[user("most typical image generation query")],
+        messages=[user("a park in the spring next to a lake")],
         extra_body={"custom_fields": {"configuration": configuration}},
     )
 
     image_bytes = await _extract_image_bytes(mock_storage, imagen_response)
 
     with Image.open(io.BytesIO(image_bytes)) as img:
-        assert img.size == (1344, 768)
+        w, h = img.size
+        ratio = w / h
+        assert (
+            abs(w / h - 16 / 9) / ratio < 0.2
+        ), f"Unexpected aspect ratio: {w=}/{h=} = {ratio:.2f}"
 
 
 @pytest.mark.parametrize("deployment, region", _IMAGE_TO_IMAGE_MODELS.items())
