@@ -1,6 +1,5 @@
 from aidial_sdk.chat_completion import Attachment
 from google.genai.types import Candidate as GenAICandidate
-from vertexai.preview.generative_models import Candidate
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.deployments import GeminiDeployment
@@ -16,7 +15,7 @@ def google_search_grounding_tokens(deployment: GeminiDeployment) -> int:
 
 
 async def create_grounding(
-    candidate: Candidate | GenAICandidate, consumer: Consumer
+    candidate: GenAICandidate, consumer: Consumer
 ) -> bool:
     if not (metadata := candidate.grounding_metadata) or not (
         supports := metadata.grounding_supports
