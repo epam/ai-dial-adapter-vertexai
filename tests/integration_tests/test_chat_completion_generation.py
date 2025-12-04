@@ -167,6 +167,10 @@ def is_gemini_image(deployment: D) -> bool:
     )
 
 
+def supports_grounding(deployment: D) -> bool:
+    return is_gemini(deployment) and not is_gemini_image(deployment)
+
+
 def supports_thinking(deployment: D) -> bool:
     return deployment in (
         D.GEMINI_2_5_PRO,
@@ -181,10 +185,6 @@ def supports_thinking_level(deployment: D) -> bool:
 
 def is_gemini(deployment: D) -> bool:
     return "gemini" in deployment.value
-
-
-def supports_grounding(deployment: D) -> bool:
-    return is_gemini(deployment) and not is_gemini_image(deployment)
 
 
 @pytest.fixture
