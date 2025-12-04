@@ -53,9 +53,7 @@ _GEMINI_IMAGE_MODELS: Mapping[D, str] = {
 }
 
 _IMAGE_GENERATION_MODELS = _IMAGEN_MODELS | _GEMINI_IMAGE_MODELS
-_IMAGE_TO_IMAGE_MODELS = {
-    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
-}
+_IMAGE_TO_IMAGE_MODELS = _GEMINI_IMAGE_MODELS
 _VISION_MODEL = D.CLAUDE_3_7_SONNET
 
 
@@ -119,7 +117,7 @@ async def test_text_to_image_aspect_ratio(
         w, h = img.size
         ratio = w / h
         assert (
-            abs(w / h - 16 / 9) / ratio < 0.2
+            abs(ratio - 16 / 9) / ratio < 0.2
         ), f"Unexpected aspect ratio: {w=}/{h=} = {ratio:.2f}"
 
 
