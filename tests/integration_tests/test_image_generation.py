@@ -1,4 +1,4 @@
-import tempfile
+import io
 from pathlib import Path
 from typing import Callable, List, Mapping
 from unittest.mock import patch
@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from openai import AsyncAzureOpenAI, BadRequestError
 from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
+from PIL import Image
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
@@ -16,17 +17,15 @@ from tests.utils.openai import chat_completion, user, user_with_image_url
 
 
 @pytest.fixture(autouse=True)
-def mock_storage():
-    storage_dir = Path(__file__).parent / "mock-storage"
-    storage_dir.mkdir(parents=True, exist_ok=True)
-    base_dir = Path(tempfile.mkdtemp(dir=storage_dir))
-    storage = MockFileStorage.create(base_dir)
-    with patch(
-        "aidial_adapter_vertexai.adapters.create_file_storage",
-        return_value=storage,
-    ):
-        yield storage
-        storage.cleanup()  # NOTE: Comment out for debugging
+def mock_storage(request):
+    test_name = request.node.name
+    root_dir = Path(__file__).parent / "mock-storage" / test_name
+    with MockFileStorage.create(root_dir) as storage:
+        with patch(
+            "aidial_adapter_vertexai.adapters.create_file_storage",
+            return_value=storage,
+        ):
+            yield storage
 
 
 _CENTRAL = "us-central1"
@@ -65,7 +64,7 @@ def vision_model(get_openai_client: Callable[..., AsyncAzureOpenAI]):
 
 
 @pytest.mark.parametrize("deployment, region", _IMAGE_GENERATION_MODELS.items())
-async def test_text_to_image(
+async def test_text_to_image_default(
     mock_storage: FileStorage,
     vision_model: AsyncAzureOpenAI,
     get_openai_client: Callable[..., AsyncAzureOpenAI],
@@ -95,6 +94,28 @@ async def test_text_to_image(
         ],
     )
     assert "red" in (vision_response.choices[0].message.content or "").lower()
+
+
+@pytest.mark.parametrize("deployment, region", _GEMINI_IMAGE_MODELS.items())
+async def test_text_to_image_aspect_ratio(
+    mock_storage: FileStorage,
+    get_openai_client: Callable[..., AsyncAzureOpenAI],
+    deployment: D,
+    region: str,
+):
+    client = get_openai_client(deployment.value, region=region)
+
+    configuration = {"image_config": {"aspect_ratio": "16:9"}}
+    imagen_response = await client.chat.completions.create(
+        model=deployment.value,
+        messages=[user("most typical image generation query")],
+        extra_body={"custom_fields": {"configuration": configuration}},
+    )
+
+    image_bytes = await _extract_image_bytes(mock_storage, imagen_response)
+
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        assert img.size == (1344, 768)
 
 
 @pytest.mark.parametrize("deployment, region", _IMAGE_TO_IMAGE_MODELS.items())
@@ -229,10 +250,10 @@ async def _extract_image_bytes(
     assert len(response.choices) > 0
     choice = response.choices[0]
 
-    assert choice.message.content is not None
+    assert choice.message.content is not None, "Message content is missing"
     cc = choice.message.custom_content  # type: ignore
 
-    assert cc is not None
+    assert cc is not None, "Custom content is missing"
 
     for attachment in cc["attachments"]:
         if (

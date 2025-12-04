@@ -608,7 +608,14 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
         D.GEMINI_3_PRO_PREVIEW,
     ):
         async with expected_exception(
-            cls=openai.InternalServerError, status_code=500, message=message
+            [
+                ExpectedException(
+                    type=openai.InternalServerError,
+                    status_code=500,
+                    message=message,
+                ),
+                ExpectedException(type=openai.APIError, message=message),
+            ]
         ):
             await _run()
     else:

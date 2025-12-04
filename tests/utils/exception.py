@@ -1,6 +1,6 @@
 import contextlib
 import re
-from typing import overload
+from typing import List, overload
 
 from openai import APIError
 from pydantic import BaseModel
@@ -15,7 +15,7 @@ class ExpectedException(BaseModel):
 
 @overload
 async def expected_exception(
-    exception: ExpectedException,
+    exception: ExpectedException | List[ExpectedException],
 ): ...
 
 
@@ -30,7 +30,7 @@ async def expected_exception(
 
 @contextlib.asynccontextmanager
 async def expected_exception(
-    cls: type[APIError] | ExpectedException,
+    cls: type[APIError] | ExpectedException | List[ExpectedException],
     message: str | None = None,
     display_message: str | None = None,
     status_code: int | None = None,
@@ -39,21 +39,47 @@ async def expected_exception(
         yield
     except Exception as e:
         if isinstance(cls, ExpectedException):
-            message = cls.message
-            display_message = cls.display_message
-            status_code = cls.status_code
-            cls = cls.type
+            exceptions = [cls]
+        elif isinstance(cls, list):
+            exceptions = cls
+        else:
+            assert message is not None
+            exceptions = [
+                ExpectedException(
+                    type=cls,
+                    message=message,
+                    display_message=display_message,
+                    status_code=status_code,
+                )
+            ]
 
-        assert message is not None
+        msgs = []
+        for idx, exc in enumerate(exceptions, start=1):
+            if (msg := _match_exception(e, exc)) is None:
+                return
+            msgs.append(f" [{idx}] {msg}")
 
-        assert isinstance(
-            e, cls
-        ), f"Actual exception type ({type(e)}) doesn't match the expected one ({cls})"
-        actual_status_code = getattr(e, "status_code", None)
-        assert actual_status_code == status_code
-        assert re.search(
-            message, str(e)
-        ), f"The actual error message ({str(e)!r}) doesn't match the expected regexp ({message!r})"
-        assert (e.body or {}).get("display_message") == display_message  # type: ignore
+        lines = "\n".join(msgs)
+        assert (
+            False
+        ), f"The actual exception doesn't match any of the expected exceptions:\n{lines}"
     else:
-        assert False, f"The test didn't raise the expected exception {cls}"
+        assert False, "The test didn't raise any exceptions"
+
+
+def _match_exception(e: Exception, exc: ExpectedException) -> str | None:
+    if not isinstance(e, exc.type):
+        return f"Actual exception type ({type(e)}) doesn't match the expected one ({exc.type})"
+
+    actual_status_code = getattr(e, "status_code", None)
+    if actual_status_code != exc.status_code:
+        return f"Actual status code ({actual_status_code}) doesn't match the expected one ({exc.status_code})"
+
+    if not re.search(exc.message, str(e)):
+        return f"The actual error message ({str(e)!r}) doesn't match the expected regexp ({exc.message!r})"
+
+    actual_display_message = (e.body or {}).get("display_message")  # type: ignore
+    if actual_display_message != exc.display_message:
+        return f"Actual display message ({actual_display_message}) doesn't match the expected one ({exc.display_message})"
+
+    return None
