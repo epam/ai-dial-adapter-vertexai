@@ -15,7 +15,9 @@ def match_objects(expected: Any, actual: Any) -> bool:
         for i in range(len(expected)):
             match_objects(expected[i], actual[i])
     elif callable(expected):
-        assert expected(actual)
+        assert expected(
+            actual
+        ), f"The predicate failed on the actual result: {actual}"
     else:
         assert expected == actual
 
