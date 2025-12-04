@@ -49,7 +49,7 @@ class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
 
     @abstractmethod
     def create_content(
-        self, dial_message: DialMessage, parts: Parts[PartT]
+        self, idx: int, dial_message: DialMessage, parts: Parts[PartT]
     ) -> ContentT: ...
 
     @abstractmethod

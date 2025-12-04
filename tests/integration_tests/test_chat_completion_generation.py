@@ -5,8 +5,13 @@ from unittest.mock import patch
 import anthropic
 import openai
 import pytest
+from aidial_sdk.chat_completion.request import Message as DialMessage
 from aidial_sdk.chat_completion.request import StaticFunction
+from openai.types.chat import ChatCompletionMessageParam
 
+from aidial_adapter_vertexai.chat.gemini.state import (
+    _parse_message_content_from_state,
+)
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
@@ -14,6 +19,7 @@ from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
     GET_CURRENT_TIME_FUNCTION,
+    GET_WEATHER_FUNCTION,
     GET_WEATHER_TOOL_WITH_REFERENCES,
     ChatCompletionArgs,
     ChatCompletionResult,
@@ -41,6 +47,7 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.GEMINI_2_0_FLASH_001: _CENTRAL,
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_PRO_PREVIEW_03_25: _CENTRAL,
+    D.GEMINI_3_PRO_PREVIEW: _GLOBAL,
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
@@ -76,6 +83,7 @@ def is_vision_model(deployment: D) -> bool:
         D.GEMINI_3_PRO_IMAGE_PREVIEW,
         D.GEMINI_2_5_FLASH_IMAGE,
         D.GEMINI_2_5_PRO,
+        D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
         D.CLAUDE_3_5_SONNET_V2,
@@ -128,6 +136,7 @@ def supports_tools(deployment: D) -> bool:
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_FLASH,
+        D.GEMINI_3_PRO_PREVIEW,
     ]
 
 
@@ -142,6 +151,7 @@ def supports_parallel_tool_calls(deployment: D) -> bool:
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_FLASH,
+        D.GEMINI_3_PRO_PREVIEW,
     ]
 
 
@@ -157,16 +167,24 @@ def is_gemini_image(deployment: D) -> bool:
     )
 
 
+def supports_thinking(deployment: D) -> bool:
+    return deployment in (
+        D.GEMINI_2_5_PRO,
+        D.GEMINI_2_5_FLASH,
+        D.GEMINI_3_PRO_PREVIEW,
+    )
+
+
+def supports_thinking_level(deployment: D) -> bool:
+    return deployment in (D.GEMINI_3_PRO_PREVIEW,)
+
+
 def is_gemini(deployment: D) -> bool:
     return "gemini" in deployment.value
 
 
 def supports_grounding(deployment: D) -> bool:
     return is_gemini(deployment) and not is_gemini_image(deployment)
-
-
-def supports_thinking(deployment: D) -> bool:
-    return deployment in (D.GEMINI_2_5_PRO, D.GEMINI_2_5_FLASH)
 
 
 @pytest.fixture
@@ -358,42 +376,77 @@ async def test_finish_reason_length(deployment: D, chat: Chat):
     assert response.finish_reasons == ["length"]
 
 
-@pytest.mark.parametrize(
-    "deployment",
-    select(pred(supports_thinking), deployments),
-    ids=display_deployment,
-)
-async def test_thinking(deployment: D, chat: Chat):
-    response = await chat(
-        messages=[user("2+3=?")],
-        configuration={
-            "thinking": {
-                "include_thoughts": True,
-                "thinking_budget": 2048,
-            }
-        },
-    )
-
-    assert "5" in response.content
-
-    assert response.usage is not None
+def _check_thinking_response(response: ChatCompletionResult):
+    assert response.usage is not None, "Usage is missing"
     assert response.usage.completion_tokens > 10
 
     stages = response.stages
-    assert stages is not None and len(stages) == 1
+    assert stages is not None, "Stages are missing"
+    assert len(stages) == 1
 
     thinking_stage = stages[0]
     assert thinking_stage.name == "Thinking"
-    assert thinking_stage.content is not None
+    assert thinking_stage.content is not None, "Thinking content is missing"
     assert len(thinking_stage.content) > 10
 
     assert response.finish_reasons == ["stop"]
 
 
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_thinking), deployments),
+    ids=display_deployment,
+)
+async def test_thinking_budget(chat: Chat):
+    response = await chat(
+        messages=[user("2+3=?")],
+        configuration={
+            "thinking": {"include_thoughts": True, "thinking_budget": 2048}
+        },
+    )
+
+    assert "5" in response.content
+    _check_thinking_response(response)
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_thinking_level), deployments),
+    ids=display_deployment,
+)
+async def test_thinking_level(chat: Chat):
+    thinking = {"include_thoughts": True, "thinking_level": "low"}
+    response = await chat(
+        messages=[user("2+3=?")], configuration={"thinking": thinking}
+    )
+    assert "5" in response.content
+    _check_thinking_response(response)
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_thinking_level), deployments),
+    ids=display_deployment,
+)
+async def test_reasoning_effort(chat: Chat):
+    response = await chat(
+        messages=[user("2+3=?")],
+        configuration={"thinking": {"include_thoughts": True}},
+        reasoning_effort="low",
+    )
+    assert "5" in response.content
+    _check_thinking_response(response)
+
+
 @pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
-async def test_stop_sequence(deployment: D, chat: Chat):
+async def test_stop_sequence(deployment: D, stream: bool, chat: Chat):
     if is_gemini_image(deployment):
         pytest.skip("Gemini Image doesn't seem to support stop parameter.")
+
+    if deployment == D.GEMINI_3_PRO_PREVIEW and not stream:
+        pytest.skip(
+            "Gemini 3 doesn't seem to support stop parameter in non-streaming mode."
+        )
 
     stop = ["world"]
     response = await chat(
@@ -545,11 +598,17 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
             ]
         )
 
-    if deployment in (D.GEMINI_2_5_PRO, D.GEMINI_2_5_FLASH):
+    message = (
+        "The function call generated by the model is invalid:.*get_current_time"
+    )
+
+    if deployment in (
+        D.GEMINI_2_5_PRO,
+        D.GEMINI_2_5_FLASH,
+        D.GEMINI_3_PRO_PREVIEW,
+    ):
         async with expected_exception(
-            cls=openai.InternalServerError,
-            status_code=500,
-            message="The function call generated by the model is invalid:.*get_current_time",
+            cls=openai.InternalServerError, status_code=500, message=message
         ):
             await _run()
     else:
@@ -566,12 +625,8 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
 @pytest.mark.parametrize(
     "test", [ToolCallTest(1), ToolCallTest(2)], ids=lambda x: x.get_id()
 )
-async def test_tool_call(deployment: D, test: ToolCallTest, chat: Chat):
-
-    response = await chat(
-        messages=test.messages(True),
-        tools=test.tools,
-    )
+async def test_tool_call_basic(deployment: D, test: ToolCallTest, chat: Chat):
+    response = await chat(messages=test.messages(True), tools=test.tools)
 
     tool_calls = response.tool_calls
     assert tool_calls is not None, "Tool calls are missing"
@@ -592,7 +647,14 @@ async def test_tool_call(deployment: D, test: ToolCallTest, chat: Chat):
         function_call = tool_call.function
         assert function_call.name == test.function_name
 
-        function_args = json.loads(function_call.arguments)
+    # Arguments are needed to be sorted, because sometimes Claude produces tool calls out-of-order
+    tool_args = sorted(
+        [call.function.arguments for call in tool_calls],
+        key=lambda x: json.dumps(json.loads(x), sort_keys=True),
+    )
+
+    for idx, args in enumerate(tool_args):
+        function_args = json.loads(args)
         assert match_objects(test.expected_function_args(idx), function_args)
 
 
@@ -615,6 +677,47 @@ async def test_tool_response(test: ToolCallTest, chat: Chat):
 
     for temp in test.city_temps:
         assert str(temp) in response.content
+
+
+@pytest.mark.parametrize(
+    "deployment",
+    select(pred(supports_tools), deployments),
+    ids=display_deployment,
+)
+async def test_tool_call_and_response(deployment: D, chat: Chat):
+    messages: List[ChatCompletionMessageParam] = [
+        user("Tell me what's the temperature in London, UK in celsius?"),
+    ]
+
+    response = await chat(
+        messages=messages, tools=[function_to_tool(GET_WEATHER_FUNCTION)]
+    )
+
+    assert response.finish_reasons == ["tool_calls"]
+    assert response.tool_calls is not None, "Tool calls are missing"
+    assert response.tool_calls[0].function.name == "get_temperature"
+    tool_call_id = response.tool_calls[0].id
+
+    response_message = response.response.choices[0].message.to_dict()
+
+    if deployment == D.GEMINI_3_PRO_PREVIEW:
+        dial_message = DialMessage.parse_obj(response_message)
+        state = _parse_message_content_from_state(0, dial_message)
+        assert state is not None, "state is missing"
+        content = state.gemini_message_content
+        assert content is not None, "gemini_message_content is missing"
+        sig = (content.parts or [])[0].thought_signature
+        assert sig is not None, "thought_signature is missing"
+
+    messages.append(response_message)  # type: ignore
+    messages.append(tool_response(tool_call_id, "it's 20 degrees celsius"))
+
+    response = await chat(
+        messages=messages, tools=[function_to_tool(GET_WEATHER_FUNCTION)]
+    )
+
+    assert "20" in response.content
+    assert response.finish_reasons == ["stop"]
 
 
 @pytest.mark.parametrize(

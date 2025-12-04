@@ -37,6 +37,9 @@ class Consumer(ABC):
     async def set_usage(self, usage: TokenUsage): ...
 
     @abstractmethod
+    async def set_state(self, state: dict): ...
+
+    @abstractmethod
     async def set_finish_reason(self, finish_reason: FinishReason): ...
 
     @abstractmethod
@@ -153,6 +156,10 @@ class ChoiceConsumer(Consumer):
         if self.is_empty():
             await self.append_content("")
         self.usage = usage
+
+    async def set_state(self, state: dict):
+        if state:
+            self.choice.set_state(state)
 
     async def set_finish_reason(self, finish_reason: FinishReason):
         if finish_reason == FinishReason.STOP and self.finish_reason in [
