@@ -62,9 +62,9 @@ async def expected_exception(
         lines = "\n".join(msgs)
         assert (
             False
-        ), f"The actual exception doesn't match actual exception:\n{lines}"
+        ), f"The actual exception doesn't match any of the expected exceptions:\n{lines}"
     else:
-        assert False, f"The test didn't raise the expected exception {cls}"
+        assert False, "The test didn't raise any exceptions"
 
 
 def _match_exception(e: Exception, exc: ExpectedException) -> str | None:
