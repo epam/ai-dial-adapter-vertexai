@@ -3,11 +3,11 @@ import logging
 from typing import AsyncGenerator, Mapping
 
 import httpx
+import openai
 import pytest
 from asgi_lifespan import LifespanManager
 from google.cloud.aiplatform.constants.base import DEFAULT_REGION
 from httpx import ASGITransport
-from openai import AsyncAzureOpenAI
 
 
 def pytest_configure(config):
@@ -46,6 +46,13 @@ def get_extra_headers(region: str) -> Mapping[str, str]:
     return {"x-upstream-extra-data": json.dumps({"region": region})}
 
 
+class AsyncAzureOpenAI(openai.AsyncAzureOpenAI):
+    def _should_retry(self, response: httpx.Response) -> bool:
+        if response.status_code == 500:
+            return False
+        return super()._should_retry(response)
+
+
 @pytest.fixture
 def get_openai_client(test_http_client: httpx.AsyncClient):
     def _get_client(
@@ -53,7 +60,7 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
         *,
         region: str | None = None,
         max_retries: int = 3,
-    ) -> AsyncAzureOpenAI:
+    ) -> openai.AsyncAzureOpenAI:
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
             azure_deployment=deployment_id,

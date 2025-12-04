@@ -5,8 +5,10 @@ import httpx
 import vertexai
 from anthropic import AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
+from google.genai.types import HttpOptions, HttpRetryOptions
 
 from aidial_adapter_vertexai.utils.cache import cache
+from aidial_adapter_vertexai.utils.env import get_env_int
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 DEFAULT_REGION_ENV_VAR = "DEFAULT_REGION"
@@ -14,6 +16,11 @@ DEFAULT_PROJECT_ENV_VAR = "GCP_PROJECT_ID"
 
 DEFAULT_REGION = os.getenv(DEFAULT_REGION_ENV_VAR)
 DEFAULT_PROJECT = os.getenv(DEFAULT_PROJECT_ENV_VAR)
+
+ANTHROPIC_MAX_RETRY_ATTEMPTS = get_env_int("ANTHROPIC_MAX_RETRY_ATTEMPTS", 0)
+GOOGLE_GENAI_MAX_RETRY_ATTEMPTS = get_env_int(
+    "GOOGLE_GENAI_MAX_RETRY_ATTEMPTS", 0
+)
 
 
 def init_vertex_ai():
@@ -32,7 +39,17 @@ async def _close_genai_client(client: GenAIClient) -> None:
 
 @cache(_close_genai_client)
 async def get_genai_client(project: str, location: str) -> GenAIClient:
-    return GenAIClient(vertexai=True, project=project, location=location)
+    opts = HttpOptions(
+        retry_options=HttpRetryOptions(
+            attempts=1 + GOOGLE_GENAI_MAX_RETRY_ATTEMPTS
+        )
+    )
+    return GenAIClient(
+        vertexai=True,
+        project=project,
+        location=location,
+        http_options=opts,
+    )
 
 
 async def _close_anthropic_client(client: AsyncAnthropicVertex) -> None:
@@ -45,7 +62,10 @@ async def get_anthropic_client(
 ) -> AsyncAnthropicVertex:
     http_client = httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
     return AsyncAnthropicVertex(
-        project_id=project, region=region, http_client=http_client
+        project_id=project,
+        region=region,
+        http_client=http_client,
+        max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
     )
 
 

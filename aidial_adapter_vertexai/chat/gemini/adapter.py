@@ -30,6 +30,7 @@ from aidial_adapter_vertexai.chat.gemini.generation_config import (
     create_genai_generation_config,
 )
 from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
+from aidial_adapter_vertexai.chat.gemini.input import to_genai_thinking_level
 from aidial_adapter_vertexai.chat.gemini.output import (
     create_citations,
     create_function_calls_from_genai,
@@ -38,6 +39,7 @@ from aidial_adapter_vertexai.chat.gemini.output import (
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
+from aidial_adapter_vertexai.chat.gemini.state import MessageState
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
@@ -127,7 +129,8 @@ class GeminiGenAIChatCompletionAdapter(
 
     @property
     def supports_thinking(self) -> bool:
-        return "gemini-2.5" in self.deployment.reference_deployment_id.value
+        name = self.deployment.reference_deployment_id.value
+        return "gemini-2.5" in name or "gemini-3" in name
 
     @property
     def supports_image_generation(self) -> bool:
@@ -181,8 +184,17 @@ class GeminiGenAIChatCompletionAdapter(
             image_config = configuration.image_config.to_image_config()
 
         thinking_config: ThinkingConfigDict | None = None
+        if effort := params.reasoning_effort:
+            thinking_config = thinking_config or {}
+            thinking_config = thinking_config | {
+                "thinking_level": to_genai_thinking_level(effort)
+            }
+
         if configuration and configuration.thinking:
-            thinking_config = configuration.thinking.to_thinking_config()
+            thinking_config = thinking_config or {}
+            thinking_config = (
+                thinking_config | configuration.thinking.to_thinking_config()
+            )
 
         return create_genai_generation_config(
             params,
@@ -238,9 +250,11 @@ class GeminiGenAIChatCompletionAdapter(
         generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
     ):
         thinking_stage: Stage | None = None
+        state = MessageState()
 
         usage_metadata = None
         is_grounding_added = False
+
         try:
             async for chunk in generator():
                 if log.isEnabledFor(DEBUG):
@@ -263,6 +277,9 @@ class GeminiGenAIChatCompletionAdapter(
                 candidate = chunk.candidates[0]
                 if candidate.content and candidate.content.parts:
                     for part in candidate.content.parts:
+                        if part.thought_signature:
+                            state.set_thought_signature(part.thought_signature)
+
                         await create_function_calls_from_genai(
                             part, consumer, tools
                         )
@@ -305,6 +322,8 @@ class GeminiGenAIChatCompletionAdapter(
             # Append empty content, so at least one choice is generated.
             if consumer.get_finish_reason() is not None:
                 await consumer.append_content("")
+
+            await consumer.set_state(state.to_json())
 
         if usage_metadata:
             await set_usage(

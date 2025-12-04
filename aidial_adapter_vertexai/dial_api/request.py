@@ -21,6 +21,7 @@ from aidial_sdk.chat_completion import (
 from aidial_sdk.chat_completion.request import (
     ChatCompletionRequest,
     MessageContentRefusalPart,
+    ReasoningEffort,
 )
 from aidial_sdk.exceptions import RequestValidationError
 from pydantic.v1 import BaseModel
@@ -45,6 +46,7 @@ class ModelParameters(BaseModel):
     response_format: Optional[ResponseFormat] = None
     seed: Optional[int] = None
     configuration: Optional[dict] = None
+    reasoning_effort: ReasoningEffort | None = None
 
     @classmethod
     def create(cls, request: ChatCompletionRequest) -> "ModelParameters":
@@ -70,6 +72,7 @@ class ModelParameters(BaseModel):
             response_format=request.response_format,
             seed=request.seed,
             configuration=configuration,
+            reasoning_effort=request.reasoning_effort,
         )
 
     def parse_configuration(self, cls: Type[_Model]) -> _Model:
