@@ -9,7 +9,6 @@ from google.genai.types import (
     GenerateContentResponseUsageMetadata as GenAIUsageMetadata,
 )
 from google.genai.types import Part as GenAIPart
-from vertexai.preview.generative_models import Candidate
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.gemini.grounding import (
@@ -32,7 +31,7 @@ def _is_absolute_url(uri: str) -> bool:
 
 
 async def create_citations(
-    candidate: Candidate | GenAICandidate, consumer: Consumer
+    candidate: GenAICandidate, consumer: Consumer
 ) -> None:
     if (citation_metadata := candidate.citation_metadata) is None:
         return None

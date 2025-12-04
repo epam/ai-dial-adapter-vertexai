@@ -144,6 +144,25 @@ The Gemini 3 series model also supports [thinking_level](https://ai.google.dev/g
 > [!NOTE]
 > You cannot use both `reasoning_effort` and the `thinking_budget` parameters in the same request.
 
+##### Gemini 2.5 Flash Image model
+
+The Gemini 2.5 Flash Image support configuration of parameters controlling generation of images:
+
+```json
+{
+  "custom_fields": {
+    "configuration": {
+      "image_config": {
+        "aspect_ratio": "21:9",
+        "image_size": "4K"
+      }
+    }
+  }
+}
+```
+
+Consult the [documentation](https://ai.google.dev/gemini-api/docs/image-generation#aspect_ratios_and_image_size) for the possible values of these parameters and their defaults.
+
 ##### Claude models
 
 The Claude models accept a configuration flag that enables document citations in the generated output. The flag is false by default.
