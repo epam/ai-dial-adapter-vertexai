@@ -40,6 +40,8 @@ class ChatCompletionDeployment(Enum):
     CLAUDE_4_5_HAIKU = "claude-haiku-4-5@20251001"
     CLAUDE_4_5_SONNET = "claude-sonnet-4-5@20250929"
 
+    VEO_3_1_FAST_GENERATE = "veo-3.1-fast-generate-001"
+
 
 ImagenDeployment = Literal[
     ChatCompletionDeployment.IMAGEN_005,
@@ -80,6 +82,8 @@ GeminiDeployment = Literal[
     ChatCompletionDeployment.GEMINI_3_PRO_PREVIEW,
     ChatCompletionDeployment.GEMINI_3_PRO_IMAGE_PREVIEW,
 ]
+
+VeoDeployment = Literal[ChatCompletionDeployment.VEO_3_1_FAST_GENERATE,]
 
 
 class EmbeddingsDeployment(Enum):

@@ -54,6 +54,7 @@ test_cases: List[TestCase] = [
     TestCase(D.CLAUDE_4_1_OPUS, True, True, True),
     TestCase(D.CLAUDE_4_5_HAIKU, True, True, True),
     TestCase(D.CLAUDE_4_5_SONNET, True, True, True),
+    TestCase(D.VEO_3_1_FAST_GENERATE, True, True, True),
 ]
 
 check_enum_completeness([tc.deployment for tc in test_cases])
