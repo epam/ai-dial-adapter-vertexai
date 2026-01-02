@@ -1,4 +1,4 @@
-import time
+import asyncio
 from logging import DEBUG
 from typing import List, Optional
 
@@ -106,11 +106,11 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             operation = await self.client.aio.models.generate_videos(
                 model=self.model_id, prompt=prompt, config=config
             )
-            delay = 3
+            poll_interval = 3
             while not operation.done:
-                time.sleep(delay)
-                log.debug(f"Sleep for {delay}")
-                operation = self.client.operations.get(operation)
+                log.debug(f"Sleeping {poll_interval} seconds")
+                await asyncio.sleep(poll_interval)
+                operation = await self.client.aio.operations.get(operation)
             response = operation.response
 
         if log.isEnabledFor(DEBUG):
@@ -212,7 +212,8 @@ def _extract_video(response: GenerateVideosOperation) -> GeneratedVideo | None:
     if (video_data := video.video_bytes) is None:
         return None
 
-    media_type = _get_video_type(video)
+    if (media_type := video.mime_type) is None:
+        return None
 
     resource = Resource(type=media_type, data=video_data)
 

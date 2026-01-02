@@ -89,6 +89,10 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Imagen 3.0|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
 |Veo 3.1 Fast Generate|veo-3.1-fast-generate-001|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Fast Generate Preview|veo-3.0-fast-generate-preview|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Generate Preview|veo-3.0-generate-preview|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Fast Generate|veo-3.0-fast-generate-001|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Generate|veo-3.0-generate-001|text-to-video|✅|✅|❌|✅|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
@@ -148,7 +152,7 @@ The Imagen models support configuration of parameters specific for image-generat
 
 ##### Veo models
 
-The Veo models support configuration of parameters specific for image-generation such as aspect ratio, compression quality and duration seconds. See the complete list of configurable parameters at the [Veo API documentation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/veo-video-generation#parameters).
+The Veo models support configuration of parameters specific for video-generation such as aspect ratio, compression quality and duration seconds. See the complete list of configurable parameters at the [Veo API documentation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/veo-video-generation#parameters).
 
 ```json
 {

@@ -96,7 +96,13 @@ async def get_chat_completion_model(
                 deployment.clone(deployment.reference_deployment_id),
                 config=upstream_config,
             )
-        case D.VEO_3_1_FAST_GENERATE:
+        case (
+            D.VEO_3_0_GENERATE
+            | D.VEO_3_0_FAST_GENERATE
+            | D.VEO_3_0_GENERATE_PREVIEW
+            | D.VEO_3_0_FAST_GENERATE_PREVIEW
+            | D.VEO_3_1_FAST_GENERATE
+        ):
             return await VeoChatCompletionAdapter.create(
                 storage,
                 deployment.clone(deployment.reference_deployment_id),

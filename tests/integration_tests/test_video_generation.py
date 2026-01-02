@@ -25,18 +25,18 @@ def mock_storage(request):
 
 
 _CENTRAL = "us-central1"
-_EAST = "us-east5"
-_GLOBAL = "global"
 
 _VEO_MODELS: Mapping[D, str] = {
+    D.VEO_3_0_GENERATE: _CENTRAL,
+    D.VEO_3_0_FAST_GENERATE: _CENTRAL,
+    D.VEO_3_0_GENERATE_PREVIEW: _CENTRAL,
+    D.VEO_3_0_FAST_GENERATE_PREVIEW: _CENTRAL,
     D.VEO_3_1_FAST_GENERATE: _CENTRAL,
 }
 
-_VIDEO_GENERATION_MODELS = _VEO_MODELS
 
-
-@pytest.mark.parametrize("deployment, region", _VIDEO_GENERATION_MODELS.items())
-async def test_text_to_video_default(
+@pytest.mark.parametrize("deployment, region", _VEO_MODELS.items())
+async def test_text_to_video(
     mock_storage: FileStorage,
     get_openai_client: Callable[..., AsyncAzureOpenAI],
     deployment: D,
