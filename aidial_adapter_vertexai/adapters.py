@@ -98,10 +98,13 @@ async def get_chat_completion_model(
             )
         case (
             D.VEO_3_0_GENERATE
-            | D.VEO_3_0_FAST_GENERATE
             | D.VEO_3_0_GENERATE_PREVIEW
+            | D.VEO_3_0_FAST_GENERATE
             | D.VEO_3_0_FAST_GENERATE_PREVIEW
+            | D.VEO_3_1_GENERATE
+            | D.VEO_3_1_GENERATE_PREVIEW
             | D.VEO_3_1_FAST_GENERATE
+            | D.VEO_3_1_FAST_GENERATE_PREVIEW
         ):
             return await VeoChatCompletionAdapter.create(
                 storage,

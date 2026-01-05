@@ -55,10 +55,13 @@ test_cases: List[TestCase] = [
     TestCase(D.CLAUDE_4_5_HAIKU, True, True, True),
     TestCase(D.CLAUDE_4_5_SONNET, True, True, True),
     TestCase(D.VEO_3_0_GENERATE, True, True, True),
-    TestCase(D.VEO_3_0_FAST_GENERATE, True, True, True),
     TestCase(D.VEO_3_0_GENERATE_PREVIEW, True, True, True),
+    TestCase(D.VEO_3_0_FAST_GENERATE, True, True, True),
     TestCase(D.VEO_3_0_FAST_GENERATE_PREVIEW, True, True, True),
+    TestCase(D.VEO_3_1_GENERATE, True, True, True),
+    TestCase(D.VEO_3_1_GENERATE_PREVIEW, True, True, True),
     TestCase(D.VEO_3_1_FAST_GENERATE, True, True, True),
+    TestCase(D.VEO_3_1_FAST_GENERATE_PREVIEW, True, True, True),
 ]
 
 check_enum_completeness([tc.deployment for tc in test_cases])

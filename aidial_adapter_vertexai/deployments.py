@@ -41,10 +41,13 @@ class ChatCompletionDeployment(Enum):
     CLAUDE_4_5_SONNET = "claude-sonnet-4-5@20250929"
 
     VEO_3_0_GENERATE = "veo-3.0-generate-001"
-    VEO_3_0_FAST_GENERATE = "veo-3.0-fast-generate-001"
     VEO_3_0_GENERATE_PREVIEW = "veo-3.0-generate-preview"
+    VEO_3_0_FAST_GENERATE = "veo-3.0-fast-generate-001"
     VEO_3_0_FAST_GENERATE_PREVIEW = "veo-3.0-fast-generate-preview"
+    VEO_3_1_GENERATE = "veo-3.1-generate-001"
+    VEO_3_1_GENERATE_PREVIEW = "veo-3.1-generate-preview"
     VEO_3_1_FAST_GENERATE = "veo-3.1-fast-generate-001"
+    VEO_3_1_FAST_GENERATE_PREVIEW = "veo-3.1-fast-generate-preview"
 
 
 ImagenDeployment = Literal[
@@ -89,10 +92,13 @@ GeminiDeployment = Literal[
 
 VeoDeployment = Literal[
     ChatCompletionDeployment.VEO_3_0_GENERATE,
-    ChatCompletionDeployment.VEO_3_0_FAST_GENERATE,
     ChatCompletionDeployment.VEO_3_0_GENERATE_PREVIEW,
+    ChatCompletionDeployment.VEO_3_0_FAST_GENERATE,
     ChatCompletionDeployment.VEO_3_0_FAST_GENERATE_PREVIEW,
+    ChatCompletionDeployment.VEO_3_1_GENERATE,
+    ChatCompletionDeployment.VEO_3_1_GENERATE_PREVIEW,
     ChatCompletionDeployment.VEO_3_1_FAST_GENERATE,
+    ChatCompletionDeployment.VEO_3_1_FAST_GENERATE_PREVIEW,
 ]
 
 

@@ -5,11 +5,7 @@ from typing import List, Optional
 from aidial_sdk.chat_completion import Attachment, Message
 from aidial_sdk.exceptions import InvalidRequestError
 from google.genai.client import Client as GenAIClient
-from google.genai.types import (
-    GenerateVideosConfigDict,
-    GenerateVideosOperation,
-    Video,
-)
+from google.genai.types import GenerateVideosConfigDict, GenerateVideosOperation
 from pydantic import BaseModel
 from typing_extensions import override
 
@@ -212,17 +208,7 @@ def _extract_video(response: GenerateVideosOperation) -> GeneratedVideo | None:
     if (video_data := video.video_bytes) is None:
         return None
 
-    if (media_type := video.mime_type) is None:
-        return None
-
-    resource = Resource(type=media_type, data=video_data)
+    video_type = video.mime_type or "video/mp4"
+    resource = Resource(type=video_type, data=video_data)
 
     return GeneratedVideo(resource=resource)
-
-
-def _get_video_type(video: Video) -> str:
-    match video.mime_type:
-        case "video/mp4":
-            return "video/mp4"
-        case _:
-            raise ValueError(f"Unknown video type: {video.mime_type}")

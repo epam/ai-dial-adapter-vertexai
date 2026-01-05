@@ -88,11 +88,10 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06\|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 3.0|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
-|Veo 3.1 Fast Generate|veo-3.1-fast-generate-001|text-to-video|✅|✅|❌|✅|
-|Veo 3.0 Fast Generate Preview|veo-3.0-fast-generate-preview|text-to-video|✅|✅|❌|✅|
-|Veo 3.0 Generate Preview|veo-3.0-generate-preview|text-to-video|✅|✅|❌|✅|
-|Veo 3.0 Fast Generate|veo-3.0-fast-generate-001|text-to-video|✅|✅|❌|✅|
-|Veo 3.0 Generate|veo-3.0-generate-001|text-to-video|✅|✅|❌|✅|
+|Veo 3.1 Fast Generate|veo-3.1-fast-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.1 Generate|veo-3.1-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Fast Generate|veo-3.0-fast-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Generate|veo-3.0-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
