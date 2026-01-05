@@ -16,6 +16,7 @@ from aidial_adapter_vertexai.chat.gemini.adapter import (
 from aidial_adapter_vertexai.chat.imagen.adapter import (
     ImagenChatCompletionAdapter,
 )
+from aidial_adapter_vertexai.chat.veo.adapter import VeoChatCompletionAdapter
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment as E
 from aidial_adapter_vertexai.dial_api.storage import create_file_storage
@@ -91,6 +92,21 @@ async def get_chat_completion_model(
             | D.IMAGEN_4_ULTRA_GENERATE
         ):
             return await ImagenChatCompletionAdapter.create(
+                storage,
+                deployment.clone(deployment.reference_deployment_id),
+                config=upstream_config,
+            )
+        case (
+            D.VEO_3_0_GENERATE
+            | D.VEO_3_0_GENERATE_PREVIEW
+            | D.VEO_3_0_FAST_GENERATE
+            | D.VEO_3_0_FAST_GENERATE_PREVIEW
+            | D.VEO_3_1_GENERATE
+            | D.VEO_3_1_GENERATE_PREVIEW
+            | D.VEO_3_1_FAST_GENERATE
+            | D.VEO_3_1_FAST_GENERATE_PREVIEW
+        ):
+            return await VeoChatCompletionAdapter.create(
                 storage,
                 deployment.clone(deployment.reference_deployment_id),
                 config=upstream_config,

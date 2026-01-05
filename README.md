@@ -19,6 +19,7 @@
       - [Image editing in Gemini 2.5 Flash Image](#image-editing-in-gemini-25-flash-image)
       - [Configurable models](#configurable-models)
         - [Imagen models](#imagen-models)
+        - [Veo models](#veo-models)
         - [Gemini 2.5, Gemini 3 models](#gemini-25-gemini-3-models)
         - [Claude models](#claude-models)
     - [Embedding models](#embedding-models)
@@ -87,6 +88,10 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06\|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 3.0|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
+|Veo 3.1 Fast Generate|veo-3.1-fast-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.1 Generate|veo-3.1-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Fast Generate|veo-3.0-fast-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Generate|veo-3.0-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
@@ -139,6 +144,23 @@ The Imagen models support configuration of parameters specific for image-generat
       "add_watermark": false,
       "negative_prompt": "trees",
       "aspect_ratio": "16:9"
+    }
+  }
+}
+```
+
+##### Veo models
+
+The Veo models support configuration of parameters specific for video-generation such as aspect ratio, compression quality and duration seconds. See the complete list of configurable parameters at the [Veo API documentation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/veo-video-generation#parameters).
+
+```json
+{
+  "messages": [{"role": "user", "content": "forest meadow"}],
+  "custom_fields": {
+    "configuration": {
+      "aspect_ratio": "16:9",
+      "compression_quality": "optimized",
+      "duration_seconds": 4
     }
   }
 }
