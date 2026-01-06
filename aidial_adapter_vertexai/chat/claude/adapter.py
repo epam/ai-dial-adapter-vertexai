@@ -5,16 +5,13 @@ from aidial_sdk.chat_completion import Message
 from aidial_sdk.exceptions import InternalServerError
 from anthropic import AsyncAnthropic, AsyncAnthropicVertex
 from anthropic._resource import AsyncAPIResource
-from anthropic.lib.streaming import (
-    BetaContentBlockStopEvent as ContentBlockStopEvent,
-)
 from anthropic.lib.streaming import BetaInputJsonEvent as InputJsonEvent
 from anthropic.lib.streaming import BetaTextEvent as TextEvent
-from anthropic.lib.streaming._beta_types import (
-    BetaCitationEvent as CitationEvent,
+from anthropic.lib.streaming import (
+    ParsedBetaContentBlockStopEvent as ParsedContentBlockStopEvent,
 )
 from anthropic.lib.streaming._beta_types import (
-    BetaMessageStopEvent as MessageStopEvent,
+    BetaCitationEvent as CitationEvent,
 )
 from anthropic.lib.streaming._beta_types import (
     BetaSignatureEvent as SignatureEvent,
@@ -22,8 +19,14 @@ from anthropic.lib.streaming._beta_types import (
 from anthropic.lib.streaming._beta_types import (
     BetaThinkingEvent as ThinkingEvent,
 )
+from anthropic.lib.streaming._beta_types import (
+    ParsedBetaMessageStopEvent as ParsedMessageStopEvent,
+)
 from anthropic.resources.beta import AsyncMessages as FirstPartyAsyncMessagesAPI
 from anthropic.types.anthropic_beta_param import AnthropicBetaParam
+from anthropic.types.beta import (
+    BetaBashCodeExecutionToolResultBlock as BashCodeExecutionToolResultBlock,
+)
 from anthropic.types.beta import (
     BetaCodeExecutionToolResultBlock as CodeExecutionToolResultBlock,
 )
@@ -45,10 +48,22 @@ from anthropic.types.beta import (
 )
 from anthropic.types.beta import BetaServerToolUseBlock as ServerToolUseBlock
 from anthropic.types.beta import BetaTextBlock as TextBlock
+from anthropic.types.beta import (
+    BetaTextEditorCodeExecutionToolResultBlock as TextEditorCodeExecutionToolResultBlock,
+)
 from anthropic.types.beta import BetaThinkingBlock as ThinkingBlock
+from anthropic.types.beta import (
+    BetaToolSearchToolResultBlock as ToolSearchToolResultBlock,
+)
 from anthropic.types.beta import BetaToolUseBlock as ToolUseBlock
 from anthropic.types.beta import (
+    BetaWebFetchToolResultBlock as WebFetchToolResultBlock,
+)
+from anthropic.types.beta import (
     BetaWebSearchToolResultBlock as WebSearchToolResultBlock,
+)
+from anthropic.types.beta.parsed_beta_message import (
+    ParsedBetaTextBlock as ParsedTextBlock,
 )
 from pydantic.v1 import Field
 from typing_extensions import override
@@ -66,7 +81,7 @@ from aidial_adapter_vertexai.chat.claude.output import (
 )
 from aidial_adapter_vertexai.chat.claude.params import (
     create_chat_params,
-    none_to_not_given,
+    none_to_omit,
 )
 from aidial_adapter_vertexai.chat.claude.prompt.base import ClaudePrompt
 from aidial_adapter_vertexai.chat.claude.prompt.claude_3 import (
@@ -230,7 +245,9 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                         await consumer.append_content(text)
                     case MessageDeltaEvent(usage=usage):
                         completion_tokens += usage.output_tokens
-                    case ContentBlockStopEvent(content_block=content_block):
+                    case ParsedContentBlockStopEvent(
+                        content_block=content_block
+                    ):
                         match content_block:
                             case ToolUseBlock():
                                 await process_tools_block(
@@ -242,24 +259,26 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                                     await create_citations(
                                         consumer, prompt, citation
                                     )
-                            # thinking & web search isn't yet supported
+                            case ThinkingBlock() | RedactedThinkingBlock():
+                                # thinking isn't yet supported
+                                pass
                             case (
                                 ServerToolUseBlock()
                                 | WebSearchToolResultBlock()
-                            ):
-                                pass
-                            case (
-                                ThinkingBlock()
-                                | RedactedThinkingBlock()
                                 | CodeExecutionToolResultBlock()
                                 | MCPToolUseBlock()
                                 | MCPToolResultBlock()
                                 | ContainerUploadBlock()
+                                | ParsedTextBlock()
+                                | BashCodeExecutionToolResultBlock()
+                                | TextEditorCodeExecutionToolResultBlock()
                             ):
-                                pass
+                                log.error(
+                                    f"Content block of type {content_block.type} isn't supported"
+                                )
                             case _:
                                 assert_never(content_block)
-                    case MessageStopEvent(message=message):
+                    case ParsedMessageStopEvent(message=message):
                         stop_reason = message.stop_reason
                     case (
                         InputJsonEvent()
@@ -308,18 +327,24 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
                         await create_citations(consumer, prompt, citation)
                 case ToolUseBlock():
                     await process_tools_block(consumer, content, tools_mode)
-                # thinking & web search isn't yet supported
-                case ServerToolUseBlock() | WebSearchToolResultBlock():
+                case ThinkingBlock() | RedactedThinkingBlock():
+                    # thinking isn't yet supported
                     pass
                 case (
-                    ThinkingBlock()
-                    | RedactedThinkingBlock()
+                    ServerToolUseBlock()
+                    | WebSearchToolResultBlock()
                     | CodeExecutionToolResultBlock()
-                    | ContainerUploadBlock()
                     | MCPToolUseBlock()
                     | MCPToolResultBlock()
+                    | ContainerUploadBlock()
+                    | BashCodeExecutionToolResultBlock()
+                    | TextEditorCodeExecutionToolResultBlock()
+                    | WebFetchToolResultBlock()
+                    | ToolSearchToolResultBlock()
                 ):
-                    pass
+                    log.error(
+                        f"Content block of type {content.type} isn't supported"
+                    )
                 case _:
                     assert_never(content)
 
@@ -356,11 +381,9 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
             await _AsyncMessagesAdapter(self.client.beta.messages).count_tokens(
                 model=self.model_id,
                 messages=prompt.claude_messages,
-                system=none_to_not_given(prompt.system),
-                tools=none_to_not_given(prompt.tools.to_claude_tools()),
-                tool_choice=none_to_not_given(
-                    prompt.tools.to_claude_tool_choice()
-                ),
+                system=none_to_omit(prompt.system),
+                tools=none_to_omit(prompt.tools.to_claude_tools()),
+                tool_choice=none_to_omit(prompt.tools.to_claude_tool_choice()),
             )
         ).input_tokens
 
