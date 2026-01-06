@@ -3,10 +3,11 @@ import os
 import anthropic
 import httpx
 import vertexai
-from anthropic import AsyncAnthropicVertex
+from anthropic import AsyncAnthropicFoundry, AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions, HttpRetryOptions
 
+from aidial_adapter_vertexai.utils.auth import get_azure_access_token
 from aidial_adapter_vertexai.utils.cache import cache
 from aidial_adapter_vertexai.utils.env import get_env_int
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -57,7 +58,7 @@ async def _close_anthropic_client(client: AsyncAnthropicVertex) -> None:
 
 
 @cache(_close_anthropic_client)
-async def get_anthropic_client(
+async def get_anthropic_vertex_client(
     project: str, region: str
 ) -> AsyncAnthropicVertex:
     http_client = httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
@@ -65,6 +66,28 @@ async def get_anthropic_client(
         project_id=project,
         region=region,
         http_client=http_client,
+        max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
+    )
+
+
+async def _close_anthropic_httpx_client(client: httpx.AsyncClient) -> None:
+    await client.aclose()
+
+
+@cache(_close_anthropic_httpx_client)
+async def _get_anthropic_httpx_client(base_url: str) -> httpx.AsyncClient:
+    return httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
+
+
+async def get_anthropic_foundry_client(
+    api_key: str | None, base_url: str
+) -> AsyncAnthropicFoundry:
+    token_provider = get_azure_access_token if api_key is None else None
+    return AsyncAnthropicFoundry(
+        api_key=api_key,
+        base_url=base_url,
+        azure_ad_token_provider=token_provider,
+        http_client=await _get_anthropic_httpx_client(base_url),
         max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
     )
 

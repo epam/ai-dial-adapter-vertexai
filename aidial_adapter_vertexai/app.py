@@ -5,7 +5,7 @@ from aidial_sdk.telemetry.types import TelemetryConfig
 
 from aidial_adapter_vertexai.adapter_deployments import AdapterDeployments
 from aidial_adapter_vertexai.app_config import (
-    get_anthropic_client,
+    get_anthropic_vertex_client,
     get_genai_client,
     init_vertex_ai,
 )
@@ -29,7 +29,7 @@ async def lifespan(app: DIALApp):
     init_vertex_ai()
     yield
     await get_genai_client.clear()
-    await get_anthropic_client.clear()
+    await get_anthropic_vertex_client.clear()
     await get_text_embedding_model.clear()
     await get_multi_modal_embedding_model.clear()
 
