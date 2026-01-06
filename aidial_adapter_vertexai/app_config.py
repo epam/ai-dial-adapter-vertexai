@@ -75,7 +75,7 @@ async def _close_anthropic_httpx_client(client: httpx.AsyncClient) -> None:
 
 
 @cache(_close_anthropic_httpx_client)
-async def _get_anthropic_httpx_client(base_url: str) -> httpx.AsyncClient:
+async def get_anthropic_httpx_client(base_url: str) -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
 
 
@@ -87,7 +87,7 @@ async def get_anthropic_foundry_client(
         api_key=api_key,
         base_url=base_url,
         azure_ad_token_provider=token_provider,
-        http_client=await _get_anthropic_httpx_client(base_url),
+        http_client=await get_anthropic_httpx_client(base_url),
         max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
     )
 

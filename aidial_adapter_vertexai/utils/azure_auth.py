@@ -17,8 +17,10 @@ AZURE_OPEN_AI_SCOPE: str = os.getenv(
 )
 
 
+default_credential = DefaultAzureCredential()
+
+
 def _get_azure_access_token() -> Callable[[], Awaitable[str]]:
-    default_credential = DefaultAzureCredential()
     access_token: AccessToken | None = None
 
     async def _getter() -> str:
@@ -50,3 +52,7 @@ def _get_azure_access_token() -> Callable[[], Awaitable[str]]:
 
 
 get_azure_access_token = _get_azure_access_token()
+
+
+async def close_azure_credential() -> None:
+    await default_credential.close()
