@@ -7,7 +7,7 @@ from anthropic import AsyncAnthropicFoundry, AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions, HttpRetryOptions
 
-from aidial_adapter_vertexai.utils.auth import get_azure_access_token
+from aidial_adapter_vertexai.utils.azure_auth import get_azure_access_token
 from aidial_adapter_vertexai.utils.cache import cache
 from aidial_adapter_vertexai.utils.env import get_env_int
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
