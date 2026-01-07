@@ -106,3 +106,23 @@ class _CloudUpstreamConfig(BaseModel):
         self,
     ) -> AsyncAnthropicVertex | AsyncAnthropic:
         return await get_anthropic_client(self.project, self.region)
+
+
+class OverrideNameUpstreamConfig(BaseModel):
+    compatible_model_id: str | None = None
+
+
+def get_compatible_model_id(request: FromRequestDeploymentMixin) -> str | None:
+    if (extra := request.headers.get(_UPSTREAM_CONFIG_HEADER_NAME)) is None:
+        return None
+
+    try:
+        conf = OverrideNameUpstreamConfig.model_validate_json(extra)
+    except Exception as e:
+        log.error(
+            f"Request header {_UPSTREAM_CONFIG_HEADER_NAME!r} doesn't contain"
+            f" valid override name configuration: {e}"
+        )
+        return None
+
+    return None if conf is None else conf.compatible_model_id

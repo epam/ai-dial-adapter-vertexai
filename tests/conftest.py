@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import AsyncGenerator, Mapping
 
 import httpx
@@ -8,13 +7,6 @@ import pytest
 from asgi_lifespan import LifespanManager
 from google.cloud.aiplatform.constants.base import DEFAULT_REGION
 from httpx import ASGITransport
-
-
-def pytest_configure(config):
-    # Filter out logs containing "Adapter deployments" because they are too verbose
-    logging.getLogger("app").addFilter(
-        lambda record: "Adapter deployments" not in record.getMessage()
-    )
 
 
 @pytest.fixture(autouse=True)

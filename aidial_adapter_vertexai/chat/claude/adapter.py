@@ -68,7 +68,6 @@ from anthropic.types.beta.parsed_beta_message import (
 from pydantic.v1 import Field
 from typing_extensions import override
 
-from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -100,6 +99,7 @@ from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
+from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.pydantic import ExtraForbidModel

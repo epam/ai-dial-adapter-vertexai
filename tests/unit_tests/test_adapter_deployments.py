@@ -3,11 +3,11 @@ from typing import Dict, List, Protocol
 
 import pytest
 
-from aidial_adapter_vertexai.adapter_deployments import AdapterDeployments
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
+from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployments
 
 
 class Checker(Protocol):
@@ -17,23 +17,17 @@ class Checker(Protocol):
 @dataclass
 class supported:
     deployment_id: ChatCompletionDeployment | EmbeddingsDeployment
-    redirect: ChatCompletionDeployment | EmbeddingsDeployment | None = None
 
     def check(self, deployments: AdapterDeployments):
         deployment_name = self.deployment_id.value
         if isinstance(self.deployment_id, ChatCompletionDeployment):
-            deployment = deployments.chat_completions.get(deployment_name)
+            deployment = deployments.chat.get(deployment_name)
         else:
             deployment = deployments.embeddings.get(deployment_name)
 
         assert deployment is not None
-        assert deployment.adapter_deployment_id == deployment_name
-        if self.redirect is not None:
-            assert deployment.upstream_deployment_id == self.redirect.value
-            assert deployment.reference_deployment_id == self.redirect
-        else:
-            assert deployment.upstream_deployment_id == deployment_name
-            assert deployment.reference_deployment_id == self.deployment_id
+        assert deployment.upstream_deployment_id == deployment_name
+        assert deployment.reference_deployment_id == self.deployment_id
 
 
 @dataclass
@@ -43,12 +37,11 @@ class compat:
 
     def check(self, deployments: AdapterDeployments):
         if isinstance(self.reference, ChatCompletionDeployment):
-            deployment = deployments.chat_completions.get(self.deployment_id)
+            deployment = deployments.chat.get(self.deployment_id)
         else:
             deployment = deployments.embeddings.get(self.deployment_id)
 
         assert deployment is not None
-        assert deployment.adapter_deployment_id == self.deployment_id
         assert deployment.upstream_deployment_id == self.deployment_id
         assert deployment.reference_deployment_id == self.reference
 

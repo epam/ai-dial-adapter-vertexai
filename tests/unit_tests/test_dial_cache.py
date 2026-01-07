@@ -5,9 +5,6 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from aidial_adapter_vertexai.adapter_deployments import (
-    AdapterChatCompletionDeployment,
-)
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -17,6 +14,9 @@ from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from aidial_adapter_vertexai.dial_api.caching import get_prompt_tokens_threshold
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
+from aidial_adapter_vertexai.utils.adapter_deployments import (
+    AdapterChatCompletionDeployment,
+)
 from tests.utils.openai import sanitize_test_name, sys, user
 
 _DEPLOYMENTS = [

@@ -7,7 +7,6 @@ from aidial_sdk.embeddings.request import EmbeddingsRequest
 from pydantic.v1 import BaseModel
 from vertexai.language_models import TextEmbeddingInput
 
-from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.deployments import (
     EmbeddingsDeployment,
@@ -25,6 +24,7 @@ from aidial_adapter_vertexai.embedding.types import (
     make_embeddings_response,
     vector_to_embedding,
 )
+from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.utils.concurrency import make_async
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log

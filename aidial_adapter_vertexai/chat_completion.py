@@ -28,9 +28,6 @@ from aidial_sdk.deployment.truncate_prompt import (
 from aidial_sdk.exceptions import ResourceNotFoundError
 from typing_extensions import override
 
-from aidial_adapter_vertexai.adapter_deployments import (
-    AdapterChatCompletionDeployment,
-)
 from aidial_adapter_vertexai.adapters import get_chat_completion_model
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
@@ -40,6 +37,7 @@ from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
 from aidial_adapter_vertexai.dial_api.caching import (
     set_response_headers_for_caching,
 )
@@ -50,22 +48,28 @@ from aidial_adapter_vertexai.dial_api.exceptions import (
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.upstream_config import parse_upstream_config
+from aidial_adapter_vertexai.utils.adapter_deployments import (
+    AdapterChatCompletionDeployment,
+    resolve_upstream_deployment_id_from_request,
+)
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.not_implemented import is_implemented
 
 
 class VertexAIChatCompletion(ChatCompletion):
-    deployment: AdapterChatCompletionDeployment
-
-    def __init__(self, deployment: AdapterChatCompletionDeployment) -> None:
-        self.deployment = deployment
+    def _get_deployment(
+        self, request: FromRequestDeploymentMixin
+    ) -> AdapterChatCompletionDeployment:
+        return resolve_upstream_deployment_id_from_request(
+            ChatCompletionDeployment, request
+        )
 
     async def _get_model(
         self, request: FromRequestDeploymentMixin
     ) -> ChatCompletionAdapter:
         return await get_chat_completion_model(
             api_key=request.api_key,
-            deployment=self.deployment,
+            deployment=self._get_deployment(request),
             upstream_config=parse_upstream_config(request),
         )
 
@@ -82,7 +86,8 @@ class VertexAIChatCompletion(ChatCompletion):
 
     @dial_exception_decorator
     async def chat_completion(self, request: Request, response: Response):
-        response.set_model(request.deployment_id)
+        deployment = self._get_deployment(request)
+        response.set_model(deployment.upstream_deployment_id)
 
         params = ModelParameters.create(request)
 
@@ -120,9 +125,10 @@ class VertexAIChatCompletion(ChatCompletion):
                     truncated_prompt.prompt
                 )
 
+            deployment = self._get_deployment(request)
             await set_response_headers_for_caching(
                 response,
-                deployment=self.deployment.reference_deployment_id,
+                deployment=deployment.reference_deployment_id,
                 request_headers=request.headers,
                 request_body=await request.original_request.json(),
                 get_request_tokens=_get_request_tokens,
