@@ -9,11 +9,11 @@ from google.genai.client import Client as GenAIClient
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.app_config import (
-    DEFAULT_PROJECT,
     DEFAULT_PROJECT_ENV_VAR,
-    DEFAULT_REGION,
     DEFAULT_REGION_ENV_VAR,
     get_anthropic_client,
+    get_default_project,
+    get_default_region,
     get_genai_client,
 )
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -82,8 +82,8 @@ class _CloudUpstreamConfig(BaseModel):
                 f"Header {_UPSTREAM_CONFIG_HEADER_NAME!r} isn't valid JSON dictionary"
             )
 
-        conf["region"] = conf.get("region") or DEFAULT_REGION
-        conf["project"] = conf.get("project") or DEFAULT_PROJECT
+        conf["region"] = conf.get("region") or get_default_region()
+        conf["project"] = conf.get("project") or get_default_project()
 
         if not conf["region"]:
             raise ValueError(
