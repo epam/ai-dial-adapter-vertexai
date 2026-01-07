@@ -51,6 +51,9 @@ class compat:
     upstream: str
     deployment: D
 
+    def to_compatibility_mapping(self) -> dict[str, str]:
+        return {self.upstream: self.deployment.value}
+
 
 @dataclasses.dataclass
 class supported:
@@ -146,11 +149,12 @@ _DEPLOYMENTS: List[deployment_entry] = [
 ]
 
 if conf := foundry.create():
-    _DEPLOYMENTS.append(
-        deployment_entry(
-            compat("claude-sonnet-4-520250929", D.CLAUDE_4_5_SONNET), conf
-        )
-    )
+    source = compat("claude-sonnet-4-520250929", D.CLAUDE_4_5_SONNET)
+    _DEPLOYMENTS.append(deployment_entry(source, conf))
+
+    @pytest.fixture()
+    def compatibility_mapping():
+        return source.to_compatibility_mapping()
 
 
 def is_retired_model(deployment: D) -> bool:
@@ -285,20 +289,9 @@ def stream(request) -> bool:
 
 @pytest.fixture
 def openai_client(deployment_entry: deployment_entry, get_openai_client):
-    def _client():
-        return get_openai_client(
-            deployment_entry.upstream,
-            headers=deployment_entry.source.headers(),
-        )
-
-    if isinstance(deployment_entry.model, compat):
-        compat_env = {
-            deployment_entry.model.upstream: deployment_entry.deployment.value
-        }
-        with patch.dict(os.environ, compat_env):
-            yield _client()
-    else:
-        yield _client()
+    return get_openai_client(
+        deployment_entry.upstream, headers=deployment_entry.source.headers()
+    )
 
 
 @pytest.fixture(

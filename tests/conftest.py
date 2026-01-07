@@ -1,6 +1,8 @@
 import json
 import logging
+import os
 from typing import AsyncGenerator, Dict
+from unittest.mock import patch
 
 import httpx
 import openai
@@ -29,17 +31,27 @@ def configure_unit_tests(monkeypatch, request):
 
 
 @pytest.fixture()
-async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    from aidial_adapter_vertexai.app import app
+def compatibility_mapping() -> dict[str, str]:
+    return {}
 
-    async with LifespanManager(app):
-        async with httpx.AsyncClient(
-            transport=ASGITransport(app),  # type: ignore
-            base_url="http://test-app.com",
-            params={"api-version": "dummy-version"},
-            headers={"api-key": "dummy-key"},
-        ) as client:
-            yield client
+
+@pytest.fixture()
+async def test_http_client(
+    compatibility_mapping,
+) -> AsyncGenerator[httpx.AsyncClient, None]:
+    with patch.dict(
+        os.environ, {"COMPATIBILITY_MAPPING": json.dumps(compatibility_mapping)}
+    ):
+        from aidial_adapter_vertexai.app import app
+
+        async with LifespanManager(app):
+            async with httpx.AsyncClient(
+                transport=ASGITransport(app),  # type: ignore
+                base_url="http://test-app.com",
+                params={"api-version": "dummy-version"},
+                headers={"api-key": "dummy-key"},
+            ) as client:
+                yield client
 
 
 def get_extra_headers(region: str) -> Dict[str, str]:
