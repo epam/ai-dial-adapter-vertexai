@@ -26,13 +26,13 @@ _R = TypeVar("_R", bound=ReadableStrEnumT)
 class AdapterDeployment(BaseModel, Generic[_T]):
     upstream_deployment_id: str
     """
-    The deployment id of the corresponding Bedrock model.
-    The upstream request to the Bedrock service will use this deployment id.
+    The deployment id of the corresponding VertexAI model.
+    The upstream request to the VertexAI service will use this deployment id.
     """
 
     reference_deployment_id: _T
     """
-    The reference Bedrock deployment that is known to share
+    The reference VertexAI deployment that is known to share
     the same API as `upstream_deployment_id`.
     """
 

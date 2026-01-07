@@ -163,7 +163,7 @@ def get_test_case(
             "unless the type is RETRIEVAL_DOCUMENT"
         )
     elif embedding_type and embedding_type not in spec.supports_types:
-        # NOTE: error coming directly from Bedrock
+        # NOTE: error coming directly from VertexAI
         expected = Exception(
             f"Unable to submit request because the model does not support the task type {embedding_type}"
         )
