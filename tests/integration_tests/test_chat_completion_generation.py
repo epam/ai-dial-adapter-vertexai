@@ -201,7 +201,9 @@ def select(
 deployments = select(~pred(is_retired_model), _DEPLOYMENTS)
 retired_deployments = select(pred(is_retired_model), _DEPLOYMENTS)
 vision_deployments = select(pred(is_vision_model), deployments)
-one_deployment = select(pred(lambda d: d == D.CLAUDE_3_7_SONNET), deployments)
+sample_deployment = select(
+    pred(lambda d: d == D.CLAUDE_3_7_SONNET), deployments
+)
 
 
 def supports_json_object_response_format(deployment: D) -> bool:
@@ -1024,9 +1026,7 @@ async def test_json_schema_response_format(chat: Chat):
 
 
 def _check_response_with_grounding(
-    deployment: D,
-    response: ChatCompletionResult,
-    expected_content: str,
+    deployment: D, response: ChatCompletionResult, expected_content: str
 ):
     assert response.attachments is not None, "Attachments are missing"
     assert len(response.attachments) > 0
@@ -1066,7 +1066,7 @@ async def test_static_google_search(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment_entry", one_deployment, ids=display_deployment
+    "deployment_entry", sample_deployment, ids=display_deployment
 )
 async def test_allow_stream_options(chat: Chat):
     response = await chat(
@@ -1078,7 +1078,7 @@ async def test_allow_stream_options(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment_entry", one_deployment, ids=display_deployment
+    "deployment_entry", sample_deployment, ids=display_deployment
 )
 async def test_reject_extra_top_level_fields(chat: Chat):
     async with expected_exception(
@@ -1094,7 +1094,7 @@ async def test_reject_extra_top_level_fields(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment_entry", one_deployment, ids=display_deployment
+    "deployment_entry", sample_deployment, ids=display_deployment
 )
 async def test_reject_extra_message_fields(chat: Chat):
     async with expected_exception(
@@ -1117,7 +1117,7 @@ async def run_block_and_large_max_tokens_success(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment_entry", one_deployment, ids=display_deployment
+    "deployment_entry", sample_deployment, ids=display_deployment
 )
 @pytest.mark.parametrize("stream", [False], ids=["block"])
 async def test_block_and_large_max_tokens_success(chat: Chat):
@@ -1126,7 +1126,7 @@ async def test_block_and_large_max_tokens_success(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment_entry", one_deployment, ids=display_deployment
+    "deployment_entry", sample_deployment, ids=display_deployment
 )
 @pytest.mark.parametrize("stream", [False], ids=["block"])
 async def test_block_and_large_max_tokens_fail(chat: Chat):
