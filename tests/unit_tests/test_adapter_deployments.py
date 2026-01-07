@@ -2,12 +2,40 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Protocol
 
 import pytest
+from aidial_sdk.exceptions import DeploymentNotFoundError
 
 from aidial_adapter_vertexai.deployments import (
     ChatCompletionDeployment,
     EmbeddingsDeployment,
 )
-from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployments
+from aidial_adapter_vertexai.utils.adapter_deployments import (
+    AdapterDeployments,
+    resolve_upstream_deployment_id,
+)
+
+
+def _invalid_upstream_config_error(upstream_id: str, compat_id: str) -> str:
+    return f"{compat_id!r} is declared as a deployment id that is compatible with {upstream_id!r} via upstreams[*].extraData.compatible_model_id field in the DIAL Core config. However, {compat_id!r} isn't one of the deployment ids supported by the adapter. Replace it with a supported deployment id to avoid this error."
+
+
+def _invalid_compat_mapping_error(upstream_id: str, compat_id: str) -> str:
+    return f"{compat_id!r} is declared as a deployment id that is compatible with {upstream_id!r} via COMPATIBILITY_MAPPING env variable. However, {compat_id!r} isn't one of the deployment ids supported by the adapter. Replace it with a supported deployment id to avoid this error."
+
+
+def _invalid_upstream_deployment_id(deployment_id: str) -> str:
+    return f"The deployment id {deployment_id!r} isn't one of the deployment ids supported by the adapter. Either replace it with a supported deployment id, or set upstreams[*].extraData.compatible_model_id field in the DIAL Core config equal to a supported deployment id that is compatible with {deployment_id!r}."
+
+
+def _compat_mapping_deprecation_warning(
+    unsupported_id: str, supported_id: str
+) -> str:
+    return (
+        """
+COMPATIBILITY_MAPPING env variable is deprecated in favour of per-upstream configuration in the DIAL Core config. You may remove the entries from the env variable one-by-one and amend configurations for corresponding deployments in the DIAL Core config: {"models": {"$DIAL_DEPLOYMENT_ID1": {"type": "chat", "endpoint": "$ADAPTER_ORIGIN/openai/deployments/$unsupported_id/chat/completions", "upstreams": [{"extraData": {"compatible_model_id": "$supported_id"}}]}}}
+""".strip()
+        .replace("$unsupported_id", unsupported_id)
+        .replace("$supported_id", supported_id)
+    )
 
 
 class Checker(Protocol):
@@ -54,11 +82,20 @@ class TestCase:
     compat: Dict[str, str]
 
     error: str | None = None
+    warning: str | None = None
     checks: List[Checker] = field(default_factory=list)
 
 
-_chat_deployment = ChatCompletionDeployment.CLAUDE_3_5_HAIKU
-_embedding_deployment = EmbeddingsDeployment.TEXT_EMBEDDING_4
+_CHAT_MODEL_1 = ChatCompletionDeployment.CLAUDE_3_5_HAIKU
+_CHAT_MODEL_2 = ChatCompletionDeployment.CLAUDE_3_7_SONNET
+_EMBEDDING_MODEL = EmbeddingsDeployment.TEXT_EMBEDDING_4
+
+_outdated_mapping_warning_message = (
+    "{deployment_id!r} deployment is already natively supported by the adapter, but it is also mapped to {supported_id!r} in the COMPATIBILITY_MAPPING env variable. "
+    "To avoid this warning and ensure you retain all features of {deployment_id!r}, remove it from the mapping. "
+    "Otherwise, you may lose features that exist in {deployment_id!r} but are missing in {supported_id!r}."
+)
+
 
 test_cases: List[TestCase] = [
     TestCase(
@@ -70,49 +107,63 @@ test_cases: List[TestCase] = [
         desc="partially invalid compat",
         compat={
             "xxx": "yyy",
-            "zzz": _chat_deployment.value,
+            "zzz": _CHAT_MODEL_1.value,
         },
         error='None of the values in the following compatibility mapping corresponds to a VertexAI deployment supported by the adapter: {"xxx": "yyy"}. Remap the deployments to the supported VertexAI deployments to fix the error.',
     ),
     TestCase(
         desc="compat chat+embeddings",
         compat={
-            "xxx": _chat_deployment.value,
-            "yyy": _embedding_deployment.value,
+            "xxx": _CHAT_MODEL_1.value,
+            "yyy": _EMBEDDING_MODEL.value,
         },
         checks=[
-            supported(_chat_deployment),
-            supported(_embedding_deployment),
-            compat("xxx", _chat_deployment),
-            compat("yyy", _embedding_deployment),
+            supported(_CHAT_MODEL_1),
+            supported(_EMBEDDING_MODEL),
+            compat("xxx", _CHAT_MODEL_1),
+            compat("yyy", _EMBEDDING_MODEL),
         ],
     ),
     TestCase(
         desc="compat supported deployment",
         compat={
-            ChatCompletionDeployment.IMAGEN_005.value: _chat_deployment.value,
+            ChatCompletionDeployment.IMAGEN_005.value: _CHAT_MODEL_1.value,
         },
         checks=[
-            supported(_chat_deployment),
-            compat(
-                ChatCompletionDeployment.IMAGEN_005.value,
-                _chat_deployment,
-            ),
+            supported(_CHAT_MODEL_1),
+            compat(ChatCompletionDeployment.IMAGEN_005.value, _CHAT_MODEL_1),
         ],
     ),
     TestCase(
         desc="compat mismatching supported deployments #1",
         compat={
-            _chat_deployment.value: _embedding_deployment.value,
+            _CHAT_MODEL_1.value: _EMBEDDING_MODEL.value,
         },
         error="The chat completion deployment 'claude-3-5-haiku@20241022' is mapped onto the embeddings deployment 'text-embedding-004'",
     ),
     TestCase(
         desc="compat mismatching supported deployments #2",
         compat={
-            _embedding_deployment.value: _chat_deployment.value,
+            _EMBEDDING_MODEL.value: _CHAT_MODEL_1.value,
         },
         error="The embeddings deployment 'text-embedding-004' is mapped onto the chat completion deployment 'claude-3-5-haiku@20241022'",
+    ),
+    TestCase(
+        desc="outdated compatibility mapping",
+        compat={_CHAT_MODEL_2.value: _CHAT_MODEL_1.value},
+        warning=_outdated_mapping_warning_message.format(
+            deployment_id=_CHAT_MODEL_2.value,
+            supported_id=_CHAT_MODEL_1.value,
+        ),
+        checks=[
+            supported(_CHAT_MODEL_1),
+            compat(_CHAT_MODEL_2.value, _CHAT_MODEL_1),
+        ],
+    ),
+    TestCase(
+        desc="compatibility mapping deprecation warning",
+        compat={"xxx": _CHAT_MODEL_1.value},
+        warning=_compat_mapping_deprecation_warning("xxx", _CHAT_MODEL_1.value),
     ),
 ]
 
@@ -120,7 +171,7 @@ test_cases: List[TestCase] = [
 @pytest.mark.parametrize(
     "test_case", test_cases, ids=lambda t: t.desc.replace(" ", "_")
 )
-def test_compat_mapping(test_case: TestCase):
+def test_static_compat_mapping(caplog, test_case: TestCase):
     if test_case.error is not None:
         with pytest.raises(ValueError, match=test_case.error):
             AdapterDeployments.create(compat_mapping=test_case.compat)
@@ -128,3 +179,82 @@ def test_compat_mapping(test_case: TestCase):
         deployments = AdapterDeployments.create(compat_mapping=test_case.compat)
         for checker in test_case.checks:
             checker.check(deployments)
+
+    if warn_message := test_case.warning:
+        assert warn_message in caplog.text
+
+
+def test_non_existing_upstream_deployment_from_request(caplog):
+    with pytest.raises(DeploymentNotFoundError, match="Deployment not found"):
+        resolve_upstream_deployment_id(
+            ChatCompletionDeployment,
+            upstream_deployment_id="xxx",
+        )
+
+    assert _invalid_upstream_deployment_id("xxx") in caplog.text
+
+
+def test_existing_upstream_deployment_from_request_no_region():
+    deployment = resolve_upstream_deployment_id(
+        ChatCompletionDeployment,
+        upstream_deployment_id=_CHAT_MODEL_1.value,
+    )
+
+    assert deployment.upstream_deployment_id == _CHAT_MODEL_1.value
+    assert deployment.reference_deployment_id == _CHAT_MODEL_1
+
+
+def test_non_existing_upstream_deployment_from_compat_mapping(caplog):
+    with pytest.raises(DeploymentNotFoundError, match="Deployment not found"):
+        resolve_upstream_deployment_id(
+            ChatCompletionDeployment,
+            upstream_deployment_id="xxx",
+            compat_mapping={"xxx": "yyy"},
+        )
+
+    assert _invalid_compat_mapping_error("xxx", "yyy") in caplog.text
+
+
+def test_existing_upstream_deployment_from_compat_mapping():
+    deployment = resolve_upstream_deployment_id(
+        ChatCompletionDeployment,
+        upstream_deployment_id="xxx",
+        compat_mapping={"xxx": _CHAT_MODEL_1.value},
+    )
+
+    assert deployment.upstream_deployment_id == "xxx"
+    assert deployment.reference_deployment_id == _CHAT_MODEL_1
+
+
+def test_non_existing_upstream_deployment_from_upstream_config(caplog):
+    with pytest.raises(DeploymentNotFoundError, match="Deployment not found"):
+        resolve_upstream_deployment_id(
+            ChatCompletionDeployment,
+            upstream_deployment_id="xxx",
+            compatible_id_from_upstream="yyy",
+        )
+
+    assert _invalid_upstream_config_error("xxx", "yyy") in caplog.text
+
+
+def test_existing_upstream_deployment_from_upstream_config_no_compat_mapping():
+    deployment = resolve_upstream_deployment_id(
+        ChatCompletionDeployment,
+        upstream_deployment_id="xxx",
+        compatible_id_from_upstream=_CHAT_MODEL_1.value,
+    )
+
+    assert deployment.upstream_deployment_id == "xxx"
+    assert deployment.reference_deployment_id == _CHAT_MODEL_1
+
+
+def test_existing_upstream_deployment_from_upstream_config_with_compat_mapping():
+    deployment = resolve_upstream_deployment_id(
+        ChatCompletionDeployment,
+        upstream_deployment_id="xxx",
+        compat_mapping={"xxx": _CHAT_MODEL_2.value},
+        compatible_id_from_upstream=_CHAT_MODEL_1.value,
+    )
+
+    assert deployment.upstream_deployment_id == "xxx"
+    assert deployment.reference_deployment_id == _CHAT_MODEL_1
