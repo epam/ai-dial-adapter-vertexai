@@ -5,7 +5,7 @@ import openai
 import pytest
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
-from tests.conftest import get_extra_headers
+from tests.conftest import _get_extra_headers
 from tests.utils.openai import chat_completion, configuration, user
 
 _EAST = "us-east5"
@@ -42,7 +42,7 @@ async def _configuration_has_field(
     client: httpx.AsyncClient, region: str, deployment: D, field_name: str
 ) -> bool:
     conf = await configuration(
-        client, deployment.value, get_extra_headers(region)
+        client, deployment.value, _get_extra_headers(region)
     )
     assert conf is not None
     return field_name in conf["properties"]

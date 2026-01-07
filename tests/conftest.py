@@ -1,5 +1,5 @@
 import json
-from typing import AsyncGenerator, Mapping
+from typing import AsyncGenerator
 
 import httpx
 import openai
@@ -34,7 +34,7 @@ async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
             yield client
 
 
-def get_extra_headers(region: str) -> Mapping[str, str]:
+def _get_extra_headers(region: str) -> dict[str, str]:
     return {"x-upstream-extra-data": json.dumps({"region": region})}
 
 
@@ -52,7 +52,11 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
         *,
         region: str | None = None,
         max_retries: int = 3,
+        extra_headers: dict | None = None,
     ) -> openai.AsyncAzureOpenAI:
+        default_headers = (extra_headers or {}) | (
+            _get_extra_headers(region) if region else {}
+        )
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
             azure_deployment=deployment_id,
@@ -61,7 +65,7 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
             max_retries=max_retries,
             timeout=30,
             http_client=test_http_client,
-            default_headers=get_extra_headers(region) if region else {},
+            default_headers=default_headers,
         )
 
     yield _get_client

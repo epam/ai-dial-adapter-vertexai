@@ -1040,3 +1040,27 @@ async def test_block_and_large_max_tokens_fail(chat: Chat):
             "type": "internal_server_error",
             "message": "Streaming is strongly recommended for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-python#long-requests for more details",
         }
+
+
+async def test_compatible_deployment_id(get_openai_client, stream: bool):
+    deployment = D.CLAUDE_3_7_SONNET
+    upstream_config = {"compatible_model_id": deployment.value}
+    openai_client = get_openai_client(
+        "xxx",
+        extra_headers={"x-upstream-extra-data": json.dumps(upstream_config)},
+    )
+
+    msg = r"Publisher Model `projects/[^/]+/locations/[^/]+/publishers/anthropic/models/xxx` not found."
+    with pytest.raises(openai.NotFoundError, match=msg):
+        await chat_completion(
+            openai_client, stream=stream, messages=[user("test")]
+        )
+
+
+async def test_unknown_deployment_id(get_openai_client, stream: bool):
+    openai_client = get_openai_client("xxx")
+
+    with pytest.raises(openai.NotFoundError, match="Deployment not found"):
+        await chat_completion(
+            openai_client, stream=stream, messages=[user("test")]
+        )
