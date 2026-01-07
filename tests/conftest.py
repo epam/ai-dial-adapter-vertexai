@@ -1,6 +1,8 @@
 import json
 import logging
-from typing import AsyncGenerator, Mapping
+import os
+from typing import AsyncGenerator, Dict
+from unittest.mock import patch
 
 import httpx
 import openai
@@ -29,20 +31,30 @@ def configure_unit_tests(monkeypatch, request):
 
 
 @pytest.fixture()
-async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    from aidial_adapter_vertexai.app import app
-
-    async with LifespanManager(app):
-        async with httpx.AsyncClient(
-            transport=ASGITransport(app),  # type: ignore
-            base_url="http://test-app.com",
-            params={"api-version": "dummy-version"},
-            headers={"api-key": "dummy-key"},
-        ) as client:
-            yield client
+def compatibility_mapping() -> dict[str, str]:
+    return {}
 
 
-def get_extra_headers(region: str) -> Mapping[str, str]:
+@pytest.fixture()
+async def test_http_client(
+    compatibility_mapping,
+) -> AsyncGenerator[httpx.AsyncClient, None]:
+    with patch.dict(
+        os.environ, {"COMPATIBILITY_MAPPING": json.dumps(compatibility_mapping)}
+    ):
+        from aidial_adapter_vertexai.app import app
+
+        async with LifespanManager(app):
+            async with httpx.AsyncClient(
+                transport=ASGITransport(app),  # type: ignore
+                base_url="http://test-app.com",
+                params={"api-version": "dummy-version"},
+                headers={"api-key": "dummy-key"},
+            ) as client:
+                yield client
+
+
+def get_extra_headers(region: str) -> Dict[str, str]:
     return {"x-upstream-extra-data": json.dumps({"region": region})}
 
 
@@ -59,8 +71,12 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
         deployment_id: str | None = None,
         *,
         region: str | None = None,
+        headers: Dict[str, str] | None = None,
         max_retries: int = 3,
     ) -> openai.AsyncAzureOpenAI:
+        default_headers = headers or {}
+        if region:
+            default_headers.update(get_extra_headers(region))
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
             azure_deployment=deployment_id,
@@ -69,7 +85,7 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
             max_retries=max_retries,
             timeout=30,
             http_client=test_http_client,
-            default_headers=get_extra_headers(region) if region else {},
+            default_headers=default_headers,
         )
 
     yield _get_client

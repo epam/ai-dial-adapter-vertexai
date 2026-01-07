@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import json
-from typing import Awaitable, Callable, List, Mapping, Protocol, Unpack
+from typing import Awaitable, Callable, List, Protocol, Unpack
 from unittest.mock import patch
 
 import anthropic
@@ -15,6 +17,7 @@ from aidial_adapter_vertexai.chat.gemini.state import (
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
+from tests.utils.deployment_spec import DeploymentSpec
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
 from tests.utils.openai import (
@@ -27,7 +30,6 @@ from tests.utils.openai import (
     ai_tools,
     chat_completion,
     function_to_tool,
-    sanitize_test_name,
     sys,
     tool_response,
     user,
@@ -42,7 +44,8 @@ _CENTRAL = "us-central1"
 _EAST = "us-east5"
 _GLOBAL = "global"
 
-_DEPLOYMENT_TO_REGION: Mapping[D, str] = {
+
+_DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     D.GEMINI_2_0_FLASH_001: _CENTRAL,
     D.GEMINI_2_5_PRO: _CENTRAL,
@@ -65,6 +68,24 @@ _DEPLOYMENT_TO_REGION: Mapping[D, str] = {
     D.CLAUDE_4_5_HAIKU: _EAST,
     D.CLAUDE_4_5_SONNET: _EAST,
 }
+
+_DEPLOYMENTS: List[DeploymentSpec] = [
+    DeploymentSpec.supported_vertexai(d, r)
+    for (d, r) in _DEPLOYMENT_TO_REGION.items()
+]
+
+if spec := DeploymentSpec.compat_foundry(
+    "claude-sonnet-4-520250929", D.CLAUDE_4_5_SONNET
+):
+    _DEPLOYMENTS.append(spec)
+
+
+@pytest.fixture()
+def compatibility_mapping():
+    mapping = {}
+    for dep in _DEPLOYMENTS:
+        mapping.update(dep.model.to_compatibility_mapping())
+    return mapping
 
 
 def is_retired_model(deployment: D) -> bool:
@@ -102,19 +123,19 @@ def is_vision_model(deployment: D) -> bool:
     ]
 
 
-def select(p: Selector[D], xs: List[D]) -> List[D]:
-    return [x for x in xs if p(x)]
+def select(p: Selector[D], xs: List[DeploymentSpec]) -> List[DeploymentSpec]:
+    return [x for x in xs if p(x.deployment)]
 
 
-all_deployments = list(_DEPLOYMENT_TO_REGION.keys())
-deployments = select(~pred(is_retired_model), all_deployments)
-retired_deployments = select(pred(is_retired_model), all_deployments)
+deployments = select(~pred(is_retired_model), _DEPLOYMENTS)
+retired_deployments = select(pred(is_retired_model), _DEPLOYMENTS)
 vision_deployments = select(pred(is_vision_model), deployments)
+sample_deployment = select(
+    pred(lambda d: d == D.CLAUDE_3_7_SONNET), deployments
+)
 
 
-def supports_json_object_response_format(
-    deployment: D,
-) -> bool:
+def supports_json_object_response_format(deployment: D) -> bool:
     return deployment in [
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
@@ -188,18 +209,8 @@ def is_gemini(deployment: D) -> bool:
 
 
 @pytest.fixture
-def deployment(request) -> D:
-    return request.param
-
-
-@pytest.fixture
-def region(deployment: D) -> str:
-    region = _DEPLOYMENT_TO_REGION.get(deployment)
-    if region is None:
-        raise ValueError(
-            f"{deployment.value!r} is missing from the region mapping"
-        )
-    return region
+def deployment(deployment_spec: DeploymentSpec) -> D:
+    return deployment_spec.deployment
 
 
 @pytest.fixture(params=[True, False], ids=lambda b: "stream" if b else "block")
@@ -208,8 +219,10 @@ def stream(request) -> bool:
 
 
 @pytest.fixture
-def openai_client(deployment: D, region: str, get_openai_client):
-    return get_openai_client(deployment.value, region=region)
+def openai_client(deployment_spec: DeploymentSpec, get_openai_client):
+    return get_openai_client(
+        deployment_spec.upstream, headers=deployment_spec.source.headers()
+    )
 
 
 @pytest.fixture(
@@ -244,12 +257,12 @@ def chat(openai_client: openai.AsyncAzureOpenAI, stream: bool):
     return _inner
 
 
-def display_deployment(dep: D):
-    return sanitize_test_name(dep.value)
+def display_deployment(dep: DeploymentSpec):
+    return dep.display()
 
 
 @pytest.mark.parametrize(
-    "deployment", retired_deployments, ids=display_deployment
+    "deployment_spec", retired_deployments, ids=display_deployment
 )
 async def test_retired_models(deployment: D, chat: Chat):
     async with expected_exception(
@@ -267,38 +280,38 @@ async def test_retired_models(deployment: D, chat: Chat):
         await chat(messages=[user_message], max_tokens=1)
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
-async def test_model_field(deployment: D, chat: Chat):
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
+async def test_model_field(deployment_spec: DeploymentSpec, chat: Chat):
     response = await chat(messages=[user("2+3=?")], max_tokens=1)
-    assert deployment.value == response.response.model
+    assert deployment_spec.upstream == response.response.model
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_2_plus_3(chat: Chat):
     response = await chat(messages=[user("2+3=?")])
     assert "5" in response.content
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_hello(chat: Chat):
     response = await chat(messages=[user('Reply with "Hello"')])
     assert "hello" in response.content.lower()
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_empty_sys_message(chat: Chat):
     response = await chat(messages=[sys(""), user("2+4=?")])
     assert "6" in response.content.lower()
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_non_empty_sys_message(chat: Chat):
     system = sys("Act as helpful assistant")
     response = await chat(messages=[system, user("2+5=?")])
     assert "7" in response.content.lower()
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_empty_assistant_message(deployment: D, chat: Chat):
     messages = [
         user("hi, what is your name?"),
@@ -317,7 +330,7 @@ async def test_empty_assistant_message(deployment: D, chat: Chat):
     await _run_test(deployment, chat, messages, expected)
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_empty_user_message(deployment: D, chat: Chat):
     messages = [
         user(""),
@@ -336,7 +349,7 @@ async def test_empty_user_message(deployment: D, chat: Chat):
     await _run_test(deployment, chat, messages, expected)
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_multiple_candidates(deployment: D, chat: Chat):
     max_tokens = 10 if not supports_thinking(deployment) else 250
     # Gemini 2.0 rate-limits always fail on such concurrency
@@ -353,7 +366,7 @@ async def test_multiple_candidates(deployment: D, chat: Chat):
         assert "9" in content
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_finish_reason_length(deployment: D, chat: Chat):
     if is_gemini_image(deployment):
         pytest.skip(
@@ -393,7 +406,7 @@ def _check_thinking_response(response: ChatCompletionResult):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_thinking), deployments),
     ids=display_deployment,
 )
@@ -410,7 +423,7 @@ async def test_thinking_budget(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_thinking_level), deployments),
     ids=display_deployment,
 )
@@ -424,7 +437,7 @@ async def test_thinking_level(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_thinking_level), deployments),
     ids=display_deployment,
 )
@@ -438,7 +451,7 @@ async def test_reasoning_effort(chat: Chat):
     _check_thinking_response(response)
 
 
-@pytest.mark.parametrize("deployment", deployments, ids=display_deployment)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_stop_sequence(deployment: D, stream: bool, chat: Chat):
     if is_gemini_image(deployment):
         pytest.skip("Gemini Image doesn't seem to support stop parameter.")
@@ -457,7 +470,7 @@ async def test_stop_sequence(deployment: D, stream: bool, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment", vision_deployments, ids=display_deployment
+    "deployment_spec", vision_deployments, ids=display_deployment
 )
 async def test_vision_single_turn_with_text_part(
     deployment: D, chat: Chat, create_message_with_image
@@ -467,7 +480,7 @@ async def test_vision_single_turn_with_text_part(
 
 
 @pytest.mark.parametrize(
-    "deployment", vision_deployments, ids=display_deployment
+    "deployment_spec", vision_deployments, ids=display_deployment
 )
 async def test_vision_single_turn_with_empty_text_part(
     deployment: D, chat: Chat, create_message_with_image
@@ -477,7 +490,7 @@ async def test_vision_single_turn_with_empty_text_part(
 
 
 @pytest.mark.parametrize(
-    "deployment", vision_deployments, ids=display_deployment
+    "deployment_spec", vision_deployments, ids=display_deployment
 )
 async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
     messages = [user_with_image_url(None, DOG_PICTURE)]
@@ -485,7 +498,7 @@ async def test_vision_single_turn_without_text_part(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment", vision_deployments, ids=display_deployment
+    "deployment_spec", vision_deployments, ids=display_deployment
 )
 async def test_vision_two_turns(
     deployment: D, chat: Chat, create_message_with_image
@@ -506,7 +519,7 @@ async def test_vision_two_turns(
 
 
 @pytest.mark.parametrize(
-    "deployment", vision_deployments, ids=display_deployment
+    "deployment_spec", vision_deployments, ids=display_deployment
 )
 async def test_vision_single_turn_with_system(
     deployment: D, chat: Chat, create_message_with_image
@@ -542,7 +555,7 @@ async def _run_test(
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -564,7 +577,7 @@ async def test_function_call(test: ToolCallTest, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -582,7 +595,7 @@ async def test_function_response(test: ToolCallTest, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -625,7 +638,7 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -666,7 +679,7 @@ async def test_tool_call_basic(deployment: D, test: ToolCallTest, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -687,7 +700,7 @@ async def test_tool_response(test: ToolCallTest, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -728,7 +741,7 @@ async def test_tool_call_and_response(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -744,7 +757,7 @@ async def test_tool_call_with_schema_references(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -764,7 +777,7 @@ async def test_tool_call_zero_parameters(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -802,7 +815,7 @@ async def test_tool_calls_without_tool_definitions(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -829,7 +842,7 @@ async def test_tool_call_with_vacuous_description(
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -853,7 +866,7 @@ async def test_tool_call_required(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
@@ -877,7 +890,7 @@ async def test_tool_choice_none(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_json_object_response_format), deployments),
     ids=display_deployment,
 )
@@ -891,7 +904,7 @@ async def test_json_object_response_format(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_json_schema_response_format), deployments),
     ids=display_deployment,
 )
@@ -940,7 +953,7 @@ def _check_response_with_grounding(
 
 
 @pytest.mark.parametrize(
-    "deployment",
+    "deployment_spec",
     select(pred(supports_grounding), deployments),
     ids=display_deployment,
 )
@@ -962,7 +975,7 @@ async def test_static_google_search(deployment: D, chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+    "deployment_spec", sample_deployment, ids=display_deployment
 )
 async def test_allow_stream_options(chat: Chat):
     response = await chat(
@@ -974,7 +987,7 @@ async def test_allow_stream_options(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+    "deployment_spec", sample_deployment, ids=display_deployment
 )
 async def test_reject_extra_top_level_fields(chat: Chat):
     async with expected_exception(
@@ -990,7 +1003,7 @@ async def test_reject_extra_top_level_fields(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+    "deployment_spec", sample_deployment, ids=display_deployment
 )
 async def test_reject_extra_message_fields(chat: Chat):
     async with expected_exception(
@@ -1013,7 +1026,7 @@ async def run_block_and_large_max_tokens_success(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+    "deployment_spec", sample_deployment, ids=display_deployment
 )
 @pytest.mark.parametrize("stream", [False], ids=["block"])
 async def test_block_and_large_max_tokens_success(chat: Chat):
@@ -1022,7 +1035,7 @@ async def test_block_and_large_max_tokens_success(chat: Chat):
 
 
 @pytest.mark.parametrize(
-    "deployment", [D.CLAUDE_3_7_SONNET], ids=display_deployment
+    "deployment_spec", sample_deployment, ids=display_deployment
 )
 @pytest.mark.parametrize("stream", [False], ids=["block"])
 async def test_block_and_large_max_tokens_fail(chat: Chat):
