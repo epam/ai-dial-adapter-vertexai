@@ -17,7 +17,7 @@ def to_dial_finish_reason(
     match finish_reason:
         case "end_turn" | "pause_turn" | "refusal" | "stop_sequence":
             return DialFinishReason.STOP
-        case "max_tokens":
+        case "max_tokens" | "model_context_window_exceeded":
             return DialFinishReason.LENGTH
         case "tool_use":
             match tools_mode:

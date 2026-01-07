@@ -11,6 +11,9 @@ from anthropic.types.beta import (
     BetaCitationPageLocation as CitationPageLocation,
 )
 from anthropic.types.beta import (
+    BetaCitationSearchResultLocation as CitationSearchResultLocation,
+)
+from anthropic.types.beta import (
     BetaCitationsWebSearchResultLocation as CitationsWebSearchResultLocation,
 )
 from anthropic.types.beta import BetaTextCitation as TextCitation
@@ -84,6 +87,8 @@ async def create_citations(
             pass
         # web search isn't supported yet
         case CitationsWebSearchResultLocation():
+            pass
+        case CitationSearchResultLocation():
             pass
         case _:
             assert_never(citation)
