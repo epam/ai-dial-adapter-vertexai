@@ -10,7 +10,11 @@ from aidial_adapter_vertexai.utils.adapter_deployment import AdapterDeployment
 from aidial_adapter_vertexai.utils.env import get_str_dict
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
-COMPATIBILITY_MAPPING = get_str_dict("COMPATIBILITY_MAPPING")
+
+def get_compatibility_mapping():
+    return get_str_dict("COMPATIBILITY_MAPPING")
+
+
 COMPAT_MAPPING_NAME = "COMPATIBILITY_MAPPING env variable"
 
 

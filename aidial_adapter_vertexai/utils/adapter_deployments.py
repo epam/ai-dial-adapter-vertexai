@@ -17,7 +17,7 @@ from aidial_adapter_vertexai.utils.adapter_deployment import (
 )
 from aidial_adapter_vertexai.utils.compatibility_mapping import (
     COMPAT_MAPPING_NAME,
-    COMPATIBILITY_MAPPING,
+    get_compatibility_mapping,
     parse_compat_mapping,
 )
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -36,7 +36,7 @@ def resolve_upstream_deployment_id_from_request(
     return resolve_upstream_deployment_id(
         cls,
         upstream_deployment_id=deployment_id,
-        compat_mapping=COMPATIBILITY_MAPPING,
+        compat_mapping=get_compatibility_mapping(),
         compatible_id_from_upstream=get_compatible_model_id(request),
     )
 
@@ -146,4 +146,4 @@ class AdapterDeployments(BaseModel):
 
 
 def get_static_deployments() -> AdapterDeployments:
-    return AdapterDeployments.create(compat_mapping=COMPATIBILITY_MAPPING)
+    return AdapterDeployments.create(compat_mapping=get_compatibility_mapping())
