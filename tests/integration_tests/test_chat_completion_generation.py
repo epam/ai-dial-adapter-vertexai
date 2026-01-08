@@ -80,13 +80,17 @@ if spec := DeploymentSpec.compat_foundry(
     _DEPLOYMENTS.append(spec)
 
 
+def is_broken_model(deployment: D) -> bool:
+    # For models declared to be deprecated and no longer functioning,
+    # but still responding with non-404 codes.
+    return deployment in {D.CLAUDE_3_OPUS, D.GEMINI_2_0_FLASH_EXP}
+
+
 def is_retired_model(deployment: D) -> bool:
     # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     # Find the list of retired models at
     # https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions#retired-models
-    return deployment in {
-        D.GEMINI_2_5_PRO_PREVIEW_03_25,
-    }
+    return deployment in {D.GEMINI_2_5_PRO_PREVIEW_03_25}
 
 
 def is_vision_model(deployment: D) -> bool:
@@ -119,7 +123,9 @@ def select(p: Selector[D], xs: List[DeploymentSpec]) -> List[DeploymentSpec]:
     return [x for x in xs if p(x.deployment)]
 
 
-deployments = select(~pred(is_retired_model), _DEPLOYMENTS)
+deployments = select(
+    ~pred(is_retired_model) & ~pred(is_broken_model), _DEPLOYMENTS
+)
 retired_deployments = select(pred(is_retired_model), _DEPLOYMENTS)
 vision_deployments = select(pred(is_vision_model), deployments)
 sample_deployment = select(
@@ -1043,7 +1049,10 @@ async def test_block_and_large_max_tokens_fail(chat: Chat):
         assert e.body == {
             "code": "500",
             "type": "internal_server_error",
-            "message": "Streaming is strongly recommended for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-python#long-requests for more details",
+            "message": (
+                "Streaming is required for operations that may take longer than 10 minutes. "
+                "See https://github.com/anthropics/anthropic-sdk-python#long-requests for more details"
+            ),
         }
 
 
