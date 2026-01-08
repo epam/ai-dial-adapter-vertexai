@@ -36,6 +36,7 @@
   - [Authentication](#authentication)
     - [GCP Vertex AI](#gcp-vertex-ai)
     - [Anthropic API / Google AI Platform](#anthropic-api--google-ai-platform)
+    - [Anthropic Foundry](#anthropic-foundry)
   - [Development](#development)
     - [Development environment](#development-environment)
     - [IDE configuration](#ide-configuration)
@@ -119,7 +120,7 @@ However, it wouldn't work for interactions via [DIAL Chat](https://github.com/ep
   "models": {
     "dial-gemini-deployment-id": {
       "type": "chat",
-      "endpoint": "$VERTEXAI_ADAPTER_ORIGIN/openai/deployments/gemini-2.5-flash-image/chat/completions",
+      "endpoint": "${VERTEXAI_ADAPTER_ORIGIN}/openai/deployments/gemini-2.5-flash-image/chat/completions",
       "features": {
         "assistantAttachmentsInRequestSupported": true
       }
@@ -458,7 +459,7 @@ Set `autoCachingSupported` flag in the DIAL Core config for a deployment of inte
     "my-dial-gemini-deployment": {
       "type": "chat",
       "displayName": "Gemini 2.5 Flash",
-      "endpoint": "$VERTEXAI_ADAPTER_ORIGIN/openai/deployments/gemini-2.5-flash/chat/completions",
+      "endpoint": "${VERTEXAI_ADAPTER_ORIGIN}/openai/deployments/gemini-2.5-flash/chat/completions",
       "upstreams": [
         {
           "extraData": {
@@ -525,6 +526,38 @@ Keep in mind that the same Anthropic models have [different identifiers](https:/
 E.g. `claude-3-5-sonnet-v2@20241022` in GCP Vertex AI corresponds to `claude-3-5-sonnet-20241022` in Anthropic API.
 
 The VertexAI adapter uses model names from **GCP Vertex AI**. Therefore, in order to use **Anthropic API** model name you need to specify the corresponding name from **GCP Vertex AI** in the [compatible_model_id](#compatibility-configuration-in-dial-core-config) field. Otherwise, the adapter returns 404.
+
+### Anthropic Foundry
+
+The adapter supports access to Claude models from [Azure](https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-models/how-to/use-foundry-models-claude?view=foundry&preserve-view=true&tabs=python) [Foundry](https://platform.claude.com/docs/en/build-with-claude/claude-in-microsoft-foundry) service.
+
+```json
+{
+  "models": {
+    "claude-dial-deployment-id": {
+      "endpoint": "${VERTEXAI_ADAPTER_ORIGIN}/openai/deployments/claude-sonnet-4-520250929/chat/completions",
+      "upstreams": [
+        {
+          "endpoint": "https://${AZURE_FOUNDRY_RESOURCE_NAME1}.services.ai.azure.com/anthropic/v1/messages",
+          "key": "optional-azure-foundry-api-key1"
+        },
+        {
+          "endpoint": "https://${AZURE_FOUNDRY_RESOURCE_NAME2}.services.ai.azure.com/anthropic/v1/messages",
+          "key": "optional-azure-foundry-api-key2"
+        }
+      ]
+    }
+  }
+}
+```
+
+The [DefaultAzureCredential](https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential?view=azure-python) is used to authenticate requests to Azure when an API key is not provided in the upstream configuration.
+
+Since the models names in Azure Foundry are different from the ones in GCP Vertex AI, you need to map them onto supported [deployment names](#supported-models) using the [compatibility mapping](#compatibility-mode):
+
+```txt
+COMPATIBILITY_MAPPING={"claude-sonnet-4-520250929":"claude-sonnet-4-5@20250929"}
+```
 
 ---
 

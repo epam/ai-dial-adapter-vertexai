@@ -4,7 +4,8 @@ from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
 
 from aidial_adapter_vertexai.app_config import (
-    get_anthropic_client,
+    get_anthropic_httpx_client,
+    get_anthropic_vertex_client,
     get_genai_client,
     init_vertex_ai,
 )
@@ -16,6 +17,7 @@ from aidial_adapter_vertexai.dial_api.response import (
 )
 from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
 from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployments
+from aidial_adapter_vertexai.utils.azure_auth import close_azure_credential
 from aidial_adapter_vertexai.utils.env import get_str_dict
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
 from aidial_adapter_vertexai.vertex_ai import (
@@ -29,9 +31,11 @@ async def lifespan(app: DIALApp):
     init_vertex_ai()
     yield
     await get_genai_client.clear()
-    await get_anthropic_client.clear()
+    await get_anthropic_vertex_client.clear()
     await get_text_embedding_model.clear()
     await get_multi_modal_embedding_model.clear()
+    await get_anthropic_httpx_client.clear()
+    await close_azure_credential()
 
 
 app = DIALApp(

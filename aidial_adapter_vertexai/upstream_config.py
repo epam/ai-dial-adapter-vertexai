@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Protocol
 
 from aidial_sdk.deployment.from_request_mixin import FromRequestDeploymentMixin
-from anthropic import AsyncAnthropic, AsyncAnthropicVertex
+from anthropic import (
+    AsyncAnthropic,
+    AsyncAnthropicFoundry,
+    AsyncAnthropicVertex,
+)
 from google.genai.client import Client as GenAIClient
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.app_config import (
     DEFAULT_PROJECT_ENV_VAR,
     DEFAULT_REGION_ENV_VAR,
-    get_anthropic_client,
+    get_anthropic_foundry_client,
+    get_anthropic_vertex_client,
     get_default_project,
     get_default_region,
     get_genai_client,
@@ -24,22 +30,57 @@ class UpstreamConfig(Protocol):
 
     async def get_anthropic_client(
         self,
-    ) -> AsyncAnthropicVertex | AsyncAnthropic: ...
+    ) -> AsyncAnthropicVertex | AsyncAnthropic | AsyncAnthropicFoundry: ...
 
 
 def parse_upstream_config(
     request: FromRequestDeploymentMixin,
 ) -> UpstreamConfig:
-    if (conf := _ApiKeyUpstreamConfig.from_request(request)) is not None:
-        log.debug("accessing deployment via platform api-key")
+    if (conf := _AzureFoundryUpstreamConfig.from_request(request)) is not None:
+        log.debug("accessing deployment via Azure Foundry")
         return conf
 
-    log.debug("accessing deployment via cloud creds")
+    if (conf := _ApiKeyUpstreamConfig.from_request(request)) is not None:
+        log.debug("accessing deployment via Platform API-key")
+        return conf
+
+    log.debug("accessing deployment via Google Cloud creds")
     return _CloudUpstreamConfig.from_request(request)
 
 
 _UPSTREAM_CONFIG_HEADER_NAME = "x-upstream-extra-data"
 _UPSTREAM_API_KEY_HEADER_NAME = "x-upstream-key"
+_UPSTREAM_ENDPOINT_HEADER_NAME = "x-upstream-endpoint"
+
+
+class _AzureFoundryUpstreamConfig(BaseModel):
+    api_key: str | None
+
+    base_url: str
+
+    @classmethod
+    def from_request(
+        cls, request: FromRequestDeploymentMixin
+    ) -> _AzureFoundryUpstreamConfig | None:
+        api_key = request.headers.get(_UPSTREAM_API_KEY_HEADER_NAME)
+        endpoint = request.headers.get(_UPSTREAM_ENDPOINT_HEADER_NAME)
+        if (
+            endpoint is None
+            or (m := re.match(r"(.*/anthropic)/v1/messages", endpoint)) is None
+        ):
+            return None
+
+        base_url = m.group(1)
+
+        return cls(api_key=api_key, base_url=base_url)
+
+    async def get_genai_client(self) -> GenAIClient:
+        raise NotImplementedError(
+            "Azure Foundry doesn't provide Google GenAI client"
+        )
+
+    async def get_anthropic_client(self) -> AsyncAnthropicFoundry:
+        return await get_anthropic_foundry_client(self.api_key, self.base_url)
 
 
 class _ApiKeyUpstreamConfig(BaseModel):
@@ -55,9 +96,7 @@ class _ApiKeyUpstreamConfig(BaseModel):
     async def get_genai_client(self) -> GenAIClient:
         return GenAIClient(api_key=self.api_key)
 
-    async def get_anthropic_client(
-        self,
-    ) -> AsyncAnthropicVertex | AsyncAnthropic:
+    async def get_anthropic_client(self) -> AsyncAnthropic:
         return AsyncAnthropic(api_key=self.api_key)
 
 
@@ -102,10 +141,8 @@ class _CloudUpstreamConfig(BaseModel):
     async def get_genai_client(self) -> GenAIClient:
         return await get_genai_client(self.project, self.region)
 
-    async def get_anthropic_client(
-        self,
-    ) -> AsyncAnthropicVertex | AsyncAnthropic:
-        return await get_anthropic_client(self.project, self.region)
+    async def get_anthropic_client(self) -> AsyncAnthropicVertex:
+        return await get_anthropic_vertex_client(self.project, self.region)
 
 
 class OverrideNameUpstreamConfig(BaseModel):

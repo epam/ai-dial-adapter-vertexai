@@ -11,7 +11,7 @@ from openai.types.chat import (
 from openai.types.shared_params.function_definition import FunctionDefinition
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from tests.conftest import _get_extra_headers
+from tests.conftest import get_extra_headers
 from tests.integration_tests.constants import BLUE_PNG_PICTURE
 from tests.integration_tests.test_chat_completion_generation import (
     is_vision_model,
@@ -214,7 +214,7 @@ async def test_tokenize(
         test.messages,
         test.functions,
         test.tools,
-        extra_headers=_get_extra_headers(test.region),
+        extra_headers=get_extra_headers(test.region),
     )
 
     outputs = actual_output.outputs

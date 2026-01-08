@@ -37,6 +37,7 @@ pypdf = { version = "6.4.0", extras = ["crypto"] }
 numpy = "2.0.0"
 aiohttp = "3.13.3"
 urllib3 = "2.6.0"
+azure-identity = "1.25.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.4.0"

@@ -1,5 +1,7 @@
 import json
-from typing import AsyncGenerator
+import os
+from typing import AsyncGenerator, Dict
+from unittest.mock import patch
 
 import httpx
 import openai
@@ -21,20 +23,30 @@ def configure_unit_tests(monkeypatch, request):
 
 
 @pytest.fixture()
-async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    from aidial_adapter_vertexai.app import app
-
-    async with LifespanManager(app):
-        async with httpx.AsyncClient(
-            transport=ASGITransport(app),  # type: ignore
-            base_url="http://test-app.com",
-            params={"api-version": "dummy-version"},
-            headers={"api-key": "dummy-key"},
-        ) as client:
-            yield client
+def compatibility_mapping() -> dict[str, str]:
+    return {}
 
 
-def _get_extra_headers(region: str) -> dict[str, str]:
+@pytest.fixture()
+async def test_http_client(
+    compatibility_mapping,
+) -> AsyncGenerator[httpx.AsyncClient, None]:
+    with patch.dict(
+        os.environ, {"COMPATIBILITY_MAPPING": json.dumps(compatibility_mapping)}
+    ):
+        from aidial_adapter_vertexai.app import app
+
+        async with LifespanManager(app):
+            async with httpx.AsyncClient(
+                transport=ASGITransport(app),  # type: ignore
+                base_url="http://test-app.com",
+                params={"api-version": "dummy-version"},
+                headers={"api-key": "dummy-key"},
+            ) as client:
+                yield client
+
+
+def get_extra_headers(region: str) -> Dict[str, str]:
     return {"x-upstream-extra-data": json.dumps({"region": region})}
 
 
@@ -55,7 +67,7 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
         extra_headers: dict | None = None,
     ) -> openai.AsyncAzureOpenAI:
         default_headers = (extra_headers or {}) | (
-            _get_extra_headers(region) if region else {}
+            get_extra_headers(region) if region else {}
         )
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
