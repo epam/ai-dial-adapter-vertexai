@@ -80,14 +80,6 @@ if spec := DeploymentSpec.compat_foundry(
     _DEPLOYMENTS.append(spec)
 
 
-@pytest.fixture()
-def compatibility_mapping():
-    mapping = {}
-    for dep in _DEPLOYMENTS:
-        mapping.update(dep.model.to_compatibility_mapping())
-    return mapping
-
-
 def is_retired_model(deployment: D) -> bool:
     # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     # Find the list of retired models at
@@ -221,7 +213,7 @@ def stream(request) -> bool:
 @pytest.fixture
 def openai_client(deployment_spec: DeploymentSpec, get_openai_client):
     return get_openai_client(
-        deployment_spec.upstream, extra_headers=deployment_spec.source.headers()
+        deployment_spec.upstream, extra_headers=deployment_spec.headers
     )
 
 

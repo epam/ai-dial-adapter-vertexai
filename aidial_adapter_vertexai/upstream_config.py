@@ -145,7 +145,7 @@ class _CloudUpstreamConfig(BaseModel):
         return await get_anthropic_vertex_client(self.project, self.region)
 
 
-class OverrideNameUpstreamConfig(BaseModel):
+class CompatibleModelUpstreamConfig(BaseModel):
     compatible_model_id: str | None = None
 
 
@@ -154,7 +154,7 @@ def get_compatible_model_id(request: FromRequestDeploymentMixin) -> str | None:
         return None
 
     try:
-        conf = OverrideNameUpstreamConfig.model_validate_json(extra)
+        conf = CompatibleModelUpstreamConfig.model_validate_json(extra)
     except Exception as e:
         log.error(
             f"Request header {_UPSTREAM_CONFIG_HEADER_NAME!r} doesn't contain"

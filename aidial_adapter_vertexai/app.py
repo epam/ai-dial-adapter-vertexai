@@ -16,9 +16,10 @@ from aidial_adapter_vertexai.dial_api.response import (
     ModelsResponse,
 )
 from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
-from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployments
+from aidial_adapter_vertexai.utils.adapter_deployments import (
+    get_static_deployments,
+)
 from aidial_adapter_vertexai.utils.azure_auth import close_azure_credential
-from aidial_adapter_vertexai.utils.env import get_str_dict
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
 from aidial_adapter_vertexai.vertex_ai import (
     get_multi_modal_embedding_model,
@@ -49,9 +50,7 @@ app = DIALApp(
 # because it may have configured the root logger on its own.
 configure_loggers()
 
-deployments = AdapterDeployments.create(
-    compat_mapping=get_str_dict("COMPATIBILITY_MAPPING")
-)
+deployments = get_static_deployments()
 
 
 @app.get("/openai/models")
