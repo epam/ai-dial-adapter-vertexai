@@ -4,6 +4,7 @@ import json
 import re
 from typing import Protocol
 
+import pydantic
 from aidial_sdk.deployment.from_request_mixin import FromRequestDeploymentMixin
 from anthropic import (
     AsyncAnthropic,
@@ -155,11 +156,11 @@ def get_compatible_model_id(request: FromRequestDeploymentMixin) -> str | None:
 
     try:
         conf = CompatibleModelUpstreamConfig.model_validate_json(extra)
-    except Exception as e:
+    except pydantic.ValidationError as e:
         log.error(
             f"Request header {_UPSTREAM_CONFIG_HEADER_NAME!r} doesn't contain"
             f" valid override name configuration: {e}"
         )
         return None
 
-    return None if conf is None else conf.compatible_model_id
+    return conf.compatible_model_id
