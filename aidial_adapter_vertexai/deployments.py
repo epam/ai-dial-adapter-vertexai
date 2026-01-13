@@ -1,8 +1,21 @@
 from enum import Enum
-from typing import Literal
+from typing import List, Literal, Self
 
 
-class ChatCompletionDeployment(Enum):
+class DeploymentEnum(Enum):
+    @classmethod
+    def deployments(cls) -> List[str]:
+        return [d.value for d in cls]
+
+    @classmethod
+    def from_string(cls, model_id: str) -> Self | None:
+        for deployment in cls:
+            if deployment.value == model_id:
+                return deployment
+        return None
+
+
+class ChatCompletionDeployment(DeploymentEnum):
     GEMINI_2_0_FLASH_LITE_1 = "gemini-2.0-flash-lite-001"
     GEMINI_2_0_FLASH_EXP = "gemini-2.0-flash-exp"
     GEMINI_2_0_FLASH_001 = "gemini-2.0-flash-001"
@@ -102,7 +115,7 @@ VeoDeployment = Literal[
 ]
 
 
-class EmbeddingsDeployment(Enum):
+class EmbeddingsDeployment(DeploymentEnum):
     # Text: English models
     TEXT_EMBEDDING_GECKO_1 = "textembedding-gecko@001"
     TEXT_EMBEDDING_GECKO_3 = "textembedding-gecko@003"

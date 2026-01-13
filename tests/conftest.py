@@ -1,8 +1,5 @@
 import json
-import logging
-import os
 from typing import AsyncGenerator, Dict
-from unittest.mock import patch
 
 import httpx
 import openai
@@ -10,13 +7,6 @@ import pytest
 from asgi_lifespan import LifespanManager
 from google.cloud.aiplatform.constants.base import DEFAULT_REGION
 from httpx import ASGITransport
-
-
-def pytest_configure(config):
-    # Filter out logs containing "Adapter deployments" because they are too verbose
-    logging.getLogger("app").addFilter(
-        lambda record: "Adapter deployments" not in record.getMessage()
-    )
 
 
 @pytest.fixture(autouse=True)
@@ -31,27 +21,17 @@ def configure_unit_tests(monkeypatch, request):
 
 
 @pytest.fixture()
-def compatibility_mapping() -> dict[str, str]:
-    return {}
+async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
+    from aidial_adapter_vertexai.app import app
 
-
-@pytest.fixture()
-async def test_http_client(
-    compatibility_mapping,
-) -> AsyncGenerator[httpx.AsyncClient, None]:
-    with patch.dict(
-        os.environ, {"COMPATIBILITY_MAPPING": json.dumps(compatibility_mapping)}
-    ):
-        from aidial_adapter_vertexai.app import app
-
-        async with LifespanManager(app):
-            async with httpx.AsyncClient(
-                transport=ASGITransport(app),  # type: ignore
-                base_url="http://test-app.com",
-                params={"api-version": "dummy-version"},
-                headers={"api-key": "dummy-key"},
-            ) as client:
-                yield client
+    async with LifespanManager(app):
+        async with httpx.AsyncClient(
+            transport=ASGITransport(app),  # type: ignore
+            base_url="http://test-app.com",
+            params={"api-version": "dummy-version"},
+            headers={"api-key": "dummy-key"},
+        ) as client:
+            yield client
 
 
 def get_extra_headers(region: str) -> Dict[str, str]:
@@ -71,12 +51,12 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
         deployment_id: str | None = None,
         *,
         region: str | None = None,
-        headers: Dict[str, str] | None = None,
         max_retries: int = 3,
+        extra_headers: dict | None = None,
     ) -> openai.AsyncAzureOpenAI:
-        default_headers = headers or {}
-        if region:
-            default_headers.update(get_extra_headers(region))
+        default_headers = (extra_headers or {}) | (
+            get_extra_headers(region) if region else {}
+        )
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
             azure_deployment=deployment_id,

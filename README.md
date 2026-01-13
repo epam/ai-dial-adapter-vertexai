@@ -27,6 +27,8 @@
   - [Environment variables](#environment-variables)
     - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
   - [Compatibility mode](#compatibility-mode)
+    - [Compatibility configuration in DIAL Core config](#compatibility-configuration-in-dial-core-config)
+    - [Compatibility configuration in Adapter](#compatibility-configuration-in-adapter)
   - [Load balancing](#load-balancing)
     - [Global endpoint](#global-endpoint)
   - [Prompt caching](#prompt-caching)
@@ -60,13 +62,13 @@ The project implements [AI DIAL API](https://dialx.ai/dial_api) for language mod
 
 ### Chat completion models
 
-The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/chat/completions` endpoint along with an optional support of the feature endpoints:
+The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/chat/completions` endpoint along with an optional support of the feature endpoints:
 
-- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/tokenize`
-- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/truncate_prompt`
-- `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/configuration`
+- `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/tokenize`
+- `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/truncate_prompt`
+- `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/configuration`
 
-|Model|Deployment name|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
+|Model|Model ID|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
 |Gemini 3 Pro|gemini-3-pro-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 3 Pro Image|gemini-3-pro-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
@@ -90,10 +92,10 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$DEPLOYMENT
 |Imagen 4.0|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06\|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 3.0|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
-|Veo 3.1 Fast Generate|veo-3.1-fast-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
-|Veo 3.1 Generate|veo-3.1-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
-|Veo 3.0 Fast Generate|veo-3.0-fast-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
-|Veo 3.0 Generate|veo-3.0-generate-(001|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.1 Fast Generate|veo-3.1-fast-generate-(001\|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.1 Generate|veo-3.1-generate-(001\|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Fast Generate|veo-3.0-fast-generate-(001\|preview)|text-to-video|✅|✅|❌|✅|
+|Veo 3.0 Generate|veo-3.0-generate-(001\|preview)|text-to-video|✅|✅|❌|✅|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
@@ -252,9 +254,9 @@ Not every model supports all flags. Refer to the official documentation before u
 
 ### Embedding models
 
-The following models support `$SERVER_ORIGIN/openai/deployments/$DEPLOYMENT_NAME/embeddings` endpoint:
+The following models support `$SERVER_ORIGIN/openai/deployments/$MODEL_ID/embeddings` endpoint:
 
-|Model|Deployment name|Language support|Modality|
+|Model|Model ID|Language support|Modality|
 |---|---|---|---|
 |Gemini Embeddings|gemini-embedding-001|Multilingual|text-to-embedding|
 |Gecko Embeddings for Text V1|textembedding-gecko@001|English|text-to-embedding|
@@ -279,7 +281,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
-|COMPATIBILITY_MAPPING|{}|A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-mode) section.|
+|COMPATIBILITY_MAPPING|{}|**Deprecated** in favour of [compatibility configuration in DIAL Core config](#compatibility-configuration-in-dial-core-config). A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-configuration-in-adapter) section.|
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 |GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
 |ANTHROPIC_MAX_RETRY_ATTEMPTS|0|How many times to retry Anthropic chat model requests when the provider returns a retriable error|
@@ -315,42 +317,71 @@ Make sure the default doesn't exceed Claude's [max output tokens](https://docs.a
 
 ## Compatibility mode
 
-The Adapter supports a predefined list of VertexAI deployments. The [Supported models](#supported-models) section lists the models. These models could be accessed via `/openai/deployments/{deployment_name}/(chat_completions|embeddings)` endpoints. The Adapter won't recognize any other deployment name and will result in `404` error.
+The Adapter supports a predefined list of VertexAI deployments. The [Supported models](#supported-models) section lists the models. These models could be accessed via `/openai/deployments/$MODEL_ID/(chat_completions|embeddings)` endpoints. The Adapter won't recognize any other deployment name and will result in `404` error.
 
-Now, suppose VertexAI has just released a new version of a model, e.g. `gemini-2.0-flash-006` which is a better version of an older `gemini-2.0-flash-001` model.
+Now, suppose VertexAI has just released a new version of a model, e.g. `gemini-2.0-flash-006` that is a better version of an older `gemini-2.0-flash-001` model.
 
 Immediately after the release, the former model is **unsupported** by the Adapter, but the latter is **supported**.
 Therefore, the request to `openai/deployments/gemini-2.0-flash-006/chat/completions` will result in 404 error.
 
 It will take some time for the Adapter to catch up with VertexAI - support the v6 model and publish the release with the fix.
 
-What to do in the meantime? Presumably, the v6 model is backward compatible with v1, so we may try to run v6 in **the compatibility mode** - that is to convince the Adapter to process v6 request as if it's v1 request with the only difference that the final upstream request to AWS Bedrock will be to v6 and not v1.
+What to do in the meantime? Presumably, the v6 model is backward compatible with v1, so we may try to run v6 in **the compatibility mode** - that is to convince the Adapter to process v6 request as if it's v1 request with the only difference that the final upstream request to GCP VertexAI will be to v6 and not v1.
 
-The `COMPATIBILITY_MAPPING` env variable enables exactly this scenario.
+There are two way to enable compatibility mode in the adapter.
 
-When it's defined like this:
+### Compatibility configuration in DIAL Core config
 
-```txt
-COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "gemini-2.0-flash-001"}
+It's possible to define compatible model on per-upstream basis in the DIAL Core configuration.
+
+E.g. the following configuration enables `gemini-2.0-flash-006` model _(a hypothetical model that isn't supported by the Adapter natively)_ via `gemini-2.0-flash-001` model _(that is supported by the Adapter natively)_:
+
+```json
+{
+  "models": {
+    "dial-deployment-id-for-claude-3-5": {
+      "type": "chat",
+      "endpoint": "${ADAPTER_ORIGIN}/deployments/gemini-2.0-flash-006/chat/completions",
+      "upstreams": [
+        {
+          "extraData": {
+            "compatible_model_id": "gemini-2.0-flash-001"
+          }
+        }
+      ]
+    }
+  }
+}
 ```
 
-the Adapter will be able to handle requests to the `gemini-2.0-flash-006` deployment.
-The requests will be processed by the same pipeline as `gemini-2.0-flash-001`, but the call to AWS Bedrock will be done to `gemini-2.0-flash-006` deployment name.
+The given configuration enables the adapter to handle requests to the `gemini-2.0-flash-006` deployment.
+The requests will be processed by the same pipeline as `gemini-2.0-flash-001`, but the call to GCP VertexAI will be done to `gemini-2.0-flash-006` deployment name.
 
 Naturally, this will only work if the APIs of v1 and v6 deployments are compatible:
 
 1. The requests utilizing the modalities supported by both v1 and v6 will work just fine.
-2. However, the requests with modalities that are supported by v6 and aren't supported by v1, won't be processed correctly. You will have to wait until the Adapter supports the v6 deployment natively.
+2. However, the requests with modalities that are supported by v6 and aren't supported by v1, won't be processed correctly. You will have to wait until the adapter supports the v6 deployment natively.
 
-When a version of the Adapter supporting the v6 model is released, you may migrate to it and safely remove the entry from the `COMPATIBILITY_MAPPING` dictionary.
+When a version of the adapter supporting the v6 model is released, you may migrate to it and safely remove the `compatible_model_id` from the DIAL Core config.
 
-Note that a mapping such as this one would be ineffectual:
+Note that setting `compatible_model_id=imagen-4.0-generate-001` will be ineffectual, since the APIs of the two model and their capabilities are drastically different.
 
-```txt
-COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "imagegeneration@005"}
+> [!IMPORTANT]
+> If the DIAL deployment has many upstreams, the `compatible_model_id` field should be set in all of the upstreams.
+
+### Compatibility configuration in Adapter
+
+> [!IMPORTANT]
+> Model compatibility configuration via `COMPATIBILITY_MAPPING` env variable has been deprecated in favour of [configuration on the DIAL Core side](#compatibility-configuration-in-dial-core-config) in DIAL Core config.
+
+`COMPATIBILITY_MAPPING` env variable enables compatibility mode on the adapter level.
+It hold a mapping from unsupported deployment ids to supported deployment ids.
+
+E.g. the following mapping enables `gemini-2.0-flash-006` via `gemini-2.0-flash-001`:
+
+```ini
+COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "gemini-2.0-flash-001"}
 ```
-
-since the APIs and capabilities of these two models are drastically different.
 
 ## Load balancing
 
@@ -467,19 +498,22 @@ Gemini>=2 and Anthropic deployments could be accessed via API key. The API keys 
 ```json
 {
   "models": {
-    "gemini-2.0-flash-lite-001": {
-      "endpoint": "...",
+    "gemini-dial-deployment-id": {
+      "endpoint": "${ADAPTER_ORIGIN}/deployments/gemini-2.0-flash-lite-001/chat/completions",
       "upstreams": [
         {
           "key": "gemini-api-key"
         }
       ]
     },
-    "claude-3-5-sonnet-20241022": {
-      "endpoint": "...",
+    "claude-dial-deployment-id": {
+      "endpoint": "${ADAPTER_ORIGIN}/deployments/claude-3-5-sonnet-20241022/chat/completions",
       "upstreams": [
         {
-          "key": "anthropic-api-key"
+          "key": "anthropic-api-key",
+          "extraData": {
+            "compatible_model_id": "claude-3-5-sonnet-v2@20241022"
+          }
         }
       ]
     }
@@ -491,14 +525,7 @@ Keep in mind that the same Anthropic models have [different identifiers](https:/
 
 E.g. `claude-3-5-sonnet-v2@20241022` in GCP Vertex AI corresponds to `claude-3-5-sonnet-20241022` in Anthropic API.
 
-The adapter uses deployment identifiers from **GCP Vertex AI**.
-Therefore, in order to use Anthropic API model you need to map its identifier to a corresponding identifier in GCP Vertex AI using the [compatibility mapping](#compatibility-mode):
-
-```txt
-COMPATIBILITY_MAPPING={"claude-3-5-sonnet-20241022":"claude-3-5-sonnet-v2@20241022"}
-```
-
-Otherwise, the adapter will return 404 on requests to `claude-3-5-sonnet-20241022`.
+The VertexAI adapter uses model names from **GCP Vertex AI**. Therefore, in order to use **Anthropic API** model name you need to specify the corresponding name from **GCP Vertex AI** in the [compatible_model_id](#compatibility-configuration-in-dial-core-config) field. Otherwise, the adapter returns 404.
 
 ### Anthropic Foundry
 

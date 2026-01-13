@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import os
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
@@ -13,8 +14,13 @@ class compat:
     upstream: str
     deployment: D
 
-    def to_compatibility_mapping(self) -> dict[str, str]:
-        return {self.upstream: self.deployment.value}
+    @property
+    def headers(self) -> dict[str, str]:
+        return {
+            "x-upstream-extra-data": json.dumps(
+                {"compatible_model_id": self.deployment.value}
+            )
+        }
 
 
 @dataclasses.dataclass
@@ -25,7 +31,8 @@ class supported:
     def upstream(self) -> str:
         return self.deployment.value
 
-    def to_compatibility_mapping(self) -> dict[str, str]:
+    @property
+    def headers(self) -> dict[str, str]:
         return {}
 
 
@@ -33,6 +40,7 @@ class supported:
 class vertexai:
     region: str
 
+    @property
     def headers(self) -> dict[str, str]:
         return get_extra_headers(self.region)
 
@@ -47,6 +55,7 @@ class foundry:
             return cls(service_name=name)
         return None
 
+    @property
     def headers(self) -> dict[str, str]:
         return {
             "x-upstream-endpoint": f"https://{self.service_name}.services.ai.azure.com/anthropic/v1/messages"
@@ -65,6 +74,10 @@ class DeploymentSpec:
     @property
     def upstream(self) -> str:
         return self.model.upstream
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return self.model.headers | self.source.headers
 
     def display(self) -> str:
         ret = ""

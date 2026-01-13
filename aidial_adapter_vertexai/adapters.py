@@ -1,9 +1,5 @@
 from typing import assert_never
 
-from aidial_adapter_vertexai.adapter_deployments import (
-    AdapterChatCompletionDeployment,
-    AdapterEmbeddingsDeployment,
-)
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
@@ -33,6 +29,10 @@ from aidial_adapter_vertexai.embedding.text_legacy import (
     TextEmbeddingsAdapter as LegacyTextEmbeddingsAdapter,
 )
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
+from aidial_adapter_vertexai.utils.adapter_deployments import (
+    AdapterChatCompletionDeployment,
+    AdapterEmbeddingsDeployment,
+)
 
 
 async def get_chat_completion_model(

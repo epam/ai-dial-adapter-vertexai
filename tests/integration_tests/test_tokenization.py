@@ -63,7 +63,6 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_OPUS: _EAST,
     ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,

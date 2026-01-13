@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
 
-from aidial_adapter_vertexai.adapter_deployments import AdapterDeployments
 from aidial_adapter_vertexai.app_config import (
     get_anthropic_httpx_client,
     get_anthropic_vertex_client,
@@ -17,8 +16,10 @@ from aidial_adapter_vertexai.dial_api.response import (
     ModelsResponse,
 )
 from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
+from aidial_adapter_vertexai.utils.adapter_deployments import (
+    get_static_deployments,
+)
 from aidial_adapter_vertexai.utils.azure_auth import close_azure_credential
-from aidial_adapter_vertexai.utils.env import get_str_dict
 from aidial_adapter_vertexai.utils.log_config import configure_loggers
 from aidial_adapter_vertexai.vertex_ai import (
     get_multi_modal_embedding_model,
@@ -49,24 +50,17 @@ app = DIALApp(
 # because it may have configured the root logger on its own.
 configure_loggers()
 
-deployments = AdapterDeployments.create(
-    compat_mapping=get_str_dict("COMPATIBILITY_MAPPING")
-)
+deployments = get_static_deployments()
 
 
 @app.get("/openai/models")
 @dial_exception_decorator
 async def models():
     return ModelsResponse(
-        data=list(
-            map(ModelObject.chat_completions, deployments.chat_completions)
-        )
+        data=list(map(ModelObject.chat_completions, deployments.chat))
         + list(map(ModelObject.embeddings, deployments.embeddings))
     )
 
 
-for deployment_id, deployment in deployments.chat_completions.items():
-    app.add_chat_completion(deployment_id, VertexAIChatCompletion(deployment))
-
-for deployment_id, deployment in deployments.embeddings.items():
-    app.add_embeddings(deployment_id, VertexAIEmbeddings(deployment))
+app.add_chat_completion("{deployment_id}", VertexAIChatCompletion())
+app.add_embeddings("{deployment_id}", VertexAIEmbeddings())

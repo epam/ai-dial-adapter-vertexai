@@ -15,8 +15,14 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 DEFAULT_REGION_ENV_VAR = "DEFAULT_REGION"
 DEFAULT_PROJECT_ENV_VAR = "GCP_PROJECT_ID"
 
-DEFAULT_REGION = os.getenv(DEFAULT_REGION_ENV_VAR)
-DEFAULT_PROJECT = os.getenv(DEFAULT_PROJECT_ENV_VAR)
+
+def get_default_region() -> str | None:
+    return os.getenv(DEFAULT_REGION_ENV_VAR)
+
+
+def get_default_project() -> str | None:
+    return os.getenv(DEFAULT_PROJECT_ENV_VAR)
+
 
 ANTHROPIC_MAX_RETRY_ATTEMPTS = get_env_int("ANTHROPIC_MAX_RETRY_ATTEMPTS", 0)
 GOOGLE_GENAI_MAX_RETRY_ATTEMPTS = get_env_int(
@@ -25,8 +31,8 @@ GOOGLE_GENAI_MAX_RETRY_ATTEMPTS = get_env_int(
 
 
 def init_vertex_ai():
-    if DEFAULT_REGION and DEFAULT_PROJECT:
-        vertexai.init(project=DEFAULT_PROJECT, location=DEFAULT_REGION)
+    if (region := get_default_region()) and (project := get_default_project()):
+        vertexai.init(project=project, location=region)
     else:
         log.warning(
             f"{DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} aren't configured."

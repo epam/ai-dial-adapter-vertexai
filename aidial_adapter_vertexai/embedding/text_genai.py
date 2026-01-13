@@ -12,7 +12,6 @@ from google.genai.types import (
     EmbedContentResponse,
 )
 
-from aidial_adapter_vertexai.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.deployments import TextEmbeddingDeployment
 from aidial_adapter_vertexai.dial_api.embedding_inputs import (
@@ -28,6 +27,7 @@ from aidial_adapter_vertexai.embedding.types import (
     vector_to_embedding,
 )
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
+from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 
