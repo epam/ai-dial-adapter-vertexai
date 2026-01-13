@@ -7,6 +7,7 @@ from aidial_sdk.chat_completion.request import (
     StaticTool,
 )
 from google.genai.types import GoogleSearchDict as GenAIGoogleSearch
+from google.genai.types import ToolCodeExecutionDict as GenAICodeExecution
 from google.genai.types import ToolDict as GenAITool
 from pydantic.v1 import BaseModel
 
@@ -17,6 +18,9 @@ class ToolName(str, Enum):
     # https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/grounding
     # https://ai.google.dev/gemini-api/docs/grounding?lang=python#google-search-retrieval
     GOOGLE_SEARCH = "google_search"
+    # https://cloud.google.com/vertex-ai/generative-ai/docs/extensions/code-interpreter
+    # https://ai.google.dev/gemini-api/docs/code-execution?lang=python
+    CODE_EXECUTION = "code_execution"
 
 
 class GenAIGoogleSearchTool:
@@ -29,6 +33,21 @@ class GenAIGoogleSearchTool:
             if config:
                 raise ValidationError("Google search tool isn't configurable")
             return [GenAITool(google_search=GenAIGoogleSearch())]
+        return None
+
+
+class GenAICodeExecutionTool:
+    @staticmethod
+    def parse_gemini_tools(
+        static_function: StaticFunction,
+    ) -> List[GenAITool] | None:
+        if static_function.name == ToolName.CODE_EXECUTION:
+            config = static_function.configuration
+            if config:
+                raise ValidationError(
+                    "Google code execution isn't configurable"
+                )
+            return [GenAITool(code_execution=GenAICodeExecution())]
         return None
 
 
@@ -63,6 +82,7 @@ class StaticToolsConfig(BaseModel):
         for tool in self.functions:
             ret.extend(
                 GenAIGoogleSearchTool.parse_gemini_tools(tool)
+                or GenAICodeExecutionTool.parse_gemini_tools(tool)
                 or unknown_tool_name(tool)
             )
         return ret

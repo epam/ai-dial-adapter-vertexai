@@ -253,6 +253,8 @@ class GeminiGenAIChatCompletionAdapter(
         generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
     ):
         thinking_stage: Stage | None = None
+        executable_code_stage: Stage | None = None
+        result_code_stage: Stage | None = None
         state = MessageState()
 
         usage_metadata = None
@@ -299,6 +301,23 @@ class GeminiGenAIChatCompletionAdapter(
                                 await consumer.append_content(text)
 
                             yield text
+                        elif code := part.executable_code:
+                            executable_code_stage = await consumer.create_stage(
+                                "Executable code"
+                            )
+                            executable_code_stage.open()
+                            if code.code:
+                                executable_code_stage.append_content(code.code)
+                                yield code.code
+
+                        elif res := part.code_execution_result:
+                            result_code_stage = await consumer.create_stage(
+                                "Executable code result"
+                            )
+                            result_code_stage.open()
+                            if res.output:
+                                result_code_stage.append_content(res.output)
+                                yield res.output
 
                         await create_image_attachment(
                             consumer, self.file_storage, part
@@ -318,6 +337,10 @@ class GeminiGenAIChatCompletionAdapter(
         finally:
             if thinking_stage:
                 thinking_stage.close()
+            if executable_code_stage:
+                executable_code_stage.close()
+            if result_code_stage:
+                result_code_stage.close()
 
             # It's possible that max tokens will be reached during the thinking stage
             # and there will be no content in response.
