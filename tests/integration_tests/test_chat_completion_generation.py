@@ -966,8 +966,6 @@ async def test_static_google_search(deployment: D, chat: Chat):
             functions=[
                 StaticFunction(
                     name="google_search",
-                    description="Search the web",
-                    configuration={},
                 ),
             ]
         ),
@@ -977,19 +975,16 @@ async def test_static_google_search(deployment: D, chat: Chat):
 
 
 def _check_code_execution(
-    deployment: D, response: ChatCompletionResult, expected_content: str
+    response: ChatCompletionResult, expected_content: str
 ):
     assert response.stages is not None, "Stages are missing"
-    assert len(response.stages) > 0
+    assert len(response.stages) > 1
     assert isinstance(response.stages[0].content, str)
-    assert response.stages[0].name.startswith("Executable code")
+    assert response.stages[0].name == "Executable code"
+    assert isinstance(response.stages[1].content, str)
+    assert response.stages[1].name == "Executable code result"
     assert expected_content.lower() in response.content.lower()
     assert response.usage is not None, "Usage is missing"
-    assert (
-        response.usage.total_tokens > 7000
-        if not is_gemini(deployment)
-        else True
-    )
 
 
 @pytest.mark.parametrize(
@@ -997,7 +992,7 @@ def _check_code_execution(
     select(pred(supports_code_generating), deployments),
     ids=display_deployment,
 )
-async def test_static_code_execution(deployment: D, chat: Chat):
+async def test_static_code_execution(chat: Chat):
     response = await chat(
         messages=[
             user(
@@ -1012,14 +1007,12 @@ async def test_static_code_execution(deployment: D, chat: Chat):
             functions=[
                 StaticFunction(
                     name="code_execution",
-                    description="Execute code",
-                    configuration={},
                 ),
             ]
         ),
     )
 
-    _check_code_execution(deployment, response, "129")
+    _check_code_execution(response, "129")
 
 
 @pytest.mark.parametrize(

@@ -315,6 +315,29 @@ The default value set in the DIAL Core Config takes precedence over the one conf
 
 Make sure the default doesn't exceed Claude's [max output tokens](https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table), otherwise, you will receive an error like this one: `max_tokens: 10000 > 8192, which is the maximum allowed number of output tokens for claude-3...)`.
 
+## Tools support
+
+Add this to your request to enable google_search or code_execution tools:
+
+```json
+  "tools": [
+    {
+      "type": "static_function",
+      "static_function": {
+        "name": "code_execution"
+      }
+    },
+    {
+      "type": "static_function",
+      "static_function": {
+        "name": "google_search"
+      }
+    },
+  ]
+```
+
+Please ensure that you chose model that supports using them.
+
 ## Compatibility mode
 
 The Adapter supports a predefined list of VertexAI deployments. The [Supported models](#supported-models) section lists the models. These models could be accessed via `/openai/deployments/$MODEL_ID/(chat_completions|embeddings)` endpoints. The Adapter won't recognize any other deployment name and will result in `404` error.

@@ -29,8 +29,7 @@ class GenAIGoogleSearchTool:
         static_function: StaticFunction,
     ) -> List[GenAITool] | None:
         if static_function.name == ToolName.GOOGLE_SEARCH:
-            config = static_function.configuration
-            if config:
+            if static_function.configuration:
                 raise ValidationError("Google search tool isn't configurable")
             return [GenAITool(google_search=GenAIGoogleSearch())]
         return None
@@ -42,11 +41,8 @@ class GenAICodeExecutionTool:
         static_function: StaticFunction,
     ) -> List[GenAITool] | None:
         if static_function.name == ToolName.CODE_EXECUTION:
-            config = static_function.configuration
-            if config:
-                raise ValidationError(
-                    "Google code execution isn't configurable"
-                )
+            if static_function.configuration:
+                raise ValidationError("Code execution tool isn't configurable")
             return [GenAITool(code_execution=GenAICodeExecution())]
         return None
 

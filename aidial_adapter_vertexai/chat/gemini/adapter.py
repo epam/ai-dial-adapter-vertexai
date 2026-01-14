@@ -252,6 +252,13 @@ class GeminiGenAIChatCompletionAdapter(
         tools: ToolsConfig,
         generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
     ):
+        async def initialize_stage(stage: Stage | None, name: str):
+            if stage is None:
+                created_stage = await consumer.create_stage(name)
+                created_stage.open()
+                return created_stage
+            return stage
+
         thinking_stage: Stage | None = None
         executable_code_stage: Stage | None = None
         result_code_stage: Stage | None = None
@@ -291,31 +298,27 @@ class GeminiGenAIChatCompletionAdapter(
 
                         if text := part.text:
                             if part.thought:
-                                if thinking_stage is None:
-                                    thinking_stage = (
-                                        await consumer.create_stage("Thinking")
-                                    )
-                                    thinking_stage.open()
+                                thinking_stage = await initialize_stage(
+                                    thinking_stage, "Thinking"
+                                )
                                 thinking_stage.append_content(text)
                             else:
                                 await consumer.append_content(text)
 
                             yield text
-                        elif code := part.executable_code:
-                            executable_code_stage = await consumer.create_stage(
-                                "Executable code"
-                            )
-                            executable_code_stage.open()
+                        if code := part.executable_code:
                             if code.code:
+                                executable_code_stage = await initialize_stage(
+                                    executable_code_stage, "Executable code"
+                                )
                                 executable_code_stage.append_content(code.code)
                                 yield code.code
 
-                        elif res := part.code_execution_result:
-                            result_code_stage = await consumer.create_stage(
-                                "Executable code result"
-                            )
-                            result_code_stage.open()
+                        if res := part.code_execution_result:
                             if res.output:
+                                result_code_stage = await initialize_stage(
+                                    result_code_stage, "Executable code result"
+                                )
                                 result_code_stage.append_content(res.output)
                                 yield res.output
 
