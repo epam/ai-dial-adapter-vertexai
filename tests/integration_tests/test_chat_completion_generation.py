@@ -978,7 +978,7 @@ def _check_code_execution(
     response: ChatCompletionResult, expected_content: str
 ):
     assert response.stages is not None, "Stages are missing"
-    assert len(response.stages) > 1
+    assert len(response.stages) == 2
     assert isinstance(response.stages[0].content, str)
     assert response.stages[0].name == "Executable code"
     assert isinstance(response.stages[1].content, str)
@@ -1004,11 +1004,7 @@ async def test_static_code_execution(chat: Chat):
             )
         ],
         static_tools=StaticToolsConfig(
-            functions=[
-                StaticFunction(
-                    name="code_execution",
-                ),
-            ]
+            functions=[StaticFunction(name="code_execution")]
         ),
     )
 

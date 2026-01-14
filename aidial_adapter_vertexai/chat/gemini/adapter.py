@@ -11,7 +11,9 @@ from google.genai.types import (
 from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
 )
-from google.genai.types import ImageConfigDict, ThinkingConfigDict
+from google.genai.types import ImageConfigDict
+from google.genai.types import Language as GenAILanguage
+from google.genai.types import ThinkingConfigDict
 from pydantic.v1 import Field
 from typing_extensions import override
 
@@ -263,6 +265,14 @@ class GeminiGenAIChatCompletionAdapter(
             if stage is not None:
                 stage.close()
 
+        def get_code_as_content(code: str, lang: GenAILanguage | None):
+            code_intro = "```"
+            if lang and lang == GenAILanguage.PYTHON:
+                code_intro += "py"
+            code_intro += "\n"
+            code_end = "```"
+            return code_intro + code + code_end
+
         thinking_stage: Stage | None = None
         executable_code_stage: Stage | None = None
         result_code_stage: Stage | None = None
@@ -310,21 +320,22 @@ class GeminiGenAIChatCompletionAdapter(
                                 await consumer.append_content(text)
 
                             yield text
-                        if code := part.executable_code:
-                            if code.code:
-                                executable_code_stage = await open_stage(
-                                    executable_code_stage, "Executable code"
-                                )
-                                executable_code_stage.append_content(code.code)
-                                yield code.code
+                        if (code := part.executable_code) and code.code:
+                            executable_code_stage = await open_stage(
+                                executable_code_stage, "Executable code"
+                            )
+                            code_content = get_code_as_content(
+                                code.code, code.language
+                            )
+                            executable_code_stage.append_content(code_content)
+                            yield code.code
 
-                        if res := part.code_execution_result:
-                            if res.output:
-                                result_code_stage = await open_stage(
-                                    result_code_stage, "Executable code result"
-                                )
-                                result_code_stage.append_content(res.output)
-                                yield res.output
+                        if (res := part.code_execution_result) and res.output:
+                            result_code_stage = await open_stage(
+                                result_code_stage, "Executable code result"
+                            )
+                            result_code_stage.append_content(res.output)
+                            yield res.output
 
                         await create_image_attachment(
                             consumer, self.file_storage, part
