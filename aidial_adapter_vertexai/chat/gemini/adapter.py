@@ -252,12 +252,16 @@ class GeminiGenAIChatCompletionAdapter(
         tools: ToolsConfig,
         generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
     ):
-        async def initialize_stage(stage: Stage | None, name: str):
+        async def open_stage(stage: Stage | None, name: str):
             if stage is None:
                 created_stage = await consumer.create_stage(name)
                 created_stage.open()
                 return created_stage
             return stage
+
+        def close_stage(stage: Stage | None):
+            if stage is not None:
+                stage.close()
 
         thinking_stage: Stage | None = None
         executable_code_stage: Stage | None = None
@@ -298,7 +302,7 @@ class GeminiGenAIChatCompletionAdapter(
 
                         if text := part.text:
                             if part.thought:
-                                thinking_stage = await initialize_stage(
+                                thinking_stage = await open_stage(
                                     thinking_stage, "Thinking"
                                 )
                                 thinking_stage.append_content(text)
@@ -308,7 +312,7 @@ class GeminiGenAIChatCompletionAdapter(
                             yield text
                         if code := part.executable_code:
                             if code.code:
-                                executable_code_stage = await initialize_stage(
+                                executable_code_stage = await open_stage(
                                     executable_code_stage, "Executable code"
                                 )
                                 executable_code_stage.append_content(code.code)
@@ -316,7 +320,7 @@ class GeminiGenAIChatCompletionAdapter(
 
                         if res := part.code_execution_result:
                             if res.output:
-                                result_code_stage = await initialize_stage(
+                                result_code_stage = await open_stage(
                                     result_code_stage, "Executable code result"
                                 )
                                 result_code_stage.append_content(res.output)
@@ -338,12 +342,9 @@ class GeminiGenAIChatCompletionAdapter(
                 ):
                     await consumer.set_finish_reason(openai_reason)
         finally:
-            if thinking_stage:
-                thinking_stage.close()
-            if executable_code_stage:
-                executable_code_stage.close()
-            if result_code_stage:
-                result_code_stage.close()
+            close_stage(thinking_stage)
+            close_stage(executable_code_stage)
+            close_stage(result_code_stage)
 
             # It's possible that max tokens will be reached during the thinking stage
             # and there will be no content in response.
