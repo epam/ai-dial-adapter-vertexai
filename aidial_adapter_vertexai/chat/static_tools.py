@@ -18,7 +18,7 @@ class ToolName(str, Enum):
     # https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/grounding
     # https://ai.google.dev/gemini-api/docs/grounding?lang=python#google-search-retrieval
     GOOGLE_SEARCH = "google_search"
-    # https://cloud.google.com/vertex-ai/generative-ai/docs/extensions/code-interpreter
+    # https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/code-execution-api
     # https://ai.google.dev/gemini-api/docs/code-execution?lang=python
     CODE_EXECUTION = "code_execution"
 

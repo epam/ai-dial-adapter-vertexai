@@ -974,11 +974,9 @@ def _check_code_execution(
     response: ChatCompletionResult, expected_content: str
 ):
     assert response.stages is not None, "Stages are missing"
-    assert len(response.stages) == 2
+    assert len(response.stages) == 1
     assert isinstance(response.stages[0].content, str)
-    assert response.stages[0].name == "Executable code"
-    assert isinstance(response.stages[1].content, str)
-    assert response.stages[1].name == "Executable code result"
+    assert response.stages[0].name == "Code execution"
     assert expected_content.lower() in response.content.lower()
     assert response.usage is not None, "Usage is missing"
 
