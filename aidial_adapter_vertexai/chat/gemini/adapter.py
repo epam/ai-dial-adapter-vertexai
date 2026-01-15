@@ -266,12 +266,8 @@ class GeminiGenAIChatCompletionAdapter(
                 stage.close()
 
         def get_code_as_content(code: str, lang: GenAILanguage | None):
-            code_intro = "```"
-            if lang and lang == GenAILanguage.PYTHON:
-                code_intro += "py"
-            code_intro += "\n"
-            code_end = "```"
-            return code_intro + code + code_end
+            language = "py" if lang == GenAILanguage.PYTHON else ""
+            return f"```{language}\n{code}\n```"
 
         thinking_stage: Stage | None = None
         executable_code_stage: Stage | None = None

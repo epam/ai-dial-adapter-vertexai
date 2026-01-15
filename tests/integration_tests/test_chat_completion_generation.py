@@ -963,11 +963,7 @@ async def test_static_google_search(deployment: D, chat: Chat):
     response = await chat(
         messages=[user("Who won the Wimbledon in 2024?")],
         static_tools=StaticToolsConfig(
-            functions=[
-                StaticFunction(
-                    name="google_search",
-                ),
-            ]
+            functions=[StaticFunction(name="google_search")]
         ),
     )
 
