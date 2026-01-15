@@ -269,13 +269,17 @@ class GeminiGenAIChatCompletionAdapter(
             language = "py" if lang == GenAILanguage.PYTHON else ""
             return f"```{language}\n{code}\n```\n"
 
-        def get_code_output_as_content(output: str):
-            return f"Code output\n```\n{output}\n```\n"
+        def finalize_code_execution_stage(
+            stage: Stage | None, outputs: list[str]
+        ):
+            if not stage or len(outputs) == 0:
+                return
+            content = f"Code output\n```\n{''.join(outputs)}\n```\n"
+            stage.append_content(content)
 
         thinking_stage: Stage | None = None
         code_execution_stage: Stage | None = None
-        code_content: str | None = None
-        code_output_content: str | None = None
+        code_outputs: list[str] = []
         state = MessageState()
 
         usage_metadata = None
@@ -333,12 +337,7 @@ class GeminiGenAIChatCompletionAdapter(
                             code_execution_stage = await open_stage(
                                 code_execution_stage, "Code execution"
                             )
-                            code_output_content = get_code_output_as_content(
-                                res.output
-                            )
-                            code_execution_stage.append_content(
-                                code_output_content
-                            )
+                            code_outputs.append(res.output)
                             yield res.output
 
                         await create_image_attachment(
@@ -358,6 +357,7 @@ class GeminiGenAIChatCompletionAdapter(
                     await consumer.set_finish_reason(openai_reason)
         finally:
             close_stage(thinking_stage)
+            finalize_code_execution_stage(code_execution_stage, code_outputs)
             close_stage(code_execution_stage)
 
             # It's possible that max tokens will be reached during the thinking stage
