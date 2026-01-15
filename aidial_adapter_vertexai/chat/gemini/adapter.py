@@ -270,20 +270,7 @@ class GeminiGenAIChatCompletionAdapter(
             return f"```{language}\n{code}\n```\n"
 
         def get_code_output_as_content(output: str):
-            return f"Code output\n```\n{output}\n"
-
-        def finalize_code_execution_stage(
-            stage: Stage | None, code: str | None, output: str | None
-        ):
-            if not stage:
-                return
-            if not code:
-                log.info("no code for code execution stage")
-                return
-            if not output:
-                log.info("no code output for code execution stage")
-                return
-            stage.append_content(code + output)
+            return f"Code output\n```\n{output}\n```\n"
 
         thinking_stage: Stage | None = None
         code_execution_stage: Stage | None = None
@@ -340,14 +327,17 @@ class GeminiGenAIChatCompletionAdapter(
                             code_content = get_code_as_content(
                                 code.code, code.language
                             )
+                            code_execution_stage.append_content(code_content)
                             yield code.code
-
                         if (res := part.code_execution_result) and res.output:
                             code_execution_stage = await open_stage(
                                 code_execution_stage, "Code execution"
                             )
                             code_output_content = get_code_output_as_content(
                                 res.output
+                            )
+                            code_execution_stage.append_content(
+                                code_output_content
                             )
                             yield res.output
 
@@ -368,9 +358,6 @@ class GeminiGenAIChatCompletionAdapter(
                     await consumer.set_finish_reason(openai_reason)
         finally:
             close_stage(thinking_stage)
-            finalize_code_execution_stage(
-                code_execution_stage, code_content, code_output_content
-            )
             close_stage(code_execution_stage)
 
             # It's possible that max tokens will be reached during the thinking stage
