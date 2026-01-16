@@ -25,7 +25,7 @@ class LazyStage:
         return self._stage is not None
 
     def close(self):
-        if self._stage:
+        if self._stage is not None:
             self._stage.close()
             self._stage = None
 
