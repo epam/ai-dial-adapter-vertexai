@@ -1,7 +1,7 @@
 from logging import DEBUG
 from typing import AsyncIterator, Callable, List, Type
 
-from aidial_sdk.chat_completion import FinishReason, Message, Stage
+from aidial_sdk.chat_completion import FinishReason, Message
 from aidial_sdk.exceptions import RuntimeServerError
 from google.genai.client import Client as GenAIClient
 from google.genai.types import CountTokensConfigDict as GenAICountTokensConfig
@@ -11,9 +11,7 @@ from google.genai.types import (
 from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
 )
-from google.genai.types import ImageConfigDict
-from google.genai.types import Language as GenAILanguage
-from google.genai.types import ThinkingConfigDict
+from google.genai.types import ImageConfigDict, ThinkingConfigDict
 from pydantic.v1 import Field
 from typing_extensions import override
 
@@ -40,6 +38,10 @@ from aidial_adapter_vertexai.chat.gemini.output import (
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
+from aidial_adapter_vertexai.chat.gemini.stage import (
+    CodeExecutionStage,
+    LazyStage,
+)
 from aidial_adapter_vertexai.chat.gemini.state import MessageState
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -254,55 +256,8 @@ class GeminiGenAIChatCompletionAdapter(
         tools: ToolsConfig,
         generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
     ):
-        async def open_stage(stage: Stage | None, name: str):
-            if stage is None:
-                created_stage = await consumer.create_stage(name)
-                created_stage.open()
-                return created_stage
-            return stage
-
-        def close_stage(stage: Stage | None):
-            if stage is not None:
-                stage.close()
-
-        def get_code_as_content(
-            code: str,
-            cur_lang: GenAILanguage | None,
-            prev_lang: GenAILanguage | None,
-            first_code: bool,
-        ):
-            block = "\n```\n"
-
-            def to_code_block(lang: GenAILanguage | None):
-                lang_str = "py" if lang == GenAILanguage.PYTHON else ""
-                return f"\n```{lang_str}\n"
-
-            if first_code:
-                return f"{to_code_block(cur_lang)}{code}"
-            if cur_lang != prev_lang:
-                # block at the beginning to close prev code
-                return f"{block}{to_code_block(cur_lang)}{code}"
-            return code
-
-        def finalize_code_execution_stage(
-            stage: Stage | None, outputs: list[str]
-        ):
-            if not stage:
-                return
-            block = "\n```\n"
-            if len(outputs) == 0:
-                # close code
-                stage.append_content(block)
-                return
-            # block at the beginning to close prev code
-            content = f"{block}Code output{block}{''.join(outputs)}{block}"
-            stage.append_content(content)
-
-        thinking_stage: Stage | None = None
-        code_execution_stage: Stage | None = None
-        prev_lang: GenAILanguage | None = None
-        first_code = True
-        code_outputs: list[str] = []
+        thinking_stage = LazyStage(consumer, "Thinking")
+        code_execution_stage = CodeExecutionStage(consumer)
         state = MessageState()
 
         usage_metadata = None
@@ -339,31 +294,20 @@ class GeminiGenAIChatCompletionAdapter(
 
                         if text := part.text:
                             if part.thought:
-                                thinking_stage = await open_stage(
-                                    thinking_stage, "Thinking"
-                                )
-                                thinking_stage.append_content(text)
+                                await thinking_stage.append_content(text)
                             else:
                                 await consumer.append_content(text)
 
                             yield text
                         if (code := part.executable_code) and code.code:
-                            code_execution_stage = await open_stage(
-                                code_execution_stage, "Code execution"
+                            await code_execution_stage.append_code(
+                                code.code, code.language
                             )
-                            cur_lang = code.language
-                            code_content = get_code_as_content(
-                                code.code, cur_lang, prev_lang, first_code
-                            )
-                            code_execution_stage.append_content(code_content)
-                            prev_lang = cur_lang
-                            first_code = False
                             yield code.code
                         if (res := part.code_execution_result) and res.output:
-                            code_execution_stage = await open_stage(
-                                code_execution_stage, "Code execution"
+                            await code_execution_stage.append_code_output(
+                                res.output
                             )
-                            code_outputs.append(res.output)
                             yield res.output
 
                         await create_image_attachment(
@@ -382,9 +326,8 @@ class GeminiGenAIChatCompletionAdapter(
                 ):
                     await consumer.set_finish_reason(openai_reason)
         finally:
-            close_stage(thinking_stage)
-            finalize_code_execution_stage(code_execution_stage, code_outputs)
-            close_stage(code_execution_stage)
+            thinking_stage.close()
+            await code_execution_stage.close()
 
             # It's possible that max tokens will be reached during the thinking stage
             # and there will be no content in response.
