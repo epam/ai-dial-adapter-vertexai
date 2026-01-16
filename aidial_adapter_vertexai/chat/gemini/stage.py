@@ -28,7 +28,6 @@ class LazyStage:
         if self._stage:
             self._stage.close()
             self._stage = None
-            return
 
 
 class CodeExecutionStage:
