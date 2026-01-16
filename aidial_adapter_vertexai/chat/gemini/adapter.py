@@ -265,20 +265,43 @@ class GeminiGenAIChatCompletionAdapter(
             if stage is not None:
                 stage.close()
 
-        def get_code_as_content(code: str, lang: GenAILanguage | None):
-            language = "py" if lang == GenAILanguage.PYTHON else ""
-            return f"```{language}\n{code}\n```\n"
+        def get_code_as_content(
+            code: str,
+            cur_lang: GenAILanguage | None,
+            prev_lang: GenAILanguage | None,
+            first_code: bool,
+        ):
+            block = "\n```\n"
+
+            def to_code_block(lang: GenAILanguage | None):
+                lang_str = "py" if lang == GenAILanguage.PYTHON else ""
+                return f"\n```{lang_str}\n"
+
+            if first_code:
+                return f"{to_code_block(cur_lang)}{code}"
+            if cur_lang != prev_lang:
+                # block at the beginning to close prev code
+                return f"{block}{to_code_block(cur_lang)}{code}"
+            return code
 
         def finalize_code_execution_stage(
             stage: Stage | None, outputs: list[str]
         ):
-            if not stage or len(outputs) == 0:
+            if not stage:
                 return
-            content = f"Code output\n```\n{''.join(outputs)}\n```\n"
+            block = "\n```\n"
+            if len(outputs) == 0:
+                # close code
+                stage.append_content(block)
+                return
+            # block at the beginning to close prev code
+            content = f"{block}Code output{block}{''.join(outputs)}{block}"
             stage.append_content(content)
 
         thinking_stage: Stage | None = None
         code_execution_stage: Stage | None = None
+        prev_lang: GenAILanguage | None = None
+        first_code = True
         code_outputs: list[str] = []
         state = MessageState()
 
@@ -328,10 +351,13 @@ class GeminiGenAIChatCompletionAdapter(
                             code_execution_stage = await open_stage(
                                 code_execution_stage, "Code execution"
                             )
+                            cur_lang = code.language
                             code_content = get_code_as_content(
-                                code.code, code.language
+                                code.code, cur_lang, prev_lang, first_code
                             )
                             code_execution_stage.append_content(code_content)
+                            prev_lang = cur_lang
+                            first_code = False
                             yield code.code
                         if (res := part.code_execution_result) and res.output:
                             code_execution_stage = await open_stage(
