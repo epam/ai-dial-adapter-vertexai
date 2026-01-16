@@ -69,11 +69,8 @@ class CodeExecutionStage:
         # close the code
         content = f"\n{ticks}"
         if len(self._outputs):
-            content += (
-                "\nCode output"
-                f"{ticks}\n"
-                f"{''.join(self._outputs)}"
-                f"{ticks}"
+            content += "\n" + "\n".join(
+                ["Code output", ticks, "".join(self._outputs), ticks]
             )
         await self._stage.append_content(content)
         self._stage.close()
