@@ -7,80 +7,74 @@ from aidial_adapter_vertexai.chat.consumer import Consumer
 
 
 class LazyStage:
-    consumer: Consumer
-    name: str
-    stage: Stage | None = None
+    _consumer: Consumer
+    _name: str
+    _stage: Stage | None = None
 
     def __init__(self, consumer: Consumer, name: str):
-        self.consumer = consumer
-        self.name = name
+        self._consumer = consumer
+        self._name = name
 
     async def append_content(self, content: str):
-        if not self.stage:
-            self.stage = await self.consumer.create_stage(self.name)
-            self.stage.open()
-        self.stage.append_content(content)
+        if not self._stage:
+            self._stage = await self._consumer.create_stage(self._name)
+            self._stage.open()
+        self._stage.append_content(content)
 
-    def opened(self) -> bool:
-        return self.stage is not None
+    def __bool__(self):
+        return self._stage is not None
 
     def close(self):
-        if not self.stage:
+        if self._stage:
+            self._stage.close()
+            self._stage = None
             return
-        self.stage.close()
-        self.stage = None
 
 
 class CodeExecutionStage:
-    stage: LazyStage
-    prev_lang: GenAILanguage | None = None
-    first_code: bool = True
-    outputs: List[str] = []
+    _stage: LazyStage
+    _outputs: List[str]
+    _prev_lang: GenAILanguage | None = None
+    _first_code: bool = True
 
-    def __init__(self, consumer: Consumer):
-        self.stage = LazyStage(consumer, "Code execution")
+    def __init__(self, consumer: Consumer, name: str):
+        self._stage = LazyStage(consumer, name)
+        self._outputs = []
 
-    async def append_code(
-        self, code: str, cur_lang: GenAILanguage | None
-    ) -> None:
-        block = "\n```\n"
-
-        def to_code_block(lang: GenAILanguage | None):
-            lang_str = "py" if lang == GenAILanguage.PYTHON else ""
-            return f"\n```{lang_str}\n"
-
+    async def append_code(self, code: str, lang: GenAILanguage | None) -> None:
+        block = "```\n"
+        lang_str = "py" if lang == GenAILanguage.PYTHON else ""
+        lang_block = f"```{lang_str}\n"
         content = ""
-        if self.first_code:
-            content = f"{to_code_block(cur_lang)}{code}"
-        elif cur_lang != self.prev_lang:
+
+        if self._first_code:
+            content = f"{lang_block}{code}"
+        elif lang != self._prev_lang:
             # block at the beginning to close prev code
-            content = f"{block}{to_code_block(cur_lang)}{code}"
+            content = f"{block}{lang_block}{code}"
         else:
             content = code
 
-        await self.stage.append_content(content)
-        self.prev_lang = cur_lang
-        self.first_code = False
+        await self._stage.append_content(content)
+        self._prev_lang = lang
+        self._first_code = False
 
     async def append_code_output(self, code_output: str) -> None:
-        self.outputs.append(code_output)
+        self._outputs.append(code_output)
 
     async def close(self) -> None:
-        if not self.stage.opened():
+        if not self._stage:
             return
 
-        block = "\n```\n"
-        if len(self.outputs) == 0:
-            # close the code
-            await self.stage.append_content(block)
-        else:
-            content = (
-                # block at the beginning to close prev code
-                f"{block}"
-                f"Code output"
-                f"{block}"
-                f"{''.join(self.outputs)}"
-                f"{block}"
+        ticks = "```"
+        # close the code
+        content = f"\n{ticks}"
+        if len(self._outputs):
+            content += (
+                "\nCode output"
+                f"{ticks}\n"
+                f"{''.join(self._outputs)}"
+                f"{ticks}"
             )
-            await self.stage.append_content(content)
-        self.stage.close()
+        await self._stage.append_content(content)
+        self._stage.close()

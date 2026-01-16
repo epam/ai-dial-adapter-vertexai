@@ -257,7 +257,7 @@ class GeminiGenAIChatCompletionAdapter(
         generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
     ):
         thinking_stage = LazyStage(consumer, "Thinking")
-        code_execution_stage = CodeExecutionStage(consumer)
+        code_execution_stage = CodeExecutionStage(consumer, "Code execution")
         state = MessageState()
 
         usage_metadata = None
