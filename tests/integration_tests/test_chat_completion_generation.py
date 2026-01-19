@@ -51,6 +51,7 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_PRO_PREVIEW_03_25: _CENTRAL,
     D.GEMINI_3_PRO_PREVIEW: _GLOBAL,
+    D.GEMINI_3_FLASH_PREVIEW: _GLOBAL,
     D.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
@@ -101,6 +102,7 @@ def is_vision_model(deployment: D) -> bool:
         D.GEMINI_2_5_FLASH_IMAGE,
         D.GEMINI_2_5_PRO,
         D.GEMINI_3_PRO_PREVIEW,
+        D.GEMINI_3_FLASH_PREVIEW,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
         D.CLAUDE_3_5_SONNET_V2,
@@ -156,6 +158,7 @@ def supports_tools(deployment: D) -> bool:
         D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_3_PRO_PREVIEW,
+        D.GEMINI_3_FLASH_PREVIEW,
     ]
 
 
@@ -171,6 +174,7 @@ def supports_parallel_tool_calls(deployment: D) -> bool:
         D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_3_PRO_PREVIEW,
+        D.GEMINI_3_FLASH_PREVIEW,
     ]
 
 
@@ -199,11 +203,15 @@ def supports_thinking(deployment: D) -> bool:
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_3_PRO_PREVIEW,
+        D.GEMINI_3_FLASH_PREVIEW,
     )
 
 
 def supports_thinking_level(deployment: D) -> bool:
-    return deployment in (D.GEMINI_3_PRO_PREVIEW,)
+    return deployment in (
+        D.GEMINI_3_PRO_PREVIEW,
+        D.GEMINI_3_FLASH_PREVIEW,
+    )
 
 
 def is_gemini(deployment: D) -> bool:
@@ -621,6 +629,7 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
         D.GEMINI_2_5_PRO,
         D.GEMINI_2_5_FLASH,
         D.GEMINI_3_PRO_PREVIEW,
+        D.GEMINI_3_FLASH_PREVIEW,
     ):
         async with expected_exception(
             [
