@@ -190,6 +190,10 @@ def supports_grounding(deployment: D) -> bool:
     return is_gemini(deployment) and not is_gemini_image(deployment)
 
 
+def supports_code_generating(deployment: D) -> bool:
+    return deployment in (D.GEMINI_2_5_FLASH,)
+
+
 def supports_thinking(deployment: D) -> bool:
     return deployment in (
         D.GEMINI_2_5_PRO,
@@ -959,17 +963,46 @@ async def test_static_google_search(deployment: D, chat: Chat):
     response = await chat(
         messages=[user("Who won the Wimbledon in 2024?")],
         static_tools=StaticToolsConfig(
-            functions=[
-                StaticFunction(
-                    name="google_search",
-                    description="Search the web",
-                    configuration={},
-                ),
-            ]
+            functions=[StaticFunction(name="google_search")]
         ),
     )
 
     _check_response_with_grounding(deployment, response, "carlos alcaraz")
+
+
+def _check_code_execution(
+    response: ChatCompletionResult, expected_content: str
+):
+    assert response.stages is not None, "Stages are missing"
+    assert len(response.stages) == 1
+    assert isinstance(response.stages[0].content, str)
+    assert response.stages[0].name == "Code execution"
+    assert expected_content.lower() in response.content.lower()
+    assert response.usage is not None, "Usage is missing"
+
+
+@pytest.mark.parametrize(
+    "deployment_spec",
+    select(pred(supports_code_generating), deployments),
+    ids=display_deployment,
+)
+async def test_static_code_execution(chat: Chat):
+    response = await chat(
+        messages=[
+            user(
+                (
+                    "What is the sum of the first 10 prime numbers?"
+                    "Generate and run code for the calculation."
+                    "Make sure you get all 10."
+                )
+            )
+        ],
+        static_tools=StaticToolsConfig(
+            functions=[StaticFunction(name="code_execution")]
+        ),
+    )
+
+    _check_code_execution(response, "129")
 
 
 @pytest.mark.parametrize(

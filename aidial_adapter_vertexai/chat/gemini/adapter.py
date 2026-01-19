@@ -1,7 +1,7 @@
 from logging import DEBUG
 from typing import AsyncIterator, Callable, List, Type
 
-from aidial_sdk.chat_completion import FinishReason, Message, Stage
+from aidial_sdk.chat_completion import FinishReason, Message
 from aidial_sdk.exceptions import RuntimeServerError
 from google.genai.client import Client as GenAIClient
 from google.genai.types import CountTokensConfigDict as GenAICountTokensConfig
@@ -38,6 +38,10 @@ from aidial_adapter_vertexai.chat.gemini.output import (
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
+from aidial_adapter_vertexai.chat.gemini.stage import (
+    CodeExecutionStage,
+    LazyStage,
+)
 from aidial_adapter_vertexai.chat.gemini.state import MessageState
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -252,7 +256,8 @@ class GeminiGenAIChatCompletionAdapter(
         tools: ToolsConfig,
         generator: Callable[[], AsyncIterator[GenAIGenerateContentResponse]],
     ):
-        thinking_stage: Stage | None = None
+        thinking_stage = LazyStage(consumer, "Thinking")
+        code_execution_stage = CodeExecutionStage(consumer, "Code execution")
         state = MessageState()
 
         usage_metadata = None
@@ -289,16 +294,21 @@ class GeminiGenAIChatCompletionAdapter(
 
                         if text := part.text:
                             if part.thought:
-                                if thinking_stage is None:
-                                    thinking_stage = (
-                                        await consumer.create_stage("Thinking")
-                                    )
-                                    thinking_stage.open()
-                                thinking_stage.append_content(text)
+                                await thinking_stage.append_content(text)
                             else:
                                 await consumer.append_content(text)
 
                             yield text
+                        if (code := part.executable_code) and code.code:
+                            await code_execution_stage.append_code(
+                                code.code, code.language
+                            )
+                            yield code.code
+                        if (res := part.code_execution_result) and res.output:
+                            await code_execution_stage.append_code_output(
+                                res.output
+                            )
+                            yield res.output
 
                         await create_image_attachment(
                             consumer, self.file_storage, part
@@ -316,8 +326,8 @@ class GeminiGenAIChatCompletionAdapter(
                 ):
                     await consumer.set_finish_reason(openai_reason)
         finally:
-            if thinking_stage:
-                thinking_stage.close()
+            thinking_stage.close()
+            await code_execution_stage.close()
 
             # It's possible that max tokens will be reached during the thinking stage
             # and there will be no content in response.
