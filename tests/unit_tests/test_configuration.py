@@ -31,6 +31,7 @@ _gemini_deployments_with_thinking: Mapping[D, str] = {
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _CENTRAL,
     D.GEMINI_3_PRO_PREVIEW: _GLOBAL,
+    D.GEMINI_3_FLASH_PREVIEW: _GLOBAL,
 }
 
 _gemini_deployments_with_imagen: Mapping[D, str] = {
