@@ -2,7 +2,7 @@ from typing import Generic, List, Self, Set, TypeVar
 
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
@@ -17,15 +17,14 @@ MessageT = TypeVar("MessageT")
 class GeminiBasePrompt(
     BaseModel, TruncatablePrompt, Generic[SystemT, MessageT]
 ):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     conversation: BaseConversation[SystemT, MessageT]
 
     tools: ToolsConfig = Field(default_factory=ToolsConfig.noop)
     static_tools: StaticToolsConfig = Field(
         default_factory=StaticToolsConfig.noop
     )
-
-    class Config:
-        arbitrary_types_allowed = True
 
     @property
     def system(self) -> SystemT | None:

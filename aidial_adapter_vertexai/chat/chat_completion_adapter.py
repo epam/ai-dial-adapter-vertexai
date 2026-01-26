@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, List, Type, TypeVar
 
 from aidial_sdk.chat_completion import Message
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError

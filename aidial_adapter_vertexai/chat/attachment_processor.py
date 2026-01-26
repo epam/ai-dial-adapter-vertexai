@@ -22,7 +22,7 @@ from aidial_sdk.chat_completion import (
 )
 from aidial_sdk.chat_completion import Role as DialRole
 from aidial_sdk.chat_completion.request import MessageContentRefusalPart
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
 
 from aidial_adapter_vertexai.chat.conversation.factory import (
     ConversationFactoryBase,
@@ -116,14 +116,13 @@ PartT = TypeVar("PartT")
 
 
 class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
-    class Config:
-        arbitrary_types_allowed = True  # for errors
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     processors: List[AttachmentProcessor]
     file_storage: FileStorage | None
     conversation_factory: ConversationFactoryBase[PartT, Any, Any]
 
-    errors: Set[ProcessingError] = Field(default_factory=set)
+    errors: Set[ProcessingError] = set()
 
     def get_error_message(self) -> str | None:
         error_list = sorted(list(self.errors))

@@ -12,7 +12,7 @@ from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
 )
 from google.genai.types import ImageConfigDict, ThinkingConfigDict
-from pydantic.v1 import Field
+from pydantic import Field
 from typing_extensions import override
 
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (

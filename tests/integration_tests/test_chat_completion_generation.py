@@ -732,7 +732,7 @@ async def test_tool_call_and_response(deployment: D, chat: Chat):
     response_message = response.response.choices[0].message.to_dict()
 
     if deployment == D.GEMINI_3_PRO_PREVIEW:
-        dial_message = DialMessage.parse_obj(response_message)
+        dial_message = DialMessage.model_validate(response_message)
         state = _parse_message_content_from_state(0, dial_message)
         assert state is not None, "state is missing"
         content = state.gemini_message_content

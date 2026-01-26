@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, List, TypeVar
 
 from aidial_sdk.chat_completion import Message as DialMessage
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
 from aidial_adapter_vertexai.dial_api.resource import DialResource

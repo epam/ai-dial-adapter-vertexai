@@ -65,7 +65,7 @@ from anthropic.types.beta import (
 from anthropic.types.beta.parsed_beta_message import (
     ParsedBetaTextBlock as ParsedTextBlock,
 )
-from pydantic.v1 import Field
+from pydantic import Field
 from typing_extensions import override
 
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (

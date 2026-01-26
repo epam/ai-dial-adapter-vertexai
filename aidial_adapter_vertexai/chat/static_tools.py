@@ -9,7 +9,7 @@ from aidial_sdk.chat_completion.request import (
 from google.genai.types import GoogleSearchDict as GenAIGoogleSearch
 from google.genai.types import ToolCodeExecutionDict as GenAICodeExecution
 from google.genai.types import ToolDict as GenAITool
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 

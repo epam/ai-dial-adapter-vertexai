@@ -24,8 +24,8 @@ from aidial_sdk.chat_completion.request import (
     ReasoningEffort,
 )
 from aidial_sdk.exceptions import RequestValidationError
-from pydantic.v1 import BaseModel
-from pydantic.v1 import ValidationError as PydanticValidationError
+from pydantic import BaseModel
+from pydantic import ValidationError as PydanticValidationError
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 
@@ -77,7 +77,7 @@ class ModelParameters(BaseModel):
 
     def parse_configuration(self, cls: Type[_Model]) -> _Model:
         try:
-            return cls.parse_obj(self.configuration or {})
+            return cls.model_validate(self.configuration or {})
         except PydanticValidationError as e:
             if self.configuration is None:
                 msg = "The configuration at path 'custom_fields.configuration' is missing."

@@ -63,8 +63,12 @@ class _AzureFoundryUpstreamConfig(BaseModel):
     def from_request(
         cls, request: FromRequestDeploymentMixin
     ) -> _AzureFoundryUpstreamConfig | None:
-        api_key = request.headers.get(_UPSTREAM_API_KEY_HEADER_NAME)
-        endpoint = request.headers.get(_UPSTREAM_ENDPOINT_HEADER_NAME)
+        api_key = request.original_request.headers.get(
+            _UPSTREAM_API_KEY_HEADER_NAME
+        )
+        endpoint = request.original_request.headers.get(
+            _UPSTREAM_ENDPOINT_HEADER_NAME
+        )
         if (
             endpoint is None
             or (m := re.match(r"(.*/anthropic)/v1/messages", endpoint)) is None
@@ -91,7 +95,9 @@ class _ApiKeyUpstreamConfig(BaseModel):
     def from_request(
         cls, request: FromRequestDeploymentMixin
     ) -> _ApiKeyUpstreamConfig | None:
-        key = request.headers.get(_UPSTREAM_API_KEY_HEADER_NAME)
+        key = request.original_request.headers.get(
+            _UPSTREAM_API_KEY_HEADER_NAME
+        )
         return None if key is None else cls(api_key=key)
 
     async def get_genai_client(self) -> GenAIClient:
@@ -109,7 +115,9 @@ class _CloudUpstreamConfig(BaseModel):
     def from_request(
         cls, request: FromRequestDeploymentMixin
     ) -> UpstreamConfig:
-        conf = request.headers.get(_UPSTREAM_CONFIG_HEADER_NAME)
+        conf = request.original_request.headers.get(
+            _UPSTREAM_CONFIG_HEADER_NAME
+        )
         try:
             conf = json.loads(conf or "{}")
         except Exception:
@@ -151,7 +159,11 @@ class CompatibleModelUpstreamConfig(BaseModel):
 
 
 def get_compatible_model_id(request: FromRequestDeploymentMixin) -> str | None:
-    if (extra := request.headers.get(_UPSTREAM_CONFIG_HEADER_NAME)) is None:
+    if (
+        extra := request.original_request.headers.get(
+            _UPSTREAM_CONFIG_HEADER_NAME
+        )
+    ) is None:
         return None
 
     try:

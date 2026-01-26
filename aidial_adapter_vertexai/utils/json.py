@@ -11,7 +11,7 @@ from typing import Any
 
 import proto
 from pydantic import BaseModel
-from pydantic.v1 import BaseModel as BaseModelV1
+from pydantic import BaseModel as BaseModelV1
 
 from aidial_adapter_vertexai.utils.decorator import fail_safe
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
