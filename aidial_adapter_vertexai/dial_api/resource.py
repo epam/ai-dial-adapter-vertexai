@@ -85,9 +85,9 @@ class URLResource(DialResource):
         return Attachment(type=self.content_type, url=self.url)
 
     @model_validator(mode="after")
-    def default_entity_name(cls, values):
-        values["entity_name"] = values.get("entity_name") or "URL"
-        return values
+    def default_entity_name(self):
+        self.entity_name = self.entity_name or "URL"
+        return self
 
     async def download(self, storage: FileStorage | None) -> Resource:
         type = await self.get_content_type()
@@ -141,10 +141,10 @@ class AttachmentResource(DialResource):
             return attachment
         return value
 
-    @model_validator(mode="before")
-    def default_entity_name(cls, values):
-        values["entity_name"] = values.get("entity_name") or "attachment"
-        return values
+    @model_validator(mode="after")
+    def default_entity_name(self):
+        self.entity_name = self.entity_name or "attachment"
+        return self
 
     async def download(self, storage: FileStorage | None) -> Resource:
         type = await self.get_content_type()
