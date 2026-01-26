@@ -23,7 +23,9 @@ Repository = "https://github.com/epam/ai-dial-adapter-vertexai/"
 package-mode = false
 
 [tool.poetry.dependencies]
-aidial-sdk = { version = "0.29.0", extras = ["telemetry"] }
+# FIXME: revert
+# aidial-sdk = { version = "0.33.0", extras = ["telemetry"] }
+aidial-sdk = { git = "https://github.com/epam/ai-dial-sdk.git", branch = "fix/fix-embedding-request-parsing-by-pyd2" }
 fastapi = "0.120.2"
 google-cloud-aiplatform = "1.70.0"
 google-auth = "2.40.3"
