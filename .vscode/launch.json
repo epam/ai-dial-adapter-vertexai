@@ -1,0 +1,46 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "make serve",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "aidial_adapter_vertexai.app:app",
+        "--reload",
+        "--host", "0.0.0.0",
+        "--port", "5006",
+        "--workers", "1",
+        "--env-file", "./.env"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "make test",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "-k", "test_dial_cache[gemini_3_flash_preview/block/caching/big_content/no_usage]", "-n0", "-vv", "--capture=no"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "purpose": ["debug-test"]
+    }
+  ]
+}

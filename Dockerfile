@@ -33,6 +33,8 @@ COPY ./scripts/docker_entrypoint.sh /docker_entrypoint.sh
 RUN chmod +x /docker_entrypoint.sh
 
 ENV LOG_LEVEL=INFO
+ENV PYDANTIC_V2=1
+
 EXPOSE 5000
 
 USER appuser
