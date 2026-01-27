@@ -2879,14 +2879,14 @@ tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
 
 [[package]]
 name = "pypdf"
-version = "6.6.0"
+version = "6.6.2"
 description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "pypdf-6.6.0-py3-none-any.whl", hash = "sha256:bca9091ef6de36c7b1a81e09327c554b7ce51e88dad68f5890c2b4a4417f1fd7"},
-    {file = "pypdf-6.6.0.tar.gz", hash = "sha256:4c887ef2ea38d86faded61141995a3c7d068c9d6ae8477be7ae5de8a8e16592f"},
+    {file = "pypdf-6.6.2-py3-none-any.whl", hash = "sha256:44c0c9811cfb3b83b28f1c3d054531d5b8b81abaedee0d8cb403650d023832ba"},
+    {file = "pypdf-6.6.2.tar.gz", hash = "sha256:0a3ea3b3303982333404e22d8f75d7b3144f9cf4b2970b96856391a516f9f016"},
 ]
 
 [package.dependencies]
@@ -3699,4 +3699,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "b1b78a9a2982feed7874eabb663c5dfe9039c6c5fe16662605269ce4271f46f2"
+content-hash = "4046d2de676886e5ea6034cc84f204f6be090639017868562f69033d17c3f3f1"
