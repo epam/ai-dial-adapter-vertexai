@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "aidial-adapter-vertexai"
-version = "0.32.0rc"
+version = "0.33.0rc"
 description = "DIAL adapter for Google Vertex AI"
 authors = [{ name = "EPAM RAIL", email = "SpecialEPM-DIALDevTeam@epam.com" }]
 license = "Apache-2.0"
@@ -74,6 +74,7 @@ filterwarnings = [
   "error",
   # Warning from aiohttp
   "ignore:Sending a large body directly with raw bytes might lock the event loop. You should probably pass an io.BytesIO object instead:ResourceWarning",
+  "ignore:pkg_resources is deprecated as an API:UserWarning",
   # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
   "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
   "ignore::DeprecationWarning:google.rpc",
