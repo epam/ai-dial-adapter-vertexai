@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings.request import EmbeddingsRequest
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 from vertexai.language_models import TextEmbeddingInput
 
 from aidial_adapter_vertexai.chat.errors import ValidationError

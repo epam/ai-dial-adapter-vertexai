@@ -82,7 +82,7 @@ class VertexAIChatCompletion(ChatCompletion):
             or (cls := await model.configuration()) is None
         ):
             raise ResourceNotFoundError("The endpoint is not implemented")
-        return cls.schema()
+        return cls.model_json_schema()
 
     @dial_exception_decorator
     async def chat_completion(self, request: Request, response: Response):
@@ -129,7 +129,7 @@ class VertexAIChatCompletion(ChatCompletion):
             await set_response_headers_for_caching(
                 response,
                 deployment=deployment.reference_deployment_id,
-                request_headers=request.headers,
+                request_headers=request.original_request.headers,
                 request_body=await request.original_request.json(),
                 get_request_tokens=_get_request_tokens,
             )

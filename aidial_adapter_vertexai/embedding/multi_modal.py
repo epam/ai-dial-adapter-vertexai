@@ -5,7 +5,7 @@ from typing import AsyncIterator, Callable, List, Tuple
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings.request import EmbeddingsRequest
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel, ConfigDict
 from vertexai.vision_models import (
     Image,
     MultiModalEmbeddingModel,
@@ -38,8 +38,7 @@ SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png"]
 
 
 class ModelRequest(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     image: Image | None = None
     contextual_text: str | None = None

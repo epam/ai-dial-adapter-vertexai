@@ -5,7 +5,7 @@ from google.genai.types import (
     VideoGenerationMaskDict,
     VideoGenerationReferenceImageDict,
 )
-from pydantic.v1 import Field
+from pydantic import Field
 
 from aidial_adapter_vertexai.utils.pydantic import ExtraAllowModel
 

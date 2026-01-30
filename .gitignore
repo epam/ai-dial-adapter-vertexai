@@ -6,7 +6,6 @@ __pycache__
 secret
 .nox
 dist
-.vscode/launch.json
 ~*
 *.html
 .idea

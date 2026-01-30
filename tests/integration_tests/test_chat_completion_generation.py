@@ -732,7 +732,7 @@ async def test_tool_call_and_response(deployment: D, chat: Chat):
     response_message = response.response.choices[0].message.to_dict()
 
     if deployment == D.GEMINI_3_PRO_PREVIEW:
-        dial_message = DialMessage.parse_obj(response_message)
+        dial_message = DialMessage.model_validate(response_message)
         state = _parse_message_content_from_state(0, dial_message)
         assert state is not None, "state is missing"
         content = state.gemini_message_content
@@ -1033,7 +1033,7 @@ async def test_reject_extra_top_level_fields(chat: Chat):
     async with expected_exception(
         cls=openai.BadRequestError,
         status_code=400,
-        message="Your request contained invalid structure on path extra-top-field. extra fields not permitted",
+        message="Your request contained invalid structure on path extra-top-field. Extra inputs are not permitted",
     ):
         await chat(
             messages=[{"role": "user", "content": "2+2=?"}],
@@ -1049,7 +1049,7 @@ async def test_reject_extra_message_fields(chat: Chat):
     async with expected_exception(
         cls=openai.BadRequestError,
         status_code=400,
-        message="Your request contained invalid structure on path messages.0.extra-message-field. extra fields not permitted",
+        message="Your request contained invalid structure on path messages.0.extra-message-field. Extra inputs are not permitted",
     ):
         extra_message = {"extra-message-field": "extra-message-value"}
         messages = [{"role": "user", "content": "2+2=?", **extra_message}]

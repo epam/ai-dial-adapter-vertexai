@@ -38,7 +38,7 @@ from google.genai.types import (
 )
 from google.genai.types import ToolConfigDict as GenAIToolConfig
 from google.genai.types import ToolDict as GenAITool
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.utils.log_config import app_logger as log

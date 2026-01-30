@@ -2,14 +2,14 @@
 
 [[package]]
 name = "aidial-sdk"
-version = "0.29.0"
+version = "0.32.0"
 description = "Framework to create applications and model adapters for AI DIAL"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "aidial_sdk-0.29.0-py3-none-any.whl", hash = "sha256:e2387ff47bdce3a3d20cd4e7cf84d30f80be1dfc2b3c13d5e4ed4e7e02754364"},
-    {file = "aidial_sdk-0.29.0.tar.gz", hash = "sha256:ae4eb518a05ffc03c43be55a203c1f7d6069ff2eb6580bc4bcd60e761c79be4c"},
+    {file = "aidial_sdk-0.32.0-py3-none-any.whl", hash = "sha256:6d6cee07ea4a932a27e0f0fdf69cef5ecd34569fb492c18392c6277c75d7a548"},
+    {file = "aidial_sdk-0.32.0.tar.gz", hash = "sha256:ea952aab6722d4524783d10e5d7379833f8b1f1f2f6c28bfd53375fa746b5764"},
 ]
 
 [package.dependencies]
@@ -25,14 +25,14 @@ opentelemetry-instrumentation-requests = {version = ">=0.43b0", optional = true,
 opentelemetry-instrumentation-system-metrics = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-instrumentation-urllib = {version = ">=0.43b0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-sdk = {version = ">=1.22.0,<2.0", optional = true, markers = "extra == \"telemetry\""}
-prometheus-client = {version = ">=0.17.1,<=0.21", optional = true, markers = "extra == \"telemetry\""}
+prometheus-client = {version = ">=0.17.1,<1.0", optional = true, markers = "extra == \"telemetry\""}
 pydantic = ">=1.10.17,<3"
 uvicorn = ">=0.19,<1.0"
 wrapt = ">=1.10,<2"
 
 [package.extras]
-httpx = ["httpx (>=0.25.0,<1)"]
-telemetry = ["opentelemetry-api (>=1.22.0,<2.0)", "opentelemetry-exporter-otlp-proto-grpc (>=1.22.0,<2.0)", "opentelemetry-exporter-prometheus (>=0.43b0)", "opentelemetry-instrumentation-aiohttp-client (>=0.43b0)", "opentelemetry-instrumentation-fastapi (>=0.43b0)", "opentelemetry-instrumentation-httpx (>=0.43b0)", "opentelemetry-instrumentation-logging (>=0.43b0)", "opentelemetry-instrumentation-requests (>=0.43b0)", "opentelemetry-instrumentation-system-metrics (>=0.43b0)", "opentelemetry-instrumentation-urllib (>=0.43b0)", "opentelemetry-sdk (>=1.22.0,<2.0)", "prometheus-client (>=0.17.1,<=0.21)"]
+httpx = ["httpx (>=0.25.0,<1.0)"]
+telemetry = ["opentelemetry-api (>=1.22.0,<2.0)", "opentelemetry-exporter-otlp-proto-grpc (>=1.22.0,<2.0)", "opentelemetry-exporter-prometheus (>=0.43b0)", "opentelemetry-instrumentation-aiohttp-client (>=0.43b0)", "opentelemetry-instrumentation-fastapi (>=0.43b0)", "opentelemetry-instrumentation-httpx (>=0.43b0)", "opentelemetry-instrumentation-logging (>=0.43b0)", "opentelemetry-instrumentation-requests (>=0.43b0)", "opentelemetry-instrumentation-system-metrics (>=0.43b0)", "opentelemetry-instrumentation-urllib (>=0.43b0)", "opentelemetry-sdk (>=1.22.0,<2.0)", "prometheus-client (>=0.17.1,<1.0)"]
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -2923,14 +2923,14 @@ nodejs = ["nodejs-wheel-binaries"]
 
 [[package]]
 name = "pytest"
-version = "7.4.0"
+version = "7.4.3"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.7"
 groups = ["test"]
 files = [
-    {file = "pytest-7.4.0-py3-none-any.whl", hash = "sha256:78bf16451a2eb8c7a2ea98e32dc119fd2aa758f1d5d66dbf0a59d69a3969df32"},
-    {file = "pytest-7.4.0.tar.gz", hash = "sha256:b4bf8c45bd59934ed84001ad51e11b4ee40d40a1229d2c79f9c592b0a3f6bd8a"},
+    {file = "pytest-7.4.3-py3-none-any.whl", hash = "sha256:0d009c083ea859a71b76adf7c1d502e4bc170b80a8ef002da5806527b9591fac"},
+    {file = "pytest-7.4.3.tar.gz", hash = "sha256:d989d136982de4e3b29dabcc838ad581c64e8ed52c11fbe86ddebd9da0818cd5"},
 ]
 
 [package.dependencies]
@@ -2976,6 +2976,24 @@ files = [
 [package.dependencies]
 pytest = ">=5.0.0"
 python-dotenv = ">=0.9.1"
+
+[[package]]
+name = "pytest-env"
+version = "1.1.1"
+description = "pytest plugin that allows you to add environment variables."
+optional = false
+python-versions = ">=3.8"
+groups = ["test"]
+files = [
+    {file = "pytest_env-1.1.1-py3-none-any.whl", hash = "sha256:2b71b37c6810f28bec790a7b373c777af87352b3a359b3de0edb9d24df5cf8b3"},
+    {file = "pytest_env-1.1.1.tar.gz", hash = "sha256:1efb8acce1f6431196150f3b30673443ff05a6fabff64539a9495cd2248adf9e"},
+]
+
+[package.dependencies]
+pytest = ">=7.4.3"
+
+[package.extras]
+test = ["covdefaults (>=2.3)", "coverage (>=7.3.2)", "pytest-mock (>=3.12)"]
 
 [[package]]
 name = "pytest-html"
@@ -3699,4 +3717,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "4046d2de676886e5ea6034cc84f204f6be090639017868562f69033d17c3f3f1"
+content-hash = "380399d20e5d22bdc0bc6759faae8a014bc12d7cf22b36564575489033a33865"

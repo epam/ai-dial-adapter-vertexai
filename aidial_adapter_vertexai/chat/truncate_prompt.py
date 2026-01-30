@@ -17,7 +17,7 @@ from aidial_sdk.exceptions import (
     InvalidRequestError,
     TruncatePromptSystemAndLastUserError,
 )
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 DiscardedMessages = List[int]
 

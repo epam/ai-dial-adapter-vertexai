@@ -35,7 +35,7 @@ from openai.types.chat.chat_completion_message_tool_call_param import (
     Function as ToolFunction,
 )
 from openai.types.shared_params.function_definition import FunctionDefinition
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.utils.resource import Resource
@@ -150,8 +150,7 @@ def sanitize_test_name(name: str) -> str:
 
 
 class ChatCompletionResult(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     response: ChatCompletion
 
@@ -200,7 +199,7 @@ class ChatCompletionResult(BaseModel):
         if not hasattr(self.message, "custom_content"):
             return None
         return [
-            Attachment.parse_obj(attachment)
+            Attachment.model_validate(attachment)
             for attachment in self.message.custom_content.get(  # type: ignore
                 "attachments", []
             )
@@ -211,7 +210,7 @@ class ChatCompletionResult(BaseModel):
         if not hasattr(self.message, "custom_content"):
             return None
         return [
-            Stage.parse_obj(stage)
+            Stage.model_validate(stage)
             for stage in self.message.custom_content.get(  # type: ignore
                 "stages", []
             )
@@ -246,7 +245,7 @@ async def tokenize_request(
 
     resp.raise_for_status()
 
-    return TokenizeResponse.parse_obj(resp.json())
+    return TokenizeResponse.model_validate(resp.json())
 
 
 async def configuration(
@@ -293,7 +292,7 @@ async def chat_completion(
             StaticTool(
                 type="static_function",
                 static_function=function,
-            ).dict()
+            ).model_dump()
             for function in (static_tools.functions or [])
         ]
         if (static_tools := kwargs.get("static_tools"))

@@ -82,11 +82,11 @@ async def test_claude_supports_citations(
 _invalid_configuration_test_cases = [
     (
         {"enable_citations": "hello"},
-        "Invalid request. Path: 'custom_fields.configuration.enable_citations', error: value could not be parsed to a boolean",
+        "Invalid request. Path: 'custom_fields.configuration.enable_citations', error: Input should be a valid boolean, unable to interpret input",
     ),
     (
         {"extra_field": "extra value"},
-        "Invalid request. Path: 'custom_fields.configuration.extra_field', error: extra fields not permitted",
+        "Invalid request. Path: 'custom_fields.configuration.extra_field', error: Extra inputs are not permitted",
     ),
 ]
 

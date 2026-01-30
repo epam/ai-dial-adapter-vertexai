@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable, List, Mapping
 from unittest.mock import patch
 
+import openai
 import pytest
 from openai import AsyncAzureOpenAI, BadRequestError
 from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
@@ -12,6 +13,7 @@ from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.resource import Resource
 from tests.integration_tests.constants import DOG_PICTURE
+from tests.utils.exception import expected_exception
 from tests.utils.mock_storage import MockFileStorage
 from tests.utils.openai import chat_completion, user, user_with_image_url
 
@@ -45,6 +47,14 @@ _IMAGEN_MODELS: Mapping[D, str] = {
     D.IMAGEN_4_ULTRA_GENERATE: _CENTRAL,
 }
 
+_RETIRED_MODELS: Mapping[D, str] = {
+    D.IMAGEN_005: _CENTRAL,
+}
+
+_LIVE_IMAGEN_MODELS: Mapping[D, str] = {
+    k: v for k, v in _IMAGEN_MODELS.items() if k not in _RETIRED_MODELS
+}
+
 _GEMINI_IMAGE_MODELS: Mapping[D, str] = {
     D.GEMINI_2_0_FLASH_EXP: _GLOBAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
@@ -52,7 +62,7 @@ _GEMINI_IMAGE_MODELS: Mapping[D, str] = {
     D.GEMINI_3_PRO_IMAGE_PREVIEW: _GLOBAL,
 }
 
-_IMAGE_GENERATION_MODELS = _IMAGEN_MODELS | _GEMINI_IMAGE_MODELS
+_IMAGE_GENERATION_MODELS = _LIVE_IMAGEN_MODELS | _GEMINI_IMAGE_MODELS
 _IMAGE_TO_IMAGE_MODELS = _GEMINI_IMAGE_MODELS
 _VISION_MODEL = D.CLAUDE_3_7_SONNET
 
@@ -60,6 +70,23 @@ _VISION_MODEL = D.CLAUDE_3_7_SONNET
 @pytest.fixture
 def vision_model(get_openai_client: Callable[..., AsyncAzureOpenAI]):
     return get_openai_client(_VISION_MODEL.value, region=_EAST)
+
+
+@pytest.mark.parametrize("deployment, region", _RETIRED_MODELS.items())
+async def test_retired_models(
+    get_openai_client: Callable[..., AsyncAzureOpenAI],
+    deployment: D,
+    region: str,
+):
+    async with expected_exception(
+        cls=openai.NotFoundError,
+        status_code=404,
+        message="reached its end of life",
+    ):
+        client = get_openai_client(deployment.value, region=region)
+        await client.chat.completions.create(
+            model=deployment.value, messages=[user("test")]
+        )
 
 
 @pytest.mark.parametrize("deployment, region", _IMAGE_GENERATION_MODELS.items())
@@ -219,7 +246,7 @@ DO NOT GENERATE IMAGES.
 
 
 @pytest.mark.parametrize("stream", [False, True])
-@pytest.mark.parametrize("deployment, region", _IMAGEN_MODELS.items())
+@pytest.mark.parametrize("deployment, region", _LIVE_IMAGEN_MODELS.items())
 async def test_content_filtering_imagen(
     get_openai_client: Callable[..., AsyncAzureOpenAI],
     deployment: D,
