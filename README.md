@@ -394,7 +394,7 @@ E.g. the following configuration enables `gemini-2.0-flash-006` model _(a hypoth
 ```json
 {
   "models": {
-    "dial-deployment-id-for-claude-3-5": {
+    "dial-deployment-id-for-gemini-2": {
       "type": "chat",
       "endpoint": "${ADAPTER_ORIGIN}/deployments/gemini-2.0-flash-006/chat/completions",
       "upstreams": [
