@@ -139,12 +139,11 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
         completion = " "
         await consumer.append_content(completion)
 
+        completion_tokens = configuration.duration_seconds or 8
         await consumer.set_usage(
             TokenUsage(
                 prompt_tokens=await self.count_prompt_tokens(prompt),
-                completion_tokens=await self.count_completion_tokens(
-                    completion
-                ),
+                completion_tokens=completion_tokens,
             )
         )
 
