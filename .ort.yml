@@ -25,27 +25,33 @@ resolutions:
     - message: ".*PyPI::httpx:0\\.25\\.2.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/encode/httpx/blob/0.25.2/LICENSE.md'
-    - message: ".*PyPI::pypdf:4\\.3\\.1.*"
-      reason: 'CANT_FIX_EXCEPTION'
-      comment: 'BSD-3-Clause License: https://github.com/py-pdf/pypdf/issues/496'
     - message: ".*PyPI::numpy:2\\.0\\.0.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: 'BSD License: https://github.com/numpy/numpy/blob/v2.0.0/LICENSE.txt'
     - message: ".*PyPI::setuptools:78\\.1\\.1.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: 'MIT License: https://github.com/pypa/setuptools/blob/v78.1.1/LICENSE'
-    - message: ".*PyPI::urllib3:2\\.5\\.0.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: 'MIT License: https://github.com/urllib3/urllib3/blob/2.5.0/LICENSE.txt'
-    - message: ".*PyPI::pillow.*"
+    - message: ".*PyPI::pillow:.*"
       reason: "CANT_FIX_EXCEPTION"
       comment: "ORT cannot pick up license information"
     - message: ".*PyPI::opentelemetry.*"
       reason: "CANT_FIX_EXCEPTION"
       comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::google-genai.*"
+    - message: ".*PyPI::google-genai:.*"
       reason: "CANT_FIX_EXCEPTION"
       comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::azure-identity.*"
+    - message: ".*PyPI::azure-identity:.*"
+      reason: "CANT_FIX_EXCEPTION"
+      comment: "ORT cannot pick up license information"
+    - message: ".*PyPI::pypdf:.*"
+      reason: 'CANT_FIX_EXCEPTION'
+      comment: "ORT cannot pick up license information"
+    - message: ".*PyPI:::starlette:.*"
+      reason: 'CANT_FIX_EXCEPTION'
+      comment: "ORT cannot pick up license information"
+    - message: ".*PyPI::urllib3:.*"
+      reason: "CANT_FIX_EXCEPTION"
+      comment: "ORT cannot pick up license information"
+    - message: ".*PyPI::fastapi:.*"
       reason: "CANT_FIX_EXCEPTION"
       comment: "ORT cannot pick up license information"
