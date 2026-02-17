@@ -46,7 +46,7 @@ resolutions:
     - message: ".*PyPI::pypdf:.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: "ORT cannot pick up license information"
-    - message: ".*PyPI:::starlette:.*"
+    - message: ".*PyPI::starlette:.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: "ORT cannot pick up license information"
     - message: ".*PyPI::urllib3:.*"
