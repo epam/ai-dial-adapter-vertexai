@@ -54,6 +54,8 @@ async def test_text_to_video(
         extra_body={"custom_fields": {"configuration": configuration}},
     )
 
+    assert video_response.usage is not None
+    assert video_response.usage.completion_tokens == 4
     video_bytes = await _extract_video_bytes(mock_storage, video_response)
     assert video_bytes is not None
 
