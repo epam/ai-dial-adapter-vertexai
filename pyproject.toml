@@ -25,9 +25,9 @@ package-mode = false
 [tool.poetry.dependencies]
 aidial-sdk = { version = "0.32.0", extras = ["telemetry"] }
 fastapi = "0.120.2"
-google-cloud-aiplatform = "1.89.0"
-google-auth = "2.40.3"
-google-genai = "1.52.0"
+google-cloud-aiplatform = "1.138.0"
+google-auth = "2.48.0"
+google-genai = "1.64.0"
 openai = "1.107.3"
 anthropic = { version = "0.75.0", extras = ["vertex"] }
 pydantic = "2.10.4"
