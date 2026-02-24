@@ -93,7 +93,7 @@ def is_retired_model(deployment: D) -> bool:
     # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     # Find the list of retired models at
     # https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions#retired-models
-    return deployment in {D.GEMINI_2_5_PRO_PREVIEW_03_25}
+    return deployment in {D.GEMINI_2_5_PRO_PREVIEW_03_25, D.GEMINI_3_PRO}
 
 
 def is_vision_model(deployment: D) -> bool:
