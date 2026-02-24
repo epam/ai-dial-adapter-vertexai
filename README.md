@@ -72,7 +72,8 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 
 |Model|Model ID|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
-|Gemini 3 Pro|gemini-3-pro-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|Gemini 3.1 Pro|gemini-3.1-pro-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|Gemini 3 Pro|gemini-3-pro[-preview]|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 3 Flash|gemini-3-flash-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |Gemini 3 Pro Image|gemini-3-pro-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
 |Gemini 2.5 Flash|gemini-2.5-flash|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
