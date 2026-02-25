@@ -388,6 +388,8 @@ There are two way to enable compatibility mode in the adapter.
 
 ### Compatibility configuration in DIAL Core config
 
+**Since:** 0.32.0
+
 It's possible to define compatible model on per-upstream basis in the DIAL Core configuration.
 
 E.g. the following configuration enables `gemini-2.0-flash-006` model _(a hypothetical model that isn't supported by the Adapter natively)_ via `gemini-2.0-flash-001` model _(that is supported by the Adapter natively)_:
@@ -427,9 +429,6 @@ Note that setting `compatible_model_id=imagen-4.0-generate-001` will be ineffect
 
 ### Compatibility configuration in Adapter
 
-> [!IMPORTANT]
-> Model compatibility configuration via `COMPATIBILITY_MAPPING` env variable has been deprecated in favour of [configuration on the DIAL Core side](#compatibility-configuration-in-dial-core-config) in DIAL Core config.
-
 `COMPATIBILITY_MAPPING` env variable enables compatibility mode on the adapter level.
 It hold a mapping from unsupported deployment ids to supported deployment ids.
 
@@ -438,6 +437,10 @@ E.g. the following mapping enables `gemini-2.0-flash-006` via `gemini-2.0-flash-
 ```ini
 COMPATIBILITY_MAPPING={"gemini-2.0-flash-006": "gemini-2.0-flash-001"}
 ```
+
+> [!IMPORTANT]
+> Model compatibility configuration using the `COMPATIBILITY_MAPPING` environment variable has been **deprecated since 0.32.0** in favor of [configuration in DIAL Core](#compatibility-configuration-in-dial-core-config).
+> While still supported for now, its use is discouraged and it may be removed in a future release.
 
 ## Load balancing
 
