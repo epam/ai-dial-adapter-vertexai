@@ -33,7 +33,7 @@ anthropic = { version = "0.75.0", extras = ["vertex"] }
 pydantic = "2.10.4"
 uvicorn = "0.22.0"
 pillow = "12.1.1"
-pypdf = { version = "6.7.2", extras = ["crypto"] }
+pypdf = { version = "6.7.4", extras = ["crypto"] }
 numpy = "2.0.0"
 aiohttp = "3.13.3"
 urllib3 = "2.6.3"
