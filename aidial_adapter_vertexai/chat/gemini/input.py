@@ -15,9 +15,13 @@ def to_genai_thinking_level(
     match reasoning_effort:
         case None | ReasoningEffort.NONE:
             return None
-        case ReasoningEffort.MINIMAL | ReasoningEffort.LOW:
+        case ReasoningEffort.MINIMAL:
+            return ThinkingLevel.MINIMAL
+        case ReasoningEffort.LOW:
             return ThinkingLevel.LOW
-        case ReasoningEffort.MEDIUM | ReasoningEffort.HIGH:
+        case ReasoningEffort.MEDIUM:
+            return ThinkingLevel.MEDIUM
+        case ReasoningEffort.HIGH:
             return ThinkingLevel.HIGH
         case _:
             assert_never(reasoning_effort)
