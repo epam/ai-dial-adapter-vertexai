@@ -123,6 +123,18 @@ _invalid_veo_configuration_test_cases = [
 ]
 
 
+_invalid_gemini_configuration_test_cases = [
+    ConfTestCase(
+        {"thinking": {"budget_tokens": 1024}},
+        ExpectedException(
+            status_code=400,
+            type=openai.APIStatusError,
+            message="1 validation error for GenerateContentConfig.+thinking_config.budget_tokens.+Extra inputs are not permitted",
+        ),
+    ),
+]
+
+
 @pytest.mark.parametrize("test", _invalid_claude_configuration_test_cases)
 @pytest.mark.parametrize("deployment", _claude_deployments)
 @pytest.mark.parametrize("stream", [False, True])
@@ -136,6 +148,15 @@ async def test_claude_invalid_configuration(
 @pytest.mark.parametrize("deployment", _veo_deployments)
 @pytest.mark.parametrize("stream", [False, True])
 async def test_veo_invalid_configuration(
+    get_openai_client, deployment: D, stream: bool, test: ConfTestCase
+):
+    await _test_configuration(get_openai_client, deployment, stream, test)
+
+
+@pytest.mark.parametrize("test", _invalid_gemini_configuration_test_cases)
+@pytest.mark.parametrize("deployment", _gemini_deployments_with_thinking)
+@pytest.mark.parametrize("stream", [False, True])
+async def test_gemini_invalid_configuration(
     get_openai_client, deployment: D, stream: bool, test: ConfTestCase
 ):
     await _test_configuration(get_openai_client, deployment, stream, test)
