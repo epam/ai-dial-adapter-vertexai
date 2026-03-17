@@ -29,7 +29,6 @@ _claude_deployments: Mapping[D, str] = {
 _gemini_deployments_with_thinking: Mapping[D, str] = {
     D.GEMINI_2_5_PRO: _CENTRAL,
     D.GEMINI_2_5_FLASH: _CENTRAL,
-    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _CENTRAL,
     D.GEMINI_3_PRO: _CENTRAL,
     D.GEMINI_3_PRO_PREVIEW: _GLOBAL,
     D.GEMINI_3_1_PRO_PREVIEW: _GLOBAL,
@@ -37,7 +36,10 @@ _gemini_deployments_with_thinking: Mapping[D, str] = {
 }
 
 _gemini_deployments_with_imagen: Mapping[D, str] = {
+    D.GEMINI_2_0_FLASH_EXP: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _CENTRAL,
+    D.GEMINI_2_5_FLASH_IMAGE: _CENTRAL,
+    D.GEMINI_3_PRO_IMAGE_PREVIEW: _CENTRAL,
 }
 
 

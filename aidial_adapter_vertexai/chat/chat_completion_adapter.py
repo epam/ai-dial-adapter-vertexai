@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, Type, TypeVar
+from typing import Any, Generic, List, Protocol, TypeVar
 
 from aidial_sdk.chat_completion import Message
-from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
@@ -13,6 +12,10 @@ from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.utils.not_implemented import not_implemented
 
 P = TypeVar("P")
+
+
+class _JSONSchemaProducer(Protocol):
+    def model_json_schema(self) -> dict[str, Any]: ...
 
 
 class ChatCompletionAdapter(ABC, Generic[P]):
@@ -33,7 +36,7 @@ class ChatCompletionAdapter(ABC, Generic[P]):
         pass
 
     @not_implemented
-    async def configuration(self) -> Type[BaseModel] | None: ...
+    async def configuration(self) -> _JSONSchemaProducer | None: ...
 
     @not_implemented
     async def truncate_prompt(
