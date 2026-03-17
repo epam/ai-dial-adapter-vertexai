@@ -69,7 +69,6 @@ class ImageConfig(ExtraAllowModel):
         description=(
             "Aspect ratio of the generated images. "
             'Supported values are "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", and "21:9".'
-            " If not specified, the model will use default value `1K`."
         ),
     )
 
