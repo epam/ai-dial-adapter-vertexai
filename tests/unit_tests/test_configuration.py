@@ -41,6 +41,11 @@ _gemini_deployments_with_imagen: Mapping[D, str] = {
 }
 
 
+_veo_deployments: Mapping[D, str] = {
+    D.VEO_3_0_GENERATE: _CENTRAL,
+}
+
+
 async def _configuration_has_field(
     client: httpx.AsyncClient, region: str, deployment: D, field_name: str
 ) -> bool:
@@ -81,7 +86,7 @@ async def test_claude_supports_citations(
     )
 
 
-_invalid_configuration_test_cases = [
+_invalid_claude_configurations = [
     (
         {"enable_citations": "hello"},
         "Invalid request. Path: 'custom_fields.configuration.enable_citations', error: Input should be a valid boolean, unable to interpret input",
@@ -93,7 +98,7 @@ _invalid_configuration_test_cases = [
 ]
 
 
-@pytest.mark.parametrize("test", _invalid_configuration_test_cases)
+@pytest.mark.parametrize("test", _invalid_claude_configurations)
 @pytest.mark.parametrize("deployment", _claude_deployments.items())
 @pytest.mark.parametrize("stream", [False, True])
 async def test_claude_invalid_configuration(
@@ -119,4 +124,46 @@ async def test_claude_invalid_configuration(
         )
 
     assert exc.value.status_code == 422
+    assert exc.value.body["message"] == expected_error_message  # type: ignore
+
+
+_invalid_veo_configurations = [
+    (
+        {"n_variants": 10},
+        """
+1 validation error for _GenerateVideosParameters
+config.n_variants
+  Extra inputs are not permitted [type=extra_forbidden, input_value=10, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.10/v/extra_forbidden
+""".strip(),
+    ),
+]
+
+
+@pytest.mark.parametrize("test", _invalid_veo_configurations)
+@pytest.mark.parametrize("deployment", _veo_deployments.items())
+@pytest.mark.parametrize("stream", [False, True])
+async def test_veo_invalid_configuration(
+    get_openai_client,
+    deployment: Tuple[D, str],
+    stream: bool,
+    test: Tuple[dict, str],
+):
+    deployment_enum, region = deployment
+    deployment_id = deployment_enum.value
+    client: openai.AsyncAzureOpenAI = get_openai_client(
+        deployment_id, region=region
+    )
+
+    configuration, expected_error_message = test
+
+    with pytest.raises(openai.APIStatusError) as exc:
+        await chat_completion(
+            client,
+            messages=[user("test")],
+            stream=stream,
+            configuration=configuration,
+        )
+
+    assert exc.value.status_code == 400
     assert exc.value.body["message"] == expected_error_message  # type: ignore

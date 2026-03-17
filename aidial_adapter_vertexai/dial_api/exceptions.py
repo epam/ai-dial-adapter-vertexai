@@ -1,8 +1,9 @@
 from functools import wraps
 
 import anthropic
+import pydantic
 from aidial_sdk.exceptions import HTTPException as DialException
-from aidial_sdk.exceptions import InternalServerError
+from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
 from google.api_core.exceptions import GoogleAPICallError, PermissionDenied
 from google.auth.exceptions import GoogleAuthError
 from google.genai.errors import APIError
@@ -67,6 +68,9 @@ def to_dial_exception(e: Exception) -> DialException:
             type=_get_exception_type(code),
             message=message,
         )
+
+    if isinstance(e, pydantic.ValidationError):
+        return InvalidRequestError(message=str(e))
 
     if isinstance(e, ValidationError):
         return e.to_dial_exception()
