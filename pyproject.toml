@@ -80,6 +80,9 @@ filterwarnings = [
   "ignore::DeprecationWarning:google.rpc",
   "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
   "ignore:Inheritance class AiohttpClientSession from ClientSession is discouraged:DeprecationWarning",
+  # vertexai is deprecated; remove it once this is fixed:
+  # https://github.com/epam/ai-dial-adapter-vertexai/issues/398
+  "ignore:This feature is deprecated as of June 24:UserWarning",
 ]
 
 [tool.pyright]
