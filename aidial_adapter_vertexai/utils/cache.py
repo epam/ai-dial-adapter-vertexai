@@ -18,7 +18,6 @@ def cache(
 ) -> Callable[
     [Callable[_P, Coroutine[None, None, _R]]], _CachedFunction[_P, _R]
 ]:
-
     def wrapper(
         f: Callable[_P, Coroutine[None, None, _R]],
     ) -> _CachedFunction[_P, _R]:
@@ -37,7 +36,7 @@ def cache(
 
                 async with self._lock:
                     if (task := self._tasks.get(key)) is None:
-                        task = self._tasks[key] = asyncio.Task(
+                        task = self._tasks[key] = asyncio.create_task(
                             f(*args, **kwargs)
                         )
 
