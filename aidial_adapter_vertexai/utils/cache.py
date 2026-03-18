@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Awaitable, Callable, Generic, ParamSpec, Protocol, TypeVar
+from typing import Callable, Coroutine, Generic, ParamSpec, Protocol, TypeVar
 
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
@@ -14,42 +14,62 @@ class _CachedFunction(Protocol, Generic[_P, _R]):
 
 
 def cache(
-    close: Callable[[_R], Awaitable[None]] | None = None,
-) -> Callable[[Callable[_P, Awaitable[_R]]], _CachedFunction[_P, _R]]:
+    close: Callable[[_R], Coroutine[None, None, None]] | None = None,
+) -> Callable[
+    [Callable[_P, Coroutine[None, None, _R]]], _CachedFunction[_P, _R]
+]:
 
-    def wrapper(f: Callable[_P, Awaitable[_R]]) -> _CachedFunction[_P, _R]:
+    def wrapper(
+        f: Callable[_P, Coroutine[None, None, _R]],
+    ) -> _CachedFunction[_P, _R]:
         class wrapped:
-            entries: dict[str, _R]
-            lock: asyncio.Lock
+            _tasks: dict[str, asyncio.Task[_R]]
+            _lock: asyncio.Lock
 
             def __init__(self) -> None:
-                self.entries = {}
-                self.lock = asyncio.Lock()
+                self._tasks = {}
+                self._lock = asyncio.Lock()
 
             async def __call__(self, *args: _P.args, **kwargs: _P.kwargs) -> _R:
                 key = json.dumps(
                     {"args": args, "kwargs": kwargs}, sort_keys=True
                 )
 
-                async with self.lock:
-                    if key not in self.entries:
-                        self.entries[key] = await f(*args, **kwargs)
-                    return self.entries[key]
+                async with self._lock:
+                    if (task := self._tasks.get(key)) is None:
+                        task = self._tasks[key] = asyncio.Task(
+                            f(*args, **kwargs)
+                        )
+
+                try:
+                    return await task
+                except Exception:
+                    async with self._lock:
+                        if self._tasks.get(key) is task:
+                            del self._tasks[key]
+                    raise
 
             async def clear(self):
-                async with self.lock:
-                    entries = self.entries
-                    self.entries = {}
+                async with self._lock:
+                    entries = self._tasks
+                    self._tasks = {}
 
-                for key, value in entries.items():
-                    log.debug(
-                        f"Closing cached value ({value}) corresponding to the key {key}."
-                    )
-                    if close:
-                        try:
-                            await close(value)
-                        except Exception as e:
-                            log.error(f"Error on closing: {e}")
+                if close is None:
+                    return
+
+                for key, task in entries.items():
+                    try:
+                        value = task.result()
+                    except Exception:
+                        continue
+
+                    func_name = f"{f.__module__}.{f.__qualname__}"
+                    log.debug(f"Closing cached value for {func_name}({key})")
+
+                    try:
+                        await close(value)
+                    except Exception as e:
+                        log.error(f"Error on closing the task: {e}")
 
         return wrapped()
 
