@@ -53,8 +53,8 @@ def cache(
                     entries = self._tasks
                     self._tasks = {}
 
-                if close is None:
-                    return
+                func_name = f"{f.__module__}.{f.__qualname__}"
+                log.debug(f"Clearing cache {func_name}")
 
                 for key, task in entries.items():
                     try:
@@ -62,11 +62,11 @@ def cache(
                     except Exception:
                         continue
 
-                    func_name = f"{f.__module__}.{f.__qualname__}"
-                    log.debug(f"Closing cached value for {func_name}({key})")
+                    log.debug(f"Closing cached value {func_name}({key})")
 
                     try:
-                        await close(value)
+                        if close is not None:
+                            await close(value)
                     except Exception as e:
                         log.error(f"Error on closing the task: {e}")
 
