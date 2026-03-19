@@ -56,10 +56,4 @@ def genai_to_openai_finish_reason(
                 retriable=retriable,
             )
         case _:
-            raise FinishReasonOtherError(
-                msg=_add_finish_message(
-                    f"Unexpected finish reason: {finish_reason.value}"
-                ),
-                retriable=retriable,
-            )
             assert_never(finish_reason)
