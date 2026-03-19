@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from logging import DEBUG
-from typing import AsyncIterator, Callable, List, Type
+from typing import Any, AsyncIterator, Callable, List
 
 from aidial_sdk.chat_completion import FinishReason, Message
 from aidial_sdk.exceptions import RuntimeServerError
@@ -109,9 +110,27 @@ class ThinkingConfig(ExtraAllowModel):
         return ret | self.extra_fields  # type: ignore
 
 
-class GeminiConfiguration(ExtraForbidModel):
+class GeminiConfigurationModel(ExtraForbidModel):
     thinking: ThinkingConfig | None = None
     image_config: ImageConfig | None = None
+
+
+@dataclass
+class GeminiConfiguration:
+    supports_thinking: bool
+    supports_image_generation: bool
+
+    def model_json_schema(self) -> dict[str, Any]:
+        schema = GeminiConfigurationModel.model_json_schema()
+        props = schema["properties"]
+
+        if not self.supports_thinking:
+            props.pop("thinking")
+
+        if not self.supports_image_generation:
+            props.pop("image_config")
+
+        return schema
 
 
 class GeminiGenAIChatCompletionAdapter(
@@ -132,8 +151,15 @@ class GeminiGenAIChatCompletionAdapter(
 
     @property
     def supports_thinking(self) -> bool:
-        name = self.deployment.reference_deployment_id.value
-        return "gemini-2.5" in name or "gemini-3" in name
+        deployment = self.deployment.reference_deployment_id
+        if deployment in (
+            D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+            D.GEMINI_2_5_FLASH_IMAGE,
+        ):
+            return False
+        return (
+            "gemini-2.5" in deployment.value or "gemini-3" in deployment.value
+        )
 
     @property
     def supports_image_generation(self) -> bool:
@@ -144,9 +170,12 @@ class GeminiGenAIChatCompletionAdapter(
             D.GEMINI_3_PRO_IMAGE_PREVIEW,
         )
 
-    async def configuration(self) -> Type[GeminiConfiguration] | None:
-        if self.supports_thinking or self.supports_image_generation:
-            return GeminiConfiguration
+    async def configuration(self) -> GeminiConfiguration | None:
+        if self.supports_image_generation or self.supports_thinking:
+            return GeminiConfiguration(
+                supports_image_generation=self.supports_image_generation,
+                supports_thinking=self.supports_thinking,
+            )
         return None
 
     @classmethod
@@ -178,12 +207,7 @@ class GeminiGenAIChatCompletionAdapter(
     async def _get_generation_config(
         self, params: ModelParameters, prompt: GeminiPromptGenAI
     ) -> GenAIGenerationConfig:
-        conf_cls = await self.configuration()
-        configuration = (
-            GeminiConfiguration()
-            if conf_cls is None
-            else params.parse_configuration(conf_cls)
-        )
+        configuration = params.parse_configuration(GeminiConfigurationModel)
 
         image_config: ImageConfigDict | None = None
         if configuration and configuration.image_config:

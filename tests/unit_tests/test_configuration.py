@@ -26,15 +26,18 @@ _claude_deployments: List[D] = [
 
 _gemini_deployments_with_thinking: List[D] = [
     D.GEMINI_2_5_PRO,
-    D.GEMINI_2_5_FLASH,
-    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
     D.GEMINI_3_PRO,
     D.GEMINI_3_PRO_PREVIEW,
     D.GEMINI_3_1_PRO_PREVIEW,
     D.GEMINI_3_FLASH_PREVIEW,
 ]
 
-_gemini_deployments_with_imagen: List[D] = [D.GEMINI_2_5_FLASH_IMAGE_PREVIEW]
+_gemini_deployments_with_imagen: List[D] = [
+    D.GEMINI_2_0_FLASH_EXP,
+    D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+    D.GEMINI_2_5_FLASH_IMAGE,
+    D.GEMINI_3_PRO_IMAGE_PREVIEW,
+]
 
 _veo_deployments: List[D] = [
     D.VEO_3_0_GENERATE,
