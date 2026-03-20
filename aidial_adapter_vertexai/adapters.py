@@ -19,11 +19,11 @@ from aidial_adapter_vertexai.dial_api.storage import create_file_storage
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
+from aidial_adapter_vertexai.embedding.genai import (
+    GenAIEmbeddingsAdapter as GenAITextEmbeddingsAdapter,
+)
 from aidial_adapter_vertexai.embedding.multi_modal import (
     MultiModalEmbeddingsAdapter,
-)
-from aidial_adapter_vertexai.embedding.text_genai import (
-    TextEmbeddingsAdapter as GenAITextEmbeddingsAdapter,
 )
 from aidial_adapter_vertexai.embedding.text_legacy import (
     TextEmbeddingsAdapter as LegacyTextEmbeddingsAdapter,
@@ -140,9 +140,11 @@ async def get_embeddings_model(
             | E.TEXT_EMBEDDING_4
             | E.TEXT_EMBEDDING_5
             | E.TEXT_MULTILINGUAL_EMBEDDING_2
+            | E.GEMINI_EMBEDDING_2_PREVIEW
         ):
             return await GenAITextEmbeddingsAdapter.create(
-                deployment.clone(deployment.reference_deployment_id),
+                storage=storage,
+                deployment=deployment.clone(deployment.reference_deployment_id),
                 config=upstream_config,
             )
         case E.MULTI_MODAL_EMBEDDING_1:
