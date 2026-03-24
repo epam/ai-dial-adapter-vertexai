@@ -168,6 +168,7 @@ class GeminiGenAIChatCompletionAdapter(
             D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
             D.GEMINI_2_5_FLASH_IMAGE,
             D.GEMINI_3_PRO_IMAGE_PREVIEW,
+            D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
         )
 
     async def configuration(self) -> GeminiConfiguration | None:

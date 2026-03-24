@@ -57,6 +57,8 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
     D.GEMINI_3_PRO_IMAGE_PREVIEW: _GLOBAL,
+    D.GEMINI_3_1_FLASH_IMAGE_PREVIEW: _GLOBAL,
+    D.GEMINI_3_1_FLASH_LITE_PREVIEW: _GLOBAL,
     D.GEMINI_3_1_PRO_PREVIEW: _GLOBAL,
     D.GEMINI_2_5_FLASH_IMAGE: _GLOBAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
@@ -70,6 +72,9 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.CLAUDE_4_1_OPUS: _EAST,
     D.CLAUDE_4_5_HAIKU: _EAST,
     D.CLAUDE_4_5_SONNET: _EAST,
+    D.CLAUDE_4_6_SONNET: _EAST,
+    D.CLAUDE_4_6_OPUS: _EAST,
+    D.CLAUDE_4_5_OPUS: _EAST,
 }
 
 _DEPLOYMENTS: List[DeploymentSpec] = [
@@ -101,6 +106,8 @@ def is_vision_model(deployment: D) -> bool:
         D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_3_PRO_IMAGE_PREVIEW,
+        D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
+        D.GEMINI_3_1_FLASH_LITE_PREVIEW,
         D.GEMINI_2_5_FLASH_IMAGE,
         D.GEMINI_2_5_PRO,
         D.GEMINI_3_PRO,
@@ -122,6 +129,9 @@ def is_vision_model(deployment: D) -> bool:
         D.CLAUDE_4_1_OPUS,
         D.CLAUDE_4_5_HAIKU,
         D.CLAUDE_4_5_SONNET,
+        D.CLAUDE_4_6_SONNET,
+        D.CLAUDE_4_6_OPUS,
+        D.CLAUDE_4_5_OPUS,
     ]
 
 
@@ -195,6 +205,7 @@ def is_gemini_image(deployment: D) -> bool:
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_2_5_FLASH_IMAGE,
         D.GEMINI_3_PRO_IMAGE_PREVIEW,
+        D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
     )
 
 
