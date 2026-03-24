@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
-from typing import Any, Callable, List
+from typing import Any, List
 
 import openai
-import pytest
 from openai.types import CreateEmbeddingResponse
 
 from tests.integration_tests.embeddings.test_embeddings import ModelSpec
+from tests.utils.exception import ExpectedException, expected_exception
 
 
 @dataclass
@@ -37,17 +37,10 @@ class EmbeddingsTestCase:
             body["encoding_format"] = self.encoding_format
         return body
 
-    async def run_ex(
-        self,
-        get_openai_client: Callable[[str], openai.AsyncAzureOpenAI],
-        error: str | None = None,
-    ):
-        model_id = self.spec.deployment.value
-        client = get_openai_client(model_id)
-        await self.run(client, error)
-
     async def run(
-        self, client: openai.AsyncAzureOpenAI, error: str | None = None
+        self,
+        client: openai.AsyncAzureOpenAI,
+        error: ExpectedException | None = None,
     ):
         async def _call() -> CreateEmbeddingResponse:
             model_id = self.spec.deployment.value
@@ -58,7 +51,7 @@ class EmbeddingsTestCase:
         if error is None:
             self._check_embedding_response(await _call())
         else:
-            with pytest.raises(Exception, match=error):
+            async with expected_exception(error):
                 await _call()
 
     def _check_embedding_response(self, resp: CreateEmbeddingResponse) -> None:

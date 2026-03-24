@@ -25,7 +25,7 @@ from tests.integration_tests.embeddings.specs import (
     ModelSpec,
 )
 from tests.integration_tests.embeddings.test_case import EmbeddingsTestCase
-from tests.utils.exception import expected_exception
+from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.openai import sanitize_test_name
 
 
@@ -35,6 +35,22 @@ def _display_spec(spec: ModelSpec) -> str:
 
 def _display_deployment(dep: D):
     return sanitize_test_name(dep.value)
+
+
+def _error_bad_request(message: str) -> ExpectedException:
+    return ExpectedException(
+        type=openai.BadRequestError,
+        message=message,
+        status_code=400,
+    )
+
+
+def _error_unprocessable_entity(message: str) -> ExpectedException:
+    return ExpectedException(
+        type=openai.UnprocessableEntityError,
+        message=message,
+        status_code=422,
+    )
 
 
 @pytest.fixture(params=SPECS, ids=_display_spec)
@@ -79,7 +95,9 @@ async def test_embeddings_output_dimensions(client, spec: ModelSpec):
 
     error = None
     if not spec.supports_dimensions:
-        error = "Dimensions parameter is not supported"
+        error = _error_unprocessable_entity(
+            "Dimensions parameter is not supported"
+        )
 
     await tc.run(client, error)
 
@@ -91,7 +109,9 @@ async def test_embeddings_instruction_prompt(client, spec: ModelSpec):
 
     error = None
     if not spec.supports_instr:
-        error = "Instruction prompt is not supported"
+        error = _error_unprocessable_entity(
+            "Instruction prompt is not supported"
+        )
 
     await tc.run(client, error)
 
@@ -104,11 +124,15 @@ async def test_embeddings_task_type(
         spec=spec, input="text-input", embedding_type=embedding_type
     )
 
-    error: str | None = None
+    error = None
     if not spec.supports_types:
-        error = "The embedding model does not support embedding types"
+        error = _error_unprocessable_entity(
+            "The embedding model does not support embedding types"
+        )
     elif embedding_type not in spec.supports_types:
-        error = f"Unable to submit request because the model does not support the task type {embedding_type}"
+        error = _error_bad_request(
+            f"Unable to submit request because the model does not support the task type {embedding_type}"
+        )
 
     await tc.run(client, error)
 
@@ -121,15 +145,16 @@ async def test_embeddings_titles(client, spec: ModelSpec):
         spec=spec, custom_input=[["test-title", "test-input"]]
     )
 
+    error = None
     if spec.deployment in [
         D.TEXT_EMBEDDING_4,
         D.TEXT_EMBEDDING_5,
         D.TEXT_GEMINI_EMBEDDING_1,
         D.TEXT_MULTILINGUAL_EMBEDDING_2,
     ]:
-        error = "the model does not support the title parameter unless the task_type is RETRIEVAL_DOCUMENT"
-    else:
-        error = None
+        error = _error_bad_request(
+            "the model does not support the title parameter unless the task_type is RETRIEVAL_DOCUMENT"
+        )
 
     await tc.run(client, error)
 
@@ -196,7 +221,7 @@ class TestMultiModalEmbeddings:
 
     async def test_multi_invalid_input1(self, client, spec: ModelSpec):
         tc = EmbeddingsTestCase(spec=spec, custom_input=[["text1", "text2"]])
-        error = (
+        error = _error_unprocessable_entity(
             "The first element of a custom_input list element must be a string "
             "and the second element must be an image attachment or vice versa"
         )
@@ -206,7 +231,9 @@ class TestMultiModalEmbeddings:
         tc = EmbeddingsTestCase(
             spec=spec, custom_input=[["image title 2", _IMAGE, "image title 1"]]
         )
-        error = "No more than two elements are allowed in an element of custom_input list"
+        error = _error_unprocessable_entity(
+            "No more than two elements are allowed in an element of custom_input list"
+        )
         await tc.run(client, error)
 
 
@@ -237,14 +264,16 @@ class TestGeminiMultiModalEmbeddings:
         self, client, spec: ModelSpec
     ):
         tc = EmbeddingsTestCase(spec=spec, custom_input=[_UNSUPPORTED_IMAGE])
-        error = "Request contains an invalid argument."
+        error = _error_bad_request("Request contains an invalid argument.")
         await tc.run(client, error)
 
     async def test_multi_modal_gemini_unsupported_document(
         self, client, spec: ModelSpec
     ):
         tc = EmbeddingsTestCase(spec=spec, custom_input=[_UNSUPPORTED_DOCUMENT])
-        error = f"Unable to submit request because it has a mimeType parameter with value {_UNSUPPORTED_DOCUMENT['type']}, which is not supported."
+        error = _error_bad_request(
+            f"Unable to submit request because it has a mimeType parameter with value {_UNSUPPORTED_DOCUMENT['type']}, which is not supported."
+        )
         await tc.run(client, error)
 
 
