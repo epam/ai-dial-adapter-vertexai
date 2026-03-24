@@ -155,6 +155,7 @@ class GeminiGenAIChatCompletionAdapter(
         if deployment in (
             D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
             D.GEMINI_2_5_FLASH_IMAGE,
+            D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
         ):
             return False
         return (

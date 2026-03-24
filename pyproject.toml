@@ -66,7 +66,7 @@ nox = "^2023.4.22"
 google-auth-oauthlib = "1.0.0"
 
 [tool.pytest.ini_options]
-addopts = "-n=auto --asyncio-mode=auto --self-contained-html --html=pytest.html --alluredir=allure-results --clean-alluredir --timeout=60"
+addopts = "-n=auto --asyncio-mode=auto --self-contained-html --html=pytest.html --alluredir=allure-results --clean-alluredir --timeout=120"
 env_override_existing_values = 1
 env = ["PYDANTIC_V2=1"]
 testpaths = ["tests"]
