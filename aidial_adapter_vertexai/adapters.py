@@ -19,9 +19,7 @@ from aidial_adapter_vertexai.dial_api.storage import create_file_storage
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
-from aidial_adapter_vertexai.embedding.genai import (
-    GenAIEmbeddingsAdapter as GenAITextEmbeddingsAdapter,
-)
+from aidial_adapter_vertexai.embedding.genai import GenAIEmbeddingsAdapter
 from aidial_adapter_vertexai.embedding.multi_modal import (
     MultiModalEmbeddingsAdapter,
 )
@@ -142,7 +140,7 @@ async def get_embeddings_model(
             | E.TEXT_MULTILINGUAL_EMBEDDING_2
             | E.GEMINI_EMBEDDING_2_PREVIEW
         ):
-            return await GenAITextEmbeddingsAdapter.create(
+            return await GenAIEmbeddingsAdapter.create(
                 storage=storage,
                 deployment=deployment.clone(deployment.reference_deployment_id),
                 config=upstream_config,
