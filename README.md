@@ -4,7 +4,7 @@
 <p align="center">
   <p align="center">
   <a href="https://dialx.ai/">
-    <img src="https://dialx.ai/dialx_logo.svg" alt="About DIALX">
+    <img src="https://dialx.ai/logo/dialx_logo.svg" alt="About DIALX">
   </a>
 </p>
 <h4 align="center">
@@ -26,6 +26,7 @@
       - [Google Search grounding](#google-search-grounding)
       - [Code Interpreter tool](#code-interpreter-tool)
     - [Embedding models](#embedding-models)
+      - [Gemini Embedding 2](#gemini-embedding-2)
   - [Environment variables](#environment-variables)
     - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
   - [Compatibility mode](#compatibility-mode)
@@ -327,6 +328,233 @@ The following models support `$SERVER_ORIGIN/openai/deployments/$MODEL_ID/embedd
 |Gecko Embeddings for Text Multilingual|textembedding-gecko-multilingual@001|Multilingual|text-to-embedding|
 |Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
 |Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
+|Gemini Embedding 2|gemini-embedding-2-preview|English|(text/image/video/audio/pdf)-to-embedding|
+
+#### Gemini Embedding 2
+
+Gemini Embedding 2 model [provides](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2-preview) embeddings for text, image, video, audio and PDFs. Instruction prompts are not permitted for this family, so keep `custom_fields.instruction` unset.
+
+The following example requests demonstrate how to express different modalities when calling
+`POST /openai/deployments/gemini-embedding-2-preview/embeddings`:
+
+<details>
+<summary>Single text (resulting in one embedding vector)</summary>
+
+```json
+{
+  "input": "Describe how solar panels generate electricity."
+}
+```
+
+</details>
+
+<details>
+<summary>Two text strings (two vectors)</summary>
+
+```json
+{
+  "input": [
+    "Explain transformers in one paragraph.",
+    "Write a limerick about embeddings."
+  ]
+}
+```
+
+</details>
+
+Multi-modal inputs are expressed as DIAL attachments placed inside the `custom_input` array. Each attachment object must supply a MIME `type` and either `url` (leading to DIAL Storage, public URL or base64 encoded data as [data URL](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Schemes/data#syntax)) or `data` (containing base64 encoded data).
+
+<details>
+<summary>Image attachment (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "image/jpeg",
+      "url": "https://example.com/media/robot.jpg"
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>Video attachment (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "video/mp4",
+      "url": "https://example.com/media/product-demo.mp4"
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>Audio attachment (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "audio/mpeg",
+      "url": "https://example.com/media/podcast-intro.mp3"
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>PDF attachment (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "application/pdf",
+      "url": "https://example.com/media/security-whitepaper.pdf"
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>Image and audio attachments separately (two vectors)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "image/png",
+      "url": "https://example.com/media/dog.png"
+    },
+    {
+      "type": "audio/mpeg",
+      "url": "https://example.com/media/dog-bark.mp3"
+    }
+  ]
+}
+```
+
+</details>
+
+Multiple multi-modal components could be used as single composite input for the embedding model:
+
+<details>
+<summary>Audio and PDF attachments together (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    [
+      {
+        "type": "audio/mpeg",
+        "url": "https://example.com/media/meeting-recording.mp3"
+      },
+      {
+        "type": "application/pdf",
+        "url": "https://example.com/media/meeting-summary.pdf"
+      }
+    ]
+  ]
+}
+```
+
+</details>
+
+The first text string in a multi-components input is interpreted as a [title](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api#parameter-list). The title could only be used when `type` is equal to `RETRIEVAL_DOCUMENT`:
+
+<details>
+<summary>Text with a title (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    [
+      "Incident response playbook",
+      "Step 1: Notify on-call.",
+      "Step 2: Capture relevant logs."
+    ]
+  ],
+  "custom_fields": {
+    "type": "RETRIEVAL_DOCUMENT"
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>Image with a title (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    [
+      "Device schematic",
+      {
+        "type": "image/png",
+        "url": "https://example.com/media/schematic.png"
+      }
+    ]
+  ],
+  "custom_fields": {
+    "type": "RETRIEVAL_DOCUMENT"
+  }
+}
+```
+
+</details>
+
+The model supports configurable [dimensions](https://ai.google.dev/gemini-api/docs/embeddings#control-embedding-size) parameter which equals 3072 by default.
+
+<details>
+<summary>Text (one vector of the specified length)</summary>
+
+```json
+{
+  "input": "Summarize reinforcement learning in two sentences.",
+  "dimensions": 768
+}
+```
+
+</details>
+
+The model supports various [task types](https://ai.google.dev/gemini-api/docs/embeddings#supported-task-types):
+
+<details>
+<summary>Text with task type equal SEMANTIC_SIMILARITY (one vector)</summary>
+
+```json
+{
+  "input": "List practical uses for cosine similarity.",
+  "custom_fields": {
+    "type": "SEMANTIC_SIMILARITY"
+  }
+}
+```
+
+</details>
+
+The model returns normalized embedding vectors.
 
 ---
 

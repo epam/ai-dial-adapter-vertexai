@@ -145,9 +145,10 @@ class EmbeddingsDeployment(DeploymentEnum):
 
     # Text/Image models
     MULTI_MODAL_EMBEDDING_1 = "multimodalembedding@001"
+    GEMINI_EMBEDDING_2_PREVIEW = "gemini-embedding-2-preview"
 
 
-TextEmbeddingDeployment = Literal[
+GenAIEmbeddingDeployment = Literal[
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1,
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_3,
     EmbeddingsDeployment.TEXT_EMBEDDING_4,
@@ -155,4 +156,5 @@ TextEmbeddingDeployment = Literal[
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_MULTILINGUAL_1,
     EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
     EmbeddingsDeployment.TEXT_GEMINI_EMBEDDING_1,
+    EmbeddingsDeployment.GEMINI_EMBEDDING_2_PREVIEW,
 ]
