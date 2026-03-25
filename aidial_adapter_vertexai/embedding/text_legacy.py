@@ -10,7 +10,7 @@ from vertexai.language_models import TextEmbeddingInput
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.deployments import (
     EmbeddingsDeployment,
-    TextEmbeddingDeployment,
+    GenAIEmbeddingDeployment,
 )
 from aidial_adapter_vertexai.dial_api.embedding_inputs import (
     EMPTY_INPUT_LIST_ERROR,
@@ -44,7 +44,7 @@ class ModelSpec(BaseModel):
     supports_dimensions: bool
 
 
-specs: Dict[TextEmbeddingDeployment, ModelSpec] = {
+specs: Dict[GenAIEmbeddingDeployment, ModelSpec] = {
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1: ModelSpec(
         supports_type=False,
         supports_instr=False,
@@ -137,11 +137,6 @@ async def get_embedding_inputs(
             return texts[0]
         elif len(texts) == 2:
             title, text = texts
-            if task_type != "RETRIEVAL_DOCUMENT":
-                raise ValidationError(
-                    "The model does not support inputs with titles "
-                    "unless the type is RETRIEVAL_DOCUMENT"
-                )
             return TextEmbeddingInput(
                 title=title, text=text, task_type=task_type
             )
@@ -159,12 +154,12 @@ async def get_embedding_inputs(
 
 @dataclass
 class TextEmbeddingsAdapter(EmbeddingsAdapter):
-    deployment: AdapterDeployment[TextEmbeddingDeployment]
+    deployment: AdapterDeployment[GenAIEmbeddingDeployment]
     model: TextEmbeddingModel
 
     @classmethod
     async def create(
-        cls, deployment: AdapterDeployment[TextEmbeddingDeployment]
+        cls, deployment: AdapterDeployment[GenAIEmbeddingDeployment]
     ) -> "EmbeddingsAdapter":
         model = await get_text_embedding_model(
             deployment.upstream_deployment_id
