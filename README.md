@@ -4,7 +4,7 @@
 <p align="center">
   <p align="center">
   <a href="https://dialx.ai/">
-    <img src="https://dialx.ai/dialx_logo.svg" alt="About DIALX">
+    <img src="https://dialx.ai/logo/dialx_logo.svg" alt="About DIALX">
   </a>
 </p>
 <h4 align="center">
@@ -26,6 +26,7 @@
       - [Google Search grounding](#google-search-grounding)
       - [Code Interpreter tool](#code-interpreter-tool)
     - [Embedding models](#embedding-models)
+      - [Gemini Embedding 2](#gemini-embedding-2)
   - [Environment variables](#environment-variables)
     - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
   - [Compatibility mode](#compatibility-mode)
@@ -57,8 +58,6 @@ LLM Adapters unify the APIs of respective LLMs to align with the Unified Protoco
 
 The project implements [AI DIAL API](https://dialx.ai/dial_api) for language models and embedding models from [Vertex AI](https://console.cloud.google.com/vertex-ai).
 
-![ai-dial-core](https://docs.dialx.ai/assets/images/adapters-62587fb74cfb1c4225c20c08273ec5bc.svg)
-
 ---
 
 ## Supported models
@@ -74,6 +73,8 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 |Model|Model ID|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|---|---|---|---|---|
 |[Gemini 3.1 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-pro)|gemini-3.1-pro-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|[Gemini 3.1 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-lite)|gemini-3.1-flash-lite-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
+|[Gemini 3.1 Flash Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-image)|gemini-3.1-flash-image-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |[Gemini 3 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro)|gemini-3-pro[-preview]|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |[Gemini 3 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-flash)|gemini-3-flash-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
 |[Gemini 3 Pro Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro-image)|gemini-3-pro-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
@@ -83,6 +84,9 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 |[Gemini 2.0 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash-lite)|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
 |[Gemini 2.0 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash)|gemini-2.0-flash-exp|(text/pdf/image/audio/video)-to-(text/image)|✅|✅|✅|❌|
 |[Gemini 2.0 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash)|gemini-2.0-flash-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
+|[Claude 4.6 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-6)|claude-opus-4-6|(pdf/text/image)-to-text|✅|✅|✅|✅|
+|[Claude 4.6 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4-6)|claude-sonnet-4-6|(pdf/text/image)-to-text|✅|✅|✅|✅|
+|[Claude 4.5 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-5)|claude-opus-4-5@20251101|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |[Claude 4.5 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4-5)|claude-sonnet-4-5@20250929|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |[Claude 4.5 Haiku](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/haiku-4-5)|claude-haiku-4-5@20251001|(pdf/text/image)-to-text|✅|✅|✅|✅|
 |[Claude 4.1 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-1)|claude-opus-4-1@20250805|(pdf/text/image)-to-text|✅|✅|✅|✅|
@@ -315,13 +319,240 @@ The following models support `$SERVER_ORIGIN/openai/deployments/$MODEL_ID/embedd
 
 |Model|Model ID|Language support|Modality|
 |---|---|---|---|
-|Gemini Embeddings|gemini-embedding-001|Multilingual|text-to-embedding|
+|[Gemini Embeddings](https://ai.google.dev/gemini-api/docs/embeddings#model-versions)|gemini-embedding-001|Multilingual|text-to-embedding|
+|[Gemini Embedding 2](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2-preview)|gemini-embedding-2-preview|English|(text/image/video/audio/pdf)-to-embedding|
+|[Multimodal embeddings](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-embeddings-api)|multimodalembedding@001|English|(text/image)-to-embedding|
+|[Embeddings for Text](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api)|text-embedding-(004\|005)|English|text-to-embedding|
+|[Embeddings for Text Multilingual](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api)|text-multilingual-embedding-002|Multilingual|text-to-embedding|
 |Gecko Embeddings for Text V1|textembedding-gecko@001|English|text-to-embedding|
 |Gecko Embeddings for Text V3|textembedding-gecko@003|English|text-to-embedding|
-|Embeddings for Text|text-embedding-(004\|005)|English|text-to-embedding|
 |Gecko Embeddings for Text Multilingual|textembedding-gecko-multilingual@001|Multilingual|text-to-embedding|
-|Embeddings for Text Multilingual|text-multilingual-embedding-002|Multilingual|text-to-embedding|
-|Multimodal embeddings|multimodalembedding@001|English|(text/image)-to-embedding|
+
+#### Gemini Embedding 2
+
+Gemini Embedding 2 model [provides](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2-preview) embeddings for text, image, video, audio and PDFs. Instruction prompts are not permitted for this family, so keep `custom_fields.instruction` unset.
+
+The following example requests demonstrate how to express different modalities when calling
+`POST /openai/deployments/gemini-embedding-2-preview/embeddings`:
+
+<details>
+<summary>Single text (resulting in one embedding vector)</summary>
+
+```json
+{
+  "input": "Describe how solar panels generate electricity."
+}
+```
+
+</details>
+
+<details>
+<summary>Two text strings (two vectors)</summary>
+
+```json
+{
+  "input": [
+    "Explain transformers in one paragraph.",
+    "Write a limerick about embeddings."
+  ]
+}
+```
+
+</details>
+
+Multi-modal inputs are expressed as DIAL attachments placed inside the `custom_input` array. Each attachment object must supply a MIME `type` and either `url` (leading to DIAL Storage, public URL or base64 encoded data as [data URL](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Schemes/data#syntax)) or `data` (containing base64 encoded data).
+
+<details>
+<summary>Image attachment (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "image/jpeg",
+      "url": "https://example.com/media/robot.jpg"
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>Video attachment (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "video/mp4",
+      "url": "https://example.com/media/product-demo.mp4"
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>Audio attachment (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "audio/mpeg",
+      "url": "https://example.com/media/podcast-intro.mp3"
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>PDF attachment (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "application/pdf",
+      "url": "https://example.com/media/security-whitepaper.pdf"
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>Image and audio attachments separately (two vectors)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    {
+      "type": "image/png",
+      "url": "https://example.com/media/dog.png"
+    },
+    {
+      "type": "audio/mpeg",
+      "url": "https://example.com/media/dog-bark.mp3"
+    }
+  ]
+}
+```
+
+</details>
+
+Multiple multi-modal components could be used as single composite input for the embedding model:
+
+<details>
+<summary>Audio and PDF attachments together (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    [
+      {
+        "type": "audio/mpeg",
+        "url": "https://example.com/media/meeting-recording.mp3"
+      },
+      {
+        "type": "application/pdf",
+        "url": "https://example.com/media/meeting-summary.pdf"
+      }
+    ]
+  ]
+}
+```
+
+</details>
+
+The first text string in a multi-components input is interpreted as a [title](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api#parameter-list). The title could only be used when `type` is equal to `RETRIEVAL_DOCUMENT`:
+
+<details>
+<summary>Text with a title (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    [
+      "Incident response playbook",
+      "Step 1: Notify on-call.",
+      "Step 2: Capture relevant logs."
+    ]
+  ],
+  "custom_fields": {
+    "type": "RETRIEVAL_DOCUMENT"
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>Image with a title (one vector)</summary>
+
+```json
+{
+  "input": [],
+  "custom_input": [
+    [
+      "Device schematic",
+      {
+        "type": "image/png",
+        "url": "https://example.com/media/schematic.png"
+      }
+    ]
+  ],
+  "custom_fields": {
+    "type": "RETRIEVAL_DOCUMENT"
+  }
+}
+```
+
+</details>
+
+The model supports configurable [dimensions](https://ai.google.dev/gemini-api/docs/embeddings#control-embedding-size) parameter which equals 3072 by default.
+
+<details>
+<summary>Text (one vector of the specified length)</summary>
+
+```json
+{
+  "input": "Summarize reinforcement learning in two sentences.",
+  "dimensions": 768
+}
+```
+
+</details>
+
+The model supports various [task types](https://ai.google.dev/gemini-api/docs/embeddings#supported-task-types):
+
+<details>
+<summary>Text with task type equal SEMANTIC_SIMILARITY (one vector)</summary>
+
+```json
+{
+  "input": "List practical uses for cosine similarity.",
+  "custom_fields": {
+    "type": "SEMANTIC_SIMILARITY"
+  }
+}
+```
+
+</details>
+
+The model returns normalized embedding vectors.
 
 ---
 

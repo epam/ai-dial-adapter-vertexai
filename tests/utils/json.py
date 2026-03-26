@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 
 def match_objects(expected: Any, actual: Any) -> bool:
@@ -22,23 +22,3 @@ def match_objects(expected: Any, actual: Any) -> bool:
         assert expected == actual
 
     return True
-
-
-def flatten_obj(obj: Any) -> List[tuple[str, Any]]:
-    acc = []
-
-    def rec(path: str, x: Any):
-        nonlocal acc
-
-        if isinstance(x, dict):
-            for key in sorted(x.keys()):
-                rec(path + "." + key, x[key])
-        elif isinstance(x, (list, tuple)):
-            for i in range(len(x)):
-                rec(path + "." + str(i), x[i])
-        else:
-            acc.append((path.lstrip("."), x))
-
-    rec("", obj)
-
-    return acc

@@ -22,6 +22,9 @@ _claude_deployments: List[D] = [
     D.CLAUDE_4_1_OPUS,
     D.CLAUDE_4_5_HAIKU,
     D.CLAUDE_4_5_SONNET,
+    D.CLAUDE_4_6_SONNET,
+    D.CLAUDE_4_6_OPUS,
+    D.CLAUDE_4_5_OPUS,
 ]
 
 _gemini_deployments_with_thinking: List[D] = [
@@ -37,6 +40,7 @@ _gemini_deployments_with_imagen: List[D] = [
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
     D.GEMINI_2_5_FLASH_IMAGE,
     D.GEMINI_3_PRO_IMAGE_PREVIEW,
+    D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
 ]
 
 _veo_deployments: List[D] = [

@@ -19,11 +19,9 @@ from aidial_adapter_vertexai.dial_api.storage import create_file_storage
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
+from aidial_adapter_vertexai.embedding.genai import GenAIEmbeddingsAdapter
 from aidial_adapter_vertexai.embedding.multi_modal import (
     MultiModalEmbeddingsAdapter,
-)
-from aidial_adapter_vertexai.embedding.text_genai import (
-    TextEmbeddingsAdapter as GenAITextEmbeddingsAdapter,
 )
 from aidial_adapter_vertexai.embedding.text_legacy import (
     TextEmbeddingsAdapter as LegacyTextEmbeddingsAdapter,
@@ -58,6 +56,8 @@ async def get_chat_completion_model(
             | D.GEMINI_3_FLASH_PREVIEW
             | D.GEMINI_3_PRO_IMAGE_PREVIEW
             | D.GEMINI_3_1_PRO_PREVIEW
+            | D.GEMINI_3_1_FLASH_IMAGE_PREVIEW
+            | D.GEMINI_3_1_FLASH_LITE_PREVIEW
         ):
             return await GeminiGenAIChatCompletionAdapter.create(
                 storage,
@@ -76,6 +76,9 @@ async def get_chat_completion_model(
             | D.CLAUDE_4_1_OPUS
             | D.CLAUDE_4_5_HAIKU
             | D.CLAUDE_4_5_SONNET
+            | D.CLAUDE_4_6_SONNET
+            | D.CLAUDE_4_6_OPUS
+            | D.CLAUDE_4_5_OPUS
         ):
             return await ClaudeChatCompletionAdapter.create(
                 storage,
@@ -140,9 +143,11 @@ async def get_embeddings_model(
             | E.TEXT_EMBEDDING_4
             | E.TEXT_EMBEDDING_5
             | E.TEXT_MULTILINGUAL_EMBEDDING_2
+            | E.GEMINI_EMBEDDING_2_PREVIEW
         ):
-            return await GenAITextEmbeddingsAdapter.create(
-                deployment.clone(deployment.reference_deployment_id),
+            return await GenAIEmbeddingsAdapter.create(
+                storage=storage,
+                deployment=deployment.clone(deployment.reference_deployment_id),
                 config=upstream_config,
             )
         case E.MULTI_MODAL_EMBEDDING_1:

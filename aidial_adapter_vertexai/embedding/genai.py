@@ -1,23 +1,28 @@
 import asyncio
 from dataclasses import dataclass
 from logging import DEBUG
-from typing import List, Optional, Tuple
+from typing import AsyncIterator, List, Optional, Tuple
 
+from aidial_sdk.chat_completion import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings.request import EmbeddingsRequest
 from google.genai.client import Client as GenAIClient
 from google.genai.types import (
     ContentListUnion,
+    ContentUnion,
     EmbedContentConfig,
     EmbedContentResponse,
+    Part,
 )
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
-from aidial_adapter_vertexai.deployments import TextEmbeddingDeployment
+from aidial_adapter_vertexai.deployments import GenAIEmbeddingDeployment
 from aidial_adapter_vertexai.dial_api.embedding_inputs import (
     EMPTY_INPUT_LIST_ERROR,
-    collect_embedding_inputs_without_attachments,
+    collect_embedding_inputs,
 )
+from aidial_adapter_vertexai.dial_api.resource import AttachmentResource
+from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.embedding.embeddings_adapter import (
     EmbeddingsAdapter,
 )
@@ -31,25 +36,35 @@ from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 
-Input = Tuple[ContentListUnion, EmbedContentConfig | None]
+
+@dataclass
+class EmbeddingsInput:
+    input: ContentListUnion
+    config: EmbedContentConfig | None = None
 
 
 async def compute_embeddings(
     client: GenAIClient,
     model_id: str,
     base64_encode: bool,
-    inputs: List[Input],
+    inputs: List[EmbeddingsInput],
 ) -> Tuple[List[Embedding], int]:
 
     if log.isEnabledFor(DEBUG):
         msg = json_dumps_short({"inputs": inputs})
         log.debug(f"request: {msg}")
 
+    # NOTE: it's possible to batch the inputs (using the config as a clustering key)
+    # and therefore make less requests to the upstream.
+    # However, there are a few issues with it:
+    # (1) the batch request may fail with 413, so
+    #     we have to limit the size of the batch somehow;
+    # (2) batching logic is outside of the user control.
     tasks = [
         client.aio.models.embed_content(
-            model=model_id, contents=contents, config=config
+            model=model_id, contents=i.input, config=i.config
         )
-        for (contents, config) in inputs
+        for i in inputs
     ]
 
     responses: List[EmbedContentResponse] = await asyncio.gather(*tasks)
@@ -73,55 +88,74 @@ async def compute_embeddings(
     return embeddings, tokens
 
 
-async def get_embedding_inputs(
+async def get_embedding_requests(
+    storage: FileStorage | None,
     request: EmbeddingsRequest,
     task_type: Optional[str],
     dimensions: int | None,
-) -> List[Input]:
-    async def on_texts(texts: List[str]) -> Input:
-        if len(texts) == 0:
-            raise EMPTY_INPUT_LIST_ERROR
-        elif len(texts) == 1:
-            title, text = None, texts[0]
-        elif len(texts) == 2:
-            title, text = texts
-            if task_type != "RETRIEVAL_DOCUMENT":
-                raise ValidationError(
-                    "The model does not support inputs with titles "
-                    "unless the type is RETRIEVAL_DOCUMENT"
-                )
-        else:
-            raise ValidationError(
-                "No more than two elements are allowed in an element of custom_input list - one for title and one for text."
-            )
-
-        return text, EmbedContentConfig(
+) -> AsyncIterator[EmbeddingsInput]:
+    def create_config(*, title: str | None = None) -> EmbedContentConfig:
+        return EmbedContentConfig(
             title=title,
             task_type=task_type,
             output_dimensionality=dimensions,
         )
 
-    iterator = collect_embedding_inputs_without_attachments(
-        request, on_texts=on_texts
-    )
+    async def download_attachment(attachment: Attachment) -> Part:
+        attachment_resource = AttachmentResource(attachment=attachment)
+        resource = await attachment_resource.download(storage)
+        return Part.from_bytes(data=resource.data, mime_type=resource.type)
 
-    return [input async for input in iterator]
+    async def download_text_or_attachment(
+        input: str | Attachment,
+    ) -> ContentUnion:
+        if isinstance(input, str):
+            return input
+        else:
+            return await download_attachment(input)
+
+    async def on_mixed_one(input: str | Attachment):
+        return EmbeddingsInput(
+            input=await download_text_or_attachment(input),
+            config=create_config(),
+        )
+
+    async def on_mixed_many(inputs: List[str | Attachment]) -> EmbeddingsInput:
+        if not inputs:
+            raise EMPTY_INPUT_LIST_ERROR
+
+        title = None
+        parts = [await download_text_or_attachment(input) for input in inputs]
+
+        if len(inputs) > 1 and isinstance(inputs[0], str):
+            title, parts = inputs[0], parts[1:]
+
+        config = create_config(title=title)
+        return EmbeddingsInput(parts, config=config)
+
+    return collect_embedding_inputs(
+        request,
+        on_text=on_mixed_one,
+        on_attachment=on_mixed_one,
+        on_mixed=on_mixed_many,
+    )
 
 
 @dataclass
-class TextEmbeddingsAdapter(EmbeddingsAdapter):
-    deployment: AdapterDeployment[TextEmbeddingDeployment]
+class GenAIEmbeddingsAdapter(EmbeddingsAdapter):
+    deployment: AdapterDeployment[GenAIEmbeddingDeployment]
     client: GenAIClient
+    storage: FileStorage | None
 
     @classmethod
     async def create(
         cls,
-        deployment: AdapterDeployment[TextEmbeddingDeployment],
+        storage: FileStorage | None,
+        deployment: AdapterDeployment[GenAIEmbeddingDeployment],
         config: UpstreamConfig,
     ) -> "EmbeddingsAdapter":
-        return cls(
-            deployment=deployment, client=await config.get_genai_client()
-        )
+        client = await config.get_genai_client()
+        return cls(deployment=deployment, client=client, storage=storage)
 
     @property
     def model_id(self) -> str:
@@ -140,9 +174,10 @@ class TextEmbeddingsAdapter(EmbeddingsAdapter):
         if request.custom_fields is not None:
             task_type = request.custom_fields.type
 
-        inputs: List[Input] = await get_embedding_inputs(
-            request, task_type, request.dimensions
+        input_iter = await get_embedding_requests(
+            self.storage, request, task_type, request.dimensions
         )
+        inputs: List[EmbeddingsInput] = [input async for input in input_iter]
 
         base64_encode = request.encoding_format == "base64"
 
