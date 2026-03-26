@@ -319,8 +319,8 @@ The following models support `$SERVER_ORIGIN/openai/deployments/$MODEL_ID/embedd
 
 |Model|Model ID|Language support|Modality|
 |---|---|---|---|
-|[Gemini Embeddings](https://ai.google.dev/gemini-api/docs/embeddings#model-versions)|gemini-embedding-001|Multilingual|text-to-embedding|
 |[Gemini Embedding 2](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2-preview)|gemini-embedding-2-preview|English|(text/image/video/audio/pdf)-to-embedding|
+|[Gemini Embeddings](https://ai.google.dev/gemini-api/docs/embeddings#model-versions)|gemini-embedding-001|Multilingual|text-to-embedding|
 |[Multimodal embeddings](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-embeddings-api)|multimodalembedding@001|English|(text/image)-to-embedding|
 |[Embeddings for Text](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api)|text-embedding-(004\|005)|English|text-to-embedding|
 |[Embeddings for Text Multilingual](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api)|text-multilingual-embedding-002|Multilingual|text-to-embedding|
