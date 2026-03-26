@@ -61,22 +61,22 @@ _EAST = "us-east5"
 
 chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_2_0_FLASH_LITE_1: _CENTRAL,
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET_V2: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_5_HAIKU: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_5_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_3_HAIKU: _EAST,
-    ChatCompletionDeployment.CLAUDE_3_7_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_4_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_4_OPUS: _EAST,
     ChatCompletionDeployment.CLAUDE_4_1_OPUS: _EAST,
     ChatCompletionDeployment.CLAUDE_4_5_HAIKU: _EAST,
     ChatCompletionDeployment.CLAUDE_4_5_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_6_SONNET: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_6_OPUS: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_5_OPUS: _EAST,
 }
 
 _tolerance: Mapping[ChatCompletionDeployment, int] = {
-    # For some reason reported tokens for Claude 4 are off by one
+    # For some reason reported tokens for Claude 4 are off by multiple tokens
     ChatCompletionDeployment.CLAUDE_4_SONNET: 1,
     ChatCompletionDeployment.CLAUDE_4_OPUS: 1,
+    ChatCompletionDeployment.CLAUDE_4_5_OPUS: 14,
 }
 
 
