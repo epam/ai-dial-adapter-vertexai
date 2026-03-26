@@ -31,6 +31,8 @@ class ChatCompletionDeployment(DeploymentEnum):
     GEMINI_3_FLASH_PREVIEW = "gemini-3-flash-preview"
     GEMINI_3_PRO_IMAGE_PREVIEW = "gemini-3-pro-image-preview"
     GEMINI_3_1_PRO_PREVIEW = "gemini-3.1-pro-preview"
+    GEMINI_3_1_FLASH_IMAGE_PREVIEW = "gemini-3.1-flash-image-preview"
+    GEMINI_3_1_FLASH_LITE_PREVIEW = "gemini-3.1-flash-lite-preview"
 
     IMAGEN_005 = "imagegeneration@005"
     IMAGEN_3_GENERATE_001 = "imagen-3.0-generate-001"
@@ -55,6 +57,9 @@ class ChatCompletionDeployment(DeploymentEnum):
     CLAUDE_4_1_OPUS = "claude-opus-4-1@20250805"
     CLAUDE_4_5_HAIKU = "claude-haiku-4-5@20251001"
     CLAUDE_4_5_SONNET = "claude-sonnet-4-5@20250929"
+    CLAUDE_4_5_OPUS = "claude-opus-4-5@20251101"
+    CLAUDE_4_6_SONNET = "claude-sonnet-4-6"
+    CLAUDE_4_6_OPUS = "claude-opus-4-6"
 
     VEO_3_0_GENERATE = "veo-3.0-generate-001"
     VEO_3_0_GENERATE_PREVIEW = "veo-3.0-generate-preview"
@@ -91,6 +96,9 @@ ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_4_1_OPUS,
     ChatCompletionDeployment.CLAUDE_4_5_HAIKU,
     ChatCompletionDeployment.CLAUDE_4_5_SONNET,
+    ChatCompletionDeployment.CLAUDE_4_6_SONNET,
+    ChatCompletionDeployment.CLAUDE_4_6_OPUS,
+    ChatCompletionDeployment.CLAUDE_4_5_OPUS,
 ]
 
 GeminiDeployment = Literal[
@@ -107,6 +115,8 @@ GeminiDeployment = Literal[
     ChatCompletionDeployment.GEMINI_3_FLASH_PREVIEW,
     ChatCompletionDeployment.GEMINI_3_PRO_IMAGE_PREVIEW,
     ChatCompletionDeployment.GEMINI_3_1_PRO_PREVIEW,
+    ChatCompletionDeployment.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
+    ChatCompletionDeployment.GEMINI_3_1_FLASH_LITE_PREVIEW,
 ]
 
 VeoDeployment = Literal[

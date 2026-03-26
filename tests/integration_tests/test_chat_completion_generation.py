@@ -57,6 +57,8 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.GEMINI_2_5_FLASH: _CENTRAL,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW: _GLOBAL,
     D.GEMINI_3_PRO_IMAGE_PREVIEW: _GLOBAL,
+    D.GEMINI_3_1_FLASH_IMAGE_PREVIEW: _GLOBAL,
+    D.GEMINI_3_1_FLASH_LITE_PREVIEW: _GLOBAL,
     D.GEMINI_3_1_PRO_PREVIEW: _GLOBAL,
     D.GEMINI_2_5_FLASH_IMAGE: _GLOBAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
@@ -70,6 +72,9 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.CLAUDE_4_1_OPUS: _EAST,
     D.CLAUDE_4_5_HAIKU: _EAST,
     D.CLAUDE_4_5_SONNET: _EAST,
+    D.CLAUDE_4_6_SONNET: _EAST,
+    D.CLAUDE_4_6_OPUS: _EAST,
+    D.CLAUDE_4_5_OPUS: _EAST,
 }
 
 _DEPLOYMENTS: List[DeploymentSpec] = [
@@ -93,7 +98,18 @@ def is_retired_model(deployment: D) -> bool:
     # Keep at least one model on the list to test how the adapter handles retired models in streaming and non-streaming modes
     # Find the list of retired models at
     # https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions#retired-models
-    return deployment in {D.GEMINI_2_5_PRO_PREVIEW_03_25, D.GEMINI_3_PRO}
+    # Moreover certain models are declared deprecated, but not yet shut down completely -
+    # available only for the existing customers.
+    # https://docs.cloud.google.com/vertex-ai/generative-ai/docs/deprecations/partner-models
+    return deployment in {
+        D.GEMINI_2_5_PRO_PREVIEW_03_25,
+        D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+        D.GEMINI_3_PRO,
+        D.CLAUDE_3_5_HAIKU,
+        D.CLAUDE_3_5_SONNET,
+        D.CLAUDE_3_5_SONNET_V2,
+        D.CLAUDE_3_7_SONNET,
+    }
 
 
 def is_vision_model(deployment: D) -> bool:
@@ -101,6 +117,8 @@ def is_vision_model(deployment: D) -> bool:
         D.GEMINI_2_5_FLASH,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_3_PRO_IMAGE_PREVIEW,
+        D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
+        D.GEMINI_3_1_FLASH_LITE_PREVIEW,
         D.GEMINI_2_5_FLASH_IMAGE,
         D.GEMINI_2_5_PRO,
         D.GEMINI_3_PRO,
@@ -122,11 +140,16 @@ def is_vision_model(deployment: D) -> bool:
         D.CLAUDE_4_1_OPUS,
         D.CLAUDE_4_5_HAIKU,
         D.CLAUDE_4_5_SONNET,
+        D.CLAUDE_4_6_SONNET,
+        D.CLAUDE_4_6_OPUS,
+        D.CLAUDE_4_5_OPUS,
     ]
 
 
 def select(p: Selector[D], xs: List[DeploymentSpec]) -> List[DeploymentSpec]:
-    return [x for x in xs if p(x.deployment)]
+    ret = [x for x in xs if p(x.deployment)]
+    assert ret, "The selected list of deployments is empty"
+    return ret
 
 
 deployments = select(
@@ -134,9 +157,7 @@ deployments = select(
 )
 retired_deployments = select(pred(is_retired_model), _DEPLOYMENTS)
 vision_deployments = select(pred(is_vision_model), deployments)
-sample_deployment = select(
-    pred(lambda d: d == D.CLAUDE_3_7_SONNET), deployments
-)
+sample_deployment = select(pred(lambda d: d == D.CLAUDE_4_SONNET), deployments)
 
 
 def supports_json_object_response_format(deployment: D) -> bool:
@@ -195,6 +216,7 @@ def is_gemini_image(deployment: D) -> bool:
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_2_5_FLASH_IMAGE,
         D.GEMINI_3_PRO_IMAGE_PREVIEW,
+        D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
     )
 
 
@@ -212,16 +234,22 @@ def supports_thinking(deployment: D) -> bool:
         D.GEMINI_2_5_FLASH,
         D.GEMINI_3_PRO,
         D.GEMINI_3_PRO_PREVIEW,
-        D.GEMINI_3_1_PRO_PREVIEW,
-        D.GEMINI_3_FLASH_PREVIEW,
+        # These models do not reliably produce thinking tokens,
+        # even though they support reasoning.
+        # D.GEMINI_3_FLASH_PREVIEW,
+        # D.GEMINI_3_1_PRO_PREVIEW,
+        # D.GEMINI_3_1_FLASH_LITE_PREVIEW,
     )
 
 
 def supports_thinking_level(deployment: D) -> bool:
     return deployment in (
         D.GEMINI_3_PRO_PREVIEW,
-        D.GEMINI_3_1_PRO_PREVIEW,
-        D.GEMINI_3_FLASH_PREVIEW,
+        # These models do not reliably produce thinking tokens,
+        # even though they support reasoning.
+        # D.GEMINI_3_FLASH_PREVIEW,
+        # D.GEMINI_3_1_PRO_PREVIEW,
+        # D.GEMINI_3_1_FLASH_LITE_PREVIEW,
     )
 
 
@@ -372,13 +400,11 @@ async def test_empty_user_message(deployment: D, chat: Chat):
 
 @pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_multiple_candidates(deployment: D, chat: Chat):
-    max_tokens = 10 if not supports_thinking(deployment) else 250
     # Gemini 2.0 rate-limits always fail on such concurrency
     n = 5 if not is_gemini(deployment) else 2
 
     response = await chat(
         messages=[user("2+7=? Reply with a single number")],
-        max_tokens=max_tokens,
         n=n,
     )
 
@@ -403,73 +429,81 @@ async def test_finish_reason_length(deployment: D, chat: Chat):
         ],
     )
 
-    expected_tokens = 0 if supports_thinking(deployment) else 1
-    assert len(response.content.split()) <= expected_tokens
+    assert len(response.content.split()) <= 1
     assert response.usage is not None
-    assert response.usage.completion_tokens == expected_tokens
+    assert response.usage.completion_tokens <= 1
     assert response.finish_reasons == ["length"]
 
 
-def _check_thinking_response(response: ChatCompletionResult):
-    assert response.usage is not None, "Usage is missing"
-    assert response.usage.completion_tokens > 10
+class TestThinking:
+    @pytest.fixture
+    def messages(self):
+        prompt = "Given the set: {17, 23, 31, 46}, does there exist a subset whose sum is exactly 100?"
+        return [user(prompt)]
 
-    stages = response.stages
-    assert stages is not None, "Stages are missing"
-    assert len(stages) == 1
-
-    thinking_stage = stages[0]
-    assert thinking_stage.name == "Thinking"
-    assert thinking_stage.content is not None, "Thinking content is missing"
-    assert len(thinking_stage.content) > 10
-
-    assert response.finish_reasons == ["stop"]
-
-
-@pytest.mark.parametrize(
-    "deployment_spec",
-    select(pred(supports_thinking), deployments),
-    ids=display_deployment,
-)
-async def test_thinking_budget(chat: Chat):
-    response = await chat(
-        messages=[user("2+3=?")],
-        configuration={
-            "thinking": {"include_thoughts": True, "thinking_budget": 2048}
-        },
+    @pytest.mark.parametrize(
+        "deployment_spec",
+        select(pred(supports_thinking), deployments),
+        ids=display_deployment,
     )
+    async def test_thinking_budget(self, chat: Chat, messages):
+        response = await chat(
+            messages=messages,
+            configuration={
+                "thinking": {
+                    "include_thoughts": True,
+                    "thinking_budget": 2048,
+                }
+            },
+        )
+        self._check_response(response)
 
-    assert "5" in response.content
-    _check_thinking_response(response)
-
-
-@pytest.mark.parametrize(
-    "deployment_spec",
-    select(pred(supports_thinking_level), deployments),
-    ids=display_deployment,
-)
-async def test_thinking_level(chat: Chat):
-    thinking = {"include_thoughts": True, "thinking_level": "low"}
-    response = await chat(
-        messages=[user("2+3=?")], configuration={"thinking": thinking}
+    @pytest.mark.parametrize(
+        "deployment_spec",
+        select(pred(supports_thinking_level), deployments),
+        ids=display_deployment,
     )
-    assert "5" in response.content
-    _check_thinking_response(response)
+    async def test_thinking_level(self, chat: Chat, messages):
+        response = await chat(
+            messages=messages,
+            configuration={
+                "thinking": {
+                    "include_thoughts": True,
+                    "thinking_level": "high",
+                }
+            },
+        )
+        self._check_response(response)
 
-
-@pytest.mark.parametrize(
-    "deployment_spec",
-    select(pred(supports_thinking_level), deployments),
-    ids=display_deployment,
-)
-async def test_reasoning_effort(chat: Chat):
-    response = await chat(
-        messages=[user("2+3=?")],
-        configuration={"thinking": {"include_thoughts": True}},
-        reasoning_effort="low",
+    @pytest.mark.parametrize(
+        "deployment_spec",
+        select(pred(supports_thinking_level), deployments),
+        ids=display_deployment,
     )
-    assert "5" in response.content
-    _check_thinking_response(response)
+    async def test_reasoning_effort(self, chat: Chat, messages):
+        response = await chat(
+            messages=messages,
+            configuration={"thinking": {"include_thoughts": True}},
+            reasoning_effort="high",
+        )
+        self._check_response(response)
+
+    def _check_response(self, response: ChatCompletionResult):
+        assert all(str(num) in response.content for num in [23, 31, 46])
+
+        assert response.usage is not None, "Usage is missing"
+        assert response.usage.completion_tokens > 10
+
+        stages = response.stages
+        assert stages is not None, "Stages are missing"
+        assert len(stages) == 1
+
+        thinking_stage = stages[0]
+        assert thinking_stage.name == "Thinking"
+        assert thinking_stage.content is not None, "Thinking content is missing"
+        assert len(thinking_stage.content) > 10
+
+        assert response.finish_reasons == ["stop"]
 
 
 @pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
@@ -557,8 +591,7 @@ async def _run_test(
     expected: str | List[str] | ExpectedException | None,
 ):
     async def _run():
-        max_tokens = 2000 if supports_thinking(deployment) else 100
-        return await chat(max_tokens=max_tokens, messages=messages)
+        return await chat(messages=messages)
 
     if isinstance(expected, ExpectedException):
         async with expected_exception(expected):
@@ -642,7 +675,6 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
         D.GEMINI_3_PRO,
         D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_3_FLASH_PREVIEW,
-        D.GEMINI_3_1_PRO_PREVIEW,
     ):
         async with expected_exception(
             [
