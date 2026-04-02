@@ -35,7 +35,7 @@ uvicorn = "0.22.0"
 pillow = "12.1.1"
 pypdf = { version = "6.9.2", extras = ["crypto"] }
 numpy = "2.0.0"
-aiohttp = "3.13.3"
+aiohttp = "3.13.4"
 urllib3 = "2.6.3"
 azure-identity = "1.25.1"
 
