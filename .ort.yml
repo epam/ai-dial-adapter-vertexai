@@ -16,6 +16,9 @@ license_choices:
     choice: FTL
 resolutions:
   rule_violations:
+    - message: ".*PyPI::setuptools:78\\.1\\.1.*"
+      reason: "CANT_FIX_EXCEPTION"
+      comment: "BSD 3-Clause New or Revised License: https://github.com/pypa/setuptools/blob/v78.1.1/LICENSE"
     - message: ".*PyPI::aiocache:0\\.12\\.2.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/aio-libs/aiocache/blob/v0.12.2/LICENSE'
