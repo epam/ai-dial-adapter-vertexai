@@ -5,6 +5,7 @@ DOCKER ?= docker
 POETRY ?= poetry
 POETRY_PYTHON ?= python
 PYDANTIC_V2 ?= 1
+VENV_DIR ?= .venv
 
 .PHONY: all init_env install build serve clean lint format test integration_tests docker_build docker_run
 
@@ -31,6 +32,9 @@ clean:
 	$(POETRY) run python -m scripts.clean
 	$(POETRY) env remove --all
 
+install_git_hooks: install
+	$(VENV_DIR)/bin/pre-commit install
+
 lint: install
 	$(POETRY) run nox -s lint
 
@@ -55,6 +59,7 @@ help:
 	@echo '===================='
 	@echo 'build                        - build the source and wheels archives'
 	@echo 'clean                        - clean virtual env and build artifacts'
+	@echo 'install_git_hooks            - install the git hooks'
 	@echo '-- LINTING --'
 	@echo 'format                       - run code formatters'
 	@echo 'lint                         - run linters'
