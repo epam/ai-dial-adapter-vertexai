@@ -40,8 +40,7 @@ def init_vertex_ai():
 
 
 async def _close_genai_client(client: GenAIClient) -> None:
-    if session := client._api_client._aiohttp_session:
-        await session.close()
+    await client.aio.aclose()
 
 
 @cache(_close_genai_client)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from types import TracebackType
-from typing import ContextManager, Optional, Tuple
+from typing import ContextManager, Tuple
 
 from aidial_sdk.chat_completion import (
     Attachment,
@@ -75,52 +75,43 @@ class _ResponseState:
     """
 
 
+@dataclass
 class ChoiceConsumer(Consumer):
     response: Response
-    _response_state: _ResponseState
+    response_state: _ResponseState = field(default_factory=_ResponseState)
 
-    _choice: Optional[Choice]
-    finish_reason: Optional[FinishReason]
-
-    citations: dict[int, Tuple[int, Attachment | None]]
+    choice_: Choice | None = None
+    finish_reason: FinishReason | None = None
+    citations: dict[int, Tuple[int, Attachment | None]] = field(
+        default_factory=dict
+    )
     """
     Mapping from the document ID to a tuple of (1-based display index, attachment).
     """
 
-    def __init__(
-        self,
-        response: Response,
-        *,
-        response_stage: _ResponseState | None = None,
-    ):
-        self.response = response
-        self._response_state = response_stage or _ResponseState()
-        self._choice = None
-        self.finish_reason = None
-        self.citations = {}
-
     def fork(self) -> Consumer:
         return ChoiceConsumer(
-            self.response, response_stage=self._response_state
+            response=self.response,
+            response_state=self.response_state,
         )
 
     @property
     def choice(self) -> Choice:
-        if self._choice is None:
+        if self.choice_ is None:
             # Delay opening a choice to the very last moment
             # so as to give opportunity for exceptions to bubble up to
             # the level of HTTP response (instead of error objects in a stream).
-            choice = self._choice = self.response.create_choice()
+            choice = self.choice_ = self.response.create_choice()
             choice.open()
             return choice
         else:
-            return self._choice
+            return self.choice_
 
     @property
     def choice_idx(self) -> int | None:
-        if self._choice is None:
+        if self.choice_ is None:
             return None
-        return self._choice.index
+        return self.choice_.index
 
     def __enter__(self):
         return self
@@ -131,15 +122,15 @@ class ChoiceConsumer(Consumer):
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> bool | None:
-        if exc is None and self._choice is not None:
-            self._choice.close(self.finish_reason)
+        if exc is None and self.choice_ is not None:
+            self.choice_.close(self.finish_reason)
         return False
 
     def is_empty(self) -> bool:
-        return self._response_state.empty
+        return self.response_state.empty
 
     def become_non_empty(self):
-        self._response_state.empty = False
+        self.response_state.empty = False
 
     async def create_function_call(self, name: str, arguments: str | None):
         self.become_non_empty()
@@ -183,10 +174,10 @@ class ChoiceConsumer(Consumer):
         #   'Trying to set "usage" before generating all choices'
         if self.is_empty():
             await self.append_content("")
-        self._response_state.usage = usage
+        self.response_state.usage = usage
 
     def get_usage(self) -> TokenUsage:
-        return self._response_state.usage
+        return self.response_state.usage
 
     async def set_state(self, state: dict):
         if state:
