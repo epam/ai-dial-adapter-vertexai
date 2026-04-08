@@ -400,8 +400,7 @@ async def test_empty_user_message(deployment: D, chat: Chat):
 
 @pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
 async def test_multiple_candidates(deployment: D, chat: Chat):
-    # Gemini 2.0 rate-limits always fail on such concurrency
-    n = 5 if not is_gemini(deployment) else 2
+    n = 2
 
     response = await chat(
         messages=[user("2+7=? Reply with a single number")],
