@@ -20,7 +20,13 @@ def configure_loggers():
         logger.propagate = True
 
     # Setting up log levels
-    for name in ["app", "vertex-ai", "uvicorn", "__main__"]:
+    for name in [
+        "app",
+        "vertex-ai",
+        "aidial_adapter_anthropic",
+        "uvicorn",
+        "__main__",
+    ]:
         logging.getLogger(name).setLevel(LOG_LEVEL)
 
     # Configuring the root logger
