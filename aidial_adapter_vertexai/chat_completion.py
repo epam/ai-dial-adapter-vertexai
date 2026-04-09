@@ -90,6 +90,12 @@ class VertexAIChatCompletion(ChatCompletion):
         response.set_model(deployment.upstream_deployment_id)
 
         params = ModelParameters.create(request)
+        # Currently n>1 is emulated by calling the model n times
+        n = params.n or 1
+        params.n = None
+
+        max_prompt_tokens = params.max_prompt_tokens
+        params.max_prompt_tokens = None
 
         model = await self._get_model(request)
         tools = ToolsConfig.from_request(request)
@@ -102,11 +108,7 @@ class VertexAIChatCompletion(ChatCompletion):
             await prompt.report_usage(response)
             raise prompt
 
-        # Currently n>1 is emulated by calling the model n times
-        n = params.n or 1
-        params.n = None
-
-        if params.max_prompt_tokens is None:
+        if max_prompt_tokens is None:
             truncated_prompt = TruncatedPrompt(
                 prompt=prompt, discarded_messages=[]
             )
@@ -116,7 +118,7 @@ class VertexAIChatCompletion(ChatCompletion):
                     "max_prompt_tokens request parameter is not supported"
                 )
             truncated_prompt = await model.truncate_prompt(
-                prompt, params.max_prompt_tokens
+                prompt, max_prompt_tokens
             )
 
         async def set_response_headers(prompt_tokens: int | None = None):
@@ -137,7 +139,7 @@ class VertexAIChatCompletion(ChatCompletion):
         async def generate_response(usage: TokenUsage) -> None:
             with ChoiceConsumer(response=response) as consumer:
                 await model.chat(params, consumer, truncated_prompt.prompt)
-                usage.accumulate(consumer.usage)
+                usage.accumulate(consumer.get_usage())
 
             log.debug(
                 f"finish_reason[{consumer.choice_idx}]: {consumer.finish_reason}"
@@ -156,7 +158,7 @@ class VertexAIChatCompletion(ChatCompletion):
         if not request.stream:
             await set_response_headers(usage.prompt_tokens)
 
-        if params.max_prompt_tokens is not None:
+        if max_prompt_tokens is not None:
             response.set_discarded_messages(truncated_prompt.discarded_messages)
 
     @override

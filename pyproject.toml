@@ -24,12 +24,13 @@ package-mode = false
 
 [tool.poetry.dependencies]
 aidial-sdk = { version = "0.33.1", extras = ["telemetry"] }
+aidial-adapter-anthropic = { version = "0.6.0" }
+anthropic = { version = "0.79.0", extras = ["vertex"] }
 fastapi = "0.120.2"
 google-cloud-aiplatform = "1.138.0"
 google-auth = "2.48.0"
 google-genai = "1.64.0"
 openai = "1.107.3"
-anthropic = { version = "0.75.0", extras = ["vertex"] }
 pydantic = "2.10.4"
 uvicorn = "0.22.0"
 pillow = "12.1.1"
@@ -84,6 +85,8 @@ filterwarnings = [
   # vertexai is deprecated; remove it once this is fixed:
   # https://github.com/epam/ai-dial-adapter-vertexai/issues/398
   "ignore:This feature is deprecated as of June 24:UserWarning",
+  # Warnings from the anthropic adapter:
+  "ignore:Pydantic serializer warnings:UserWarning",
 ]
 
 [tool.pyright]

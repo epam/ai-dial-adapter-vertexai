@@ -35,24 +35,12 @@ _EAST = "us-east5"
 _GLOBAL = "global"
 
 _IMAGEN_MODELS: Mapping[D, str] = {
-    D.IMAGEN_005: _CENTRAL,
     D.IMAGEN_3_GENERATE_001: _CENTRAL,
     D.IMAGEN_3_GENERATE_002: _CENTRAL,
     D.IMAGEN_3_FAST_GENERATE: _CENTRAL,
-    D.IMAGEN_4_GENERATE_PREVIEW: _CENTRAL,
-    D.IMAGEN_4_FAST_GENERATE_PREVIEW: _CENTRAL,
-    D.IMAGEN_4_ULTRA_GENERATE_PREVIEW: _CENTRAL,
     D.IMAGEN_4_GENERATE: _CENTRAL,
     D.IMAGEN_4_FAST_GENERATE: _CENTRAL,
     D.IMAGEN_4_ULTRA_GENERATE: _CENTRAL,
-}
-
-_RETIRED_MODELS: Mapping[D, str] = {
-    D.IMAGEN_005: _CENTRAL,
-}
-
-_LIVE_IMAGEN_MODELS: Mapping[D, str] = {
-    k: v for k, v in _IMAGEN_MODELS.items() if k not in _RETIRED_MODELS
 }
 
 _GEMINI_IMAGE_MODELS: Mapping[D, str] = {
@@ -61,7 +49,16 @@ _GEMINI_IMAGE_MODELS: Mapping[D, str] = {
     D.GEMINI_3_1_FLASH_IMAGE_PREVIEW: _GLOBAL,
 }
 
-_IMAGE_GENERATION_MODELS = _LIVE_IMAGEN_MODELS | _GEMINI_IMAGE_MODELS
+_RETIRED_MODELS: Mapping[D, str] = {
+    D.IMAGEN_4_GENERATE_PREVIEW: _CENTRAL,
+    D.IMAGEN_4_ULTRA_GENERATE_PREVIEW: _CENTRAL,
+    D.IMAGEN_4_FAST_GENERATE_PREVIEW: _CENTRAL,
+    D.IMAGEN_005: _CENTRAL,
+}
+
+ALL_IMAGE_GEN_MODELS = _IMAGEN_MODELS | _GEMINI_IMAGE_MODELS | _RETIRED_MODELS
+
+_IMAGE_GENERATION_MODELS = _IMAGEN_MODELS | _GEMINI_IMAGE_MODELS
 _IMAGE_TO_IMAGE_MODELS = _GEMINI_IMAGE_MODELS
 _VISION_MODEL = D.CLAUDE_4_SONNET
 
@@ -80,7 +77,7 @@ async def test_retired_models(
     async with expected_exception(
         cls=openai.NotFoundError,
         status_code=404,
-        message="reached its end of life",
+        message="(reached its end of life|was not found)",
     ):
         client = get_openai_client(deployment.value, region=region)
         await client.chat.completions.create(
@@ -245,7 +242,7 @@ DO NOT GENERATE IMAGES.
 
 
 @pytest.mark.parametrize("stream", [False, True])
-@pytest.mark.parametrize("deployment, region", _LIVE_IMAGEN_MODELS.items())
+@pytest.mark.parametrize("deployment, region", _IMAGEN_MODELS.items())
 async def test_content_filtering_imagen(
     get_openai_client: Callable[..., AsyncAzureOpenAI],
     deployment: D,

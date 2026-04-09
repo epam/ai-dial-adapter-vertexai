@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from types import TracebackType
-from typing import Optional, Tuple
+from typing import ContextManager, Tuple
 
 from aidial_sdk.chat_completion import (
     Attachment,
@@ -13,7 +16,14 @@ from aidial_sdk.chat_completion import (
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 
-class Consumer(ABC):
+class Consumer(ContextManager, ABC):
+    @abstractmethod
+    def fork(self) -> Consumer: ...
+
+    @property
+    @abstractmethod
+    def choice(self) -> Choice: ...
+
     @abstractmethod
     async def append_content(self, content: str): ...
 
@@ -56,47 +66,52 @@ class Consumer(ABC):
     def has_function_call(self) -> bool: ...
 
 
+@dataclass
+class _ResponseState:
+    usage: TokenUsage = field(default_factory=TokenUsage)
+    empty: bool = True
+    """
+    Whether the consumer has sent something to any of choices or not.
+    """
+
+
+@dataclass
 class ChoiceConsumer(Consumer):
     response: Response
-    _choice: Optional[Choice]
-    usage: TokenUsage
-    finish_reason: Optional[FinishReason]
+    response_state: _ResponseState = field(default_factory=_ResponseState)
 
-    empty: bool
-    """
-    Whether the consumer has sent something to the choice or not.
-    """
-
-    citations: dict[int, Tuple[int, Attachment | None]]
+    choice_: Choice | None = None
+    finish_reason: FinishReason | None = None
+    citations: dict[int, Tuple[int, Attachment | None]] = field(
+        default_factory=dict
+    )
     """
     Mapping from the document ID to a tuple of (1-based display index, attachment).
     """
 
-    def __init__(self, response: Response):
-        self.response = response
-        self._choice = None
-        self.empty = True
-        self.usage = TokenUsage()
-        self.finish_reason = None
-        self.citations = {}
+    def fork(self) -> Consumer:
+        return ChoiceConsumer(
+            response=self.response,
+            response_state=self.response_state,
+        )
 
     @property
     def choice(self) -> Choice:
-        if self._choice is None:
+        if self.choice_ is None:
             # Delay opening a choice to the very last moment
             # so as to give opportunity for exceptions to bubble up to
             # the level of HTTP response (instead of error objects in a stream).
-            choice = self._choice = self.response.create_choice()
+            choice = self.choice_ = self.response.create_choice()
             choice.open()
             return choice
         else:
-            return self._choice
+            return self.choice_
 
     @property
     def choice_idx(self) -> int | None:
-        if self._choice is None:
+        if self.choice_ is None:
             return None
-        return self._choice.index
+        return self.choice_.index
 
     def __enter__(self):
         return self
@@ -107,29 +122,33 @@ class ChoiceConsumer(Consumer):
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> bool | None:
-        if exc is None and self._choice is not None:
-            self._choice.close(self.finish_reason)
+        if exc is None and self.choice_ is not None:
+            self.choice_.close(self.finish_reason)
         return False
 
     def is_empty(self) -> bool:
-        return self.empty
+        return self.response_state.empty
+
+    def become_non_empty(self):
+        self.response_state.empty = False
 
     async def create_function_call(self, name: str, arguments: str | None):
-        self.empty = False
+        self.become_non_empty()
         await self.set_finish_reason(FinishReason.FUNCTION_CALL)
         self.choice.create_function_call(name, arguments)
 
     async def create_tool_call(self, id: str, name: str, arguments: str | None):
-        self.empty = False
+        self.become_non_empty()
         await self.set_finish_reason(FinishReason.TOOL_CALLS)
         self.choice.create_function_tool_call(id, name, arguments)
 
     async def append_content(self, content: str):
-        self.empty = self.empty and content == ""
+        if content != "":
+            self.become_non_empty()
         self.choice.append_content(content)
 
     async def add_attachment(self, attachment: Attachment):
-        self.empty = False
+        self.become_non_empty()
         self.choice.add_attachment(attachment)
 
     async def add_citation_attachment(
@@ -155,7 +174,10 @@ class ChoiceConsumer(Consumer):
         #   'Trying to set "usage" before generating all choices'
         if self.is_empty():
             await self.append_content("")
-        self.usage = usage
+        self.response_state.usage = usage
+
+    def get_usage(self) -> TokenUsage:
+        return self.response_state.usage
 
     async def set_state(self, state: dict):
         if state:

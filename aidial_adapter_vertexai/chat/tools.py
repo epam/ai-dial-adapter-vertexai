@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Literal, Self, assert_never
+from typing import Dict, List, Literal, Self
 
 from aidial_sdk.chat_completion import (
     Function,
@@ -13,20 +13,6 @@ from aidial_sdk.chat_completion.request import (
     StaticTool,
     Tool,
 )
-from anthropic.types.beta import (
-    BetaToolChoiceAnyParam as ClaudeToolChoiceAnyParam,
-)
-from anthropic.types.beta import (
-    BetaToolChoiceAutoParam as ClaudeToolChoiceAutoParam,
-)
-from anthropic.types.beta import (
-    BetaToolChoiceNoneParam as ClaudeToolChoiceNoneParam,
-)
-from anthropic.types.beta import BetaToolChoiceParam as ClaudeToolChoice
-from anthropic.types.beta import (
-    BetaToolChoiceToolParam as ClaudeToolChoiceToolParam,
-)
-from anthropic.types.beta import BetaToolParam as ClaudeTool
 from google.genai.types import (
     FunctionCallingConfigDict as GenAIFunctionCallingConfig,
 )
@@ -165,40 +151,6 @@ class ToolsConfig(BaseModel):
             tools_mode=tools_mode,
             tool_ids=tool_ids,
         )
-
-    def to_claude_tools(self) -> List[ClaudeTool] | None:
-        if not self.tools:
-            return None
-
-        def _create_tool(tool: Tool) -> ClaudeTool:
-            func = tool.function
-            ret: ClaudeTool = {
-                "name": func.name,
-                "input_schema": func.parameters or _EMPTY_OBJECT_JSON_SCHEMA,
-            }
-            if func.description:
-                ret["description"] = func.description
-            return ret
-
-        return [_create_tool(tool) for tool in self.tools]
-
-    def to_claude_tool_choice(self) -> ClaudeToolChoice | None:
-        if not self.tools:
-            return None
-
-        match self.tool_choice:
-            case "auto":
-                return ClaudeToolChoiceAutoParam(type="auto")
-            case "none":
-                return ClaudeToolChoiceNoneParam(type="none")
-            case "required":
-                return ClaudeToolChoiceAnyParam(type="any")
-            case ToolChoice(function=function):
-                return ClaudeToolChoiceToolParam(
-                    type="tool", name=function.name
-                )
-            case _:
-                assert_never(self.tool_choice)
 
     def to_gemini_genai_tools(self) -> List[GenAITool]:
         if not self.tools:

@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Any
 
 import proto
+from openai import Omit
 from pydantic import BaseModel
 from pydantic import BaseModel as BaseModelV1
 
@@ -81,6 +82,9 @@ def _to_dict(obj: Any, **kwargs) -> Any:
 
     if isinstance(obj, proto.Message):
         return rec(message_to_dict(obj))
+
+    if isinstance(obj, Omit):
+        return "omit"
 
     if hasattr(obj, "to_dict"):
         return rec(obj.to_dict())

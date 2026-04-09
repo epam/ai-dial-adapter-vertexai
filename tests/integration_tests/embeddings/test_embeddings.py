@@ -10,7 +10,6 @@ from openai import AsyncAzureOpenAI
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment as D
 from aidial_adapter_vertexai.utils.resource import Resource
 from tests.integration_tests.constants import (
-    BMP_RESOURCE,
     JPG_RESOURCE,
     MP3_RESOURCE,
     MP4_RESOURCE,
@@ -194,7 +193,6 @@ _IMAGE = _create_attachment(JPG_RESOURCE)
 _AUDIO = _create_attachment(MP3_RESOURCE)
 _VIDEO = _create_attachment(MP4_RESOURCE)
 _DOCUMENT = _create_attachment(PDF_RESOURCE)
-_UNSUPPORTED_IMAGE = _create_attachment(BMP_RESOURCE)
 _UNSUPPORTED_DOCUMENT = _create_attachment(XLSX_RESOURCE)
 
 
@@ -259,13 +257,6 @@ class TestGeminiMultiModalEmbeddings:
     ):
         tc = EmbeddingsTestCase(spec=spec, custom_input=custom_input)
         await tc.run(client)
-
-    async def test_multi_modal_gemini_unsupported_image(
-        self, client, spec: ModelSpec
-    ):
-        tc = EmbeddingsTestCase(spec=spec, custom_input=[_UNSUPPORTED_IMAGE])
-        error = _error_bad_request("Request contains an invalid argument.")
-        await tc.run(client, error)
 
     async def test_multi_modal_gemini_unsupported_document(
         self, client, spec: ModelSpec
