@@ -1150,7 +1150,7 @@ async def test_compatible_deployment_id(get_openai_client, stream: bool):
         extra_headers={"x-upstream-extra-data": json.dumps(upstream_config)},
     )
 
-    msg = r"Publisher Model `projects/[^/]+/locations/[^/]+/publishers/anthropic/models/xxx` not found."
+    msg = r"Publisher Model `projects/[^/]+/locations/[^/]+/publishers/anthropic/models/xxx` was not found."
     with pytest.raises(openai.NotFoundError, match=msg):
         await chat_completion(
             openai_client, stream=stream, messages=[user("test")]

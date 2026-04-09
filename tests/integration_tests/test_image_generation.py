@@ -77,7 +77,7 @@ async def test_retired_models(
     async with expected_exception(
         cls=openai.NotFoundError,
         status_code=404,
-        message="reached its end of life",
+        message="(reached its end of life|was not found)",
     ):
         client = get_openai_client(deployment.value, region=region)
         await client.chat.completions.create(
