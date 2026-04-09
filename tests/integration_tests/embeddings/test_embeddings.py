@@ -10,7 +10,6 @@ from openai import AsyncAzureOpenAI
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment as D
 from aidial_adapter_vertexai.utils.resource import Resource
 from tests.integration_tests.constants import (
-    BMP_RESOURCE,
     JPG_RESOURCE,
     MP3_RESOURCE,
     MP4_RESOURCE,
