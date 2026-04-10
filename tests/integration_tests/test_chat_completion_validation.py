@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 import pytest
 from openai import UnprocessableEntityError
@@ -24,7 +23,7 @@ class TestCase:
 
     name: str
     deployment: ChatCompletionDeployment
-    messages: List[ChatCompletionMessageParam]
+    messages: list[ChatCompletionMessageParam]
     expected_exception: Exception | None
 
     def get_id(self) -> str:
@@ -47,7 +46,7 @@ INCORRECT_DIALOG_STRUCTURE_ROLES_ERROR = (
 
 def get_test_cases(
     deployment: ChatCompletionDeployment,
-) -> List[TestCase]:
+) -> list[TestCase]:
     return [
         TestCase(
             name="empty history",
@@ -119,7 +118,7 @@ async def test_gemini_pdf_page_overflow_for_document(get_openai_client):
 
     doc = Resource(type="application/pdf", data=gen_pdf(["a"] * 2_000))
 
-    messages: List[ChatCompletionMessageParam] = [
+    messages: list[ChatCompletionMessageParam] = [
         user_with_attachment_data("test", doc)
     ]
 
@@ -139,7 +138,7 @@ async def test_gemini_pdf_page_overflow_for_request(get_openai_client):
 
     doc = Resource(type="application/pdf", data=gen_pdf(["a"] * 1_000))
 
-    messages: List[ChatCompletionMessageParam] = [
+    messages: list[ChatCompletionMessageParam] = [
         user_with_attachment_data("test", doc, doc, doc, doc)
     ]
 

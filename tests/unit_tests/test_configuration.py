@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 import httpx
 import openai
@@ -10,7 +9,7 @@ from tests.conftest import get_extra_headers
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.openai import chat_completion, configuration, user
 
-_claude_deployments: List[D] = [
+_claude_deployments: list[D] = [
     D.CLAUDE_3_5_SONNET_V2,
     D.CLAUDE_3_5_HAIKU,
     D.CLAUDE_3_OPUS,
@@ -27,7 +26,7 @@ _claude_deployments: List[D] = [
     D.CLAUDE_4_5_OPUS,
 ]
 
-_gemini_deployments_with_thinking: List[D] = [
+_gemini_deployments_with_thinking: list[D] = [
     D.GEMINI_2_5_PRO,
     D.GEMINI_3_PRO,
     D.GEMINI_3_PRO_PREVIEW,
@@ -35,7 +34,7 @@ _gemini_deployments_with_thinking: List[D] = [
     D.GEMINI_3_FLASH_PREVIEW,
 ]
 
-_gemini_deployments_with_imagen: List[D] = [
+_gemini_deployments_with_imagen: list[D] = [
     D.GEMINI_2_0_FLASH_EXP,
     D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
     D.GEMINI_2_5_FLASH_IMAGE,
@@ -43,7 +42,7 @@ _gemini_deployments_with_imagen: List[D] = [
     D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
 ]
 
-_veo_deployments: List[D] = [
+_veo_deployments: list[D] = [
     D.VEO_3_0_GENERATE,
     D.VEO_3_0_GENERATE,
     D.VEO_3_0_GENERATE_PREVIEW,
@@ -99,7 +98,7 @@ class ConfTestCase:
     exception: ExpectedException
 
 
-_invalid_claude_configuration_test_cases: List[ConfTestCase] = [
+_invalid_claude_configuration_test_cases: list[ConfTestCase] = [
     ConfTestCase(
         {"enable_citations": "hello"},
         ExpectedException(

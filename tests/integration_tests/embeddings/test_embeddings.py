@@ -1,5 +1,4 @@
 import itertools
-from typing import List
 
 import numpy as np
 import openai
@@ -295,7 +294,7 @@ async def test_retired_embedding_models(get_openai_client, deployment: D):
     ids=lambda input: "/".join(input),
 )
 async def test_multi_input_embeddings(
-    client, spec: ModelSpec, input: List[str]
+    client, spec: ModelSpec, input: list[str]
 ):
     model_id = spec.deployment.value
     response = await client.embeddings.create(

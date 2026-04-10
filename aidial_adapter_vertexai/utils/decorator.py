@@ -1,4 +1,5 @@
-from typing import Callable, ParamSpec
+from collections.abc import Callable
+from typing import ParamSpec
 
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 

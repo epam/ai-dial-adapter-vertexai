@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, TypeVar
+from typing import Generic, TypeVar
 
 from aidial_sdk.chat_completion import Message as DialMessage
 from pydantic import BaseModel
@@ -13,8 +13,8 @@ ConversationT = TypeVar("ConversationT", bound=BaseConversation)
 
 
 class Parts(BaseModel, Generic[PartT]):
-    parts: List[PartT] = []
-    resources: List[DialResource] = []
+    parts: list[PartT] = []
+    resources: list[DialResource] = []
 
     def append_text_part(self, part: PartT):
         self.parts.append(part)
@@ -54,5 +54,5 @@ class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
 
     @abstractmethod
     def create_conversation(
-        self, system_instruction: List[PartT] | None, contents: List[ContentT]
+        self, system_instruction: list[PartT] | None, contents: list[ContentT]
     ) -> ConversationT: ...

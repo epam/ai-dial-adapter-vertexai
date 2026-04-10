@@ -1,14 +1,13 @@
 import mimetypes
 import os
 from pathlib import Path
-from typing import List
 
 from aidial_adapter_vertexai.dial_api.storage import FileMetadata, FileStorage
 
 
 class MockFileStorage(FileStorage):
     root_dir: Path
-    files: List[Path]
+    files: list[Path]
 
     @classmethod
     def create(cls, root_dir: Path) -> "MockFileStorage":

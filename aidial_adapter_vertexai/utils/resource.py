@@ -14,7 +14,7 @@ class Resource(BaseModel):
         try:
             data = base64.b64decode(data_base64, validate=True)
         except Exception:
-            raise ValueError("Invalid base64 data")
+            raise ValueError("Invalid base64 data") from None
 
         return cls(type=type, data=data)
 
@@ -41,7 +41,7 @@ class Resource(BaseModel):
         return f"{self._to_data_url_prefix(self.type)}{self.data_base64}"
 
     @staticmethod
-    def parse_data_url_content_type(data_url: str) -> Optional[str]:
+    def parse_data_url_content_type(data_url: str) -> str | None:
         pattern = r"^data:([^;]+);base64,"
         match = re.match(pattern, data_url)
         return None if match is None else match.group(1)

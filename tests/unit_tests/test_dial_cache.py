@@ -1,5 +1,4 @@
 import dataclasses
-from typing import Tuple
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -30,7 +29,7 @@ _DEPLOYMENTS = [
 ]
 
 
-_MockPrompt = Tuple[str, dict | None]
+_MockPrompt = tuple[str, dict | None]
 
 
 class _MockChatCompletionAdapter(ChatCompletionAdapter[_MockPrompt]):

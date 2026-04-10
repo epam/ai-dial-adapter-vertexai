@@ -1,6 +1,5 @@
 import json
 import os
-from typing import Dict
 
 
 def get_env(name: str) -> str:
@@ -14,7 +13,7 @@ def get_env_int(name: str, default: int) -> int:
     return int(os.getenv(name) or default)
 
 
-def get_str_dict(name: str) -> Dict[str, str]:
+def get_str_dict(name: str) -> dict[str, str]:
     if (val := os.getenv(name)) is None:
         return {}
 
@@ -28,4 +27,4 @@ def get_str_dict(name: str) -> Dict[str, str]:
     except Exception:
         raise ValueError(
             f"{name} env variable doesn't contain a valid string to string JSON dictionary"
-        )
+        ) from None

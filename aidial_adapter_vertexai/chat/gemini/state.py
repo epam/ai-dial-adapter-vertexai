@@ -1,5 +1,3 @@
-from typing import List
-
 import pydantic
 from aidial_sdk.chat_completion import Message as DialMessage
 from google.genai.types import Content as GenAIContent
@@ -30,7 +28,7 @@ class Part(_StateModel):
 class Content(_StateModel):
     """Structurally mirrors GenAIContent"""
 
-    parts: List[Part] | None = None
+    parts: list[Part] | None = None
 
     def update(self, content: GenAIContent) -> None:
         if self.parts and (parts := content.parts):

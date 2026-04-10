@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from logging import DEBUG
-from typing import Dict, List, Optional, Tuple
 
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings.request import EmbeddingsRequest
@@ -44,7 +43,7 @@ class ModelSpec(BaseModel):
     supports_dimensions: bool
 
 
-specs: Dict[GenAIEmbeddingDeployment, ModelSpec] = {
+specs: dict[GenAIEmbeddingDeployment, ModelSpec] = {
     EmbeddingsDeployment.TEXT_EMBEDDING_GECKO_1: ModelSpec(
         supports_type=False,
         supports_instr=False,
@@ -77,9 +76,8 @@ async def compute_embeddings(
     model: TextEmbeddingModel,
     base64_encode: bool,
     dimensions: int | None,
-    inputs: List[str | TextEmbeddingInput],
-) -> Tuple[List[Embedding], int]:
-
+    inputs: list[str | TextEmbeddingInput],
+) -> tuple[list[Embedding], int]:
     if log.isEnabledFor(DEBUG):
         msg = json_dumps_short(
             {"inputs": inputs, "output_dimensionality": dimensions}
@@ -97,7 +95,7 @@ async def compute_embeddings(
         msg = json_dumps_short(response, excluded_keys=["_prediction_response"])
         log.debug(f"response: {msg}")
 
-    embeddings: List[Embedding] = []
+    embeddings: list[Embedding] = []
     tokens = 0
 
     for embedding in response:
@@ -127,10 +125,9 @@ def validate_request(spec: ModelSpec, request: EmbeddingsRequest) -> None:
 
 
 async def get_embedding_inputs(
-    request: EmbeddingsRequest, task_type: Optional[str]
-) -> List[str | TextEmbeddingInput]:
-
-    async def on_texts(texts: List[str]) -> str | TextEmbeddingInput:
+    request: EmbeddingsRequest, task_type: str | None
+) -> list[str | TextEmbeddingInput]:
+    async def on_texts(texts: list[str]) -> str | TextEmbeddingInput:
         if len(texts) == 0:
             raise EMPTY_INPUT_LIST_ERROR
         elif len(texts) == 1:
@@ -177,7 +174,7 @@ class TextEmbeddingsAdapter(EmbeddingsAdapter):
 
         validate_request(spec, request)
 
-        task_type: Optional[str] = None
+        task_type: str | None = None
         if request.custom_fields is not None:
             task_type = request.custom_fields.type
 

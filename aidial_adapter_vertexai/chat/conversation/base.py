@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generic, List, Self, Set, Tuple, Type, TypeVar
+from typing import Generic, Self, TypeVar
 
 from aidial_adapter_vertexai.utils.list import MessageMergeStrategy, group_by
 from aidial_adapter_vertexai.utils.list_projection import ListProjection
@@ -22,7 +22,7 @@ class BaseConversation(Generic[SystemT, MessageT]):
 
     @classmethod
     def create(
-        cls, *, system: SystemT | None = None, messages: List[MessageT]
+        cls, *, system: SystemT | None = None, messages: list[MessageT]
     ) -> Self:
         return cls(
             system=system,
@@ -32,15 +32,15 @@ class BaseConversation(Generic[SystemT, MessageT]):
         )
 
     def merge_messages_with_same_role(
-        self, merger: Type[MessageMergeStrategy[MessageT]]
+        self, merger: type[MessageMergeStrategy[MessageT]]
     ) -> Self:
-        def _key(a: Tuple[MessageT, Set[int]]) -> str:
+        def _key(a: tuple[MessageT, set[int]]) -> str:
             return merger.role(a[0])
 
         def _merge(
-            a: Tuple[MessageT, Set[int]],
-            b: Tuple[MessageT, Set[int]],
-        ) -> Tuple[MessageT, Set[int]]:
+            a: tuple[MessageT, set[int]],
+            b: tuple[MessageT, set[int]],
+        ) -> tuple[MessageT, set[int]]:
             (msg1, set1), (msg2, set2) = a, b
             return (merger.merge(msg1, msg2), set1 | set2)
 
@@ -48,7 +48,7 @@ class BaseConversation(Generic[SystemT, MessageT]):
             self.messages.start_index,
             self.messages.end_index,
             group_by(
-                lst=self.messages.list,
+                lst=self.messages.lst,
                 key=_key,
                 init=lambda x: x,
                 merge=_merge,

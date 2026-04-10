@@ -1,4 +1,4 @@
-from typing import List, Literal, Self
+from typing import Literal, Self
 
 from pydantic import BaseModel
 
@@ -27,4 +27,4 @@ class ModelObject(BaseModel):
 
 class ModelsResponse(BaseModel):
     object: Literal["list"] = "list"
-    data: List[ModelObject]
+    data: list[ModelObject]

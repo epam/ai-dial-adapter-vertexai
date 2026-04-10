@@ -1,6 +1,7 @@
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from logging import DEBUG
-from typing import Any, AsyncIterator, Callable, List
+from typing import Any
 
 from aidial_sdk.chat_completion import FinishReason, Message
 from aidial_sdk.exceptions import RuntimeServerError
@@ -200,7 +201,7 @@ class GeminiGenAIChatCompletionAdapter(
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: List[Message],
+        messages: list[Message],
     ) -> GeminiPromptGenAI | UserError:
         return await Gemini_2_Prompt.parse(
             self.file_storage, tools, static_tools, messages
@@ -419,7 +420,6 @@ class GeminiGenAIChatCompletionAdapter(
         consumer: Consumer,
         prompt: GeminiPromptGenAI,
     ) -> None:
-
         with Timer("predict timing: {time}", log.debug):
             if log.isEnabledFor(DEBUG):
                 request_str = json_dumps_short(

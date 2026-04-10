@@ -1,5 +1,6 @@
 import random
-from typing import Awaitable, Callable, Dict, List, Mapping, Tuple, Unpack
+from collections.abc import Awaitable, Callable, Mapping
+from typing import Unpack
 
 import openai
 import pytest
@@ -73,10 +74,10 @@ def display_deployment(dep: D):
 
 
 def _pseudo_random(seed: int, a: int = 0, b: int = 100) -> int:
-    return random.Random(seed).randrange(a, b + 1)
+    return random.Random(seed).randrange(a, b + 1)  # noqa: S311
 
 
-def _create_prompt(n: int) -> Tuple[str, Dict[int, int]]:
+def _create_prompt(n: int) -> tuple[str, dict[int, int]]:
     lines = []
     answers = {}
     for idx in range(1, n + 1):
@@ -91,7 +92,7 @@ def _create_prompt(n: int) -> Tuple[str, Dict[int, int]]:
 async def test_implicit_caching(chat: Chat):
     message, answers = _create_prompt(300)
 
-    messages: List[ChatCompletionMessageParam] = [sys(message)]
+    messages: list[ChatCompletionMessageParam] = [sys(message)]
 
     indices = [151, 132, 267]
     for i, idx in enumerate(indices):

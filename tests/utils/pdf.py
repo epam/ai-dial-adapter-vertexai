@@ -1,5 +1,4 @@
 from io import BytesIO
-from typing import List
 
 from pypdf import PageObject, PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
@@ -46,7 +45,7 @@ def _create_page_with_text(
     return page
 
 
-def gen_pdf(pages: List[str]) -> bytes:
+def gen_pdf(pages: list[str]) -> bytes:
     """
     Generate a PDF from a list of page strings.
     """

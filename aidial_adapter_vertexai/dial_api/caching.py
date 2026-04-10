@@ -1,5 +1,6 @@
 import time
-from typing import Any, Callable, Coroutine, Mapping
+from collections.abc import Callable, Coroutine, Mapping
+from typing import Any
 
 from aidial_sdk.chat_completion import Response
 

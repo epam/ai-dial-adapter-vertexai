@@ -10,7 +10,6 @@ from aidial_adapter_vertexai.utils.adapter_deployments import (
 
 
 class VertexAIEmbeddings(Embeddings):
-
     @dial_exception_decorator
     async def embeddings(self, request: Request) -> Response:
         deployment = resolve_upstream_deployment_id_from_request(

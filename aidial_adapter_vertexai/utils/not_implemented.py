@@ -1,5 +1,5 @@
 def not_implemented(func):
-    setattr(func, "_not_implemented", True)
+    func._not_implemented = True
     return func
 
 

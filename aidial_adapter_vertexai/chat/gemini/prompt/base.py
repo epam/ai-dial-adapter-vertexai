@@ -1,4 +1,4 @@
-from typing import Generic, List, Self, Set, TypeVar
+from typing import Generic, Self, TypeVar
 
 from google.genai.types import Content as GenAIContent
 from google.genai.types import Part as GenAIPart
@@ -44,21 +44,18 @@ class GeminiBasePrompt(
             return True
 
         # ...and the last user message
-        if index == len(self) - 1:
-            return True
-
-        return False
+        return index == len(self) - 1
 
     def __len__(self) -> int:
         return int(self.has_system_instruction) + len(self.messages)
 
-    def partition_messages(self) -> List[int]:
+    def partition_messages(self) -> list[int]:
         n = len(self.messages)
         return (
             [1] * self.has_system_instruction + [2] * (n // 2) + [1] * (n % 2)
         )
 
-    def select(self, indices: Set[int]) -> Self:
+    def select(self, indices: set[int]) -> Self:
         system: SystemT | None = None
 
         offset = 0
@@ -66,7 +63,7 @@ class GeminiBasePrompt(
             system = self.system
             offset += 1
 
-        message_indices: Set[int] = set()
+        message_indices: set[int] = set()
         for idx in range(len(self.messages)):
             if idx + offset in indices:
                 message_indices.add(idx)
@@ -85,4 +82,4 @@ class GeminiBasePrompt(
         )
 
 
-GeminiPromptGenAI = GeminiBasePrompt[List[GenAIPart], GenAIContent]
+GeminiPromptGenAI = GeminiBasePrompt[list[GenAIPart], GenAIContent]

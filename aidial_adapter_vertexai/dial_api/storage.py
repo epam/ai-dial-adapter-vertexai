@@ -2,7 +2,7 @@ import hashlib
 import io
 import mimetypes
 import os
-from typing import Mapping, Optional
+from collections.abc import Mapping
 from urllib.parse import unquote, urljoin
 
 import aiohttp
@@ -27,7 +27,7 @@ class Bucket(TypedDict):
 class FileStorage(BaseModel):
     dial_url: str
     api_key: str
-    bucket: Optional[Bucket] = None
+    bucket: Bucket | None = None
 
     @property
     def auth_headers(self) -> Mapping[str, str]:
@@ -121,10 +121,12 @@ class FileStorage(BaseModel):
 
 
 async def download_file(url: str, headers: Mapping[str, str] = {}) -> bytes:
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            response.raise_for_status()
-            return await response.read()
+    async with (
+        aiohttp.ClientSession() as session,
+        session.get(url, headers=headers) as response,
+    ):
+        response.raise_for_status()
+        return await response.read()
 
 
 def compute_hash_digest(data: bytes) -> str:
@@ -134,7 +136,7 @@ def compute_hash_digest(data: bytes) -> str:
 DIAL_URL = os.getenv("DIAL_URL")
 
 
-def create_file_storage(api_key: str) -> Optional[FileStorage]:
+def create_file_storage(api_key: str) -> FileStorage | None:
     if DIAL_URL is None:
         return None
 

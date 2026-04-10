@@ -1,5 +1,3 @@
-from typing import Optional
-
 from aidial_sdk.chat_completion import Response
 from aidial_sdk.exceptions import HTTPException as DialException
 from aidial_sdk.exceptions import RequestValidationError
@@ -20,18 +18,20 @@ class UserError(Exception):
     """
 
     error_message: str
-    usage_message: Optional[str]
+    usage_message: str | None
 
-    def __init__(self, error_message: str, usage_message: Optional[str] = None):
+    def __init__(self, error_message: str, usage_message: str | None = None):
         self.error_message = error_message
         self.usage_message = usage_message
         super().__init__(self.error_message)
 
     async def report_usage(self, response: Response) -> None:
         if self.usage_message is not None:
-            with response.create_choice() as choice:
-                with choice.create_stage("Usage") as stage:
-                    stage.append_content(self.usage_message)
+            with (
+                response.create_choice() as choice,
+                choice.create_stage("Usage") as stage,
+            ):
+                stage.append_content(self.usage_message)
             await response.aflush()
 
     def to_dial_exception(self) -> DialException:

@@ -1,7 +1,7 @@
 import asyncio
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from logging import DEBUG
-from typing import AsyncIterator, List, Optional, Tuple
 
 from aidial_sdk.chat_completion import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
@@ -47,9 +47,8 @@ async def compute_embeddings(
     client: GenAIClient,
     model_id: str,
     base64_encode: bool,
-    inputs: List[EmbeddingsInput],
-) -> Tuple[List[Embedding], int]:
-
+    inputs: list[EmbeddingsInput],
+) -> tuple[list[Embedding], int]:
     if log.isEnabledFor(DEBUG):
         msg = json_dumps_short({"inputs": inputs})
         log.debug(f"request: {msg}")
@@ -67,12 +66,12 @@ async def compute_embeddings(
         for i in inputs
     ]
 
-    responses: List[EmbedContentResponse] = await asyncio.gather(*tasks)
+    responses: list[EmbedContentResponse] = await asyncio.gather(*tasks)
 
     if log.isEnabledFor(DEBUG):
         log.debug(f"responses: {json_dumps_short(responses)}")
 
-    embeddings: List[Embedding] = []
+    embeddings: list[Embedding] = []
     tokens = 0
 
     for response in responses:
@@ -91,7 +90,7 @@ async def compute_embeddings(
 async def get_embedding_requests(
     storage: FileStorage | None,
     request: EmbeddingsRequest,
-    task_type: Optional[str],
+    task_type: str | None,
     dimensions: int | None,
 ) -> AsyncIterator[EmbeddingsInput]:
     def create_config(*, title: str | None = None) -> EmbedContentConfig:
@@ -120,7 +119,7 @@ async def get_embedding_requests(
             config=create_config(),
         )
 
-    async def on_mixed_many(inputs: List[str | Attachment]) -> EmbeddingsInput:
+    async def on_mixed_many(inputs: list[str | Attachment]) -> EmbeddingsInput:
         if not inputs:
             raise EMPTY_INPUT_LIST_ERROR
 
@@ -177,7 +176,7 @@ class GenAIEmbeddingsAdapter(EmbeddingsAdapter):
         input_iter = await get_embedding_requests(
             self.storage, request, task_type, request.dimensions
         )
-        inputs: List[EmbeddingsInput] = [input async for input in input_iter]
+        inputs: list[EmbeddingsInput] = [input async for input in input_iter]
 
         base64_encode = request.encoding_format == "base64"
 

@@ -1,5 +1,5 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import List, Mapping
 
 import httpx
 import pytest
@@ -46,11 +46,11 @@ class TestCase:
     deployment: ChatCompletionDeployment
     region: str
 
-    messages: List[ChatCompletionMessageParam]
+    messages: list[ChatCompletionMessageParam]
     expected_error: str | None
 
-    functions: List[FunctionDefinition] | None
-    tools: List[ChatCompletionToolParam] | None
+    functions: list[FunctionDefinition] | None
+    tools: list[ChatCompletionToolParam] | None
 
     def get_id(self):
         return sanitize_test_name(f"{self.deployment.value}/{self.name}")
@@ -86,15 +86,15 @@ def is_gemini(deployment: ChatCompletionDeployment) -> bool:
 
 def get_test_cases(
     deployment: ChatCompletionDeployment, region: str
-) -> List[TestCase]:
-    test_cases: List[TestCase] = []
+) -> list[TestCase]:
+    test_cases: list[TestCase] = []
 
     def test_case(
         name: str,
-        messages: List[ChatCompletionMessageParam],
+        messages: list[ChatCompletionMessageParam],
         error: str | None = None,
-        functions: List[FunctionDefinition] | None = None,
-        tools: List[ChatCompletionToolParam] | None = None,
+        functions: list[FunctionDefinition] | None = None,
+        tools: list[ChatCompletionToolParam] | None = None,
     ) -> None:
         test_cases.append(
             TestCase(
@@ -225,7 +225,6 @@ async def test_tokenize(
         assert output.status == "error"
         assert output.error == test.expected_error
     else:
-
         chat_completion_response = await chat_completion(
             client=get_openai_client(deployment_id, region=test.region),
             messages=test.messages,

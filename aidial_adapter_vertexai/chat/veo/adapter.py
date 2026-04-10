@@ -1,6 +1,5 @@
 import asyncio
 from logging import DEBUG
-from typing import List, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message
 from aidial_sdk.exceptions import InvalidRequestError
@@ -66,7 +65,7 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: List[Message],
+        messages: list[Message],
     ) -> VeoPrompt:
         tools.not_supported()
         static_tools.not_supported()
@@ -158,7 +157,7 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
     @classmethod
     async def create(
         cls,
-        file_storage: Optional[FileStorage],
+        file_storage: FileStorage | None,
         deployment: AdapterDeployment[VeoDeployment],
         config: UpstreamConfig,
     ) -> "VeoChatCompletionAdapter":

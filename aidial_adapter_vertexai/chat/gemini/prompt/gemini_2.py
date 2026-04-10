@@ -1,4 +1,4 @@
-from typing import List, Optional, Self
+from typing import Self
 
 from aidial_sdk.chat_completion import Message
 
@@ -30,10 +30,10 @@ class Gemini_2_Prompt(GeminiPromptGenAI):
     @classmethod
     async def parse(
         cls,
-        file_storage: Optional[FileStorage],
+        file_storage: FileStorage | None,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: List[Message],
+        messages: list[Message],
     ) -> Self | UserError:
         if len(messages) == 0:
             raise ValidationError(
@@ -73,12 +73,12 @@ class Gemini_2_Prompt(GeminiPromptGenAI):
         )
 
 
-def get_usage_message(exts: List[str]) -> str:
+def get_usage_message(exts: list[str]) -> str:
     return f"""
 The application answers queries about attached documents.
 Attach documents and ask questions about them in the same message.
 
-Supported document extensions: {', '.join(exts)}.
+Supported document extensions: {", ".join(exts)}.
 
 Examples of queries:
 - "Describe the picture" for one image,
