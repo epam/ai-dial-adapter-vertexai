@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment as D
 
@@ -8,13 +7,13 @@ from aidial_adapter_vertexai.deployments import EmbeddingsDeployment as D
 class ModelSpec:
     deployment: D
     supports_titles: bool
-    supports_types: List[str]
+    supports_types: list[str]
     supports_instr: bool
     default_dimensions: int
     supports_dimensions: bool
 
 
-_BASIC_EMBEDDING_TYPES: List[str] = [
+_BASIC_EMBEDDING_TYPES: list[str] = [
     "CLASSIFICATION",
     "CLUSTERING",
     "RETRIEVAL_DOCUMENT",
@@ -44,7 +43,7 @@ GEMINI_MULTI_MODAL_SPEC = ModelSpec(
     supports_dimensions=True,
 )
 
-SPECS: List[ModelSpec] = [
+SPECS: list[ModelSpec] = [
     ModelSpec(
         deployment=D.TEXT_GEMINI_EMBEDDING_1,
         supports_types=EMBEDDING_TYPES,

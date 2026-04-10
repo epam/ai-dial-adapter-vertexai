@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -9,5 +9,5 @@ class ExtraForbidModel(BaseModel, extra="forbid"):
 
 class ExtraAllowModel(BaseModel, extra="allow"):
     @property
-    def extra_fields(self) -> Dict[str, Any]:
+    def extra_fields(self) -> dict[str, Any]:
         return self.model_extra or {}

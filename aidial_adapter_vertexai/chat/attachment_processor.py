@@ -1,17 +1,11 @@
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from logging import DEBUG
 from typing import (
     Any,
-    Callable,
-    Coroutine,
-    Dict,
     Generic,
-    List,
-    Optional,
     ParamSpec,
-    Set,
     TypeVar,
-    Union,
     assert_never,
 )
 
@@ -45,7 +39,7 @@ from aidial_adapter_vertexai.utils.pdf import get_pdf_page_count
 from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.text import decapitalize
 
-FileTypes = Dict[str, Union[str, List[str]]]
+FileTypes = dict[str, str | list[str]]
 
 Coro = Coroutine[None, None, None]
 InitValidator = Callable[[], Coro]
@@ -59,12 +53,12 @@ class AttachmentProcessor(BaseModel):
     post_validator: PostValidator | None = None
 
     @property
-    def mime_types(self) -> List[str]:
+    def mime_types(self) -> list[str]:
         return list(self.file_types.keys())
 
     @property
-    def file_exts(self) -> List[str]:
-        def to_list(value: Union[str, List[str]]) -> List[str]:
+    def file_exts(self) -> list[str]:
+        def to_list(value: str | list[str]) -> list[str]:
             return value if isinstance(value, list) else [value]
 
         return [
@@ -73,7 +67,7 @@ class AttachmentProcessor(BaseModel):
 
     async def process(
         self, file_storage: FileStorage | None, dial_resource: DialResource
-    ) -> Optional[Resource | str]:
+    ) -> Resource | str | None:
         try:
             type = await dial_resource.get_content_type()
 
@@ -118,14 +112,14 @@ PartT = TypeVar("PartT")
 class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    processors: List[AttachmentProcessor]
+    processors: list[AttachmentProcessor]
     file_storage: FileStorage | None
     conversation_factory: ConversationFactoryBase[PartT, Any, Any]
 
-    errors: Set[ProcessingError] = set()
+    errors: set[ProcessingError] = set()
 
     def get_error_message(self) -> str | None:
-        error_list = sorted(list(self.errors))
+        error_list = sorted(self.errors)
         if error_list:
             msg = "The following files failed to process:\n"
             msg += "\n".join(
@@ -136,7 +130,7 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
 
         return None
 
-    def get_file_exts(self) -> List[str]:
+    def get_file_exts(self) -> list[str]:
         return sorted({ext for p in self.processors for ext in p.file_exts})
 
     async def _collect_resource(
@@ -257,7 +251,9 @@ def max_pdf_page_count_validator(
             total_pages += pages
         except Exception:
             log.exception("Failed to get PDF page count")
-            raise ResourceValidationError("Failed to get PDF page count")
+            raise ResourceValidationError(
+                "Failed to get PDF page count"
+            ) from None
 
         if limit_per_document is not None and pages > limit_per_document:
             raise ResourceValidationError(

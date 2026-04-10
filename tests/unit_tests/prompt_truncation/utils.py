@@ -1,4 +1,5 @@
-from typing import Awaitable, Callable, Type, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
 from google.genai.types import Content as GenAIContent
 
@@ -27,7 +28,7 @@ async def get_discarded_messages(
 async def get_discarded_messages_with_message_merge(
     tokenize: Callable[[GeminiBasePrompt], Awaitable[int]],
     prompt: GeminiBasePrompt,
-    merger: Type[MessageMergeStrategy[GenAIContent]],
+    merger: type[MessageMergeStrategy[GenAIContent]],
     max_prompt_tokens: int,
 ) -> DiscardedMessages:
     prompt.conversation = prompt.conversation.merge_messages_with_same_role(

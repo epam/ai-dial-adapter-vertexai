@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from types import TracebackType
-from typing import List, Optional, Type
 
 from aidial_adapter_anthropic.adapter import (
     ChatCompletionAdapter as AnthropicClaudeAdapter,
@@ -91,7 +90,7 @@ def _to_model_params(
 @dataclass
 class _ConsumerAdapter(AnthropicConsumer):
     consumer: Consumer
-    tool_calls: List[ToolUseMessage] = field(default_factory=list)
+    tool_calls: list[ToolUseMessage] = field(default_factory=list)
 
     def fork(self):
         return _ConsumerAdapter(self.consumer.fork())
@@ -181,7 +180,7 @@ class _ConsumerAdapter(AnthropicConsumer):
 @dataclass
 class ClaudePrompt:
     params: AnthropicModelParameters
-    messages: List[Message]
+    messages: list[Message]
 
 
 @dataclass
@@ -191,7 +190,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     @classmethod
     async def create(
         cls,
-        file_storage: Optional[FileStorage],
+        file_storage: FileStorage | None,
         deployment: AdapterDeployment[ClaudeDeployment],
         config: UpstreamConfig,
     ) -> ClaudeChatCompletionAdapter:
@@ -219,7 +218,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: List[Message],
+        messages: list[Message],
     ) -> ClaudePrompt | UserError:
         static_tools.not_supported()
         model_params = _to_model_params(params, tools)
@@ -232,7 +231,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
             _ConsumerAdapter(consumer), prompt.params, prompt.messages
         )
 
-    async def configuration(self) -> Type[BaseModel] | None:
+    async def configuration(self) -> type[BaseModel] | None:
         return await self.claude_adapter.configuration()
 
     async def truncate_prompt(

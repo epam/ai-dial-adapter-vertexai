@@ -56,11 +56,8 @@ asgi-lifespan = "^2.1.0"
 httpx = "0.28.1"
 
 [tool.poetry.group.lint.dependencies]
-autoflake = "2.2.0"
-black = "26.3.1"
-flake8 = "6.0.0"
-isort = "5.12.0"
 pyright = "1.1.389"
+ruff = "0.12.11"
 
 [tool.poetry.group.dev.dependencies]
 nox = "^2023.4.22"
@@ -73,49 +70,52 @@ env_override_existing_values = 1
 env = ["PYDANTIC_V2=1"]
 testpaths = ["tests"]
 filterwarnings = [
-  "error",
-  # Warning from aiohttp
-  "ignore:Sending a large body directly with raw bytes might lock the event loop. You should probably pass an io.BytesIO object instead:ResourceWarning",
-  "ignore:pkg_resources is deprecated as an API:UserWarning",
-  # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
-  "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
-  "ignore::DeprecationWarning:google.rpc",
-  "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
-  "ignore:Inheritance class AiohttpClientSession from ClientSession is discouraged:DeprecationWarning",
-  # vertexai is deprecated; remove it once this is fixed:
-  # https://github.com/epam/ai-dial-adapter-vertexai/issues/398
-  "ignore:This feature is deprecated as of June 24:UserWarning",
-  # Warnings from the anthropic adapter:
-  "ignore:Pydantic serializer warnings:UserWarning",
+    "error",
+    # Warning from aiohttp
+    "ignore:Sending a large body directly with raw bytes might lock the event loop. You should probably pass an io.BytesIO object instead:ResourceWarning",
+    "ignore:pkg_resources is deprecated as an API:UserWarning",
+    # muting warnings from google.rpc https://github.com/googleapis/google-cloud-python/issues/11184 and opentelemetry packages
+    "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
+    "ignore::DeprecationWarning:google.rpc",
+    "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
+    "ignore:Inheritance class AiohttpClientSession from ClientSession is discouraged:DeprecationWarning",
+    # vertexai is deprecated; remove it once this is fixed:
+    # https://github.com/epam/ai-dial-adapter-vertexai/issues/398
+    "ignore:This feature is deprecated as of June 24:UserWarning",
+    # Warnings from the anthropic adapter:
+    "ignore:Pydantic serializer warnings:UserWarning",
 ]
 
 [tool.pyright]
 typeCheckingMode = "basic"
 reportUnusedVariable = "error"
 reportIncompatibleMethodOverride = "error"
-exclude = [".git", ".venv", ".nox", "**/__pycache__", "~*", "allure-results"]
 
-[tool.black]
+[tool.ruff]
+target-version = "py311"
 line-length = 80
-exclude = '''
-/(
-    \.git
-  | \.venv
-  | \.nox
-  | \.__pycache__
-  | allure-results
-)/
-'''
 
-[tool.isort]
-line_length = 80
-profile = "black"
-skip = [".venv", ".nox", "allure-results"]
+[tool.ruff.lint]
+select = [
+    "ERA",  # flake8-eradicate
+    "B",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "B9",   # flake8-bugbear
+    "E",    # pycodestyle
+    "W",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # flake8-isort
+    "S",    # flake8-bandit
+    "FURB", # refurb,
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501", # string literal is too long
+    "S101", # Use of `assert` detected
+]
 
-[tool.autoflake]
-ignore_init_module_imports = true
-remove_all_unused_imports = true
-in_place = true
-recursive = true
-quiet = true
-exclude = ["\\.venv", "\\.nox", "allure-results"]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "B011", # Do not `assert False`
+]

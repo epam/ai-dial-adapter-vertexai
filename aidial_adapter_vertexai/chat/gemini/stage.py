@@ -1,5 +1,3 @@
-from typing import List
-
 from aidial_sdk.chat_completion import Stage
 from google.genai.types import Language as GenAILanguage
 
@@ -32,7 +30,7 @@ class LazyStage:
 
 class CodeExecutionStage:
     _stage: LazyStage
-    _outputs: List[str]
+    _outputs: list[str]
     _prev_lang: GenAILanguage | None = None
     _first_code: bool = True
 

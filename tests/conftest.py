@@ -1,5 +1,5 @@
 import json
-from typing import AsyncGenerator, Dict
+from collections.abc import AsyncGenerator
 
 import httpx
 import openai
@@ -24,17 +24,19 @@ def configure_unit_tests(monkeypatch, request):
 async def test_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     from aidial_adapter_vertexai.app import app
 
-    async with LifespanManager(app):
-        async with httpx.AsyncClient(
+    async with (
+        LifespanManager(app),
+        httpx.AsyncClient(
             transport=ASGITransport(app),  # type: ignore
             base_url="http://test-app.com",
             params={"api-version": "dummy-version"},
             headers={"api-key": "dummy-key"},
-        ) as client:
-            yield client
+        ) as client,
+    ):
+        yield client
 
 
-def get_extra_headers(region: str) -> Dict[str, str]:
+def get_extra_headers(region: str) -> dict[str, str]:
     return {"x-upstream-extra-data": json.dumps({"region": region})}
 
 

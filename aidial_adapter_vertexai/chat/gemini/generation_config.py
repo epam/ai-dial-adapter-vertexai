@@ -1,15 +1,13 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, assert_never
 
 from aidial_sdk.exceptions import InvalidRequestError
 from google.genai.types import CountTokensConfigDict as GenAICountTokensConfig
 from google.genai.types import (
     GenerateContentConfigDict as GenAIGenerationConfig,
 )
-from google.genai.types import ImageConfigDict
+from google.genai.types import ImageConfigDict, ThinkingConfigDict
 from google.genai.types import Part as GenAIPart
-from google.genai.types import ThinkingConfigDict
 from google.genai.types import ToolDict as GenAITool
-from typing_extensions import assert_never
 
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -29,7 +27,7 @@ def create_genai_generation_config(
     supports_image_generation: bool,
     tools: ToolsConfig,
     static_tools: StaticToolsConfig,
-    system_instruction: List[GenAIPart] | None,
+    system_instruction: list[GenAIPart] | None,
     thinking_config: ThinkingConfigDict | None,
     image_config: ImageConfigDict | None,
 ) -> GenAIGenerationConfig:
@@ -68,9 +66,9 @@ def create_genai_generation_config(
 def create_genai_count_tokens_config(
     tools: ToolsConfig,
     static_tools: StaticToolsConfig,
-    system_instruction: List[GenAIPart] | None = None,
+    system_instruction: list[GenAIPart] | None = None,
 ) -> GenAICountTokensConfig:
-    genai_tools: List[GenAITool] | None = None
+    genai_tools: list[GenAITool] | None = None
     if not static_tools.is_empty() and not tools.is_empty():
         raise InvalidRequestError(
             "Using both 'tools' and 'static_tools' simultaneously is not supported."
@@ -90,7 +88,7 @@ def create_genai_count_tokens_config(
 
 def _get_response_format(
     params: ModelParameters,
-) -> Tuple[str | None, Dict[str, Any] | None]:
+) -> tuple[str | None, dict[str, Any] | None]:
     if resp_format := params.response_format:
         match resp_format.type:
             case "text":

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, List, Protocol, TypeVar
+from typing import Any, Generic, Protocol, TypeVar
 
 from aidial_sdk.chat_completion import Message
 
@@ -25,7 +25,7 @@ class ChatCompletionAdapter(ABC, Generic[P]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: List[Message],
+        messages: list[Message],
     ) -> P | UserError:
         pass
 

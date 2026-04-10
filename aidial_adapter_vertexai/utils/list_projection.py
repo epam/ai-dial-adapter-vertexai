@@ -1,5 +1,7 @@
+import builtins
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Generic, Iterable, List, Self, Set, Tuple, TypeVar
+from typing import Generic, Self, TypeVar
 
 _T = TypeVar("_T")
 
@@ -17,31 +19,31 @@ class ListProjection(Generic[_T]):
 
     start_index: int
     end_index: int
-    list: List[Tuple[_T, Set[int]]] = field(default_factory=list)
+    lst: list[tuple[_T, set[int]]] = field(default_factory=list)
 
     @property
-    def raw_list(self) -> List[_T]:
-        return [msg for msg, _ in self.list]
+    def raw_list(self) -> builtins.list[_T]:
+        return [msg for msg, _ in self.lst]
 
-    def _get_remaining_indices(self) -> Set[int]:
-        return {idx for (_, st) in self.list for idx in st}
+    def _get_remaining_indices(self) -> set[int]:
+        return {idx for (_, st) in self.lst for idx in st}
 
-    def get_removed_indices(self) -> Set[int]:
+    def get_removed_indices(self) -> set[int]:
         return (
             set(range(self.start_index, self.end_index))
             - self._get_remaining_indices()
         )
 
     def __len__(self) -> int:
-        return len(self.list)
+        return len(self.lst)
 
     def select(self, idx: Iterable[int]) -> Self:
         return self.__class__(
-            self.start_index, self.end_index, [self.list[i] for i in idx]
+            self.start_index, self.end_index, [self.lst[i] for i in idx]
         )
 
     @classmethod
-    def create(cls, list: List[_T], idx_offset: int = 0) -> Self:
+    def create(cls, list: builtins.list[_T], idx_offset: int = 0) -> Self:
         return cls(
             idx_offset,
             idx_offset + len(list),

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, NoReturn, Self
+from typing import NoReturn, Self
 
 from aidial_sdk.chat_completion.request import (
     AzureChatCompletionRequest,
@@ -27,7 +27,7 @@ class GenAIGoogleSearchTool:
     @staticmethod
     def parse_gemini_tools(
         static_function: StaticFunction,
-    ) -> List[GenAITool] | None:
+    ) -> list[GenAITool] | None:
         if static_function.name == ToolName.GOOGLE_SEARCH:
             if static_function.configuration:
                 raise ValidationError("Google search tool isn't configurable")
@@ -39,7 +39,7 @@ class GenAICodeExecutionTool:
     @staticmethod
     def parse_gemini_tools(
         static_function: StaticFunction,
-    ) -> List[GenAITool] | None:
+    ) -> list[GenAITool] | None:
         if static_function.name == ToolName.CODE_EXECUTION:
             if static_function.configuration:
                 raise ValidationError("Code execution tool isn't configurable")
@@ -54,7 +54,7 @@ def unknown_tool_name(static_function: StaticFunction) -> NoReturn:
 
 
 class StaticToolsConfig(BaseModel):
-    functions: List[StaticFunction]
+    functions: list[StaticFunction]
 
     @classmethod
     def from_request(cls, request: AzureChatCompletionRequest) -> Self:
@@ -73,8 +73,8 @@ class StaticToolsConfig(BaseModel):
     def noop(cls) -> Self:
         return cls(functions=[])
 
-    def to_gemini_genai_tools(self) -> List[GenAITool]:
-        ret: List[GenAITool] = []
+    def to_gemini_genai_tools(self) -> list[GenAITool]:
+        ret: list[GenAITool] = []
         for tool in self.functions:
             ret.extend(
                 GenAIGoogleSearchTool.parse_gemini_tools(tool)

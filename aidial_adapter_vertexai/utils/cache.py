@@ -1,6 +1,7 @@
 import asyncio
 import json
-from typing import Callable, Coroutine, Generic, ParamSpec, Protocol, TypeVar
+from collections.abc import Callable, Coroutine
+from typing import Generic, ParamSpec, Protocol, TypeVar
 
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
@@ -60,6 +61,9 @@ def cache(
                     try:
                         value = task.result()
                     except Exception:
+                        log.error(
+                            f"Failed to get cached value {func_name}({key})"
+                        )
                         continue
 
                     log.debug(f"Closing cached value {func_name}({key})")

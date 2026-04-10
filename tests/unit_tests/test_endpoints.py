@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 import httpx
 import pytest
@@ -22,7 +21,7 @@ class TestCase:
         return sanitize_test_name(self.deployment.value)
 
 
-test_cases: List[TestCase] = [
+test_cases: list[TestCase] = [
     TestCase(D.IMAGEN_005, True, True, True),
     TestCase(D.IMAGEN_3_GENERATE_001, True, True, True),
     TestCase(D.IMAGEN_3_GENERATE_002, True, True, True),
@@ -92,9 +91,9 @@ async def assert_feature(
     if (response.status_code == 200 and not is_supported) or (
         response.status_code == 404 and is_supported
     ):
-        assert (
-            False
-        ), f"is_supported={is_supported}, code={response.status_code}, url={endpoint}"
+        assert False, (
+            f"is_supported={is_supported}, code={response.status_code}, url={endpoint}"
+        )
 
 
 @pytest.mark.parametrize("test", test_cases, ids=lambda test: test.get_id())

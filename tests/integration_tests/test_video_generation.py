@@ -1,5 +1,5 @@
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Callable, Mapping
 from unittest.mock import patch
 
 import openai
@@ -18,12 +18,14 @@ from tests.utils.openai import user
 def mock_storage(request):
     test_name = request.node.name
     root_dir = Path(__file__).parent / "mock-storage" / test_name
-    with MockFileStorage.create(root_dir) as storage:
-        with patch(
+    with (
+        MockFileStorage.create(root_dir) as storage,
+        patch(
             "aidial_adapter_vertexai.adapters.create_file_storage",
             return_value=storage,
-        ):
-            yield storage
+        ),
+    ):
+        yield storage
 
 
 _CENTRAL = "us-central1"

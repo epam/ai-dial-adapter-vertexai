@@ -1,6 +1,6 @@
 import contextlib
 import re
-from typing import List, overload
+from typing import overload
 
 from openai import APIError
 from pydantic import BaseModel
@@ -15,7 +15,7 @@ class ExpectedException(BaseModel):
 
 @overload
 async def expected_exception(
-    exception: ExpectedException | List[ExpectedException],
+    exception: ExpectedException | list[ExpectedException],
 ): ...
 
 
@@ -30,7 +30,7 @@ async def expected_exception(
 
 @contextlib.asynccontextmanager
 async def expected_exception(
-    cls: type[APIError] | ExpectedException | List[ExpectedException],
+    cls: type[APIError] | ExpectedException | list[ExpectedException],
     message: str | None = None,
     display_message: str | None = None,
     status_code: int | None = None,
@@ -60,9 +60,9 @@ async def expected_exception(
             msgs.append(f" [{idx}] {msg}")
 
         lines = "\n".join(msgs)
-        assert (
-            False
-        ), f"The actual exception doesn't match any of the expected exceptions:\n{lines}"
+        assert False, (
+            f"The actual exception doesn't match any of the expected exceptions:\n{lines}"
+        )
     else:
         assert False, "The test didn't raise any exceptions"
 

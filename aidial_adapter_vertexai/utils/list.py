@@ -1,21 +1,21 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Container, Generic, List, TypeVar
+from collections.abc import Callable, Container
+from typing import Any, Generic, TypeVar
 
 _T = TypeVar("_T")
 _V = TypeVar("_V")
 
 
-def omit_by_indices(lst: List[_T], indices: Container[int]) -> List[_T]:
+def omit_by_indices(lst: list[_T], indices: Container[int]) -> list[_T]:
     return [elem for idx, elem in enumerate(lst) if idx not in indices]
 
 
 def group_by(
-    lst: List[_T],
+    lst: list[_T],
     key: Callable[[_T], Any],
     init: Callable[[_T], _V],
     merge: Callable[[_V, _T], _V],
-) -> List[_V]:
-
+) -> list[_V]:
     def _gen():
         if not lst:
             return

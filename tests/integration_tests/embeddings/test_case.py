@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List
+from typing import Any
 
 import openai
 from openai.types import CreateEmbeddingResponse
@@ -13,8 +13,8 @@ class EmbeddingsTestCase:
     __test__ = False
 
     spec: ModelSpec
-    input: str | List[str] = field(default_factory=list)
-    custom_input: List[Any] | None = None
+    input: str | list[str] = field(default_factory=list)
+    custom_input: list[Any] | None = None
     encoding_format: str | None = None
     embedding_type: str | None = None
     embedding_instr: str | None = None

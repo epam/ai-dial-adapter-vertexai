@@ -1,4 +1,5 @@
-from typing import Any, AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 

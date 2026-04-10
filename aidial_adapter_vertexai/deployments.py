@@ -1,10 +1,10 @@
 from enum import Enum
-from typing import List, Literal, Self
+from typing import Literal, Self
 
 
 class DeploymentEnum(Enum):
     @classmethod
-    def deployments(cls) -> List[str]:
+    def deployments(cls) -> list[str]:
         return [d.value for d in cls]
 
     @classmethod

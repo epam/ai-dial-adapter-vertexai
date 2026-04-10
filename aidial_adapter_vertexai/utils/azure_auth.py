@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from aidial_sdk.exceptions import HTTPException as DialException
 from azure.core.credentials import AccessToken
@@ -44,7 +44,7 @@ def _get_azure_access_token() -> Callable[[], Awaitable[str]]:
                 )
                 raise DialException(
                     "Authentication failed", 401, "Unauthorized"
-                )
+                ) from None
 
         return access_token.token
 

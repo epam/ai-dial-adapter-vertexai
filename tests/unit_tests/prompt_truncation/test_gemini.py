@@ -1,4 +1,3 @@
-from typing import List
 from unittest.mock import AsyncMock, call
 
 import pytest
@@ -31,11 +30,11 @@ async def tokenize_by_words(prompt: GeminiPromptGenAI) -> int:
     return len(text.split())
 
 
-def text_parts(s: str) -> List[Part]:
+def text_parts(s: str) -> list[Part]:
     return [Part.from_text(text=s)]
 
 
-def sys(s: str) -> List[Part]:
+def sys(s: str) -> list[Part]:
     return text_parts(s)
 
 
@@ -65,7 +64,7 @@ async def test_history_truncation_cut_nothing_1(mock_tokenize):
     assert mock_tokenize.call_args_list == [call(prompt)]
 
 
-def _indices(a: int, b: int) -> List[int]:
+def _indices(a: int, b: int) -> list[int]:
     return list(range(a, b + 1))
 
 
@@ -95,7 +94,7 @@ def _indices(a: int, b: int) -> List[int]:
 async def test_history_truncation_merge_messages(
     mock_tokenize, with_system, max_prompt_tokens, expected_discarded
 ):
-    contents: List[Content] = [
+    contents: list[Content] = [
         user("user1_1"),  # 0
         user("user1_2"),  # 1
         bot("bot1_1"),  # 2
@@ -124,7 +123,7 @@ async def test_history_truncation_merge_messages(
 
 
 async def test_history_truncation_cut_nothing_2(mock_tokenize):
-    contents: List[Content] = [
+    contents: list[Content] = [
         user("message2"),
         bot("message3"),
         user("message4"),
@@ -143,7 +142,7 @@ async def test_history_truncation_cut_nothing_2(mock_tokenize):
 
 
 async def test_history_truncation_cut_nothing_3(mock_tokenize):
-    contents: List[Content] = [
+    contents: list[Content] = [
         user("message2"),
         bot("message3"),
         user("message4"),
@@ -165,7 +164,7 @@ async def test_history_truncation_cut_nothing_3(mock_tokenize):
 
 async def test_history_truncation_cut_all_turns(mock_tokenize):
     system = sys("message1")
-    contents: List[Content] = [
+    contents: list[Content] = [
         user("message2"),
         bot("message3"),
         user("message4"),
@@ -188,7 +187,7 @@ async def test_history_truncation_cut_all_turns(mock_tokenize):
 
 async def test_history_truncation_cut_mid_turn(mock_tokenize):
     system = sys("message1")
-    contents: List[Content] = [
+    contents: list[Content] = [
         user("message2"),
         bot("message3"),
         user("message4"),
@@ -211,7 +210,7 @@ async def test_history_truncation_cut_mid_turn(mock_tokenize):
 
 async def test_history_truncation_cut_last_turn(mock_tokenize):
     system = sys("message1")
-    contents: List[Content] = [
+    contents: list[Content] = [
         user("message2"),
         bot("message3"),
         user("message4"),
@@ -236,7 +235,7 @@ async def test_history_truncation_last_and_system_messages_are_too_big(
     mock_tokenize,
 ):
     system = sys("message1 message1")
-    contents: List[Content] = [
+    contents: list[Content] = [
         user("message2"),
         bot("message3"),
         user("message4"),

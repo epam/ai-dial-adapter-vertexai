@@ -123,7 +123,7 @@ class _CloudUpstreamConfig(BaseModel):
         except Exception:
             raise ValueError(
                 f"Header {_UPSTREAM_CONFIG_HEADER_NAME!r} isn't valid JSON"
-            )
+            ) from None
 
         if not isinstance(conf, dict):
             raise ValueError(

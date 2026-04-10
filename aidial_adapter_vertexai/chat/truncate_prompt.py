@@ -1,25 +1,20 @@
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable, Sized
 from typing import (
-    Awaitable,
-    Callable,
     Generic,
-    List,
-    Optional,
     Self,
-    Set,
-    Sized,
     TypeVar,
 )
 
-from aidial_sdk.exceptions import ContextLengthExceededError
-from aidial_sdk.exceptions import HTTPException as DialException
 from aidial_sdk.exceptions import (
+    ContextLengthExceededError,
     InvalidRequestError,
     TruncatePromptSystemAndLastUserError,
 )
+from aidial_sdk.exceptions import HTTPException as DialException
 from pydantic import BaseModel
 
-DiscardedMessages = List[int]
+DiscardedMessages = list[int]
 
 _P = TypeVar("_P")
 
@@ -67,12 +62,12 @@ class UserLimitOverflowError(TruncatePromptError):
         )
 
 
-def _partition_indexer(chunks: List[int]) -> Callable[[int], List[int]]:
+def _partition_indexer(chunks: list[int]) -> Callable[[int], list[int]]:
     """Returns a function that maps an index to indices of its partition.
     >>> [_partition_indexer([2, 3])(i) for i in range(5)]
     [[0, 1], [0, 1], [2, 3, 4], [2, 3, 4], [2, 3, 4]]
     """
-    mapping: dict[int, List[int]] = {}
+    mapping: dict[int, list[int]] = {}
     offset = 0
     for size in chunks:
         chunk = list(range(offset, offset + size))
@@ -84,7 +79,6 @@ def _partition_indexer(chunks: List[int]) -> Callable[[int], List[int]]:
 
 
 class TruncatablePrompt(ABC, Sized):
-
     @abstractmethod
     def is_required_message(self, index: int) -> bool:
         """
@@ -97,7 +91,7 @@ class TruncatablePrompt(ABC, Sized):
         ...
 
     @abstractmethod
-    def partition_messages(self) -> List[int]:
+    def partition_messages(self) -> list[int]:
         """
         Returns a list of sizes of contiguous non-overlapping sequences of messages
         which together represent partition of the list of messages.
@@ -115,23 +109,22 @@ class TruncatablePrompt(ABC, Sized):
         ...
 
     @abstractmethod
-    def select(self, indices: Set[int]) -> Self:
+    def select(self, indices: set[int]) -> Self:
         """
         Return a new prompt composed of the messages with the given indices.
         """
         ...
 
-    def omit(self, indices: Set[int]) -> Self:
+    def omit(self, indices: set[int]) -> Self:
         return self.select(set(range(len(self))) - indices)
 
     async def truncate(
         self,
         *,
         tokenize: Callable[[Self], Awaitable[int]],
-        model_limit: Optional[int] = None,
-        user_limit: Optional[int] = None,
+        model_limit: int | None = None,
+        user_limit: int | None = None,
     ) -> Self:
-
         result = await _compute_discarded_messages(
             prompt=self,
             tokenize=tokenize,
@@ -148,8 +141,8 @@ class TruncatablePrompt(ABC, Sized):
         self,
         *,
         tokenize: Callable[[Self], Awaitable[int]],
-        model_limit: Optional[int] = None,
-        user_limit: Optional[int] = None,
+        model_limit: int | None = None,
+        user_limit: int | None = None,
     ) -> TruncatedPrompt[Self]:
         """
         Returns a list of indices of discarded messages and
@@ -189,8 +182,8 @@ async def _compute_discarded_messages(
     prompt: _P,
     *,
     tokenize: Callable[[_P], Awaitable[int]],
-    model_limit: Optional[int],
-    user_limit: Optional[int],
+    model_limit: int | None,
+    user_limit: int | None,
 ) -> DiscardedMessages | TruncatePromptError:
     if (
         user_limit is not None
@@ -222,13 +215,13 @@ async def _compute_discarded_messages(
             "Partition sizes must add up to the number of messages."
         )
 
-    async def _tokenize_selected(indices: Set[int]) -> int:
+    async def _tokenize_selected(indices: set[int]) -> int:
         return await tokenize(prompt.select(indices))
 
     get_partition_indices = _partition_indexer(partition_sizes)
 
     n = len(prompt)
-    kept_indices: Set[int] = {
+    kept_indices: set[int] = {
         j
         for i in range(n)
         for j in get_partition_indices(i)
@@ -257,4 +250,4 @@ async def _compute_discarded_messages(
         kept_indices = new_kept_indices
 
     all_indices = set(range(n))
-    return sorted(list(all_indices - kept_indices))
+    return sorted(all_indices - kept_indices)

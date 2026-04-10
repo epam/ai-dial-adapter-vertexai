@@ -1,5 +1,4 @@
 from logging import DEBUG
-from typing import List, Optional
 
 from aidial_sdk.chat_completion import Attachment, Message
 from aidial_sdk.exceptions import InvalidRequestError
@@ -66,7 +65,7 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: List[Message],
+        messages: list[Message],
     ) -> ImagenPrompt:
         tools.not_supported()
         static_tools.not_supported()
@@ -159,7 +158,7 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
     @classmethod
     async def create(
         cls,
-        file_storage: Optional[FileStorage],
+        file_storage: FileStorage | None,
         deployment: AdapterDeployment[ImagenDeployment],
         config: UpstreamConfig,
     ) -> "ImagenChatCompletionAdapter":

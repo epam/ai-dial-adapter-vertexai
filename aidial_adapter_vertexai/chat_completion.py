@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, assert_never
+from typing import assert_never
 
 from aidial_sdk.chat_completion import (
     ChatCompletion,
@@ -171,7 +171,7 @@ class VertexAIChatCompletion(ChatCompletion):
         ) or not is_implemented(model.count_prompt_tokens):
             raise ResourceNotFoundError("The endpoint is not implemented")
 
-        outputs: List[TokenizeOutput] = []
+        outputs: list[TokenizeOutput] = []
         for input in request.inputs:
             match input:
                 case TokenizeInputRequest():
@@ -225,7 +225,7 @@ class VertexAIChatCompletion(ChatCompletion):
         if not is_implemented(model.truncate_prompt):
             raise ResourceNotFoundError("The endpoint is not implemented")
 
-        outputs: List[TruncatePromptResult] = []
+        outputs: list[TruncatePromptResult] = []
         for input in request.inputs:
             outputs.append(await self._truncate_prompt_request(model, input))
         return TruncatePromptResponse(outputs=outputs)

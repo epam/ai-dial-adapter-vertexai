@@ -1,6 +1,6 @@
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from logging import DEBUG
-from typing import AsyncIterator, Callable, List, Tuple
 
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
@@ -55,9 +55,8 @@ class ModelRequest(BaseModel):
 
     def extract_embeddings(
         self, response: MultiModalEmbeddingResponse
-    ) -> Tuple[List[float], int]:
-
-        vector: List[float] | None = None
+    ) -> tuple[list[float], int]:
+        vector: list[float] | None = None
         if self.image:
             vector = response.image_embedding
         else:
@@ -74,8 +73,7 @@ def compute_embeddings(
     model: MultiModalEmbeddingModel,
     base64_encode: bool,
     dimensions: int | None,
-) -> Tuple[Embedding, int]:
-
+) -> tuple[Embedding, int]:
     if log.isEnabledFor(DEBUG):
         msg = json_dumps_short(
             {
@@ -112,7 +110,7 @@ def validate_request(request: EmbeddingsRequest) -> None:
             )
 
 
-def _validate_content_type(content_type: str, supported_types: List[str]):
+def _validate_content_type(content_type: str, supported_types: list[str]):
     if content_type not in supported_types:
         raise UserError(
             f"Unsupported attachment content type: {content_type}. "
@@ -136,7 +134,7 @@ async def get_requests(
     async def on_attachment(attachment: Attachment):
         return ModelRequest(image=await download_image(attachment))
 
-    async def on_mixed(inputs: List[str | Attachment]) -> ModelRequest:
+    async def on_mixed(inputs: list[str | Attachment]) -> ModelRequest:
         if len(inputs) == 0:
             raise EMPTY_INPUT_LIST_ERROR
         elif len(inputs) == 1:
@@ -184,20 +182,18 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
     async def create(
         cls, storage: FileStorage | None, model_id: str
     ) -> "EmbeddingsAdapter":
-
         model = await get_multi_modal_embedding_model(model_id)
         return cls(model_id=model_id, model=model, storage=storage)
 
     async def embeddings(
         self, request: EmbeddingsRequest
     ) -> EmbeddingsResponse:
-
         validate_request(request)
 
         base64_encode = request.encoding_format == "base64"
 
         # NOTE: The model doesn't support batched inputs
-        tasks: List[Callable[[], Tuple[Embedding, int]]] = []
+        tasks: list[Callable[[], tuple[Embedding, int]]] = []
         async for sub_request in await get_requests(self.storage, request):
             tasks.append(
                 lambda sub_req=sub_request: compute_embeddings(
@@ -208,7 +204,7 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
                 )
             )
 
-        embeddings: List[Embedding] = []
+        embeddings: list[Embedding] = []
         total_tokens = 0
 
         for embedding, tokens in await gather_sync(tasks):

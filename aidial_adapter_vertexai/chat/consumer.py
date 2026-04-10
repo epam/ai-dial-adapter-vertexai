@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from types import TracebackType
-from typing import ContextManager, Tuple
 
 from aidial_sdk.chat_completion import (
     Attachment,
@@ -16,7 +16,7 @@ from aidial_sdk.chat_completion import (
 from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 
 
-class Consumer(ContextManager, ABC):
+class Consumer(AbstractContextManager, ABC):
     @abstractmethod
     def fork(self) -> Consumer: ...
 
@@ -82,7 +82,7 @@ class ChoiceConsumer(Consumer):
 
     choice_: Choice | None = None
     finish_reason: FinishReason | None = None
-    citations: dict[int, Tuple[int, Attachment | None]] = field(
+    citations: dict[int, tuple[int, Attachment | None]] = field(
         default_factory=dict
     )
     """

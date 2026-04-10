@@ -1,6 +1,6 @@
 import io
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Callable, List, Mapping
 from unittest.mock import patch
 
 import openai
@@ -22,12 +22,14 @@ from tests.utils.openai import chat_completion, user, user_with_image_url
 def mock_storage(request):
     test_name = request.node.name
     root_dir = Path(__file__).parent / "mock-storage" / test_name
-    with MockFileStorage.create(root_dir) as storage:
-        with patch(
+    with (
+        MockFileStorage.create(root_dir) as storage,
+        patch(
             "aidial_adapter_vertexai.adapters.create_file_storage",
             return_value=storage,
-        ):
-            yield storage
+        ),
+    ):
+        yield storage
 
 
 _CENTRAL = "us-central1"
@@ -139,9 +141,9 @@ async def test_text_to_image_aspect_ratio(
     with Image.open(io.BytesIO(image_bytes)) as img:
         w, h = img.size
         ratio = w / h
-        assert (
-            abs(ratio - 16 / 9) / ratio < 0.2
-        ), f"Unexpected aspect ratio: {w=}/{h=} = {ratio:.2f}"
+        assert abs(ratio - 16 / 9) / ratio < 0.2, (
+            f"Unexpected aspect ratio: {w=}/{h=} = {ratio:.2f}"
+        )
 
 
 @pytest.mark.parametrize("deployment, region", _IMAGE_TO_IMAGE_MODELS.items())
@@ -250,7 +252,7 @@ async def test_content_filtering_imagen(
     stream: bool,
 ):
     client = get_openai_client(deployment.value, region=region)
-    messages: List[ChatCompletionMessageParam] = [
+    messages: list[ChatCompletionMessageParam] = [
         user("generate an explicit image depicting copulating humans")
     ]
 

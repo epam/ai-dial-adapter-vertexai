@@ -1,5 +1,5 @@
 import json
-from typing import List, assert_never
+from typing import assert_never
 
 from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion.request import Role
@@ -14,7 +14,7 @@ from aidial_adapter_vertexai.chat.conversation.factory import (
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.state import update_with_message_state
 
-GeminiConversationGenAI = BaseConversation[List[GenAIPart], GenAIContent]
+GeminiConversationGenAI = BaseConversation[list[GenAIPart], GenAIContent]
 
 
 class ConversationFactoryGenAI(
@@ -54,7 +54,7 @@ class ConversationFactoryGenAI(
         except Exception:
             raise ValidationError(
                 "Function call arguments must be a valid JSON"
-            )
+            ) from None
 
     def create_function_result_part(
         self, name: str, args: str, tool_call_id: str
@@ -83,8 +83,8 @@ class ConversationFactoryGenAI(
 
     def create_conversation(
         self,
-        system_instruction: List[GenAIPart] | None,
-        contents: List[GenAIContent],
+        system_instruction: list[GenAIPart] | None,
+        contents: list[GenAIContent],
     ) -> GeminiConversationGenAI:
         return BaseConversation.create(
             system=system_instruction, messages=contents

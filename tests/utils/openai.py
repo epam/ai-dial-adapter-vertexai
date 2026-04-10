@@ -1,6 +1,7 @@
 import json
 import re
-from typing import Any, List, Mapping, Required, TypedDict, Unpack
+from collections.abc import Mapping
+from typing import Any, Required, TypedDict, Unpack
 
 import httpx
 from aidial_sdk.chat_completion.request import Attachment, Stage, StaticTool
@@ -56,13 +57,13 @@ def ai_function(
 
 
 def ai_tools(
-    tool_calls: List[ChatCompletionMessageToolCallParam],
+    tool_calls: list[ChatCompletionMessageToolCallParam],
 ) -> ChatCompletionAssistantMessageParam:
     return {"role": "assistant", "tool_calls": tool_calls}
 
 
 def user(
-    content: str | List[ChatCompletionContentPartParam],
+    content: str | list[ChatCompletionContentPartParam],
 ) -> ChatCompletionUserMessageParam:
     return {"role": "user", "content": content}
 
@@ -163,13 +164,13 @@ class ChatCompletionResult(BaseModel):
         return self.message.content or ""
 
     @property
-    def contents(self) -> List[str]:
+    def contents(self) -> list[str]:
         return [
             choice.message.content or "" for choice in self.response.choices
         ]
 
     @property
-    def finish_reasons(self) -> List[str]:
+    def finish_reasons(self) -> list[str]:
         return [choice.finish_reason for choice in self.response.choices]
 
     @property
@@ -181,7 +182,7 @@ class ChatCompletionResult(BaseModel):
         return self.message.function_call
 
     @property
-    def tool_calls(self) -> List[ChatCompletionMessageToolCall] | None:
+    def tool_calls(self) -> list[ChatCompletionMessageToolCall] | None:
         if (calls := self.message.tool_calls) is None:
             return None
         return [
@@ -190,12 +191,12 @@ class ChatCompletionResult(BaseModel):
             if isinstance(call, ChatCompletionMessageToolCall)
         ]
 
-    def content_contains_all(self, matches: List[Any]) -> None:
+    def content_contains_all(self, matches: list[Any]) -> None:
         for match in matches:
             assert str(match).lower() in self.content.lower()
 
     @property
-    def attachments(self) -> List[Attachment] | None:
+    def attachments(self) -> list[Attachment] | None:
         if not hasattr(self.message, "custom_content"):
             return None
         return [
@@ -206,7 +207,7 @@ class ChatCompletionResult(BaseModel):
         ] or None
 
     @property
-    def stages(self) -> List[Stage] | None:
+    def stages(self) -> list[Stage] | None:
         if not hasattr(self.message, "custom_content"):
             return None
         return [
@@ -220,12 +221,11 @@ class ChatCompletionResult(BaseModel):
 async def tokenize_request(
     http_client: httpx.AsyncClient,
     model_id: str,
-    messages: List[ChatCompletionMessageParam],
-    functions: List[FunctionDefinition] | None,
-    tools: List[ChatCompletionToolParam] | None,
+    messages: list[ChatCompletionMessageParam],
+    functions: list[FunctionDefinition] | None,
+    tools: list[ChatCompletionToolParam] | None,
     extra_headers: Mapping[str, str] | None = None,
 ) -> TokenizeResponse:
-
     chat_completion_request = {
         "model": model_id,
         "messages": messages,
@@ -266,12 +266,12 @@ async def configuration(
 
 
 class ChatCompletionArgs(TypedDict, total=False):
-    messages: Required[List[ChatCompletionMessageParam]]
-    stop: List[str] | None
+    messages: Required[list[ChatCompletionMessageParam]]
+    stop: list[str] | None
     max_tokens: int | None
     n: int | None
-    functions: List[FunctionDefinition] | None
-    tools: List[ChatCompletionToolParam] | None
+    functions: list[FunctionDefinition] | None
+    tools: list[ChatCompletionToolParam] | None
     tool_choice: ChatCompletionToolChoiceOptionParam | None
     static_tools: StaticToolsConfig | None
     configuration: dict | None
@@ -330,7 +330,7 @@ async def chat_completion(
         )
 
         if isinstance(response, AsyncStream):
-            chunks: List[dict] = []
+            chunks: list[dict] = []
             async for chunk in response:
                 chunks.append(chunk.model_dump())
 

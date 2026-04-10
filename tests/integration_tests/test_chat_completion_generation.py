@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Awaitable, Callable, List, Protocol, Unpack
+from collections.abc import Awaitable, Callable
+from typing import Protocol, Unpack
 from unittest.mock import patch
 
 import anthropic
@@ -77,7 +78,7 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.CLAUDE_4_5_OPUS: _EAST,
 }
 
-_DEPLOYMENTS: List[DeploymentSpec] = [
+_DEPLOYMENTS: list[DeploymentSpec] = [
     DeploymentSpec.supported_vertexai(d, r)
     for (d, r) in _DEPLOYMENT_TO_REGION.items()
 ]
@@ -147,7 +148,7 @@ def is_vision_model(deployment: D) -> bool:
     ]
 
 
-def select(p: Selector[D], xs: List[DeploymentSpec]) -> List[DeploymentSpec]:
+def select(p: Selector[D], xs: list[DeploymentSpec]) -> list[DeploymentSpec]:
     ret = [x for x in xs if p(x.deployment)]
     assert ret, "The selected list of deployments is empty"
     return ret
@@ -588,7 +589,7 @@ async def _run_test(
     deployment: D,
     chat: Chat,
     messages,
-    expected: str | List[str] | ExpectedException | None,
+    expected: str | list[str] | ExpectedException | None,
 ):
     async def _run():
         return await chat(messages=messages)
@@ -710,13 +711,13 @@ async def test_tool_call_basic(deployment: D, test: ToolCallTest, chat: Chat):
         test.targets if supports_parallel_tool_calls(deployment) else 1
     )
 
-    assert (
-        len(tool_calls) >= expected_calls
-    ), f"Number of tools calls: actual ({len(tool_calls)}), expected ({expected_calls})"
+    assert len(tool_calls) >= expected_calls, (
+        f"Number of tools calls: actual ({len(tool_calls)}), expected ({expected_calls})"
+    )
 
     for idx, tool_call in enumerate(tool_calls):
         if not supports_tool_call_ids(deployment):
-            name = f"{test.function_name}_{idx+1}"
+            name = f"{test.function_name}_{idx + 1}"
             assert tool_call.id == name
 
         function_call = tool_call.function
@@ -760,7 +761,7 @@ async def test_tool_response(test: ToolCallTest, chat: Chat):
     ids=display_deployment,
 )
 async def test_tool_call_and_response(deployment: D, chat: Chat):
-    messages: List[ChatCompletionMessageParam] = [
+    messages: list[ChatCompletionMessageParam] = [
         user("Tell me what's the temperature in London, UK in celsius?"),
     ]
 
@@ -939,9 +940,9 @@ async def test_tool_choice_none(chat: Chat):
         tool_choice="none",
     )
 
-    assert (
-        response.tool_calls is None
-    ), "No tools are expected to be called with tool_choice='none'"
+    assert response.tool_calls is None, (
+        "No tools are expected to be called with tool_choice='none'"
+    )
 
 
 @pytest.mark.parametrize(
@@ -955,7 +956,7 @@ async def test_json_object_response_format(chat: Chat):
         extra_body={"response_format": {"type": "json_object"}},
     )
 
-    assert isinstance(json.loads(response.content), (dict, list))
+    assert isinstance(json.loads(response.content), dict | list)
 
 
 @pytest.mark.parametrize(
@@ -1043,11 +1044,9 @@ async def test_static_code_execution(chat: Chat):
     response = await chat(
         messages=[
             user(
-                (
-                    "What is the sum of the first 10 prime numbers?"
-                    "Generate and run code for the calculation."
-                    "Make sure you get all 10."
-                )
+                "What is the sum of the first 10 prime numbers?"
+                "Generate and run code for the calculation."
+                "Make sure you get all 10."
             )
         ],
         static_tools=StaticToolsConfig(

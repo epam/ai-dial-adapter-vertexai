@@ -36,7 +36,7 @@ def to_dial_exception(e: Exception) -> DialException:
             code="permission_denied",
         )
 
-    if isinstance(e, (GoogleAPICallError, APIError)):
+    if isinstance(e, GoogleAPICallError | APIError):
         status_code = e.code or 500
         message = e.message or str(e)
 

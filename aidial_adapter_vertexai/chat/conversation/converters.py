@@ -1,4 +1,4 @@
-from typing import Any, List, Tuple, assert_never
+from typing import Any, assert_never
 
 from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion import Role
@@ -30,7 +30,7 @@ async def messages_to_conversation(
     conversation_factory: ConversationFactoryBase[PartT, Any, ConversationT],
     processors: AttachmentProcessorsBase[PartT],
     tools: ToolsConfig,
-    messages: List[DialMessage],
+    messages: list[DialMessage],
 ) -> ConversationT:
     function_call_idx = Counter()
 
@@ -161,15 +161,15 @@ async def _message_to_parts(
 
 
 def _separate_system_messages(
-    messages: List[Tuple[int, DialMessage, Parts[PartT]]],
-) -> Tuple[List[PartT] | None, List[Tuple[int, DialMessage, Parts[PartT]]]]:
+    messages: list[tuple[int, DialMessage, Parts[PartT]]],
+) -> tuple[list[PartT] | None, list[tuple[int, DialMessage, Parts[PartT]]]]:
     """
     Extract the leading system messages from the list of messages.
     """
     if len(messages) == 0:
         return None, messages
 
-    system_messages: List[PartT] = []
+    system_messages: list[PartT] = []
 
     while messages:
         _idx, dial_message, message = messages[0]
