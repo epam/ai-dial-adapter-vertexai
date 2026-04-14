@@ -17,7 +17,7 @@ Coro = Coroutine[T, Any, Any]
 Tokens = list[int]
 
 
-async def reject_tokens(tokens: Tokens):
+async def reject_tokens(_: Tokens) -> None:
     raise ValidationError(
         "Tokens in the input are not supported, provide text instead. "
         "When Langchain AzureOpenAIEmbeddings class is used, set 'check_embedding_ctx_length=False' to disable tokenization."
@@ -74,34 +74,3 @@ async def collect_embedding_inputs(
             yield await on_mixed(input)
         else:
             assert_never(input)
-
-
-def collect_embedding_inputs_without_attachments(
-    request: EmbeddingsRequest,
-    *,
-    on_texts: Callable[[list[str]], Coro[T]],
-    on_tokens: Callable[[Tokens], Coro[T]] = reject_tokens,
-) -> AsyncIterator[T]:
-    async def on_text(text: str) -> Coro[T]:
-        return await on_texts([text])
-
-    async def on_mixed(inputs: list[str | Attachment]) -> Coro[T]:
-        if inputs == []:
-            raise EMPTY_INPUT_LIST_ERROR
-
-        texts: list[str] = []
-        for input in inputs:
-            if isinstance(input, str):
-                texts.append(input)
-            else:
-                raise ATTACHMENT_ERROR
-
-        return await on_texts(texts)
-
-    return collect_embedding_inputs(
-        request,
-        on_text=on_text,
-        on_tokens=on_tokens,
-        on_attachment=reject_attachment,
-        on_mixed=on_mixed,
-    )
