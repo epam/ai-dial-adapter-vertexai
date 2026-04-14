@@ -23,12 +23,6 @@ async def make_single_thread_async(func: Callable[[A], T], arg: A) -> T:
     return await asyncio.to_thread(_call_with_global_lock, func, arg)
 
 
-async def make_async(func: Callable[[A], T], arg: A) -> T:
-    with ThreadPoolExecutor() as executor:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(executor, func, arg)
-
-
 async def gather_sync(sync_tasks: list[Callable[[], T]], **kwargs) -> list[T]:
     loop = asyncio.get_event_loop()
     with ThreadPoolExecutor(**kwargs) as executor:
