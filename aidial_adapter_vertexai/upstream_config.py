@@ -4,6 +4,7 @@ import json
 import re
 from typing import Protocol
 
+import httpx
 import pydantic
 from aidial_sdk.deployment.from_request_mixin import FromRequestDeploymentMixin
 from anthropic import (
@@ -12,6 +13,7 @@ from anthropic import (
     AsyncAnthropicVertex,
 )
 from google.genai.client import Client as GenAIClient
+from google.genai.types import HttpOptions
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.app_config import (
@@ -101,7 +103,12 @@ class _ApiKeyUpstreamConfig(BaseModel):
         return None if key is None else cls(api_key=key)
 
     async def get_genai_client(self) -> GenAIClient:
-        return GenAIClient(api_key=self.api_key)
+        return GenAIClient(
+            api_key=self.api_key,
+            http_options=HttpOptions(
+                async_client_args={"transport": httpx.AsyncHTTPTransport()}
+            ),
+        )
 
     async def get_anthropic_client(self) -> AsyncAnthropic:
         return AsyncAnthropic(api_key=self.api_key)
