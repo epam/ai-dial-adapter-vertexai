@@ -54,6 +54,7 @@ python-dotenv = "1.0.0"
 requests = "^2.33.0"
 asgi-lifespan = "^2.1.0"
 httpx = "0.28.1"
+respx = "0.22.0"
 
 [tool.poetry.group.lint.dependencies]
 pyright = "1.1.389"
