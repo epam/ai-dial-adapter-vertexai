@@ -39,7 +39,7 @@ def genai_to_openai_finish_reason(
             | GenAIFinishReason.PROHIBITED_CONTENT
             | GenAIFinishReason.SPII
             | GenAIFinishReason.IMAGE_SAFETY
-            | GenAIFinishReason.LANGUAGE  # NOTE: undocumented
+            | GenAIFinishReason.LANGUAGE
         ):
             return FinishReason.CONTENT_FILTER
         case GenAIFinishReason.OTHER:
