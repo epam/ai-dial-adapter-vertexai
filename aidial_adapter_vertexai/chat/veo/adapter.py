@@ -94,6 +94,7 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
                     "model": self.model_id,
                     "prompt": prompt.text,
                     "has_image": prompt.image is not None,
+                    "has_video": prompt.video is not None,
                     "config": config,
                 }
             )
