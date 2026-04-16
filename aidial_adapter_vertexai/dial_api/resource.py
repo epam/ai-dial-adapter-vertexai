@@ -56,24 +56,24 @@ class DialResource(ABC, BaseModel):
     async def get_resource_name(self, storage: FileStorage | None) -> str: ...
 
     async def get_content_type(self) -> str:
-        type = await self.guess_content_type()
+        c_type = await self.guess_content_type()
 
-        if not type:
+        if not c_type:
             raise MissingContentTypeError(
                 f"Can't derive content type of the {self.entity_name}"
             )
 
         if (
             self.supported_types is not None
-            and type not in self.supported_types
+            and c_type not in self.supported_types
         ):
             raise UnsupportedContentTypeError(
                 message=f"The {self.entity_name} is not one of the supported types",
-                type=type,
+                type=c_type,
                 supported_types=self.supported_types,
             )
 
-        return type
+        return c_type
 
 
 class URLResource(DialResource):
@@ -89,9 +89,9 @@ class URLResource(DialResource):
         return self
 
     async def download(self, storage: FileStorage | None) -> Resource:
-        type = await self.get_content_type()
+        c_type = await self.get_content_type()
         data = await _download_url(storage, self.url)
-        return Resource(type=type, data=data)
+        return Resource(type=c_type, data=data)
 
     async def guess_content_type(self) -> str | None:
         if self.content_type:
@@ -146,7 +146,7 @@ class AttachmentResource(DialResource):
         return self
 
     async def download(self, storage: FileStorage | None) -> Resource:
-        type = await self.get_content_type()
+        c_type = await self.get_content_type()
 
         if self.attachment.data:
             data = base64.b64decode(self.attachment.data)
@@ -155,7 +155,7 @@ class AttachmentResource(DialResource):
         else:
             raise ValidationError(f"Invalid {self.entity_name}")
 
-        return Resource(type=type, data=data)
+        return Resource(type=c_type, data=data)
 
     def create_url_resource(self, url: str) -> URLResource:
         return URLResource(
@@ -175,9 +175,9 @@ class AttachmentResource(DialResource):
 
     async def guess_content_type(self) -> str | None:
         if url := self.attachment.url:
-            type = await self.create_url_resource(url).guess_content_type()
-            if type:
-                return type
+            c_type = await self.create_url_resource(url).guess_content_type()
+            if c_type:
+                return c_type
 
         return self.attachment.type
 

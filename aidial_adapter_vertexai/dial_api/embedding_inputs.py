@@ -31,7 +31,7 @@ EMPTY_INPUT_LIST_ERROR = ValidationError(
 ATTACHMENT_ERROR = ValidationError("Attachments are not supported")
 
 
-async def reject_attachment(attachment: Attachment):
+async def reject_attachment(_: Attachment):
     raise ATTACHMENT_ERROR
 
 
