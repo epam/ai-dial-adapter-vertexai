@@ -9,9 +9,17 @@ from openai.types.chat import ChatCompletion
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
+from tests.integration_tests.constants import (
+    DOG_PICTURE,
+    MP4_24FPS_RESOURCE,
+)
 from tests.utils.exception import expected_exception
 from tests.utils.mock_storage import MockFileStorage
-from tests.utils.openai import user
+from tests.utils.openai import (
+    user,
+    user_with_attachment_url,
+    user_with_image_url,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -33,6 +41,11 @@ _CENTRAL = "us-central1"
 _VEO_MODELS: Mapping[D, str] = {
     D.VEO_3_0_GENERATE: _CENTRAL,
     D.VEO_3_0_FAST_GENERATE: _CENTRAL,
+    D.VEO_3_1_GENERATE: _CENTRAL,
+    D.VEO_3_1_FAST_GENERATE: _CENTRAL,
+}
+
+_VEO_VIDEO_EXT_MODELS: Mapping[D, str] = {
     D.VEO_3_1_GENERATE: _CENTRAL,
     D.VEO_3_1_FAST_GENERATE: _CENTRAL,
 }
@@ -83,6 +96,82 @@ async def test_text_to_video(
 
     assert video_response.usage is not None
     assert video_response.usage.completion_tokens == 4
+    video_bytes = await _extract_video_bytes(mock_storage, video_response)
+    assert video_bytes is not None
+
+
+@pytest.mark.parametrize("deployment, region", _VEO_MODELS.items())
+async def test_image_to_video_from_content_part(
+    mock_storage: FileStorage,
+    get_openai_client: Callable[..., AsyncAzureOpenAI],
+    deployment: D,
+    region: str,
+):
+    client = get_openai_client(deployment.value, region=region)
+
+    configuration = {"aspect_ratio": "16:9", "duration_seconds": 4}
+    video_response = await client.chat.completions.create(
+        model=deployment.value,
+        messages=[user_with_image_url("Animate this image", DOG_PICTURE)],
+        extra_body={"custom_fields": {"configuration": configuration}},
+    )
+
+    assert video_response.usage is not None
+    assert video_response.usage.completion_tokens == 4
+    video_bytes = await _extract_video_bytes(mock_storage, video_response)
+    assert video_bytes is not None
+
+
+@pytest.mark.parametrize("deployment, region", _VEO_MODELS.items())
+async def test_image_to_video_from_attachment(
+    mock_storage: FileStorage,
+    get_openai_client: Callable[..., AsyncAzureOpenAI],
+    deployment: D,
+    region: str,
+):
+    client = get_openai_client(deployment.value, region=region)
+
+    configuration = {"aspect_ratio": "16:9", "duration_seconds": 4}
+    video_response = await client.chat.completions.create(
+        model=deployment.value,
+        messages=[
+            user_with_attachment_url(
+                "Animate this image",
+                DOG_PICTURE,
+            )
+        ],
+        extra_body={"custom_fields": {"configuration": configuration}},
+    )
+
+    assert video_response.usage is not None
+    assert video_response.usage.completion_tokens == 4
+    video_bytes = await _extract_video_bytes(mock_storage, video_response)
+    assert video_bytes is not None
+
+
+@pytest.mark.parametrize("deployment, region", _VEO_VIDEO_EXT_MODELS.items())
+async def test_video_to_video_from_attachment(
+    mock_storage: FileStorage,
+    get_openai_client: Callable[..., AsyncAzureOpenAI],
+    deployment: D,
+    region: str,
+):
+    client = get_openai_client(deployment.value, region=region)
+
+    configuration = {"aspect_ratio": "16:9", "duration_seconds": 7}
+    video_response = await client.chat.completions.create(
+        model=deployment.value,
+        messages=[
+            user_with_attachment_url(
+                "Add more details to this video",
+                MP4_24FPS_RESOURCE,
+            )
+        ],
+        extra_body={"custom_fields": {"configuration": configuration}},
+    )
+
+    assert video_response.usage is not None
+    assert video_response.usage.completion_tokens == 7
     video_bytes = await _extract_video_bytes(mock_storage, video_response)
     assert video_bytes is not None
 

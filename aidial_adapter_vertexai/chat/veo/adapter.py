@@ -1,10 +1,17 @@
 import asyncio
 from logging import DEBUG
 
-from aidial_sdk.chat_completion import Attachment, Message
+from aidial_sdk.chat_completion import (
+    Attachment,
+    Message,
+)
 from aidial_sdk.exceptions import InvalidRequestError
 from google.genai.client import Client as GenAIClient
-from google.genai.types import GenerateVideosConfigDict, GenerateVideosOperation
+from google.genai.types import (
+    GenerateVideosConfigDict,
+    GenerateVideosOperation,
+    GenerateVideosSource,
+)
 from pydantic import BaseModel
 from typing_extensions import override
 
@@ -12,16 +19,13 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
-from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.chat.veo.configuration import VeoConfig
+from aidial_adapter_vertexai.chat.veo.prompt import VeoPrompt, VeoPromptParser
 from aidial_adapter_vertexai.deployments import VeoDeployment
-from aidial_adapter_vertexai.dial_api.request import (
-    ModelParameters,
-    collect_text_content,
-)
+from aidial_adapter_vertexai.dial_api.request import ModelParameters
 from aidial_adapter_vertexai.dial_api.storage import (
     FileStorage,
     compute_hash_digest,
@@ -34,7 +38,7 @@ from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.timer import Timer
 
-VeoPrompt = str
+GRPC_INVALID_ARGUMENT_CODE = 3
 
 
 class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
@@ -69,14 +73,7 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
     ) -> VeoPrompt:
         tools.not_supported()
         static_tools.not_supported()
-        if len(messages) == 0:
-            raise ValidationError("The list of messages must not be empty")
-
-        content = messages[-1].content
-        if content is None:
-            raise ValidationError("The last message must have content")
-
-        return collect_text_content(content)
+        return await VeoPromptParser.parse(self.file_storage, messages)
 
     @override
     async def truncate_prompt(
@@ -93,13 +90,23 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
 
         if log.isEnabledFor(DEBUG):
             msg = json_dumps_short(
-                {"model": self.model_id, "prompt": prompt, "config": config}
+                {
+                    "model": self.model_id,
+                    "prompt": prompt.text,
+                    "has_image": prompt.image is not None,
+                    "config": config,
+                }
             )
             log.debug(f"request: {msg}")
 
         with Timer("predict timing: {time}", log.debug):
+            source = GenerateVideosSource(
+                prompt=prompt.text or None,
+                image=prompt.image,
+                video=prompt.video,
+            )
             operation = await self.client.aio.models.generate_videos(
-                model=self.model_id, prompt=prompt, config=config
+                model=self.model_id, source=source, config=config
             )
             poll_interval = 3
             while not operation.done:
@@ -110,6 +117,14 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
 
         if log.isEnabledFor(DEBUG):
             log.debug(f"response: {json_dumps_short(response)}")
+
+        if (
+            operation.error
+            and operation.error.get("code") == GRPC_INVALID_ARGUMENT_CODE
+        ):
+            raise InvalidRequestError(
+                operation.error.get("message", "Invalid argument")
+            )
 
         if (generated_video := _extract_video(operation)) is None:
             raise RuntimeError("Expected video in response, but got none")
