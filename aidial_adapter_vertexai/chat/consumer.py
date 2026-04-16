@@ -184,7 +184,7 @@ class ChoiceConsumer(Consumer):
             self.choice.set_state(state)
 
     async def set_finish_reason(self, finish_reason: FinishReason):
-        if finish_reason == FinishReason.STOP and self.finish_reason in [
+        if self.finish_reason in [
             FinishReason.FUNCTION_CALL,
             FinishReason.TOOL_CALLS,
         ]:
