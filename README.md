@@ -102,10 +102,10 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 |[Imagen 4](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/imagen/4-0-generate)|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06\|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
 |[Imagen 3](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/imagen/3-0-generate)|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
 |Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
-|[Veo 3.1 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-fast-generate-001)|veo-3.1-fast-generate-(001\|preview)|text-to-video|✅|✅|❌|✅|
-|[Veo 3.1 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-generate-001)|veo-3.1-generate-(001\|preview)|text-to-video|✅|✅|❌|✅|
-|[Veo 3.0 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-generate-001)|veo-3.0-fast-generate-(001\|preview)|text-to-video|✅|✅|❌|✅|
-|[Veo 3.0 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-fast-generate-001)|veo-3.0-generate-(001\|preview)|text-to-video|✅|✅|❌|✅|
+|[Veo 3.1 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-fast-generate-001)|veo-3.1-fast-generate-(001\|preview)|(text/image/video)-to-video|✅|✅|❌|✅|
+|[Veo 3.1 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-generate-001)|veo-3.1-generate-(001\|preview)|(text/image/video)-to-video|✅|✅|❌|✅|
+|[Veo 3.0 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-generate-001)|veo-3.0-fast-generate-(001\|preview)|(text/image)-to-video|✅|✅|❌|✅|
+|[Veo 3.0 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-fast-generate-001)|veo-3.0-generate-(001\|preview)|(text/image)-to-video|✅|✅|❌|✅|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
@@ -167,9 +167,10 @@ The Imagen models support configuration of parameters specific for image-generat
 
 The Veo models support configuration of parameters specific for video-generation such as aspect ratio, compression quality and duration seconds. See the complete list of configurable parameters at the [Veo API documentation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/veo-video-generation#parameters).
 
-Besides text-only requests, the adapter also supports passing image and video inputs to Veo.
-The image or video source may be provided either in `messages[].content` (OpenAI content parts) or in `messages[].custom_content.attachments`.
-Whether a specific source type is accepted depends on the selected upstream Veo model and its constraints.
+Besides text-only requests, the adapter also supports [image-to-video](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/video/generate-videos-from-an-image) and [video-to-video](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/video/extend-a-veo-video) modalities.
+
+The image may be provided as either an image content part or as a DIAL attachment.
+The video may be provided as a DIAL attachment.
 
 <details>
 <summary>Text-to-video request</summary>
@@ -190,7 +191,7 @@ Whether a specific source type is accepted depends on the selected upstream Veo 
 </details>
 
 <details>
-<summary>Image-to-video request with image in messages[].content</summary>
+<summary>Image-to-video request with an image content part</summary>
 
 ```json
 {
@@ -218,7 +219,7 @@ Whether a specific source type is accepted depends on the selected upstream Veo 
 </details>
 
 <details>
-<summary>Image-to-video request with image attachment in messages[].custom_content.attachments</summary>
+<summary>Image-to-video request with an image attachment</summary>
 
 ```json
 {
@@ -248,7 +249,7 @@ Whether a specific source type is accepted depends on the selected upstream Veo 
 </details>
 
 <details>
-<summary>Video-extension request with video attachment in messages[].custom_content.attachments</summary>
+<summary>Video-to-video request with a video attachment</summary>
 
 ```json
 {
@@ -276,6 +277,9 @@ Whether a specific source type is accepted depends on the selected upstream Veo 
 ```
 
 </details>
+
+> [!NOTE]
+> Only the text content and files from the last user message are taken into account.
 
 ##### Gemini 2.5, Gemini 3 models
 
