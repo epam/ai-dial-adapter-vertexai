@@ -5,7 +5,7 @@ from aidial_sdk.chat_completion import (
     Attachment,
     Message,
 )
-from aidial_sdk.exceptions import InvalidRequestError
+from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
 from google.genai.client import Client as GenAIClient
 from google.genai.types import (
     GenerateVideosConfigDict,
@@ -38,7 +38,7 @@ from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.timer import Timer
 
-GRPC_INVALID_ARGUMENT_CODE = 3
+_GRPC_INVALID_ARGUMENT_CODE = 3
 
 
 class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
@@ -119,13 +119,12 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
         if log.isEnabledFor(DEBUG):
             log.debug(f"response: {json_dumps_short(response)}")
 
-        if (
-            operation.error
-            and operation.error.get("code") == GRPC_INVALID_ARGUMENT_CODE
-        ):
-            raise InvalidRequestError(
-                operation.error.get("message", "Invalid argument")
-            )
+        if operation.error:
+            msg = operation.error.get("message")
+            if operation.error.get("code") == _GRPC_INVALID_ARGUMENT_CODE:
+                raise InvalidRequestError(msg or "Invalid argument")
+            else:
+                raise InternalServerError(msg or "Internal server error")
 
         if (generated_video := _extract_video(operation)) is None:
             raise RuntimeError("Expected video in response, but got none")

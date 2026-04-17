@@ -167,6 +167,13 @@ The Imagen models support configuration of parameters specific for image-generat
 
 The Veo models support configuration of parameters specific for video-generation such as aspect ratio, compression quality and duration seconds. See the complete list of configurable parameters at the [Veo API documentation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/veo-video-generation#parameters).
 
+Besides text-only requests, the adapter also supports passing image and video inputs to Veo.
+The image or video source may be provided either in `messages[].content` (OpenAI content parts) or in `messages[].custom_content.attachments`.
+Whether a specific source type is accepted depends on the selected upstream Veo model and its constraints.
+
+<details>
+<summary>Text-to-video request</summary>
+
 ```json
 {
   "messages": [{"role": "user", "content": "forest meadow"}],
@@ -179,6 +186,96 @@ The Veo models support configuration of parameters specific for video-generation
   }
 }
 ```
+
+</details>
+
+<details>
+<summary>Image-to-video request with image in messages[].content</summary>
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "Animate this image"},
+        {
+          "type": "image_url",
+          "image_url": {"url": "data:image/jpeg;base64,..."}
+        }
+      ]
+    }
+  ],
+  "custom_fields": {
+    "configuration": {
+      "aspect_ratio": "16:9",
+      "duration_seconds": 4
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>Image-to-video request with image attachment in messages[].custom_content.attachments</summary>
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Animate this image",
+      "custom_content": {
+        "attachments": [
+          {
+            "type": "image/png",
+            "url": "data:image/png;base64,..."
+          }
+        ]
+      }
+    }
+  ],
+  "custom_fields": {
+    "configuration": {
+      "aspect_ratio": "16:9",
+      "duration_seconds": 4
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>Video-extension request with video attachment in messages[].custom_content.attachments</summary>
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Add human diver and fish to this video.",
+      "custom_content": {
+        "attachments": [
+          {
+            "type": "video/mp4",
+            "url": "data:video/mp4;base64,..."
+          }
+        ]
+      }
+    }
+  ],
+  "custom_fields": {
+    "configuration": {
+      "aspect_ratio": "16:9",
+      "duration_seconds": 7
+    }
+  }
+}
+```
+
+</details>
 
 ##### Gemini 2.5, Gemini 3 models
 

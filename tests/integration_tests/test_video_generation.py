@@ -45,7 +45,7 @@ _VEO_MODELS: Mapping[D, str] = {
     D.VEO_3_1_FAST_GENERATE: _CENTRAL,
 }
 
-_VEO_VIDEO_EXT_MODELS: Mapping[D, str] = {
+_VEO_VIDEO_TO_VIDEO_MODELS: Mapping[D, str] = {
     D.VEO_3_1_GENERATE: _CENTRAL,
     D.VEO_3_1_FAST_GENERATE: _CENTRAL,
 }
@@ -134,12 +134,7 @@ async def test_image_to_video_from_attachment(
     configuration = {"aspect_ratio": "16:9", "duration_seconds": 4}
     video_response = await client.chat.completions.create(
         model=deployment.value,
-        messages=[
-            user_with_attachment_url(
-                "Animate this image",
-                DOG_PICTURE,
-            )
-        ],
+        messages=[user_with_attachment_url("Animate this image", DOG_PICTURE)],
         extra_body={"custom_fields": {"configuration": configuration}},
     )
 
@@ -149,7 +144,9 @@ async def test_image_to_video_from_attachment(
     assert video_bytes is not None
 
 
-@pytest.mark.parametrize("deployment, region", _VEO_VIDEO_EXT_MODELS.items())
+@pytest.mark.parametrize(
+    "deployment, region", _VEO_VIDEO_TO_VIDEO_MODELS.items()
+)
 async def test_video_to_video_from_attachment(
     mock_storage: FileStorage,
     get_openai_client: Callable[..., AsyncAzureOpenAI],
