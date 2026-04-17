@@ -23,6 +23,7 @@ DOG_PICTURE_CONTENT = ["dog", "labrador"]
 
 MP3_RESOURCE = _from_assets("audio/mpeg", "audio.mp3")
 MP4_RESOURCE = _from_assets("video/mp4", "video.mp4")
+MP4_24FPS_RESOURCE = _from_assets("video/mp4", "video_24fps.mp4")
 PDF_RESOURCE = _from_assets("application/pdf", "doc.pdf")
 BMP_RESOURCE = _from_assets("image/bmp", "image.bmp")
 XLSX_RESOURCE = _from_assets(
