@@ -46,11 +46,13 @@ def test_merge_static_and_function_tools_for_gemini_config():
     static_tools = StaticToolsConfig.from_request(request)
     config = create_genai_count_tokens_config(tools, static_tools)
 
-    assert config["tools"] is not None
-    assert len(config["tools"]) == 1
+    toolsets = config.get("tools")
+    assert toolsets is not None
+    assert len(toolsets) == 1
 
-    merged_toolset = config["tools"][0]
+    merged_toolset = toolsets[0]
     assert "google_search" in merged_toolset
-    assert merged_toolset["function_declarations"] is not None
-    assert len(merged_toolset["function_declarations"]) == 1
-    assert merged_toolset["function_declarations"][0]["name"] == "weather"
+    function_declarations = merged_toolset.get("function_declarations")
+    assert function_declarations is not None
+    assert len(function_declarations) == 1
+    assert function_declarations[0].get("name") == "weather"
