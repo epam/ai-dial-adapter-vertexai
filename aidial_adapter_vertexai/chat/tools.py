@@ -152,23 +152,21 @@ class ToolsConfig(BaseModel):
             tool_ids=tool_ids,
         )
 
-    def to_gemini_genai_tools(self) -> list[GenAITool]:
+    def to_gemini_genai_tools(self) -> GenAITool | None:
         if not self.tools:
-            return []
+            return None
 
-        return [
-            GenAITool(
-                function_declarations=[
-                    GenAIFunctionDeclaration(
-                        name=tool.function.name,
-                        parameters_json_schema=tool.function.parameters
-                        or _EMPTY_OBJECT_JSON_SCHEMA,
-                        description=tool.function.description or None,
-                    )
-                    for tool in self.tools
-                ]
-            )
-        ]
+        return GenAITool(
+            function_declarations=[
+                GenAIFunctionDeclaration(
+                    name=tool.function.name,
+                    parameters_json_schema=tool.function.parameters
+                    or _EMPTY_OBJECT_JSON_SCHEMA,
+                    description=tool.function.description or None,
+                )
+                for tool in self.tools
+            ]
+        )
 
     def to_gemini_genai_tool_config(self) -> GenAIToolConfig | None:
         if not self.tools:

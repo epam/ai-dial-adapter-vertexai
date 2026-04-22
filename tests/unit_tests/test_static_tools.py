@@ -1,3 +1,4 @@
+import pytest
 from aidial_sdk.chat_completion.request import (
     AzureChatCompletionRequest,
     Function,
@@ -19,25 +20,29 @@ def test_no_tools():
     assert config.functions == []
 
 
-def test_merge_static_and_function_tools_for_gemini_config():
+@pytest.mark.parametrize(
+    ("function_names", "expected_count"),
+    [
+        (["weather"], 1),
+        (["weather", "news"], 2),
+    ],
+)
+def test_merge_function_tools_and_static_tool_for_gemini_config(
+    function_names: list[str], expected_count: int
+):
     request = AzureChatCompletionRequest(
         messages=[],
         tools=[
+            *[
+                Tool(
+                    type="function",
+                    function=Function(name=name),
+                )
+                for name in function_names
+            ],
             StaticTool(
                 type="static_function",
                 static_function=StaticFunction(name="google_search"),
-            ),
-            Tool(
-                type="function",
-                function=Function(
-                    name="weather",
-                    parameters={
-                        "type": "object",
-                        "properties": {
-                            "city": {"type": "string"},
-                        },
-                    },
-                ),
             ),
         ],
     )
@@ -54,5 +59,7 @@ def test_merge_static_and_function_tools_for_gemini_config():
     assert "google_search" in merged_toolset
     function_declarations = merged_toolset.get("function_declarations")
     assert function_declarations is not None
-    assert len(function_declarations) == 1
-    assert function_declarations[0].get("name") == "weather"
+    assert len(function_declarations) == expected_count
+    assert {decl.get("name") for decl in function_declarations} == set(
+        function_names
+    )
