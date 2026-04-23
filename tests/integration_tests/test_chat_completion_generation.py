@@ -191,6 +191,15 @@ def supports_tools(deployment: D) -> bool:
     ]
 
 
+def supports_mixed_tools(deployment: D) -> bool:
+    return deployment in [
+        D.GEMINI_3_PRO,
+        D.GEMINI_3_PRO_PREVIEW,
+        D.GEMINI_3_1_PRO_PREVIEW,
+        D.GEMINI_3_FLASH_PREVIEW,
+    ]
+
+
 def supports_parallel_tool_calls(deployment: D) -> bool:
     return deployment in [
         # D.CLAUDE_3_5_SONNET_V2,
@@ -794,6 +803,50 @@ async def test_tool_call_and_response(deployment: D, chat: Chat):
 
     assert "20" in response.content
     assert response.finish_reasons == ["stop"]
+
+
+@pytest.mark.parametrize(
+    "deployment_spec",
+    select(pred(supports_mixed_tools), deployments),
+    ids=display_deployment,
+)
+async def test_mixed_static_and_custom_tool_call(chat: Chat):
+    prompt = "What is the northernmost city in the United States? What's the weather like there today in celsius?"
+    messages: list[ChatCompletionMessageParam] = [user(prompt)]
+    tools = [function_to_tool(GET_WEATHER_FUNCTION)]
+    static_tools = StaticToolsConfig(
+        functions=[StaticFunction(name="google_search")]
+    )
+
+    response = await chat(
+        messages=messages,
+        tools=tools,
+        static_tools=static_tools,
+    )
+    assert response.tool_calls is not None, "Tool calls are missing"
+    weather_calls = [
+        call
+        for call in response.tool_calls
+        if call.function.name == "get_temperature"
+    ]
+    assert weather_calls, "get_temperature call is missing"
+
+    tool_call_id = weather_calls[0].id
+    messages.append(response.response.choices[0].message)  # type: ignore
+    messages.append(
+        tool_response(
+            id=tool_call_id,
+            content="it's 20 degrees celsius",
+        )
+    )
+
+    response_2 = await chat(
+        messages=messages,
+        tools=tools,
+        static_tools=static_tools,
+    )
+
+    assert "20" in response_2.content
 
 
 @pytest.mark.parametrize(
