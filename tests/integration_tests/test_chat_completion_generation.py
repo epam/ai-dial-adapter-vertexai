@@ -191,13 +191,9 @@ def supports_tools(deployment: D) -> bool:
     ]
 
 
-def supports_mixed_tools(deployment: D) -> bool:
-    return deployment in [
-        D.GEMINI_3_PRO,
-        D.GEMINI_3_PRO_PREVIEW,
-        D.GEMINI_3_1_PRO_PREVIEW,
-        D.GEMINI_3_FLASH_PREVIEW,
-    ]
+def supports_combined_static_tools_with_custom_tools(deployment: D) -> bool:
+    # https://ai.google.dev/gemini-api/docs/tool-combination
+    return "gemini-3" in deployment.value
 
 
 def supports_parallel_tool_calls(deployment: D) -> bool:
@@ -807,10 +803,14 @@ async def test_tool_call_and_response(deployment: D, chat: Chat):
 
 @pytest.mark.parametrize(
     "deployment_spec",
-    select(pred(supports_mixed_tools), deployments),
+    select(
+        pred(supports_grounding)
+        & pred(supports_combined_static_tools_with_custom_tools),
+        deployments,
+    ),
     ids=display_deployment,
 )
-async def test_mixed_static_and_custom_tool_call(chat: Chat):
+async def test_grounding_with_tool_calling(chat: Chat):
     prompt = "What is the northernmost city in the United States? What's the weather like there today in celsius?"
     messages: list[ChatCompletionMessageParam] = [user(prompt)]
     tools = [function_to_tool(GET_WEATHER_FUNCTION)]
