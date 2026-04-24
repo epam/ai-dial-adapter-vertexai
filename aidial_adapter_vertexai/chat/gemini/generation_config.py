@@ -1,6 +1,5 @@
 from typing import Any, assert_never
 
-from aidial_sdk.exceptions import InvalidRequestError
 from google.genai.types import CountTokensConfigDict as GenAICountTokensConfig
 from google.genai.types import (
     GenerateContentConfigDict as GenAIGenerationConfig,
@@ -68,21 +67,16 @@ def create_genai_count_tokens_config(
     static_tools: StaticToolsConfig,
     system_instruction: list[GenAIPart] | None = None,
 ) -> GenAICountTokensConfig:
-    genai_tools: list[GenAITool] | None = None
-    if not static_tools.is_empty() and not tools.is_empty():
-        raise InvalidRequestError(
-            "Using both 'tools' and 'static_tools' simultaneously is not supported."
-        )
-    elif not tools.is_empty():
-        genai_tools = tools.to_gemini_genai_tools()
-    elif not static_tools.is_empty():
-        genai_tools = static_tools.to_gemini_genai_tools()
+    toolset: GenAITool = tools.to_gemini_genai_tools() or GenAITool()
+
+    for static_tool in static_tools.to_gemini_genai_tools():
+        toolset.update(static_tool)
 
     return GenAICountTokensConfig(
         system_instruction=(
             list(system_instruction) if system_instruction else None
         ),
-        tools=list(genai_tools) if genai_tools else None,
+        tools=[toolset] if toolset else None,
     )
 
 
