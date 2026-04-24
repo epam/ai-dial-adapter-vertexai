@@ -172,12 +172,10 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
                 part = self.conversation_factory.create_multi_modal_part(
                     resource.data, resource.type
                 )
-                ret.append_multi_modal_part(part, resource)
+                ret.append_part(part, resource)
 
         def collect_text(text: str):
-            ret.append_text_part(
-                self.conversation_factory.create_text_part(text)
-            )
+            ret.append_part(self.conversation_factory.create_text_part(text))
 
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices

@@ -28,10 +28,9 @@ class GeminiAttachmentProcessorsGenAI(AttachmentProcessorsBase[GenAIPart]):
         parts = await super().process_message(message)
         # Gemini requires some non-system text input to be always supplied -
         # adding a fake single-space one when needed.
-        if message.role == DialRole.USER and not parts.has_text_parts():
-            parts.append_text_part(
-                self.conversation_factory.create_text_part(" ")
-            )
+        text_content = "".join(part.text or "" for part in parts.parts)
+        if message.role == DialRole.USER and text_content == "":
+            parts.append_part(self.conversation_factory.create_text_part(" "))
         return parts
 
 
