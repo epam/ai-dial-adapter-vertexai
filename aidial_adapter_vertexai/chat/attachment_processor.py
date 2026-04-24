@@ -172,7 +172,7 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
                 part = self.conversation_factory.create_multi_modal_part(
                     resource.data, resource.type
                 )
-                ret.append_multi_modal_part(part, dial_resource)
+                ret.append_multi_modal_part(part, resource)
 
         def collect_text(text: str):
             ret.append_text_part(
