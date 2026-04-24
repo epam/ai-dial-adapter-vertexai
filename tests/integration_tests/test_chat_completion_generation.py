@@ -10,14 +10,21 @@ import openai
 import pytest
 from aidial_sdk.chat_completion.request import Message as DialMessage
 from aidial_sdk.chat_completion.request import StaticFunction
-from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+)
 
 from aidial_adapter_vertexai.chat.gemini.state import (
     _parse_message_content_from_state,
 )
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
-from tests.integration_tests.constants import DOG_PICTURE, DOG_PICTURE_CONTENT
+from tests.integration_tests.constants import (
+    DOG_PICTURE,
+    DOG_PICTURE_CONTENT,
+    PDF_RESOURCE,
+    UNKNOWN_BINARY_RESOURCE,
+)
 from tests.utils.deployment_spec import DeploymentSpec
 from tests.utils.exception import ExpectedException, expected_exception
 from tests.utils.json import match_objects
@@ -32,13 +39,14 @@ from tests.utils.openai import (
     chat_completion,
     function_to_tool,
     sys,
+    tool_request,
     tool_response,
     user,
     user_with_attachment_data,
     user_with_attachment_url,
     user_with_image_url,
 )
-from tests.utils.selector import Selector, pred
+from tests.utils.selector import Pred, Selector, pred
 from tests.utils.tools import ToolCallTest
 
 _CENTRAL = "us-central1"
@@ -193,7 +201,7 @@ def supports_tools(deployment: D) -> bool:
 
 def supports_combined_static_tools_with_custom_tools(deployment: D) -> bool:
     # https://ai.google.dev/gemini-api/docs/tool-combination
-    return "gemini-3" in deployment.value
+    return is_gemini_3(deployment)
 
 
 def supports_parallel_tool_calls(deployment: D) -> bool:
@@ -260,8 +268,24 @@ def supports_thinking_level(deployment: D) -> bool:
     )
 
 
+def supports_pdf(deployment: D) -> bool:
+    return (is_gemini(deployment) and not is_gemini_image(deployment)) or (
+        is_claude(deployment) and deployment != D.CLAUDE_3_HAIKU
+    )
+
+
+def supports_multi_modal_function_responses(deployment: D) -> bool:
+    # Gemini 3 Pro: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling#rest
+    # Claude - every model
+    return is_gemini_3(deployment)
+
+
 def is_gemini(deployment: D) -> bool:
     return "gemini" in deployment.value
+
+
+def is_gemini_3(deployment: D) -> bool:
+    return "gemini-3" in deployment.value
 
 
 @pytest.fixture
@@ -494,7 +518,8 @@ class TestThinking:
         )
         self._check_response(response)
 
-    def _check_response(self, response: ChatCompletionResult):
+    @staticmethod
+    def _check_response(response: ChatCompletionResult):
         assert all(str(num) in response.content for num in [23, 31, 46])
 
         assert response.usage is not None, "Usage is missing"
@@ -510,6 +535,75 @@ class TestThinking:
         assert len(thinking_stage.content) > 10
 
         assert response.finish_reasons == ["stop"]
+
+
+class TestDocumentUnderstanding:
+    @pytest.fixture
+    def query(self) -> str:
+        return (
+            "Which novel the first page of the attached document quotes from? "
+            "Which animal is depicted on the second page?"
+        )
+
+    @staticmethod
+    def _check_response(response: ChatCompletionResult):
+        content = response.content.lower()
+        success_markers = ["christmas", "carol", "cat"]
+        if not any(w in content for w in success_markers):
+            assert False, (
+                f"Cannot find any of the {success_markers} in the generated content: {content!r}"
+            )
+
+    @staticmethod
+    def _deployments(predicate: Pred[D]):
+        return pytest.mark.parametrize(
+            "deployment_spec",
+            select(predicate, deployments),
+            ids=display_deployment,
+        )
+
+    @_deployments(pred(supports_pdf))
+    async def test_document_in_attachments(self, chat: Chat, query: str):
+        response = await chat(
+            messages=[user_with_attachment_url(query, PDF_RESOURCE)]
+        )
+        self._check_response(response)
+
+    @_deployments(
+        pred(supports_pdf) & pred(supports_multi_modal_function_responses)
+    )
+    async def test_document_in_tool_result(self, chat: Chat, query: str):
+        response = await chat(
+            messages=[
+                user(query),
+                ai_tools(
+                    [tool_request(id="call-id", name="get_document", args={})]
+                ),
+                tool_response(
+                    id="call-id",
+                    content="here is the document",
+                    resources=[PDF_RESOURCE],
+                ),
+            ],
+            tools=[
+                function_to_tool({"name": "get_document", "parameters": {}})
+            ],
+        )
+        self._check_response(response)
+
+    @_deployments(pred(supports_pdf))
+    async def test_unsupported_document_in_attachments(
+        self, chat: Chat, query: str
+    ):
+        async with expected_exception(
+            cls=openai.APIError,
+            message="(the attachment isn't one of the supported types|Unsupported media type)",
+        ):
+            await chat(
+                messages=[
+                    user_with_attachment_url(query, UNKNOWN_BINARY_RESOURCE)
+                ]
+            )
 
 
 @pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)

@@ -72,14 +72,17 @@ def _match_exception(e: Exception, exc: ExpectedException) -> str | None:
         return f"Actual exception type ({type(e)}) doesn't match the expected one ({exc.type})"
 
     actual_status_code = getattr(e, "status_code", None)
-    if actual_status_code != exc.status_code:
+    if exc.status_code is not None and actual_status_code != exc.status_code:
         return f"Actual status code ({actual_status_code}) doesn't match the expected one ({exc.status_code})"
 
     if not re.search(exc.message, str(e)):
         return f"The actual error message ({str(e)!r}) doesn't match the expected regexp ({exc.message!r})"
 
     actual_display_message = (e.body or {}).get("display_message")  # type: ignore
-    if actual_display_message != exc.display_message:
+    if (
+        exc.display_message is not None
+        and actual_display_message != exc.display_message
+    ):
         return f"Actual display message ({actual_display_message}) doesn't match the expected one ({exc.display_message})"
 
     return None

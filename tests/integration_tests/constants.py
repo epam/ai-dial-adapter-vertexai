@@ -30,3 +30,6 @@ XLSX_RESOURCE = _from_assets(
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "table.xlsx",
 )
+UNKNOWN_BINARY_RESOURCE = Resource(
+    type="application/octet-stream", data=b"1234567890"
+)
