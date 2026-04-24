@@ -17,6 +17,8 @@ from tests.utils.exception import expected_exception
 from tests.utils.mock_storage import MockFileStorage
 from tests.utils.openai import chat_completion, user, user_with_image_url
 
+pytestmark = pytest.mark.slow
+
 
 @pytest.fixture(autouse=True)
 def mock_storage(request):

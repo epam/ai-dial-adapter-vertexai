@@ -85,6 +85,7 @@ filterwarnings = [
     # Warnings from the anthropic adapter:
     "ignore:Pydantic serializer warnings:UserWarning",
 ]
+markers = ["slow: marker for slow running tests"]
 
 [tool.pyright]
 typeCheckingMode = "basic"

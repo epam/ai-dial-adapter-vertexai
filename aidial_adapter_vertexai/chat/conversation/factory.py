@@ -24,9 +24,6 @@ class Parts(BaseModel, Generic[PartT]):
     def append_parts(self, parts: list[PartT]):
         self.parts.extend(parts)
 
-    def empty(self) -> bool:
-        return len(self.parts) == 0
-
 
 class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
     @abstractmethod
