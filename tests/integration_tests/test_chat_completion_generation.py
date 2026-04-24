@@ -276,7 +276,6 @@ def supports_pdf(deployment: D) -> bool:
 
 def supports_multi_modal_function_responses(deployment: D) -> bool:
     # Gemini 3 Pro: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling#rest
-    # Claude - every model
     return is_gemini_3(deployment)
 
 
