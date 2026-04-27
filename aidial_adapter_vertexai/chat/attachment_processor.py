@@ -165,6 +165,7 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
 
     async def process_message(self, message: DialMessage) -> Parts[PartT]:
         ret: Parts[PartT] = Parts()
+        text_is_empty: bool = True
 
         async def collect_resource(dial_resource: DialResource):
             resource = await self.process_resource(dial_resource)
@@ -172,12 +173,12 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
                 part = self.conversation_factory.create_multi_modal_part(
                     resource.data, resource.type
                 )
-                ret.append_multi_modal_part(part, dial_resource)
+                ret.append_part(part, resource)
 
         def collect_text(text: str):
-            ret.append_text_part(
-                self.conversation_factory.create_text_part(text)
-            )
+            nonlocal text_is_empty
+            text_is_empty = text_is_empty and text == ""
+            ret.append_part(self.conversation_factory.create_text_part(text))
 
         # Placing Images/Video parts before the text as per
         # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/send-multimodal-prompts?authuser=1#image_best_practices
@@ -213,9 +214,17 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
             case _:
                 assert_never(content)
 
-        could_be_empty = message.role in (DialRole.SYSTEM, DialRole.DEVELOPER)
-        if ret.empty() and not could_be_empty:
-            collect_text(" ")
+        if text_is_empty:
+            # Gemini requires some input for regular human-bot messages
+            # to be always supplied - so adding a fake single-space one when needed.
+            is_regular_user_message = message.role == DialRole.USER
+            is_regular_assistant_message = (
+                message.role == DialRole.ASSISTANT
+                and message.function_call is None
+                and message.tool_calls is None
+            )
+            if is_regular_user_message or is_regular_assistant_message:
+                collect_text(" ")
 
         return ret
 

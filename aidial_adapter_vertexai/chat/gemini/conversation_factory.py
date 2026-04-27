@@ -4,6 +4,11 @@ from typing import assert_never
 from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion.request import Role
 from google.genai.types import Content as GenAIContent
+from google.genai.types import (
+    FunctionResponse,
+    FunctionResponseBlob,
+    FunctionResponsePart,
+)
 from google.genai.types import Part as GenAIPart
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
@@ -13,6 +18,7 @@ from aidial_adapter_vertexai.chat.conversation.factory import (
 )
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.chat.gemini.state import update_with_message_state
+from aidial_adapter_vertexai.utils.resource import Resource
 
 GeminiConversationGenAI = BaseConversation[list[GenAIPart], GenAIContent]
 
@@ -57,21 +63,40 @@ class ConversationFactoryGenAI(
             ) from None
 
     def create_function_result_part(
-        self, name: str, args: str, tool_call_id: str
+        self,
+        *,
+        tool_name: str,
+        tool_call_id: str,
+        tool_call_result: str,
+        resources: list[Resource],
     ) -> GenAIPart:
         try:
-            processed_args = json.loads(args)
+            processed_args = json.loads(tool_call_result)
         except Exception:
-            processed_args = args
+            processed_args = tool_call_result
 
         if isinstance(processed_args, dict):
-            return GenAIPart.from_function_response(
-                name=name, response=processed_args
-            )
+            response = processed_args
+        else:
+            response = {"output": processed_args}
 
-        return GenAIPart.from_function_response(
-            name=name, response={"output": processed_args}
+        response_parts = [
+            FunctionResponsePart(
+                inline_data=FunctionResponseBlob(
+                    data=resource.data,
+                    mime_type=resource.type,
+                )
+            )
+            for resource in resources
+        ]
+
+        function_response = FunctionResponse(
+            name=tool_name,
+            id=tool_call_id,
+            response=response,
+            parts=response_parts,
         )
+        return GenAIPart(function_response=function_response)
 
     def create_content(
         self, idx: int, dial_message: DialMessage, parts: Parts[GenAIPart]

@@ -5,7 +5,7 @@ from aidial_sdk.chat_completion import Message as DialMessage
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.conversation.base import BaseConversation
-from aidial_adapter_vertexai.dial_api.resource import DialResource
+from aidial_adapter_vertexai.utils.resource import Resource
 
 PartT = TypeVar("PartT")
 ContentT = TypeVar("ContentT")
@@ -14,20 +14,15 @@ ConversationT = TypeVar("ConversationT", bound=BaseConversation)
 
 class Parts(BaseModel, Generic[PartT]):
     parts: list[PartT] = []
-    resources: list[DialResource] = []
+    resources: list[Resource] = []
 
-    def append_text_part(self, part: PartT):
+    def append_part(self, part: PartT, resource: Resource | None = None):
         self.parts.append(part)
+        if resource is not None:
+            self.resources.append(resource)
 
-    def append_multi_modal_part(self, part: PartT, resource: DialResource):
-        self.resources.append(resource)
-        self.parts.append(part)
-
-    def empty(self) -> bool:
-        return len(self.parts) == 0
-
-    def has_text_parts(self) -> bool:
-        return len(self.parts) > len(self.resources)
+    def append_parts(self, parts: list[PartT]):
+        self.parts.extend(parts)
 
 
 class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
@@ -44,7 +39,12 @@ class ConversationFactoryBase(ABC, Generic[PartT, ContentT, ConversationT]):
 
     @abstractmethod
     def create_function_result_part(
-        self, name: str, args: str, tool_call_id: str
+        self,
+        *,
+        tool_name: str,
+        tool_call_id: str,
+        tool_call_result: str,
+        resources: list[Resource],
     ) -> PartT: ...
 
     @abstractmethod

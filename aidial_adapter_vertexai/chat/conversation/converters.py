@@ -67,40 +67,30 @@ async def _message_to_parts(
     function_call_idx: Counter,
 ) -> Parts[PartT]:
     content = message.content
+    content_parts = await processors.process_message(message)
+
+    role = message.role.value.capitalize()
 
     match message.role:
-        case Role.SYSTEM:
+        case Role.SYSTEM | Role.DEVELOPER | Role.USER:
             if content is None:
-                raise ValidationError("System message content must be present")
-            return await processors.process_message(message)
-
-        case Role.DEVELOPER:
-            if content is None:
-                raise ValidationError(
-                    "Developer message content must be present"
-                )
-            return await processors.process_message(message)
-
-        case Role.USER:
-            if content is None:
-                raise ValidationError("User message content must be present")
-            return await processors.process_message(message)
+                raise ValidationError(f"{role} message content must be present")
+            return content_parts
 
         case Role.ASSISTANT:
             if message.function_call is not None:
                 tool_call_id = f"function_call_{function_call_idx.count}"
-                return Parts(
-                    parts=[
-                        conversation_factory.create_function_call_part(
-                            message.function_call.name,
-                            message.function_call.arguments,
-                            tool_call_id,
-                        )
-                    ]
+                content_parts.append_part(
+                    conversation_factory.create_function_call_part(
+                        message.function_call.name,
+                        message.function_call.arguments,
+                        tool_call_id,
+                    )
                 )
-            elif message.tool_calls is not None:
-                return Parts(
-                    parts=[
+
+            if message.tool_calls is not None:
+                content_parts.append_parts(
+                    [
                         conversation_factory.create_function_call_part(
                             call.function.name,
                             call.function.arguments,
@@ -109,49 +99,39 @@ async def _message_to_parts(
                         for call in message.tool_calls
                     ]
                 )
-            else:
-                if content is None:
+
+            return content_parts
+
+        case Role.FUNCTION | Role.TOOL:
+            if content is None:
+                raise ValidationError(f"{role} message content must be present")
+            if not isinstance(content, str):
+                raise ValidationError(
+                    f"{role} message content must be a string"
+                )
+
+            if message.role == Role.FUNCTION:
+                tool_call_id = f"function_call_{function_call_idx.post_inc()}"
+                tool_name = message.name
+                if tool_name is None:
                     raise ValidationError(
-                        "Assistant message content must be present"
+                        f"{role} message name must be present"
                     )
-                return await processors.process_message(message)
+            else:
+                tool_call_id = message.tool_call_id
+                if tool_call_id is None:
+                    raise ValidationError(
+                        f"{role} message tool_call_id must be present"
+                    )
+                tool_name = tools.get_tool_name(tool_call_id)
 
-        case Role.FUNCTION:
-            if content is None:
-                raise ValidationError(
-                    "Function message content must be present"
-                )
-            if not isinstance(content, str):
-                raise ValidationError(
-                    "Function message content must be a string"
-                )
-            name = message.name
-            if name is None:
-                raise ValidationError("Function message name must be present")
-            tool_call_id = f"function_call_{function_call_idx.post_inc()}"
             return Parts(
                 parts=[
                     conversation_factory.create_function_result_part(
-                        name, content, tool_call_id
-                    )
-                ]
-            )
-
-        case Role.TOOL:
-            if content is None:
-                raise ValidationError("Tool message content must be present")
-            if not isinstance(content, str):
-                raise ValidationError("Tool message content must be a string")
-            tool_call_id = message.tool_call_id
-            if tool_call_id is None:
-                raise ValidationError(
-                    "Tool message tool_call_id must be present"
-                )
-            name = tools.get_tool_name(tool_call_id)
-            return Parts(
-                parts=[
-                    conversation_factory.create_function_result_part(
-                        name, content, tool_call_id
+                        tool_name=tool_name,
+                        tool_call_id=tool_call_id,
+                        tool_call_result=content,
+                        resources=content_parts.resources,
                     )
                 ]
             )

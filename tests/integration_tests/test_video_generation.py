@@ -21,6 +21,8 @@ from tests.utils.openai import (
     user_with_image_url,
 )
 
+pytestmark = pytest.mark.slow
+
 
 @pytest.fixture(autouse=True)
 def mock_storage(request):
