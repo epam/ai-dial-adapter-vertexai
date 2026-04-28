@@ -9,6 +9,7 @@ from typing import (
 from aidial_sdk.chat_completion import (
     Attachment,
     Message,
+    MessageContentFilePart,
     MessageContentImagePart,
     MessageContentPart,
     MessageContentTextPart,
@@ -17,6 +18,7 @@ from aidial_sdk.chat_completion import (
 )
 from aidial_sdk.chat_completion.request import (
     ChatCompletionRequest,
+    MessageContentAudioPart,
     MessageContentRefusalPart,
     ReasoningEffort,
 )
@@ -124,6 +126,14 @@ def collect_text_content(
                     case MessageContentRefusalPart():
                         raise ValidationError(
                             "Can't extract text from a refusal content part"
+                        )
+                    case MessageContentFilePart():
+                        raise ValidationError(
+                            "Can't extract text from a file content part"
+                        )
+                    case MessageContentAudioPart():
+                        raise ValidationError(
+                            "Can't extract text from an audio content part"
                         )
                     case _:
                         assert_never(part)

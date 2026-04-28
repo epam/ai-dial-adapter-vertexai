@@ -99,6 +99,24 @@ def user_with_attachment_url(
     }
 
 
+def user_with_file_content_part(
+    content: str, name: str, resource: Resource
+) -> ChatCompletionUserMessageParam:
+    return {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": content},
+            {
+                "type": "file",
+                "file": {
+                    "filename": name,
+                    "file_data": resource.to_data_url(),
+                },
+            },
+        ],
+    }
+
+
 def user_with_image_url(
     content: str | None, image: Resource
 ) -> ChatCompletionUserMessageParam:
