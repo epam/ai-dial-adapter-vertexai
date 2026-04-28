@@ -3,6 +3,8 @@ from typing import assert_never
 
 from aidial_sdk.chat_completion import (
     Message,
+    MessageContentAudioPart,
+    MessageContentFilePart,
     MessageContentImagePart,
     MessageContentTextPart,
 )
@@ -60,6 +62,14 @@ class VeoPromptParser:
                             image = Image(
                                 image_bytes=resource.data,
                                 mime_type=resource.type,
+                            )
+                        case MessageContentFilePart():
+                            raise ValidationError(
+                                "File content parts aren't supported. Use attachments instead."
+                            )
+                        case MessageContentAudioPart():
+                            raise ValidationError(
+                                "Veo models don't support audio content parts"
                             )
                         case MessageContentRefusalPart():
                             raise ValidationError(

@@ -44,6 +44,7 @@ from tests.utils.openai import (
     user,
     user_with_attachment_data,
     user_with_attachment_url,
+    user_with_file_content_part,
     user_with_image_url,
 )
 from tests.utils.selector import Pred, Selector, pred
@@ -276,7 +277,8 @@ def supports_pdf(deployment: D) -> bool:
 
 def supports_multi_modal_function_responses(deployment: D) -> bool:
     # Gemini 3 Pro: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling#rest
-    return is_gemini_3(deployment)
+    # Claude - every model
+    return is_gemini_3(deployment) or is_claude(deployment)
 
 
 def is_gemini(deployment: D) -> bool:
@@ -565,6 +567,15 @@ class TestDocumentUnderstanding:
     async def test_document_in_attachments(self, chat: Chat, query: str):
         response = await chat(
             messages=[user_with_attachment_url(query, PDF_RESOURCE)]
+        )
+        self._check_response(response)
+
+    @_deployments(pred(supports_pdf))
+    async def test_document_in_content_part(self, chat: Chat, query: str):
+        response = await chat(
+            messages=[
+                user_with_file_content_part(query, "document.pdf", PDF_RESOURCE)
+            ]
         )
         self._check_response(response)
 

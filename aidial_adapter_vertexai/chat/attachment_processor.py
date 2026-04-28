@@ -1,4 +1,5 @@
 from collections.abc import Callable, Coroutine
+from contextlib import suppress
 from dataclasses import dataclass
 from logging import DEBUG
 from typing import (
@@ -9,11 +10,16 @@ from typing import (
     assert_never,
 )
 
-from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion import (
+    Attachment,
+    InputAudio,
+    InputFile,
+    MessageContentAudioPart,
+    MessageContentFilePart,
     MessageContentImagePart,
     MessageContentTextPart,
 )
+from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion import Role as DialRole
 from aidial_sdk.chat_completion.request import MessageContentRefusalPart
 from pydantic import BaseModel, ConfigDict
@@ -202,8 +208,29 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
                         case MessageContentImagePart(image_url=image_url):
                             await collect_resource(
                                 URLResource(
-                                    url=image_url.url, entity_name="image_url"
+                                    url=image_url.url,
+                                    entity_name="image content part",
                                 )
+                            )
+                        case MessageContentFilePart(file=file):
+                            attachment = _file_content_part_to_attachment(file)
+                            await collect_resource(
+                                AttachmentResource(
+                                    attachment=attachment,
+                                    entity_name="file content part",
+                                ),
+                            )
+                        case MessageContentAudioPart(
+                            input_audio=InputAudio(data=data, format=format)
+                        ):
+                            attachment = Attachment(
+                                data=data, type=f"audio/{format}"
+                            )
+                            await collect_resource(
+                                AttachmentResource(
+                                    attachment=attachment,
+                                    entity_name="audio content part",
+                                ),
                             )
                         case MessageContentRefusalPart():
                             raise ValidationError(
@@ -227,6 +254,24 @@ class AttachmentProcessorsBase(BaseModel, Generic[PartT]):
                 collect_text(" ")
 
         return ret
+
+
+def _file_content_part_to_attachment(file: InputFile) -> Attachment:
+    if (file_data := file.file_data) is None:
+        raise ValidationError("File content part must have file_data field")
+
+    resource = None
+    with suppress(Exception):
+        resource = Resource.from_data_url(file_data) or Resource.from_base64(
+            "application/pdf", file_data
+        )
+
+    if resource is None:
+        raise ValidationError(
+            f"Invalid file content part: file_data must be a valid data URL or base64 string: {file_data[:30]}..."
+        ) from None
+
+    return Attachment(data=resource.data_base64, type=resource.type)
 
 
 def max_count_validator(category: str, limit: int) -> InitValidator:
