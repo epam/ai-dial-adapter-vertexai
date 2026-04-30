@@ -85,6 +85,9 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.CLAUDE_4_6_SONNET: _EAST,
     D.CLAUDE_4_6_OPUS: _EAST,
     D.CLAUDE_4_5_OPUS: _EAST,
+    D.MISTRAL_MEDIUM_3: _CENTRAL,
+    D.MISTRAL_SMALL: _CENTRAL,
+    D.MISTRAL_CODESTRAL_2: _CENTRAL,
 }
 
 _DEPLOYMENTS: list[DeploymentSpec] = [
@@ -186,6 +189,10 @@ def is_claude(deployment: D) -> bool:
     return "claude" in deployment.value
 
 
+def is_mistral(deployment: D) -> bool:
+    return "mistral" in deployment.value
+
+
 def supports_tools(deployment: D) -> bool:
     return is_claude(deployment) or deployment in [
         D.GEMINI_2_0_FLASH_EXP,
@@ -197,6 +204,9 @@ def supports_tools(deployment: D) -> bool:
         D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_3_1_PRO_PREVIEW,
         D.GEMINI_3_FLASH_PREVIEW,
+        D.MISTRAL_MEDIUM_3,
+        D.MISTRAL_SMALL,
+        D.MISTRAL_CODESTRAL_2,
     ]
 
 
@@ -220,11 +230,14 @@ def supports_parallel_tool_calls(deployment: D) -> bool:
         D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_3_FLASH_PREVIEW,
         D.GEMINI_3_1_PRO_PREVIEW,
+        D.MISTRAL_MEDIUM_3,
+        D.MISTRAL_SMALL,
+        D.MISTRAL_CODESTRAL_2,
     ]
 
 
 def supports_tool_call_ids(deployment: D) -> bool:
-    return is_claude(deployment)
+    return is_claude(deployment) or is_mistral(deployment)
 
 
 def is_gemini_image(deployment: D) -> bool:

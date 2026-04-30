@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Protocol
+from typing import Protocol, TypeAlias
 
 import pydantic
 from aidial_sdk.deployment.from_request_mixin import FromRequestDeploymentMixin
@@ -12,6 +12,8 @@ from anthropic import (
     AsyncAnthropicVertex,
 )
 from google.genai.client import Client as GenAIClient
+from mistralai.client import Mistral
+from mistralai.gcp.client import MistralGCP
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.app_config import (
@@ -22,8 +24,11 @@ from aidial_adapter_vertexai.app_config import (
     get_default_project,
     get_default_region,
     get_genai_client,
+    get_mistral_gcp_client,
 )
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
+
+MistralClient: TypeAlias = Mistral | MistralGCP
 
 
 class UpstreamConfig(Protocol):
@@ -32,6 +37,8 @@ class UpstreamConfig(Protocol):
     async def get_anthropic_client(
         self,
     ) -> AsyncAnthropicVertex | AsyncAnthropic | AsyncAnthropicFoundry: ...
+
+    async def get_mistral_client(self) -> MistralClient: ...
 
 
 def parse_upstream_config(
@@ -87,6 +94,12 @@ class _AzureFoundryUpstreamConfig(BaseModel):
     async def get_anthropic_client(self) -> AsyncAnthropicFoundry:
         return await get_anthropic_foundry_client(self.api_key, self.base_url)
 
+    async def get_mistral_client(self) -> MistralClient:
+        # https://github.com/mistralai/client-python#azure-ai
+        raise NotImplementedError(
+            "Azure Foundry Mistral AI client is not supported."
+        )
+
 
 class _ApiKeyUpstreamConfig(BaseModel):
     api_key: str
@@ -105,6 +118,9 @@ class _ApiKeyUpstreamConfig(BaseModel):
 
     async def get_anthropic_client(self) -> AsyncAnthropic:
         return AsyncAnthropic(api_key=self.api_key)
+
+    async def get_mistral_client(self) -> Mistral:
+        return Mistral(api_key=self.api_key)
 
 
 class _CloudUpstreamConfig(BaseModel):
@@ -152,6 +168,9 @@ class _CloudUpstreamConfig(BaseModel):
 
     async def get_anthropic_client(self) -> AsyncAnthropicVertex:
         return await get_anthropic_vertex_client(self.project, self.region)
+
+    async def get_mistral_client(self) -> MistralGCP:
+        return await get_mistral_gcp_client(self.project, self.region)
 
 
 class CompatibleModelUpstreamConfig(BaseModel):

@@ -23,6 +23,7 @@
         - [Gemini 2.5, Gemini 3 models](#gemini-25-gemini-3-models)
         - [Gemini 2.5 Flash Image model](#gemini-25-flash-image-model)
         - [Claude models](#claude-models)
+        - [Mistral models](#mistral-models)
       - [Google Search grounding](#google-search-grounding)
       - [Code Interpreter tool](#code-interpreter-tool)
     - [Embedding models](#embedding-models)
@@ -106,6 +107,10 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 |[Veo 3.1 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-generate-001)|veo-3.1-generate-(001\|preview)|(text/image/video)-to-video|✅|✅|❌|✅|
 |[Veo 3.0 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-generate-001)|veo-3.0-fast-generate-(001\|preview)|(text/image)-to-video|✅|✅|❌|✅|
 |[Veo 3.0 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-fast-generate-001)|veo-3.0-generate-(001\|preview)|(text/image)-to-video|✅|✅|❌|✅|
+|[Mistral Medium 3](https://docs.mistral.ai/getting-started/models/models_overview/)|mistral-medium-3|text-to-text|❌|❌|✅|✅|
+|[Mistral OCR 2505](https://docs.mistral.ai/capabilities/document_ai/basic_ocr/)|mistral-ocr-2505|(image)-to-text|❌|❌|❌|✅|
+|[Mistral Small 2503](https://docs.mistral.ai/getting-started/models/models_overview/)|mistral-small-2503|text-to-text|❌|❌|✅|✅|
+|[Codestral 2](https://docs.mistral.ai/getting-started/models/models_overview/)|codestral-2|text-to-text|❌|❌|✅|❌|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
@@ -360,6 +365,16 @@ The most notable beta flags are:
 |`{"betas": ["output-128k-2025-02-19"]}`|[Extended output length](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#extended-output-capabilities-beta)|Claude 3.7 Sonnet|
 
 Not every model supports all flags. Refer to the official documentation before utilizing any flags.
+
+##### Mistral models
+
+The adapter proxies OpenAI-compatible chat completion requests to Mistral deployments via Mistral SDK clients.
+
+`mistral-medium-3`, `mistral-small-2503`, and `codestral-2` support tools/functions.
+`mistral-ocr-2505` is intended for OCR scenarios and supports image inputs from both `image_url` content parts and DIAL attachments.
+
+For tools/functions interoperability, the adapter normalizes tool definitions and call identifiers to satisfy Mistral protocol constraints.
+For example, tool schemas containing local `$ref` references are flattened before sending upstream.
 
 #### Google Search grounding
 
@@ -884,9 +899,9 @@ Access to GCP Vertex AI is authenticated via Application Default Credentials ([A
 1. globally via `DEFAULT_REGION` and `GCP_PROJECT_ID` environment vars, or
 2. on a [per upstream basis](#load-balancing) via `upstreams.extraData` fields in DIAL Core Config.
 
-### Anthropic API / Google AI Platform
+### Anthropic API / Mistral API / Google AI Platform
 
-Gemini>=2 and Anthropic deployments could be accessed via API key. The API keys should be configured per-upstream in the DIAL Core config:
+Gemini>=2, Anthropic and Mistral deployments could be accessed via API key. The API keys should be configured per-upstream in the DIAL Core config:
 
 ```json
 {
