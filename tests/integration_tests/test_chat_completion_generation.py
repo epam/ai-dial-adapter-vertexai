@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Awaitable, Callable
-from typing import Protocol, Unpack
+from typing import Literal, Protocol, Unpack
 from unittest.mock import patch
 
 import anthropic
@@ -869,7 +869,16 @@ async def test_tool_response(test: ToolCallTest, chat: Chat):
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
-async def test_tool_call_and_response(deployment: D, chat: Chat):
+@pytest.mark.parametrize(
+    "tool_call_content",
+    ["I need to call the tool", "", " ", "missing", None],
+    ids=["non_empty", "empty_string", "single_space", "missing", "none"],
+)
+async def test_tool_call_and_response(
+    deployment: D,
+    tool_call_content: str | Literal["missing"] | None,
+    chat: Chat,
+):
     messages: list[ChatCompletionMessageParam] = [
         user("Tell me what's the temperature in London, UK in celsius?"),
     ]
@@ -885,7 +894,12 @@ async def test_tool_call_and_response(deployment: D, chat: Chat):
 
     response_message = response.response.choices[0].message.to_dict()
 
-    if deployment == D.GEMINI_3_PRO_PREVIEW:
+    if tool_call_content == "missing":
+        response_message.pop("content", None)
+    else:
+        response_message["content"] = tool_call_content
+
+    if is_gemini_3(deployment):
         dial_message = DialMessage.model_validate(response_message)
         state = _parse_message_content_from_state(0, dial_message)
         assert state is not None, "state is missing"
