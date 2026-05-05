@@ -73,6 +73,6 @@ def update_with_message_state(
     else:
         for part in content.parts or []:
             if part.function_call is not None:
-                # Last resort if thought_signature wasn't provided via state
+                # Last resort if thought_signature wasn't provided in the state
                 part.thought_signature = b"skip_thought_signature_validator"
                 break
