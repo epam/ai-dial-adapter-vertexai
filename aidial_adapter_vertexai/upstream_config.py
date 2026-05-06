@@ -95,7 +95,6 @@ class _AzureFoundryUpstreamConfig(BaseModel):
         return await get_anthropic_foundry_client(self.api_key, self.base_url)
 
     async def get_mistral_client(self) -> MistralClient:
-        # https://github.com/mistralai/client-python#azure-ai
         raise NotImplementedError(
             "Azure Foundry Mistral AI client is not supported."
         )

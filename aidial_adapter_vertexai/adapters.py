@@ -117,12 +117,7 @@ async def get_chat_completion_model(
                 deployment.clone(deployment.reference_deployment_id),
                 config=upstream_config,
             )
-        case (
-            D.MISTRAL_MEDIUM_3
-            | D.MISTRAL_OCR
-            | D.MISTRAL_SMALL
-            | D.MISTRAL_CODESTRAL_2
-        ):
+        case D.MISTRAL_MEDIUM_3 | D.MISTRAL_SMALL | D.MISTRAL_CODESTRAL_2:
             return await MistralChatCompletionAdapter.create(
                 storage,
                 deployment.clone(deployment.reference_deployment_id),

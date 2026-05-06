@@ -71,7 +71,6 @@ class ChatCompletionDeployment(DeploymentEnum):
     VEO_3_1_FAST_GENERATE_PREVIEW = "veo-3.1-fast-generate-preview"
 
     MISTRAL_MEDIUM_3 = "mistral-medium-3"
-    MISTRAL_OCR = "mistral-ocr-2505"
     MISTRAL_SMALL = "mistral-small-2503"
     MISTRAL_CODESTRAL_2 = "codestral-2"
 
@@ -137,7 +136,6 @@ VeoDeployment = Literal[
 
 MistralDeployment = Literal[
     ChatCompletionDeployment.MISTRAL_MEDIUM_3,
-    ChatCompletionDeployment.MISTRAL_OCR,
     ChatCompletionDeployment.MISTRAL_SMALL,
     ChatCompletionDeployment.MISTRAL_CODESTRAL_2,
 ]

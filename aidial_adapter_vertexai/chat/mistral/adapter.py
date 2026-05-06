@@ -1,14 +1,14 @@
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from logging import DEBUG
-from typing import Any, Literal, cast
+from typing import assert_never
 
 from aidial_sdk.chat_completion import FinishReason, Message
-from mistralai.gcp.client.models import (
-    CompletionChunk,
-    ToolCall,
-    UsageInfo,
-)
+from mistralai.client import models as models
+from mistralai.client.types import basemodel as models_base
+from mistralai.gcp.client import models as gcp_models
+from mistralai.gcp.client.types import basemodel as gcp_models_base
 from typing_extensions import override
 
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
@@ -19,7 +19,7 @@ from aidial_adapter_vertexai.chat.mistral.prompt import (
     MistralPrompt,
     MistralPromptParser,
 )
-from aidial_adapter_vertexai.chat.mistral.state import _ToolCallState
+from aidial_adapter_vertexai.chat.mistral.state import ToolCallState
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import MistralDeployment
@@ -34,6 +34,15 @@ from aidial_adapter_vertexai.utils.adapter_deployments import AdapterDeployment
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
 from aidial_adapter_vertexai.utils.timer import Timer
+
+AssistantContent = (
+    str
+    | list[models.ContentChunk]
+    | list[gcp_models.ContentChunk]
+    | models_base.Unset
+    | gcp_models_base.Unset
+    | None
+)
 
 
 @dataclass
@@ -80,15 +89,7 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
     ) -> None:
         if log.isEnabledFor(DEBUG):
             request_str = json_dumps_short(
-                {
-                    "model": self.model_id,
-                    "stream": params.stream,
-                    "messages": prompt.messages,
-                    "has_tools": prompt.tools is not None,
-                    "tool_choice": prompt.tool_choice,
-                    "response_format": prompt.response_format,
-                },
-                exclude_none=True,
+                {"parameters": params, "prompt": prompt}, exclude_none=True
             )
             log.debug(f"predict request: {request_str}")
 
@@ -106,98 +107,86 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
         params: ModelParameters,
         consumer: Consumer,
         prompt: MistralPrompt,
-    ) -> UsageInfo | None:
+    ) -> models.UsageInfo | gcp_models.UsageInfo | None:
         response = await self.client.chat.complete_async(
             model=self.model_id,
-            messages=prompt.messages,
+            messages=prompt.messages_unwrap,
             temperature=params.temperature,
             top_p=params.top_p,
             max_tokens=params.max_tokens,
             stop=params.stop,
             random_seed=params.seed,
-            # The upstream client can be either `Mistral` or `MistralGCP`.
-            # Their generated model classes are structurally compatible but
-            # live in different modules, so pyright treats them as distinct.
-            response_format=cast(Any, prompt.response_format),
-            tools=cast(Any, prompt.tools),
-            tool_choice=cast(Any, prompt.tool_choice),
+            response_format=prompt.response_format_unwrap,
+            tools=prompt.tools_unwrap,
+            tool_choice=prompt.tool_choice_unwrap,
             presence_penalty=params.presence_penalty,
             frequency_penalty=params.frequency_penalty,
-            prompt_mode=_to_prompt_mode(params),
         )
         if log.isEnabledFor(DEBUG):
             log.debug(f"predict response: {json_dumps_short(response)}")
 
+        usage = response.usage
+
         if not response.choices:
-            return cast(UsageInfo | None, response.usage)
+            return usage
 
         choice = response.choices[0]
         if choice.message is None:
-            return cast(UsageInfo | None, response.usage)
+            return usage
 
         content = _stringify_content(choice.message.content)
         if content:
             await consumer.append_content(content)
 
         allow_tool_calls = prompt.tools is not None
-        await _consume_tool_calls(
-            choice.message.tool_calls,
-            consumer,
-            use_tool_api=prompt.use_tool_api,
-            allow_tool_calls=allow_tool_calls,
-        )
+        if tool_calls := choice.message.tool_calls:
+            await consume_tool_calls(
+                tool_calls,
+                consumer,
+                use_tool_api=prompt.use_tool_api,
+                allow_tool_calls=allow_tool_calls,
+            )
 
-        if choice.finish_reason is not None:
-            finish_reason = _to_finish_reason(str(choice.finish_reason))
-            if (
-                not allow_tool_calls
-                and finish_reason == FinishReason.TOOL_CALLS
-            ):
-                # When no tools are declared, ignore model-hallucinated tool calls
-                # and preserve OpenAI-compatible graceful fallback behavior.
-                finish_reason = FinishReason.STOP
-            await consumer.set_finish_reason(finish_reason)
+        if (finish_reason := choice.finish_reason) is not None:
+            await consumer.set_finish_reason(to_finish_reason(finish_reason))
 
-        return cast(UsageInfo | None, response.usage)
+        return usage
 
     async def _chat_stream(
         self,
         params: ModelParameters,
         consumer: Consumer,
         prompt: MistralPrompt,
-    ) -> UsageInfo | None:
-        usage = None
-        tool_calls_state: dict[int, _ToolCallState] = {}
+    ) -> models.UsageInfo | gcp_models.UsageInfo | None:
+        usage: models.UsageInfo | gcp_models.UsageInfo | None = None
+        tool_calls_state: dict[int, ToolCallState] = {}
         tool_calls_emitted = False
         allow_tool_calls = prompt.tools is not None
 
         stream = await self.client.chat.stream_async(
             model=self.model_id,
-            messages=prompt.messages,
+            messages=prompt.messages_unwrap,
             temperature=params.temperature,
             top_p=params.top_p,
             max_tokens=params.max_tokens,
             stop=params.stop,
             random_seed=params.seed,
-            # The upstream client can be either `Mistral` or `MistralGCP`.
-            # Their generated model classes are structurally compatible but
-            # live in different modules, so pyright treats them as distinct.
-            response_format=cast(Any, prompt.response_format),
-            tools=cast(Any, prompt.tools),
-            tool_choice=cast(Any, prompt.tool_choice),
+            response_format=prompt.response_format_unwrap,
+            tools=prompt.tools_unwrap,
+            tool_choice=prompt.tool_choice_unwrap,
             presence_penalty=params.presence_penalty,
             frequency_penalty=params.frequency_penalty,
-            prompt_mode=_to_prompt_mode(params),
         )
         async with stream as events:
             async for event in events:
                 if log.isEnabledFor(DEBUG):
                     log.debug(f"stream event: {json_dumps_short(event)}")
+
                 if event.data.usage is not None:
                     usage = event.data.usage
 
-                finish_reason = await _consume_stream_chunk(
-                    cast(CompletionChunk, event.data),
+                finish_reason = await consume_stream_chunk(
+                    event.data,
                     consumer,
                     tool_calls_state,
                     allow_tool_calls=allow_tool_calls,
@@ -207,24 +196,25 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
                     and not tool_calls_emitted
                     and finish_reason == FinishReason.TOOL_CALLS
                 ):
-                    await _consume_tool_calls(
-                        [
-                            state.to_tool_call()
-                            for state in tool_calls_state.values()
-                        ],
+                    streamed_tool_calls = [
+                        state.to_tool_call()
+                        for state in tool_calls_state.values()
+                    ]
+                    await consume_tool_calls(
+                        streamed_tool_calls,
                         consumer,
                         use_tool_api=prompt.use_tool_api,
                         allow_tool_calls=True,
                     )
                     tool_calls_emitted = True
 
-        return cast(UsageInfo | None, usage)
+        return usage
 
 
-async def _consume_stream_chunk(
-    chunk: CompletionChunk,
+async def consume_stream_chunk(
+    chunk: models.CompletionChunk | gcp_models.CompletionChunk,
     consumer: Consumer,
-    tool_calls_state: dict[int, _ToolCallState],
+    tool_calls_state: dict[int, ToolCallState],
     *,
     allow_tool_calls: bool,
 ) -> FinishReason | None:
@@ -232,15 +222,33 @@ async def _consume_stream_chunk(
         return None
 
     choice = chunk.choices[0]
-    content = _stringify_content(choice.delta.content if choice.delta else None)
+    raw_content = choice.delta.content if choice.delta else None
+    match raw_content:
+        case None | models_base.Unset() | gcp_models_base.Unset():
+            content = ""
+        case str():
+            content = raw_content
+        case list():
+            chunks: list[str] = []
+            for item in raw_content:
+                match item:
+                    case models.TextChunk(text=text):
+                        chunks.append(text)
+                    case _:
+                        log.warning(
+                            f"Ignoring content chunk of type {type(item).__name__}; expected TextChunk."
+                        )
+            content = "".join(chunks)
+        case _:
+            content = str(raw_content)
     if content:
         await consumer.append_content(content)
 
     if choice.delta and choice.delta.tool_calls:
-        _append_tool_calls_state(tool_calls_state, choice.delta.tool_calls)
+        append_tool_calls_state(tool_calls_state, choice.delta.tool_calls)
 
     if choice.finish_reason is not None:
-        finish_reason = _to_finish_reason(str(choice.finish_reason))
+        finish_reason = to_finish_reason(str(choice.finish_reason))
         if not allow_tool_calls and finish_reason == FinishReason.TOOL_CALLS:
             finish_reason = FinishReason.STOP
         await consumer.set_finish_reason(finish_reason)
@@ -248,7 +256,7 @@ async def _consume_stream_chunk(
     return None
 
 
-def _to_finish_reason(reason: str) -> FinishReason:
+def to_finish_reason(reason: str) -> FinishReason:
     if reason in ("length", "model_length"):
         return FinishReason.LENGTH
     if reason == "tool_calls":
@@ -258,69 +266,55 @@ def _to_finish_reason(reason: str) -> FinishReason:
     return FinishReason.STOP
 
 
-def _to_token_usage(usage: UsageInfo) -> TokenUsage:
+def _to_token_usage(
+    usage: models.UsageInfo | gcp_models.UsageInfo,
+) -> TokenUsage:
     return TokenUsage(
         prompt_tokens=usage.prompt_tokens or 0,
         completion_tokens=usage.completion_tokens or 0,
     )
 
 
-def _stringify_content(content: Any) -> str:
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        chunks: list[str] = []
-        for item in content:
-            if isinstance(item, str):
-                chunks.append(item)
-                continue
-            text = getattr(item, "text", None)
-            if isinstance(text, str):
-                chunks.append(text)
-        return "".join(chunks)
-    return str(content)
+def _stringify_content(content: AssistantContent) -> str:
+    match content:
+        case str():
+            return content
+        case None | models_base.Unset() | gcp_models_base.Unset():
+            return ""
+        case list():
+            chunks: list[str] = []
+            for item in content:
+                match item:
+                    case models.TextChunk(text=text):
+                        chunks.append(text)
+                    case _:
+                        log.warning(
+                            f"Ignoring content chunk of type {type(item).__name__}; expected TextChunk."
+                        )
+            return "".join(chunks)
+        case _:
+            assert_never(content)
 
 
-def _to_prompt_mode(params: ModelParameters) -> Literal["reasoning"] | None:
-    if params.reasoning_effort is None:
-        return None
-    if params.reasoning_effort.value == "none":
-        return None
-    return "reasoning"
-
-
-async def _consume_tool_calls(
-    tool_calls: Any,
+async def consume_tool_calls(
+    tool_calls: list[models.ToolCall] | list[gcp_models.ToolCall],
     consumer: Consumer,
     *,
     use_tool_api: bool,
     allow_tool_calls: bool,
 ) -> None:
-    if not isinstance(tool_calls, list) or not tool_calls:
-        return
     if not allow_tool_calls:
         log.warning("Ignoring tool calls from model when tools are undeclared")
         return
 
-    for idx, call in enumerate(tool_calls):
+    for call in tool_calls:
         name = call.function.name
         if not name:
             continue
 
         arguments = _stringify_arguments(call.function.arguments)
         if use_tool_api:
-            call_id = call.id if isinstance(call.id, str) else None
-            # Some Mistral responses may omit an id or provide "null".
-            # Keep upstream IDs when usable; otherwise generate deterministic
-            # OpenAI-compatible fallback IDs.
-            tool_call_id = (
-                call_id
-                if call_id not in (None, "", "null")
-                else f"{name}_{idx + 1}"
-            )
-            await consumer.create_tool_call(tool_call_id, name, arguments)
+            await consumer.create_tool_call(call.id or "", name, arguments)
             continue
 
         if consumer.has_function_call:
@@ -333,14 +327,15 @@ async def _consume_tool_calls(
         await consumer.create_function_call(name, arguments)
 
 
-def _append_tool_calls_state(
-    state: dict[int, _ToolCallState], tool_calls: list[ToolCall]
+def append_tool_calls_state(
+    state: dict[int, ToolCallState],
+    tool_calls: Sequence[models.ToolCall | gcp_models.ToolCall],
 ) -> None:
     for call in tool_calls:
         idx = call.index or 0
         current = state.get(idx)
         if current is None:
-            current = state[idx] = _ToolCallState(index=idx)
+            current = state[idx] = ToolCallState(index=idx)
 
         if call.id and call.id != "null":
             current.id = call.id
@@ -351,7 +346,9 @@ def _append_tool_calls_state(
         current.arguments += _stringify_arguments(call.function.arguments)
 
 
-def _stringify_arguments(arguments: Any) -> str:
+def _stringify_arguments(
+    arguments: models.Arguments | gcp_models.Arguments,
+) -> str:
     if isinstance(arguments, str):
         return arguments
     return json.dumps(arguments, separators=(",", ":"))

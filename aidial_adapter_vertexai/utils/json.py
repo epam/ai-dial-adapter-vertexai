@@ -5,9 +5,10 @@ with options to trim long strings and lists to specified limits.
 """
 
 import json
+from copy import deepcopy
 from dataclasses import asdict, is_dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, TypeAlias
 
 import proto
 from openai import Omit
@@ -16,6 +17,11 @@ from pydantic import BaseModel as BaseModelV1
 
 from aidial_adapter_vertexai.utils.decorator import fail_safe
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
+
+JsonScalar: TypeAlias = str | int | float | bool | None
+JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
+
+_RECURSIVE_JSON_NOT_SUPPORTED = "Recursive JSON schemas aren't supported"
 
 
 @fail_safe
@@ -138,3 +144,53 @@ def _truncate_lists(obj: Any, limit: int) -> Any:
         return tuple(rec(element) for element in obj)
 
     return obj
+
+
+def to_json_object_or_string(value: str) -> Any:
+    value = value.strip()
+    if value == "":
+        return ""
+    try:
+        return json.loads(value)
+    except ValueError:
+        return value
+
+
+def inline_local_json_refs(schema: dict[str, Any]) -> dict[str, Any]:
+    root: dict[str, JsonValue] = deepcopy(schema)
+    defs_raw = root.get("$defs")
+    defs: dict[str, JsonValue] = defs_raw if isinstance(defs_raw, dict) else {}
+
+    def _inline(node: JsonValue, ref_stack: tuple[str, ...] = ()) -> JsonValue:
+        if isinstance(node, list):
+            return [_inline(item, ref_stack) for item in node]
+        if not isinstance(node, dict):
+            return node
+
+        if "$ref" in node:
+            ref = node.get("$ref")
+            if isinstance(ref, str) and ref.startswith("#/$defs/"):
+                key = ref.split("/", 2)[-1]
+                if key in ref_stack:
+                    raise ValueError(_RECURSIVE_JSON_NOT_SUPPORTED)
+                target = defs.get(key)
+                if isinstance(target, dict):
+                    resolved_target = _inline(
+                        deepcopy(target), ref_stack + (key,)
+                    )
+                    if not isinstance(resolved_target, dict):
+                        raise ValueError(_RECURSIVE_JSON_NOT_SUPPORTED)
+                    # Keep sibling constraints while replacing the ref.
+                    siblings = {
+                        k: _inline(v, ref_stack)
+                        for k, v in node.items()
+                        if k != "$ref"
+                    }
+                    return {**resolved_target, **siblings}
+        return {k: _inline(v, ref_stack) for k, v in node.items()}
+
+    normalized = _inline(root)
+    if not isinstance(normalized, dict):
+        raise ValueError("JSON schema root must be an object")
+    normalized.pop("$defs", None)
+    return normalized

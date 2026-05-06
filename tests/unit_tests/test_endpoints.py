@@ -70,7 +70,6 @@ test_cases: list[TestCase] = [
     TestCase(D.VEO_3_1_FAST_GENERATE, True, True, True),
     TestCase(D.VEO_3_1_FAST_GENERATE_PREVIEW, True, True, True),
     TestCase(D.MISTRAL_MEDIUM_3, False, False, False),
-    TestCase(D.MISTRAL_OCR, False, False, False),
     TestCase(D.MISTRAL_SMALL, False, False, False),
     TestCase(D.MISTRAL_CODESTRAL_2, False, False, False),
 ]

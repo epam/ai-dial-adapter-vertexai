@@ -1,17 +1,16 @@
-import json
 from dataclasses import dataclass
-from typing import Any
 
-from mistralai.gcp.client.models import (
+from mistralai.client.models import (
     FunctionCall,
     ToolCall,
 )
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.utils.json import to_json_object_or_string
 
 
 @dataclass
-class _ToolCallState:
+class ToolCallState:
     index: int
     id: str | None = None
     name: str | None = None
@@ -27,16 +26,6 @@ class _ToolCallState:
             index=self.index,
             function=FunctionCall(
                 name=self.name,
-                arguments=_to_json_object_or_string(self.arguments),
+                arguments=to_json_object_or_string(self.arguments),
             ),
         )
-
-
-def _to_json_object_or_string(value: str) -> Any:
-    value = value.strip()
-    if value == "":
-        return ""
-    try:
-        return json.loads(value)
-    except ValueError:
-        return value
