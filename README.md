@@ -884,6 +884,12 @@ Access to GCP Vertex AI is authenticated via Application Default Credentials ([A
 1. globally via `DEFAULT_REGION` and `GCP_PROJECT_ID` environment vars, or
 2. on a [per upstream basis](#load-balancing) via `upstreams.extraData` fields in DIAL Core Config.
 
+#### Workload Identity Federation on AWS container runtimes
+
+When deployed on AWS ECS Fargate, ECS EC2 with task roles, or EKS Pod Identity, the underlying `google-auth` library [does not](https://github.com/googleapis/google-auth-library-python/issues/1789) auto-discover AWS credentials from the AWS container credential provider (only EC2 IMDS), and Workload Identity Federation refresh fails with `RefreshError: Unable to determine the AWS metadata server security credentials endpoint`.
+
+When the adapter detects the AWS container credential provider environment (`AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` or `AWS_CONTAINER_CREDENTIALS_FULL_URI` is set, populated by the runtime) and `GOOGLE_APPLICATION_CREDENTIALS` points to a Workload Identity Federation credential configuration file (`type: external_account`), the bundled [`AwsSecurityCredentialsSupplier`](https://googleapis.dev/python/google-auth/latest/reference/google.auth.aws.html#google.auth.aws.AwsSecurityCredentialsSupplier) activates automatically and reads credentials from the container endpoint on every refresh. Default behaviour is unchanged when those signals are absent.
+
 ### Anthropic API / Google AI Platform
 
 Gemini>=2 and Anthropic deployments could be accessed via API key. The API keys should be configured per-upstream in the DIAL Core config:

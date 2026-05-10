@@ -7,6 +7,7 @@ from anthropic import AsyncAnthropicFoundry, AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions, HttpRetryOptions
 
+from aidial_adapter_vertexai.aws_credentials import maybe_make_aws_credentials
 from aidial_adapter_vertexai.utils.azure_auth import get_azure_access_token
 from aidial_adapter_vertexai.utils.cache import cache
 from aidial_adapter_vertexai.utils.env import get_env_int
@@ -32,7 +33,11 @@ GOOGLE_GENAI_MAX_RETRY_ATTEMPTS = get_env_int(
 
 def init_vertex_ai():
     if (region := get_default_region()) and (project := get_default_project()):
-        vertexai.init(project=project, location=region)
+        creds = maybe_make_aws_credentials()
+        if creds is not None:
+            vertexai.init(project=project, location=region, credentials=creds)
+        else:
+            vertexai.init(project=project, location=region)
     else:
         log.warning(
             f"{DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} aren't configured."
@@ -50,12 +55,16 @@ async def get_genai_client(project: str, location: str) -> GenAIClient:
             attempts=1 + GOOGLE_GENAI_MAX_RETRY_ATTEMPTS
         )
     )
-    return GenAIClient(
-        vertexai=True,
-        project=project,
-        location=location,
-        http_options=opts,
-    )
+    creds = maybe_make_aws_credentials()
+    kwargs = {
+        "vertexai": True,
+        "project": project,
+        "location": location,
+        "http_options": opts,
+    }
+    if creds is not None:
+        kwargs["credentials"] = creds
+    return GenAIClient(**kwargs)
 
 
 async def _close_anthropic_client(client: AsyncAnthropicVertex) -> None:
@@ -67,12 +76,16 @@ async def get_anthropic_vertex_client(
     project: str, region: str
 ) -> AsyncAnthropicVertex:
     http_client = httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
-    return AsyncAnthropicVertex(
-        project_id=project,
-        region=region,
-        http_client=http_client,
-        max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
-    )
+    creds = maybe_make_aws_credentials()
+    kwargs = {
+        "project_id": project,
+        "region": region,
+        "http_client": http_client,
+        "max_retries": ANTHROPIC_MAX_RETRY_ATTEMPTS,
+    }
+    if creds is not None:
+        kwargs["credentials"] = creds
+    return AsyncAnthropicVertex(**kwargs)
 
 
 async def _close_anthropic_httpx_client(client: httpx.AsyncClient) -> None:
