@@ -37,7 +37,7 @@ pillow = "12.2.0"
 pypdf = { version = "6.10.2", extras = ["crypto"] }
 numpy = "2.0.0"
 aiohttp = "3.13.4"
-urllib3 = "2.6.3"
+urllib3 = "2.7.0"
 azure-identity = "1.25.1"
 
 [tool.poetry.group.test.dependencies]
