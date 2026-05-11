@@ -1,38 +1,36 @@
 import json
 import os
 import urllib.request
+from urllib.parse import urljoin
 
 from google.auth import aws
 
 from aidial_adapter_vertexai.utils.log_config import app_logger as _log
 
+# https://docs.aws.amazon.com/sdkref/latest/guide/feature-container-credentials.html
 _RELATIVE = "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"
 _FULL = "AWS_CONTAINER_CREDENTIALS_FULL_URI"
 _AUTH = "AWS_CONTAINER_AUTHORIZATION_TOKEN"
+_ECS_AGENT = "http://169.254.170.2"
 
 
-class _ContainerSupplier(aws.AwsSecurityCredentialsSupplier):
+class _CredentialsSupplier(aws.AwsSecurityCredentialsSupplier):
+    def __init__(self, cred_url: str) -> None:
+        self._cred_url = cred_url
+
     def get_aws_security_credentials(
         self, context, request
     ) -> aws.AwsSecurityCredentials:
-        if _FULL in os.environ:
-            url = os.environ[_FULL]
-            headers = {}
-            token = os.environ.get(_AUTH)
-            if token:
-                headers["Authorization"] = token
-        else:
-            url = "http://169.254.170.2" + os.environ[_RELATIVE]
-            headers = {}
-        # URL is the container credential provider endpoint - hardcoded
-        # 169.254.170.2 (ECS) or AWS_CONTAINER_CREDENTIALS_FULL_URI set by the
-        # runtime (EKS Pod Identity, ECS in some configurations). Not user input.
-        req = urllib.request.Request(url, headers=headers)  # noqa: S310
+        headers = {}
+        if (token := os.environ.get(_AUTH)) is not None:
+            headers["Authorization"] = token
+        # URL was resolved at startup from AWS_CONTAINER_CREDENTIALS_{FULL,RELATIVE}_URI
+        # (link-local for ECS, FQDN for EKS Pod Identity). Not user input.
+        req = urllib.request.Request(self._cred_url, headers=headers)  # noqa: S310
         with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310
             c = json.loads(resp.read())
-        # Observability: log a short AccessKeyId fingerprint + Expiration so
-        # operators can confirm rotation is being picked up across refreshes.
-        # The fingerprint avoids leaking the full key id to logs.
+        # Observability: short AccessKeyId fingerprint + Expiration so operators
+        # can confirm rotation is being picked up across refreshes.
         akid = c["AccessKeyId"]
         _log.debug(
             "wif-aws supplier: AccessKeyId=%s***%s expires=%s",
@@ -53,8 +51,10 @@ class _ContainerSupplier(aws.AwsSecurityCredentialsSupplier):
 
 
 def maybe_make_aws_credentials() -> aws.Credentials | None:
-    if _FULL not in os.environ and _RELATIVE not in os.environ:
+    cred_url = os.getenv(_FULL) or os.getenv(_RELATIVE)
+    if cred_url is None:
         return None
+    cred_url = urljoin(_ECS_AGENT, cred_url)
     cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
     if not cred_path or not os.path.isfile(cred_path):
         return None
@@ -69,6 +69,6 @@ def maybe_make_aws_credentials() -> aws.Credentials | None:
         service_account_impersonation_url=info.get(
             "service_account_impersonation_url"
         ),
-        aws_security_credentials_supplier=_ContainerSupplier(),
+        aws_security_credentials_supplier=_CredentialsSupplier(cred_url),
         default_scopes=["https://www.googleapis.com/auth/cloud-platform"],
     )

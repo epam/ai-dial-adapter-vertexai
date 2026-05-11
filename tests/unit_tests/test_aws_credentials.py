@@ -5,7 +5,7 @@ from unittest.mock import patch
 from google.auth import aws
 
 from aidial_adapter_vertexai.aws_credentials import (
-    _ContainerSupplier,
+    _CredentialsSupplier,
     maybe_make_aws_credentials,
 )
 
@@ -65,9 +65,7 @@ def test_returns_credentials_when_environment_complete(monkeypatch, tmp_path):
 
 
 def test_supplier_reads_from_relative_uri(monkeypatch):
-    monkeypatch.setenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "/v2/creds")
-    monkeypatch.delenv("AWS_CONTAINER_CREDENTIALS_FULL_URI", raising=False)
-
+    monkeypatch.delenv("AWS_CONTAINER_AUTHORIZATION_TOKEN", raising=False)
     captured = {}
 
     def fake_urlopen(req, timeout=None):
@@ -76,7 +74,8 @@ def test_supplier_reads_from_relative_uri(monkeypatch):
         return io.BytesIO(json.dumps(_AWS_CREDS_JSON).encode())
 
     with patch("urllib.request.urlopen", fake_urlopen):
-        result = _ContainerSupplier().get_aws_security_credentials(None, None)
+        supplier = _CredentialsSupplier("http://169.254.170.2/v2/creds")
+        result = supplier.get_aws_security_credentials(None, None)
 
     assert captured["url"] == "http://169.254.170.2/v2/creds"
     assert "Authorization" not in captured["headers"]
@@ -85,11 +84,7 @@ def test_supplier_reads_from_relative_uri(monkeypatch):
 
 
 def test_supplier_reads_from_full_uri_with_auth_token(monkeypatch):
-    monkeypatch.setenv(
-        "AWS_CONTAINER_CREDENTIALS_FULL_URI", "http://eks.example/creds"
-    )
     monkeypatch.setenv("AWS_CONTAINER_AUTHORIZATION_TOKEN", "Bearer xyz")
-
     captured = {}
 
     def fake_urlopen(req, timeout=None):
@@ -98,7 +93,8 @@ def test_supplier_reads_from_full_uri_with_auth_token(monkeypatch):
         return io.BytesIO(json.dumps(_AWS_CREDS_JSON).encode())
 
     with patch("urllib.request.urlopen", fake_urlopen):
-        _ContainerSupplier().get_aws_security_credentials(None, None)
+        supplier = _CredentialsSupplier("http://eks.example/creds")
+        supplier.get_aws_security_credentials(None, None)
 
     assert captured["url"] == "http://eks.example/creds"
     assert captured["headers"].get("Authorization") == "Bearer xyz"

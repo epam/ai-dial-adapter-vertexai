@@ -34,10 +34,7 @@ GOOGLE_GENAI_MAX_RETRY_ATTEMPTS = get_env_int(
 def init_vertex_ai():
     if (region := get_default_region()) and (project := get_default_project()):
         creds = maybe_make_aws_credentials()
-        if creds is not None:
-            vertexai.init(project=project, location=region, credentials=creds)
-        else:
-            vertexai.init(project=project, location=region)
+        vertexai.init(project=project, location=region, credentials=creds)
     else:
         log.warning(
             f"{DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} aren't configured."
@@ -56,15 +53,13 @@ async def get_genai_client(project: str, location: str) -> GenAIClient:
         )
     )
     creds = maybe_make_aws_credentials()
-    kwargs = {
-        "vertexai": True,
-        "project": project,
-        "location": location,
-        "http_options": opts,
-    }
-    if creds is not None:
-        kwargs["credentials"] = creds
-    return GenAIClient(**kwargs)
+    return GenAIClient(
+        vertexai=True,
+        project=project,
+        location=location,
+        credentials=creds,
+        http_options=opts,
+    )
 
 
 async def _close_anthropic_client(client: AsyncAnthropicVertex) -> None:
@@ -77,15 +72,13 @@ async def get_anthropic_vertex_client(
 ) -> AsyncAnthropicVertex:
     http_client = httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
     creds = maybe_make_aws_credentials()
-    kwargs = {
-        "project_id": project,
-        "region": region,
-        "http_client": http_client,
-        "max_retries": ANTHROPIC_MAX_RETRY_ATTEMPTS,
-    }
-    if creds is not None:
-        kwargs["credentials"] = creds
-    return AsyncAnthropicVertex(**kwargs)
+    return AsyncAnthropicVertex(
+        project_id=project,
+        region=region,
+        http_client=http_client,
+        max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
+        credentials=creds,
+    )
 
 
 async def _close_anthropic_httpx_client(client: httpx.AsyncClient) -> None:

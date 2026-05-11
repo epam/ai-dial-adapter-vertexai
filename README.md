@@ -886,9 +886,17 @@ Access to GCP Vertex AI is authenticated via Application Default Credentials ([A
 
 #### Workload Identity Federation on AWS container runtimes
 
-When deployed on AWS ECS Fargate, ECS EC2 with task roles, or EKS Pod Identity, the underlying `google-auth` library [does not](https://github.com/googleapis/google-auth-library-python/issues/1789) auto-discover AWS credentials from the AWS container credential provider (only EC2 IMDS), and Workload Identity Federation refresh fails with `RefreshError: Unable to determine the AWS metadata server security credentials endpoint`.
+When the adapter container is deployed on AWS ECS Fargate, ECS EC2 with task roles, or EKS Pod Identity, it uses the following [environment variables](https://docs.aws.amazon.com/sdkref/latest/guide/feature-container-credentials.html) for authentication with GCP:
 
-When the adapter detects the AWS container credential provider environment (`AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` or `AWS_CONTAINER_CREDENTIALS_FULL_URI` is set, populated by the runtime) and `GOOGLE_APPLICATION_CREDENTIALS` points to a Workload Identity Federation credential configuration file (`type: external_account`), the bundled [`AwsSecurityCredentialsSupplier`](https://googleapis.dev/python/google-auth/latest/reference/google.auth.aws.html#google.auth.aws.AwsSecurityCredentialsSupplier) activates automatically and reads credentials from the container endpoint on every refresh. Default behaviour is unchanged when those signals are absent.
+|Name|Comment|
+|---|---|
+|`AWS_CONTAINER_CREDENTIALS_RELATIVE_URI`|Set by the ECS runtime for task roles. Combined with `http://169.254.170.2` to fetch credentials.|
+|`AWS_CONTAINER_CREDENTIALS_FULL_URI`|Set by EKS Pod Identity (and similar non-loopback runtimes). Used as-is to fetch credentials.|
+|`GOOGLE_APPLICATION_CREDENTIALS`|Points to a Workload Identity Federation credential configuration file with `type=external_account`.|
+
+At least one of `AWS_CONTAINER_CREDENTIALS_*_URI` must be set, as well as `GOOGLE_APPLICATION_CREDENTIALS`. Otherwise, the adapter fails with the 401 authentication error:
+
+> `google.auth.exceptions.RefreshError: Unable to determine the AWS metadata server security credentials endpoint`
 
 ### Anthropic API / Google AI Platform
 
