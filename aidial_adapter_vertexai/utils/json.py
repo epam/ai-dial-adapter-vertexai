@@ -8,7 +8,7 @@ import json
 from copy import deepcopy
 from dataclasses import asdict, is_dataclass
 from enum import Enum
-from typing import Any, TypeAlias
+from typing import Any, TypeVar
 
 import proto
 from openai import Omit
@@ -18,9 +18,7 @@ from pydantic import BaseModel as BaseModelV1
 from aidial_adapter_vertexai.utils.decorator import fail_safe
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
-JsonScalar: TypeAlias = str | int | float | bool | None
-JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
-
+_T = TypeVar("_T", dict, list, str, int, float, bool, None)
 _RECURSIVE_JSON_NOT_SUPPORTED = "Recursive JSON schemas aren't supported"
 
 
@@ -158,47 +156,33 @@ def to_json_object_or_string(value: str) -> Any:
 
 def inline_local_json_refs(schema: dict[str, Any]) -> dict[str, Any]:
     root = deepcopy(schema)
-    defs_raw = root.get("$defs")
+    defs_raw = root.pop("$defs", None)
     defs = defs_raw if isinstance(defs_raw, dict) else {}
 
-    def _inline(
-        node: JsonValue, active_refs: set[str] | None = None
-    ) -> JsonValue:
-        refs = active_refs if active_refs is not None else set()
+    def _inline(node: _T, refs: set[str]) -> _T:
         match node:
-            case list() as items:
-                return [_inline(item, refs) for item in items]
-            case dict() as obj:
-                pass
+            case list():
+                return [_inline(item, refs) for item in node]
+            case dict():
+                ref = node.pop("$ref", None)
+                ret = {k: _inline(v, refs) for k, v in node.items()}
+
+                if isinstance(ref, str) and ref.startswith("#/$defs/"):
+                    ref = ref.removeprefix("#/$defs/")
+                    if ref in refs:
+                        raise ValueError(_RECURSIVE_JSON_NOT_SUPPORTED)
+                    schema_def = defs.get(ref)
+                    if isinstance(schema_def, dict):
+                        refs.add(ref)
+                        try:
+                            inlined_target = _inline(deepcopy(schema_def), refs)
+                        finally:
+                            refs.remove(ref)
+
+                        ret.update(inlined_target)
+
+                return ret
             case _:
                 return node
 
-        if "$ref" in obj:
-            ref = obj.get("$ref")
-            if isinstance(ref, str) and ref.startswith("#/$defs/"):
-                key = ref.split("/", 2)[-1]
-                if key in refs:
-                    raise ValueError(_RECURSIVE_JSON_NOT_SUPPORTED)
-                target = defs.get(key)
-                if isinstance(target, dict):
-                    refs.add(key)
-                    try:
-                        resolved_target = _inline(deepcopy(target), refs)
-                    finally:
-                        refs.remove(key)
-                    if not isinstance(resolved_target, dict):
-                        raise ValueError(_RECURSIVE_JSON_NOT_SUPPORTED)
-                    # Keep sibling constraints while replacing the ref.
-                    siblings = {
-                        k: _inline(v, refs)
-                        for k, v in obj.items()
-                        if k != "$ref"
-                    }
-                    return {**resolved_target, **siblings}
-        return {k: _inline(v, refs) for k, v in obj.items()}
-
-    normalized = _inline(root)
-    if not isinstance(normalized, dict):
-        raise ValueError("JSON schema root must be an object")
-    normalized.pop("$defs", None)
-    return normalized
+    return _inline(root, set())

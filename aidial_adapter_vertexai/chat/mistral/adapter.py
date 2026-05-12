@@ -247,13 +247,15 @@ async def consume_stream_chunk(
 
 
 def to_finish_reason(reason: str) -> FinishReason:
-    if reason in ("length", "model_length"):
-        return FinishReason.LENGTH
-    if reason == "tool_calls":
-        return FinishReason.TOOL_CALLS
-    if reason == "error":
-        return FinishReason.CONTENT_FILTER
-    return FinishReason.STOP
+    match reason:
+        case "length" | "model_length":
+            return FinishReason.LENGTH
+        case "tool_calls":
+            return FinishReason.TOOL_CALLS
+        case "error":
+            return FinishReason.CONTENT_FILTER
+        case _:
+            return FinishReason.STOP
 
 
 def _to_token_usage(
