@@ -138,13 +138,11 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
         if content:
             await consumer.append_content(content)
 
-        allow_tool_calls = prompt.tools is not None
         if tool_calls := choice.message.tool_calls:
             await consume_tool_calls(
                 tool_calls,
                 consumer,
                 use_tool_api=prompt.use_tool_api,
-                allow_tool_calls=allow_tool_calls,
             )
 
         if (finish_reason := choice.finish_reason) is not None:
@@ -161,7 +159,6 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
         usage: models.UsageInfo | gcp_models.UsageInfo | None = None
         tool_calls_state: dict[int, ToolCallState] = {}
         tool_calls_emitted = False
-        allow_tool_calls = prompt.tools is not None
 
         stream = await self.client.chat.stream_async(
             model=self.model_id,
@@ -189,11 +186,9 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
                     event.data,
                     consumer,
                     tool_calls_state,
-                    allow_tool_calls=allow_tool_calls,
                 )
                 if (
-                    allow_tool_calls
-                    and not tool_calls_emitted
+                    not tool_calls_emitted
                     and finish_reason == FinishReason.TOOL_CALLS
                 ):
                     streamed_tool_calls = [
@@ -204,7 +199,6 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
                         streamed_tool_calls,
                         consumer,
                         use_tool_api=prompt.use_tool_api,
-                        allow_tool_calls=True,
                     )
                     tool_calls_emitted = True
 
@@ -215,8 +209,6 @@ async def consume_stream_chunk(
     chunk: models.CompletionChunk | gcp_models.CompletionChunk,
     consumer: Consumer,
     tool_calls_state: dict[int, ToolCallState],
-    *,
-    allow_tool_calls: bool,
 ) -> FinishReason | None:
     if not chunk.choices:
         return None
@@ -248,9 +240,7 @@ async def consume_stream_chunk(
         append_tool_calls_state(tool_calls_state, choice.delta.tool_calls)
 
     if choice.finish_reason is not None:
-        finish_reason = to_finish_reason(str(choice.finish_reason))
-        if not allow_tool_calls and finish_reason == FinishReason.TOOL_CALLS:
-            finish_reason = FinishReason.STOP
+        finish_reason = to_finish_reason(choice.finish_reason)
         await consumer.set_finish_reason(finish_reason)
         return finish_reason
     return None
@@ -301,12 +291,7 @@ async def consume_tool_calls(
     consumer: Consumer,
     *,
     use_tool_api: bool,
-    allow_tool_calls: bool,
 ) -> None:
-    if not allow_tool_calls:
-        log.warning("Ignoring tool calls from model when tools are undeclared")
-        return
-
     for call in tool_calls:
         name = call.function.name
         if not name:

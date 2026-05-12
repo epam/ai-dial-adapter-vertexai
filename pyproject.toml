@@ -39,7 +39,7 @@ numpy = "2.0.0"
 aiohttp = "3.13.4"
 urllib3 = "2.6.3"
 azure-identity = "1.25.1"
-mistralai = {version = "2.4.3", extras = ["gcp"]}
+mistralai = { version = "2.4.3", extras = ["gcp"] }
 
 [tool.poetry.group.test.dependencies]
 pytest = "9.0.3"

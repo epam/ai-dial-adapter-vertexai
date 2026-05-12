@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, TypeVar, assert_never
 
 from aidial_sdk.chat_completion import (
+    Attachment,
     Message,
     MessageContentAudioPart,
     MessageContentFilePart,
@@ -40,7 +41,7 @@ from mistralai.client.models import (
     UserMessage,
 )
 
-from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import (
     ModelParameters,
@@ -188,14 +189,15 @@ class MistralPromptParser:
         file_storage: FileStorage | None,
     ) -> list[PromptMessage]:
         prompt: list[PromptMessage] = []
-        function_call_idx = 0
-        pending_legacy_function_call_ids: list[str] = []
         tool_call_id_map: dict[str, str] = {}
 
         for message in messages:
+            if message.function_call is not None:
+                raise RequestValidationError(_DEPRECATED_FUNCTION_API)
+
             match message.role:
                 case Role.SYSTEM | Role.DEVELOPER:
-                    content = await cls._merge_content_with_attachments(
+                    content = await cls._message_to_mistral_chunks(
                         message,
                         file_storage=file_storage,
                     )
@@ -216,17 +218,14 @@ class MistralPromptParser:
                 case Role.USER:
                     prompt.append(
                         UserMessage(
-                            content=await cls._merge_content_with_attachments(
+                            content=await cls._message_to_mistral_chunks(
                                 message,
                                 file_storage=file_storage,
                             )
                         )
                     )
                 case Role.ASSISTANT:
-                    if message.function_call is not None:
-                        raise RequestValidationError(_DEPRECATED_FUNCTION_API)
-
-                    content = await cls._merge_content_with_attachments(
+                    content = await cls._message_to_mistral_chunks(
                         message,
                         file_storage=file_storage,
                     )
@@ -252,36 +251,12 @@ class MistralPromptParser:
                         ]
 
                     prompt.append(assistant_msg)
-                case Role.FUNCTION:
-                    if message.name is None:
-                        raise ValidationError(
-                            "Function message name must be present"
-                        )
-                    if pending_legacy_function_call_ids:
-                        tool_call_id = pending_legacy_function_call_ids.pop(0)
-                    else:
-                        # Preserve backward compatibility for malformed chat histories
-                        # that provide function results without a prior assistant call.
-                        tool_call_id = _legacy_function_tool_call_id(
-                            function_call_idx
-                        )
-                        function_call_idx += 1
-                    prompt.append(
-                        ToolMessage(
-                            content=await cls._merge_content_with_attachments(
-                                message,
-                                file_storage=file_storage,
-                            ),
-                            tool_call_id=tool_call_id,
-                            name=message.name,
-                        )
-                    )
                 case Role.TOOL:
                     if message.tool_call_id is None:
                         raise ValidationError(
                             "Tool message tool_call_id must be present"
                         )
-                    tool_content = await cls._merge_content_with_attachments(
+                    tool_content = await cls._message_to_mistral_chunks(
                         message,
                         file_storage=file_storage,
                     )
@@ -298,13 +273,15 @@ class MistralPromptParser:
                             name=message.name,
                         )
                     )
+                case Role.FUNCTION:
+                    raise ValidationError(_DEPRECATED_FUNCTION_API)
                 case _:
                     assert_never(message.role)
 
         return prompt
 
     @staticmethod
-    def _to_mistral_content(
+    def _content_to_mistral_chunks(
         content: str | list[MessageContentPart] | None,
     ) -> str | list[ContentChunk]:
         match content:
@@ -344,50 +321,45 @@ class MistralPromptParser:
                 assert_never(content)
 
     @classmethod
-    async def _merge_content_with_attachments(
+    async def _message_to_mistral_chunks(
         cls,
         message: Message,
         *,
         file_storage: FileStorage | None,
     ) -> str | list[ContentChunk]:
-        base_content = cls._to_mistral_content(message.content)
-        attachment_chunks = await cls._to_attachment_chunks(
-            message, file_storage
+        base_chunks = cls._content_to_mistral_chunks(message.content)
+        attachment_chunks = await cls._attachments_to_mistral_chunks(
+            get_attachments(message), file_storage
         )
         if not attachment_chunks:
-            return base_content
-        if isinstance(base_content, str):
-            if base_content == "":
-                base_content = []
+            return base_chunks
+        if isinstance(base_chunks, str):
+            if base_chunks == "":
+                base_chunks = []
             else:
-                base_content = [TextChunk(text=base_content)]
-        return [*base_content, *attachment_chunks]
+                base_chunks = [TextChunk(text=base_chunks)]
+        return [*base_chunks, *attachment_chunks]
 
     @staticmethod
-    async def _to_attachment_chunks(
-        message: Message,
+    async def _attachments_to_mistral_chunks(
+        attachments: list[Attachment],
         file_storage: FileStorage | None,
     ) -> list[ImageURLChunk]:
         chunks: list[ImageURLChunk] = []
-        for attachment in get_attachments(message):
+        for attachment in attachments:
             resource = await AttachmentResource(
                 attachment=attachment,
                 entity_name="attachment",
             ).download(file_storage)
 
             if not resource.type.startswith("image/"):
-                raise ValidationError(
+                raise UserError(
                     f"Attachment of type {resource.type!r} aren't supported"
                 )
             chunks.append(
                 ImageURLChunk(image_url=ImageURL(url=resource.to_data_url()))
             )
         return chunks
-
-
-def _legacy_function_tool_call_id(index: int) -> str:
-    # Mistral requires tool_call_id to be exactly 9 alphanumeric chars.
-    return f"fc{index:07d}"
 
 
 def to_mistral_tool_call_id(value: str, *, id_map: dict[str, str]) -> str:
@@ -404,7 +376,7 @@ def to_mistral_tool_call_id(value: str, *, id_map: dict[str, str]) -> str:
 
 
 def _normalize_tool_parameters(parameters: dict | None) -> dict | None:
-    if not isinstance(parameters, dict):
+    if parameters is None:
         return parameters
     # Mistral GCP tool validation rejects JSON schemas that use local
     # references ($ref to $defs), so we inline those refs before sending.

@@ -820,8 +820,7 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
     else:
         response = await _run()
         assert response.tool_calls is None
-        expected_finish_reasons = ["stop"]
-        assert response.finish_reasons == expected_finish_reasons
+        assert response.finish_reasons == ["stop"]
 
 
 @pytest.mark.parametrize(

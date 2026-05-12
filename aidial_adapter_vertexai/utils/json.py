@@ -157,37 +157,45 @@ def to_json_object_or_string(value: str) -> Any:
 
 
 def inline_local_json_refs(schema: dict[str, Any]) -> dict[str, Any]:
-    root: dict[str, JsonValue] = deepcopy(schema)
+    root = deepcopy(schema)
     defs_raw = root.get("$defs")
-    defs: dict[str, JsonValue] = defs_raw if isinstance(defs_raw, dict) else {}
+    defs = defs_raw if isinstance(defs_raw, dict) else {}
 
-    def _inline(node: JsonValue, ref_stack: tuple[str, ...] = ()) -> JsonValue:
-        if isinstance(node, list):
-            return [_inline(item, ref_stack) for item in node]
-        if not isinstance(node, dict):
-            return node
+    def _inline(
+        node: JsonValue, active_refs: set[str] | None = None
+    ) -> JsonValue:
+        refs = active_refs if active_refs is not None else set()
+        match node:
+            case list() as items:
+                return [_inline(item, refs) for item in items]
+            case dict() as obj:
+                pass
+            case _:
+                return node
 
-        if "$ref" in node:
-            ref = node.get("$ref")
+        if "$ref" in obj:
+            ref = obj.get("$ref")
             if isinstance(ref, str) and ref.startswith("#/$defs/"):
                 key = ref.split("/", 2)[-1]
-                if key in ref_stack:
+                if key in refs:
                     raise ValueError(_RECURSIVE_JSON_NOT_SUPPORTED)
                 target = defs.get(key)
                 if isinstance(target, dict):
-                    resolved_target = _inline(
-                        deepcopy(target), ref_stack + (key,)
-                    )
+                    refs.add(key)
+                    try:
+                        resolved_target = _inline(deepcopy(target), refs)
+                    finally:
+                        refs.remove(key)
                     if not isinstance(resolved_target, dict):
                         raise ValueError(_RECURSIVE_JSON_NOT_SUPPORTED)
                     # Keep sibling constraints while replacing the ref.
                     siblings = {
-                        k: _inline(v, ref_stack)
-                        for k, v in node.items()
+                        k: _inline(v, refs)
+                        for k, v in obj.items()
                         if k != "$ref"
                     }
                     return {**resolved_target, **siblings}
-        return {k: _inline(v, ref_stack) for k, v in node.items()}
+        return {k: _inline(v, refs) for k, v in obj.items()}
 
     normalized = _inline(root)
     if not isinstance(normalized, dict):

@@ -33,11 +33,10 @@ from mistralai.client.models import (
 )
 
 from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
-from aidial_adapter_vertexai.chat.errors import ValidationError
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.chat.mistral.adapter import (
     MistralChatCompletionAdapter,
     append_tool_calls_state,
-    consume_stream_chunk,
     consume_tool_calls,
     to_finish_reason,
 )
@@ -50,7 +49,10 @@ from aidial_adapter_vertexai.chat.mistral.prompt import (
 from aidial_adapter_vertexai.chat.mistral.state import ToolCallState
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment
-from aidial_adapter_vertexai.dial_api.request import ModelParameters
+from aidial_adapter_vertexai.dial_api.request import (
+    ModelParameters,
+    get_attachments,
+)
 from aidial_adapter_vertexai.utils.adapter_deployment import AdapterDeployment
 from aidial_adapter_vertexai.utils.resource import Resource
 
@@ -255,8 +257,8 @@ async def test_to_attachment_chunks_allow_system_image_attachments():
         ),
     )
 
-    chunks = await MistralPromptParser._to_attachment_chunks(
-        message, file_storage=None
+    chunks = await MistralPromptParser._attachments_to_mistral_chunks(
+        get_attachments(message), file_storage=None
     )
 
     assert len(chunks) == 1
@@ -281,11 +283,11 @@ async def test_to_attachment_chunks_reject_non_image_types():
     )
 
     with pytest.raises(
-        ValidationError,
+        UserError,
         match="Attachment of type 'text/plain' aren't supported",
     ):
-        await MistralPromptParser._to_attachment_chunks(
-            message, file_storage=None
+        await MistralPromptParser._attachments_to_mistral_chunks(
+            get_attachments(message), file_storage=None
         )
 
 
@@ -327,31 +329,6 @@ def test_append_tool_calls_state_accumulates_streamed_arguments():
 
     assert state[0].name == "search"
     assert state[0].arguments == '{"q":"python"}'
-
-
-async def test_consume_stream_chunk_rewrites_tool_calls_finish_without_tools():
-    chunk = CompletionChunk(
-        id="chunk-id",
-        model="mistral-model",
-        choices=[
-            CompletionResponseStreamChoice(
-                index=0,
-                delta=DeltaMessage(content=None, tool_calls=None),
-                finish_reason="tool_calls",
-            )
-        ],
-    )
-    consumer, _ = _make_consumer_response()
-
-    finish_reason = await consume_stream_chunk(
-        chunk,
-        consumer,
-        tool_calls_state={},
-        allow_tool_calls=False,
-    )
-
-    assert finish_reason == FinishReason.STOP
-    assert consumer.get_finish_reason() == FinishReason.STOP
 
 
 def test_to_finish_reason_maps_mistral_specific_values():
@@ -547,7 +524,6 @@ async def test_consume_tool_calls_function_api_keeps_only_first_call():
             tool_calls,
             consumer,
             use_tool_api=False,
-            allow_tool_calls=True,
         )
 
     assert _extract_function_calls(response) == [("tool_a", '{"a":1}')]
@@ -624,7 +600,6 @@ async def test_consume_tool_calls_preserve_order(
             tool_calls,
             consumer,
             use_tool_api=True,
-            allow_tool_calls=True,
         )
 
     assert _extract_tool_calls(response) == expected_calls
