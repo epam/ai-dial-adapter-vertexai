@@ -38,11 +38,6 @@ class VeoConfig(ExtraAllowModel):
         description="""Whether allow to generate person videos, and restrict to specific ages. Supported values are: dont_allow, allow_adult.""",
     )
 
-    pubsub_topic: str | None = Field(
-        default=None,
-        description="""The pubsub topic where to publish the video generation progress.""",
-    )
-
     negative_prompt: str | None = Field(
         default=None,
         description="""Explicitly state what should not be included in the generated videos.""",
@@ -85,7 +80,6 @@ class VeoConfig(ExtraAllowModel):
             "aspect_ratio": self.aspect_ratio,
             "resolution": self.resolution,
             "person_generation": self.person_generation,
-            "pubsub_topic": self.pubsub_topic,
             "negative_prompt": self.negative_prompt,
             "enhance_prompt": self.enhance_prompt,
             "generate_audio": self.generate_audio,
