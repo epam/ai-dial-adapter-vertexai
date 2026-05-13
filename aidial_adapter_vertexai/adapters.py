@@ -12,6 +12,9 @@ from aidial_adapter_vertexai.chat.gemini.adapter import (
 from aidial_adapter_vertexai.chat.imagen.adapter import (
     ImagenChatCompletionAdapter,
 )
+from aidial_adapter_vertexai.chat.mistral.adapter import (
+    MistralChatCompletionAdapter,
+)
 from aidial_adapter_vertexai.chat.veo.adapter import VeoChatCompletionAdapter
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment as E
@@ -110,6 +113,12 @@ async def get_chat_completion_model(
             | D.VEO_3_1_FAST_GENERATE_PREVIEW
         ):
             return await VeoChatCompletionAdapter.create(
+                storage,
+                deployment.clone(deployment.reference_deployment_id),
+                config=upstream_config,
+            )
+        case D.MISTRAL_MEDIUM_3 | D.MISTRAL_SMALL | D.MISTRAL_CODESTRAL_2:
+            return await MistralChatCompletionAdapter.create(
                 storage,
                 deployment.clone(deployment.reference_deployment_id),
                 config=upstream_config,
