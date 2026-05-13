@@ -332,11 +332,11 @@ def test_append_tool_calls_state_accumulates_streamed_arguments():
 
 
 def test_to_finish_reason_maps_mistral_specific_values():
+    assert to_finish_reason("stop") == FinishReason.STOP
     assert to_finish_reason("length") == FinishReason.LENGTH
     assert to_finish_reason("model_length") == FinishReason.LENGTH
     assert to_finish_reason("tool_calls") == FinishReason.TOOL_CALLS
     assert to_finish_reason("error") == FinishReason.CONTENT_FILTER
-    assert to_finish_reason("anything_else") == FinishReason.STOP
 
 
 async def test_parse_tool_message_keeps_original_content():

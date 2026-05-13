@@ -43,6 +43,12 @@ AssistantContent = (
     | gcp_models_base.Unset
     | None
 )
+MistralFinishReason = (
+    models.CompletionResponseStreamChoiceFinishReason
+    | models.ChatCompletionChoiceFinishReason
+    | gcp_models.CompletionResponseStreamChoiceFinishReason
+    | gcp_models.ChatCompletionChoiceFinishReason
+)
 
 
 @dataclass
@@ -246,16 +252,20 @@ async def consume_stream_chunk(
     return None
 
 
-def to_finish_reason(reason: str) -> FinishReason:
+def to_finish_reason(reason: MistralFinishReason) -> FinishReason:
     match reason:
+        case "stop":
+            return FinishReason.STOP
         case "length" | "model_length":
             return FinishReason.LENGTH
         case "tool_calls":
             return FinishReason.TOOL_CALLS
         case "error":
             return FinishReason.CONTENT_FILTER
+        case models_base.UnrecognizedStr() | gcp_models_base.UnrecognizedStr():
+            return FinishReason.CONTENT_FILTER
         case _:
-            return FinishReason.STOP
+            assert_never(reason)
 
 
 def _to_token_usage(
