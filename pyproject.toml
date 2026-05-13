@@ -39,6 +39,7 @@ numpy = "2.0.0"
 aiohttp = "3.13.4"
 urllib3 = "2.7.0"
 azure-identity = "1.25.1"
+httpx = "0.28.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "9.0.3"
@@ -53,7 +54,6 @@ allure-pytest = "^2.13.5"
 python-dotenv = "1.2.2"
 requests = "^2.33.0"
 asgi-lifespan = "^2.1.0"
-httpx = "0.28.1"
 
 [tool.poetry.group.lint.dependencies]
 pyright = "1.1.389"
