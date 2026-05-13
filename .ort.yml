@@ -25,9 +25,9 @@ resolutions:
     - message: ".*PyPI::httpcore:1\\.0\\.9.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/encode/httpcore/blob/1.0.9/LICENSE.md'
-    - message: ".*PyPI::httpx:0\\.25\\.2.*"
+    - message: ".*PyPI::httpx:0\\.28\\.1.*"
       reason: 'CANT_FIX_EXCEPTION'
-      comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/encode/httpx/blob/0.25.2/LICENSE.md'
+      comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/encode/httpx/blob/0.28.1/LICENSE.md'
     - message: ".*PyPI::numpy:2\\.0\\.0.*"
       reason: 'CANT_FIX_EXCEPTION'
       comment: 'BSD License: https://github.com/numpy/numpy/blob/v2.0.0/LICENSE.txt'
@@ -73,6 +73,6 @@ resolutions:
     - message: ".*PyPI::aidial-adapter-anthropic:.*"
       reason: "CANT_FIX_EXCEPTION"
       comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::(anthropic|typing-extensions):.*"
+    - message: ".*PyPI::(anthropic|typing-extensions|mistralai|google-auth|typing-inspection):.*"
       reason: "CANT_FIX_EXCEPTION"
       comment: "ORT cannot pick up license information"
