@@ -6,6 +6,7 @@ import vertexai
 from anthropic import AsyncAnthropicFoundry, AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions, HttpRetryOptions
+from mistralai.gcp.client import MistralGCP
 
 from aidial_adapter_vertexai.utils.azure_auth import get_azure_access_token
 from aidial_adapter_vertexai.utils.cache import cache
@@ -95,6 +96,17 @@ async def get_anthropic_foundry_client(
         http_client=await get_anthropic_httpx_client(base_url),
         max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
     )
+
+
+async def _close_mistral_gcp_client(client: MistralGCP):
+    if client.sdk_configuration.async_client:
+        await client.sdk_configuration.async_client.aclose()
+
+
+@cache(_close_mistral_gcp_client)
+async def get_mistral_gcp_client(project_id: str, region: str) -> MistralGCP:
+    async_client = httpx.AsyncClient(follow_redirects=True)
+    return MistralGCP(project_id, region, async_client=async_client)
 
 
 def _get_default_anthropic_timeout() -> httpx.Timeout:

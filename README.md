@@ -71,41 +71,44 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 - `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/truncate_prompt`
 - `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/configuration`
 
-|Model|Model ID|Modality|`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
-|---|---|---|---|---|---|---|
-|[Gemini 3.1 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-pro)|gemini-3.1-pro-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|[Gemini 3.1 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-lite)|gemini-3.1-flash-lite-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|[Gemini 3.1 Flash Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-image)|gemini-3.1-flash-image-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|[Gemini 3 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro)|gemini-3-pro[-preview]|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|[Gemini 3 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-flash)|gemini-3-flash-preview|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|[Gemini 3 Pro Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro-image)|gemini-3-pro-image-preview|(text/image)-to-(text/image)|✅|✅|✅|✅|
-|[Gemini 2.5 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash)|gemini-2.5-flash|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|[Gemini 2.5 Flash Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash-image)|gemini-2.5-flash-image|(text/image)-to-(text/image)|✅|✅|✅|✅|
-|[Gemini 2.5 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro)|gemini-2.5-pro|(text/pdf/image/audio/video)-to-text|✅|✅|✅|✅|
-|[Gemini 2.0 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash-lite)|gemini-2.0-flash-lite-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|[Gemini 2.0 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash)|gemini-2.0-flash-exp|(text/pdf/image/audio/video)-to-(text/image)|✅|✅|✅|❌|
-|[Gemini 2.0 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash)|gemini-2.0-flash-001|(text/pdf/image/audio/video)-to-text|✅|✅|✅|❌|
-|[Claude 4.6 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-6)|claude-opus-4-6|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|[Claude 4.6 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4-6)|claude-sonnet-4-6|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|[Claude 4.5 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-5)|claude-opus-4-5@20251101|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|[Claude 4.5 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4-5)|claude-sonnet-4-5@20250929|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|[Claude 4.5 Haiku](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/haiku-4-5)|claude-haiku-4-5@20251001|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|[Claude 4.1 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-1)|claude-opus-4-1@20250805|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|[Claude 4 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4)|claude-opus-4@20250514|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|[Claude 4 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4)|claude-sonnet-4@20250514|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|Claude 3.7 Sonnet|claude-3-7-sonnet@20250219|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|Claude 3 Opus|claude-3-opus@20240229|(text/image)-to-text|✅|✅|✅|✅|
-|Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|Claude 3.5 Sonnet|claude-3-5-sonnet@20240620|(pdf/text/image)-to-text|✅|✅|✅|✅|
-|[Claude 3.5 Haiku](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude#claude-3-5-haiku)|claude-3-5-haiku@20241022|(pdf/text)-to-text|✅|✅|✅|✅|
-|Claude 3 Haiku|claude-3-haiku@20240307|(text/image)-to-text|✅|✅|✅|✅|
-|[Imagen 4](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/imagen/4-0-generate)|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06\|generate-001\|fast-generate-001\|ultra-generate-001)|text-to-image|✅|✅|❌|✅|
-|[Imagen 3](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/imagen/3-0-generate)|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)|text-to-image|✅|✅|❌|✅|
-|Imagen 2|imagegeneration@005|text-to-image|✅|✅|❌|✅|
-|[Veo 3.1 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-fast-generate-001)|veo-3.1-fast-generate-(001\|preview)|(text/image/video)-to-video|✅|✅|❌|✅|
-|[Veo 3.1 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-generate-001)|veo-3.1-generate-(001\|preview)|(text/image/video)-to-video|✅|✅|❌|✅|
-|[Veo 3.0 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-generate-001)|veo-3.0-fast-generate-(001\|preview)|(text/image)-to-video|✅|✅|❌|✅|
-|[Veo 3.0 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-fast-generate-001)|veo-3.0-generate-(001\|preview)|(text/image)-to-video|✅|✅|❌|✅|
+|Model|Model ID| Modality                                     |`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
+|---|---|----------------------------------------------|---|---|---|---|
+|[Gemini 3.1 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-pro)|gemini-3.1-pro-preview| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 3.1 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-lite)|gemini-3.1-flash-lite-preview| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 3.1 Flash Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-image)|gemini-3.1-flash-image-preview| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 3 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro)|gemini-3-pro[-preview]| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 3 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-flash)|gemini-3-flash-preview| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 3 Pro Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro-image)|gemini-3-pro-image-preview| (text/image)-to-(text/image)                 |✅|✅|✅|✅|
+|[Gemini 2.5 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash)|gemini-2.5-flash| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 2.5 Flash Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash-image)|gemini-2.5-flash-image| (text/image)-to-(text/image)                 |✅|✅|✅|✅|
+|[Gemini 2.5 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro)|gemini-2.5-pro| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 2.0 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash-lite)|gemini-2.0-flash-lite-001| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|❌|
+|[Gemini 2.0 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash)|gemini-2.0-flash-exp| (text/pdf/image/audio/video)-to-(text/image) |✅|✅|✅|❌|
+|[Gemini 2.0 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash)|gemini-2.0-flash-001| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|❌|
+|[Claude 4.6 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-6)|claude-opus-4-6| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 4.6 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4-6)|claude-sonnet-4-6| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 4.5 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-5)|claude-opus-4-5@20251101| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 4.5 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4-5)|claude-sonnet-4-5@20250929| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 4.5 Haiku](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/haiku-4-5)|claude-haiku-4-5@20251001| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 4.1 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-1)|claude-opus-4-1@20250805| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 4 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4)|claude-opus-4@20250514| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 4 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4)|claude-sonnet-4@20250514| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|Claude 3.7 Sonnet|claude-3-7-sonnet@20250219| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|Claude 3 Opus|claude-3-opus@20240229| (text/image)-to-text                         |✅|✅|✅|✅|
+|Claude 3.5 Sonnet v2|claude-3-5-sonnet-v2@20241022| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|Claude 3.5 Sonnet|claude-3-5-sonnet@20240620| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 3.5 Haiku](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude#claude-3-5-haiku)|claude-3-5-haiku@20241022| (pdf/text)-to-text                           |✅|✅|✅|✅|
+|Claude 3 Haiku|claude-3-haiku@20240307| (text/image)-to-text                         |✅|✅|✅|✅|
+|[Imagen 4](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/imagen/4-0-generate)|imagen-4.0-(generate-preview-06-06\|fast-generate-preview-06-06\|ultra-generate-preview-06-06\|generate-001\|fast-generate-001\|ultra-generate-001)| text-to-image                                |✅|✅|❌|✅|
+|[Imagen 3](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/imagen/3-0-generate)|imagen-3.0-(generate-001\|generate-002\|fast-generate-001)| text-to-image                                |✅|✅|❌|✅|
+|Imagen 2|imagegeneration@005| text-to-image                                |✅|✅|❌|✅|
+|[Veo 3.1 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-fast-generate-001)|veo-3.1-fast-generate-(001\|preview)| (text/image/video)-to-video                  |✅|✅|❌|✅|
+|[Veo 3.1 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate#3.1-generate-001)|veo-3.1-generate-(001\|preview)| (text/image/video)-to-video                  |✅|✅|❌|✅|
+|[Veo 3.0 Fast Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-generate-001)|veo-3.0-fast-generate-(001\|preview)| (text/image)-to-video                        |✅|✅|❌|✅|
+|[Veo 3.0 Generate](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate#3.0-fast-generate-001)|veo-3.0-generate-(001\|preview)| (text/image)-to-video                        |✅|✅|❌|✅|
+|[Mistral Medium 3](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/mistral/mistral-medium-3)|mistral-medium-3| (text/image)-to-text                         |❌|❌|✅|❌|
+|[Mistral Small 2503](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/mistral/mistral-small-3-1)|mistral-small-2503| (text/image)-to-text                         |❌|❌|✅|❌|
+|[Codestral 2](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/mistral/codestral-2)|codestral-2| text-to-text                                 |❌|❌|✅|❌|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
 
@@ -884,9 +887,9 @@ Access to GCP Vertex AI is authenticated via Application Default Credentials ([A
 1. globally via `DEFAULT_REGION` and `GCP_PROJECT_ID` environment vars, or
 2. on a [per upstream basis](#load-balancing) via `upstreams.extraData` fields in DIAL Core Config.
 
-### Anthropic API / Google AI Platform
+### Anthropic API / Mistral API / Google AI Platform
 
-Gemini>=2 and Anthropic deployments could be accessed via API key. The API keys should be configured per-upstream in the DIAL Core config:
+Gemini>=2, Anthropic and Mistral deployments could be accessed via API key. The API keys should be configured per-upstream in the DIAL Core config:
 
 ```json
 {
