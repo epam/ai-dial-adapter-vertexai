@@ -204,7 +204,7 @@ def _extract_video(response: GenerateVideosOperation) -> GeneratedVideo | None:
             f"Expected to receive 1 generated video, but got {len(videos)}. Only the first is taken into account."
         )
 
-    if result.rai_media_filtered_count == 0:
+    if result.rai_media_filtered_count:
         log.warning("The video was filtered due to RAI policies.")
 
     if result.rai_media_filtered_reasons:
