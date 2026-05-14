@@ -101,9 +101,6 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             )
             log.debug(f"request: {msg}")
 
-        stage = consumer.choice.create_stage(name="Generation")
-        stage.open()
-
         with Timer("predict timing: {time}", log.debug):
             source = GenerateVideosSource(
                 prompt=prompt.text or None,
@@ -113,6 +110,10 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             operation = await self.client.aio.models.generate_videos(
                 model=self.model_id, source=source, config=config
             )
+
+            stage = consumer.choice.create_stage(name="Generation")
+            stage.open()
+
             poll_interval = 3
             while not operation.done:
                 stage.append_content(".")
