@@ -38,7 +38,7 @@
     - [Implicit caching](#implicit-caching)
   - [Authentication](#authentication)
     - [GCP Vertex AI](#gcp-vertex-ai)
-    - [Anthropic API / Google AI Platform](#anthropic-api--google-ai-platform)
+    - [Anthropic API / Mistral API / Google AI Platform](#anthropic-api--mistral-api--google-ai-platform)
     - [Anthropic Foundry](#anthropic-foundry)
   - [Development](#development)
     - [Development Environment](#development-environment)
@@ -678,6 +678,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 |GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
 |ANTHROPIC_MAX_RETRY_ATTEMPTS|0|How many times to retry Anthropic chat model requests when the provider returns a retriable error|
+|SSE_HEARTBEAT_INTERVAL||If set, the adapter inserts ping comments into streaming chat completion responses after the connection has been idle for the specified number of seconds, helping prevent read timeouts when the upstream is unresponsive.|
 
 ### Default `max_tokens` for Claude models
 

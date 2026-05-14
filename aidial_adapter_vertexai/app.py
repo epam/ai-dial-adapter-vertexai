@@ -11,6 +11,7 @@ from aidial_adapter_vertexai.app_config import (
     init_vertex_ai,
 )
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
+from aidial_adapter_vertexai.constants import SSE_HEARTBEAT_INTERVAL
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.response import (
     ModelObject,
@@ -60,5 +61,9 @@ async def models():
     )
 
 
-app.add_chat_completion("{deployment_id}", VertexAIChatCompletion())
+app.add_chat_completion(
+    "{deployment_id}",
+    VertexAIChatCompletion(),
+    heartbeat_interval=SSE_HEARTBEAT_INTERVAL,
+)
 app.add_embeddings("{deployment_id}", VertexAIEmbeddings())
