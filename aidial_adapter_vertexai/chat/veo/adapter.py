@@ -4,6 +4,7 @@ from logging import DEBUG
 from aidial_sdk.chat_completion import (
     Attachment,
     Message,
+    Status,
 )
 from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
 from google.genai.client import Client as GenAIClient
@@ -100,6 +101,8 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             )
             log.debug(f"request: {msg}")
 
+        stage = consumer.choice.create_stage(name="Generation")
+
         with Timer("predict timing: {time}", log.debug):
             source = GenerateVideosSource(
                 prompt=prompt.text or None,
@@ -111,6 +114,7 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             )
             poll_interval = 3
             while not operation.done:
+                stage.append_content(".")
                 log.debug(f"Sleeping {poll_interval} seconds")
                 await asyncio.sleep(poll_interval)
                 operation = await self.client.aio.operations.get(operation)
@@ -120,11 +124,14 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             log.debug(f"response: {json_dumps_short(response)}")
 
         if operation.error:
+            stage.close(status=Status.FAILED)
             msg = operation.error.get("message")
             if operation.error.get("code") == _GRPC_INVALID_ARGUMENT_CODE:
                 raise InvalidRequestError(msg or "Invalid argument")
             else:
                 raise InternalServerError(msg or "Internal server error")
+        else:
+            stage.close(status=Status.COMPLETED)
 
         if (generated_video := _extract_video(operation)) is None:
             raise RuntimeError("Expected video in response, but got none")
@@ -148,10 +155,6 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             attachment.url = meta["url"]
 
         await consumer.add_attachment(attachment)
-
-        # Avoid generating empty content
-        completion = " "
-        await consumer.append_content(completion)
 
         completion_tokens = configuration.duration_seconds or 8
         await consumer.set_usage(
