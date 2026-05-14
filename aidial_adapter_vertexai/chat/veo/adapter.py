@@ -157,6 +157,10 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
 
         await consumer.add_attachment(attachment)
 
+        # Avoid generating empty content
+        completion = " "
+        await consumer.append_content(completion)
+
         completion_tokens = configuration.duration_seconds or 8
         await consumer.set_usage(
             TokenUsage(
