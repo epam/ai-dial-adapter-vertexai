@@ -102,6 +102,7 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             log.debug(f"request: {msg}")
 
         stage = consumer.choice.create_stage(name="Generation")
+        stage.open()
 
         with Timer("predict timing: {time}", log.debug):
             source = GenerateVideosSource(
