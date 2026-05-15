@@ -5,9 +5,10 @@ with options to trim long strings and lists to specified limits.
 """
 
 import json
+from copy import deepcopy
 from dataclasses import asdict, is_dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, TypeVar
 
 import proto
 from openai import Omit
@@ -16,6 +17,9 @@ from pydantic import BaseModel as BaseModelV1
 
 from aidial_adapter_vertexai.utils.decorator import fail_safe
 from aidial_adapter_vertexai.utils.protobuf import message_to_dict
+
+_T = TypeVar("_T", dict, list, str, int, float, bool, None)
+_RECURSIVE_JSON_NOT_SUPPORTED = "Recursive JSON schemas aren't supported"
 
 
 @fail_safe
@@ -138,3 +142,47 @@ def _truncate_lists(obj: Any, limit: int) -> Any:
         return tuple(rec(element) for element in obj)
 
     return obj
+
+
+def to_json_object_or_string(value: str) -> Any:
+    value = value.strip()
+    if value == "":
+        return ""
+    try:
+        return json.loads(value)
+    except ValueError:
+        return value
+
+
+def inline_local_json_refs(schema: dict[str, Any]) -> dict[str, Any]:
+    root = deepcopy(schema)
+    defs_raw = root.pop("$defs", None)
+    defs = defs_raw if isinstance(defs_raw, dict) else {}
+
+    def _inline(node: _T, refs: set[str]) -> _T:
+        match node:
+            case list():
+                return [_inline(item, refs) for item in node]
+            case dict():
+                ref = node.pop("$ref", None)
+                ret = {k: _inline(v, refs) for k, v in node.items()}
+
+                if isinstance(ref, str) and ref.startswith("#/$defs/"):
+                    ref = ref.removeprefix("#/$defs/")
+                    if ref in refs:
+                        raise ValueError(_RECURSIVE_JSON_NOT_SUPPORTED)
+                    schema_def = defs.get(ref)
+                    if isinstance(schema_def, dict):
+                        refs.add(ref)
+                        try:
+                            inlined_target = _inline(deepcopy(schema_def), refs)
+                        finally:
+                            refs.remove(ref)
+
+                        ret.update(inlined_target)
+
+                return ret
+            case _:
+                return node
+
+    return _inline(root, set())

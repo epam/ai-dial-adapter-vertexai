@@ -4,6 +4,7 @@ from logging import DEBUG
 from aidial_sdk.chat_completion import (
     Attachment,
     Message,
+    Status,
 )
 from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
 from google.genai.client import Client as GenAIClient
@@ -109,8 +110,13 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             operation = await self.client.aio.models.generate_videos(
                 model=self.model_id, source=source, config=config
             )
+
+            stage = consumer.choice.create_stage(name="Generation")
+            stage.open()
+
             poll_interval = 3
             while not operation.done:
+                stage.append_content(".")
                 log.debug(f"Sleeping {poll_interval} seconds")
                 await asyncio.sleep(poll_interval)
                 operation = await self.client.aio.operations.get(operation)
@@ -120,11 +126,14 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
             log.debug(f"response: {json_dumps_short(response)}")
 
         if operation.error:
+            stage.close(status=Status.FAILED)
             msg = operation.error.get("message")
             if operation.error.get("code") == _GRPC_INVALID_ARGUMENT_CODE:
                 raise InvalidRequestError(msg or "Invalid argument")
             else:
                 raise InternalServerError(msg or "Internal server error")
+        else:
+            stage.close(status=Status.COMPLETED)
 
         if (generated_video := _extract_video(operation)) is None:
             raise RuntimeError("Expected video in response, but got none")
@@ -204,7 +213,7 @@ def _extract_video(response: GenerateVideosOperation) -> GeneratedVideo | None:
             f"Expected to receive 1 generated video, but got {len(videos)}. Only the first is taken into account."
         )
 
-    if result.rai_media_filtered_count == 0:
+    if result.rai_media_filtered_count:
         log.warning("The video was filtered due to RAI policies.")
 
     if result.rai_media_filtered_reasons:
