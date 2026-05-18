@@ -8,6 +8,7 @@ from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions, HttpRetryOptions
 from mistralai.gcp.client import MistralGCP
 
+from aidial_adapter_vertexai.aws_credentials import maybe_make_aws_credentials
 from aidial_adapter_vertexai.utils.azure_auth import get_azure_access_token
 from aidial_adapter_vertexai.utils.cache import cache
 from aidial_adapter_vertexai.utils.env import get_env_int
@@ -33,7 +34,8 @@ GOOGLE_GENAI_MAX_RETRY_ATTEMPTS = get_env_int(
 
 def init_vertex_ai():
     if (region := get_default_region()) and (project := get_default_project()):
-        vertexai.init(project=project, location=region)
+        creds = maybe_make_aws_credentials()
+        vertexai.init(project=project, location=region, credentials=creds)
     else:
         log.warning(
             f"{DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} aren't configured."
@@ -51,10 +53,12 @@ async def get_genai_client(project: str, location: str) -> GenAIClient:
             attempts=1 + GOOGLE_GENAI_MAX_RETRY_ATTEMPTS
         )
     )
+    creds = maybe_make_aws_credentials()
     return GenAIClient(
         vertexai=True,
         project=project,
         location=location,
+        credentials=creds,
         http_options=opts,
     )
 
@@ -68,11 +72,13 @@ async def get_anthropic_vertex_client(
     project: str, region: str
 ) -> AsyncAnthropicVertex:
     http_client = httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
+    creds = maybe_make_aws_credentials()
     return AsyncAnthropicVertex(
         project_id=project,
         region=region,
         http_client=http_client,
         max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
+        credentials=creds,
     )
 
 
