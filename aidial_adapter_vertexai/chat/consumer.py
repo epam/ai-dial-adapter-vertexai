@@ -25,6 +25,9 @@ class Consumer(AbstractContextManager, ABC):
     def choice(self) -> Choice: ...
 
     @abstractmethod
+    def get_response(self) -> Response: ...
+
+    @abstractmethod
     async def append_content(self, content: str): ...
 
     @abstractmethod
@@ -94,6 +97,9 @@ class ChoiceConsumer(Consumer):
             response=self.response,
             response_state=self.response_state,
         )
+
+    def get_response(self) -> Response:
+        return self.response
 
     @property
     def choice(self) -> Choice:

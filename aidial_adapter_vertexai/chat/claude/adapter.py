@@ -29,6 +29,7 @@ from aidial_sdk.chat_completion import (
     FinishReason,
     FunctionCall,
     Message,
+    Response,
     ToolCall,
 )
 from pydantic import BaseModel
@@ -94,6 +95,9 @@ class _ConsumerAdapter(AnthropicConsumer):
 
     def fork(self):
         return _ConsumerAdapter(self.consumer.fork())
+
+    def get_response(self) -> Response:
+        return self.consumer.get_response()
 
     @property
     def choice(self):
