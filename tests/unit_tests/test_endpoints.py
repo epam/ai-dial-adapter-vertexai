@@ -47,6 +47,8 @@ test_cases: list[TestCase] = [
     TestCase(D.GEMINI_2_5_FLASH, True, True, True),
     TestCase(D.GEMINI_2_5_FLASH_IMAGE_PREVIEW, True, True, True),
     TestCase(D.GEMINI_2_5_FLASH_IMAGE, True, True, True),
+    TestCase(D.GEMINI_3_1_FLASH_LITE, True, True, True),
+    TestCase(D.GEMINI_3_5_FLASH, True, True, True),
     TestCase(D.CLAUDE_3_5_SONNET_V2, True, True, True),
     TestCase(D.CLAUDE_3_5_HAIKU, True, True, True),
     TestCase(D.CLAUDE_3_OPUS, True, True, True),
