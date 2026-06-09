@@ -827,17 +827,24 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
             ]
         ):
             await _run()
-    elif deployment in (D.GEMINI_3_1_FLASH_LITE, D.GEMINI_3_5_FLASH):
-        # These models return tool call even if undeclared
-        response = await _run()
-        assert response.tool_calls
-        assert response.finish_reasons == ["tool_calls"]
     elif deployment == D.MISTRAL_MEDIUM_3:
         pytest.skip("Extremely flaky behavior when tool undeclared.")
     else:
         response = await _run()
-        assert response.tool_calls is None
-        assert response.finish_reasons == ["stop"]
+
+        # These models return tool call even if undeclared
+        expects_tool_calls = deployment in (
+            D.GEMINI_3_1_FLASH_LITE,
+            D.GEMINI_3_5_FLASH,
+        )
+        expected_finish_reason = "tool_calls" if expects_tool_calls else "stop"
+
+        if expects_tool_calls:
+            assert response.tool_calls
+        else:
+            assert response.tool_calls is None
+
+        assert response.finish_reasons == [expected_finish_reason]
 
 
 @pytest.mark.parametrize(
