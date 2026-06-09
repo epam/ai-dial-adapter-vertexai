@@ -71,6 +71,8 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.GEMINI_3_1_FLASH_LITE_PREVIEW: _GLOBAL,
     D.GEMINI_3_1_PRO_PREVIEW: _GLOBAL,
     D.GEMINI_2_5_FLASH_IMAGE: _GLOBAL,
+    D.GEMINI_3_1_FLASH_LITE: _GLOBAL,
+    D.GEMINI_3_5_FLASH: _GLOBAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
     D.CLAUDE_3_5_HAIKU: _EAST,
     D.CLAUDE_3_OPUS: _EAST,
@@ -141,6 +143,8 @@ def is_vision_model(deployment: D) -> bool:
         D.GEMINI_3_1_PRO_PREVIEW,
         D.GEMINI_2_0_FLASH_EXP,
         D.GEMINI_2_0_FLASH_001,
+        D.GEMINI_3_5_FLASH,
+        D.GEMINI_3_1_FLASH_LITE,
         D.CLAUDE_3_5_SONNET_V2,
         # Upstream returns 'claude-3-5-haiku-20241022 does not support images.'
         # D.CLAUDE_3_5_HAIKU,
@@ -210,6 +214,8 @@ def supports_functions(deployment: D) -> bool:
         D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_3_1_PRO_PREVIEW,
         D.GEMINI_3_FLASH_PREVIEW,
+        D.GEMINI_3_1_FLASH_LITE,
+        D.GEMINI_3_5_FLASH,
     ]
 
 
@@ -237,6 +243,8 @@ def supports_parallel_tool_calls(deployment: D) -> bool:
         D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_3_FLASH_PREVIEW,
         D.GEMINI_3_1_PRO_PREVIEW,
+        D.GEMINI_3_1_FLASH_LITE,
+        D.GEMINI_3_5_FLASH,
         D.MISTRAL_MEDIUM_3,
         D.MISTRAL_SMALL,
         D.MISTRAL_CODESTRAL_2,
@@ -271,6 +279,8 @@ def supports_thinking(deployment: D) -> bool:
         D.GEMINI_3_PRO,
         D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_3_1_PRO_PREVIEW,
+        D.GEMINI_3_1_FLASH_LITE,
+        D.GEMINI_3_5_FLASH,
         # These models do not reliably produce thinking tokens,
         # even though they support reasoning.
         # D.GEMINI_3_FLASH_PREVIEW,
@@ -282,6 +292,8 @@ def supports_thinking_level(deployment: D) -> bool:
     return deployment in (
         D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_3_1_PRO_PREVIEW,
+        D.GEMINI_3_1_FLASH_LITE,
+        D.GEMINI_3_5_FLASH,
         # These models do not reliably produce thinking tokens,
         # even though they support reasoning.
         # D.GEMINI_3_FLASH_PREVIEW,
@@ -819,8 +831,20 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
         pytest.skip("Extremely flaky behavior when tool undeclared.")
     else:
         response = await _run()
-        assert response.tool_calls is None
-        assert response.finish_reasons == ["stop"]
+
+        # These models return tool call even if undeclared
+        expects_tool_calls = deployment in (
+            D.GEMINI_3_1_FLASH_LITE,
+            D.GEMINI_3_5_FLASH,
+        )
+        expected_finish_reason = "tool_calls" if expects_tool_calls else "stop"
+
+        if expects_tool_calls:
+            assert response.tool_calls
+        else:
+            assert response.tool_calls is None
+
+        assert response.finish_reasons == [expected_finish_reason]
 
 
 @pytest.mark.parametrize(
