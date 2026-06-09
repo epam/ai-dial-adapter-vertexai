@@ -856,13 +856,6 @@ Use the `us` or `eu` regions to route requests through [multi-region endpoints](
 }
 ```
 
-> [!NOTE]
-> Vertex AI multi-region endpoints use dedicated REP hostnames:
-> - `us` -> `https://aiplatform.us.rep.googleapis.com`
-> - `eu` -> `https://aiplatform.eu.rep.googleapis.com`
->
-> Private Google Access is not supported for multi-region endpoints. For private connectivity, configure Private Service Connect endpoints for regional Google APIs.
-
 ## Prompt caching
 
 ### Implicit caching
