@@ -34,6 +34,7 @@
     - [Compatibility configuration in Adapter](#compatibility-configuration-in-adapter)
   - [Load balancing](#load-balancing)
     - [Global endpoint](#global-endpoint)
+    - [Multi-region endpoints](#multi-region-endpoints)
   - [Prompt caching](#prompt-caching)
     - [Implicit caching](#implicit-caching)
   - [Authentication](#authentication)
@@ -838,6 +839,29 @@ Use the `global` region to enable the [global endpoint](https://cloud.google.com
 
 > [!NOTE]
 > The global endpoint is supported only for [certain models](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#supported_models) and has a few other [limitations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#limitations).
+
+### Multi-region endpoints
+
+Use the `us` or `eu` regions to route requests through [multi-region endpoints](https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations#multi-region_endpoints):
+
+```json
+{
+  "upstreams": [
+    {
+      "extraData": {
+        "region": "us"
+      }
+    }
+  ]
+}
+```
+
+> [!NOTE]
+> Vertex AI multi-region endpoints use dedicated REP hostnames:
+> - `us` -> `https://aiplatform.us.rep.googleapis.com`
+> - `eu` -> `https://aiplatform.eu.rep.googleapis.com`
+>
+> Private Google Access is not supported for multi-region endpoints. For private connectivity, configure Private Service Connect endpoints for regional Google APIs.
 
 ## Prompt caching
 
