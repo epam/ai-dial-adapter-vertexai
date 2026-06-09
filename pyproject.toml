@@ -28,8 +28,8 @@ aidial-adapter-anthropic = { version = "0.10.0" }
 anthropic = { version = "0.95.0", extras = ["vertex"] }
 fastapi = "0.120.2"
 google-cloud-aiplatform = "1.138.0"
-google-auth = "2.48.0"
-google-genai = "1.64.0"
+google-auth = "2.49.0"
+google-genai = "1.72.0"
 openai = "1.107.3"
 pydantic = "2.11.2"
 uvicorn = "0.22.0"
@@ -60,7 +60,7 @@ ruff = "0.12.11"
 
 [tool.poetry.group.dev.dependencies]
 nox = "^2023.4.22"
-google-auth-oauthlib = "1.0.0"
+google-auth-oauthlib = "^1.4.0"
 pre-commit = "^4.5.1"
 
 [tool.pytest.ini_options]
