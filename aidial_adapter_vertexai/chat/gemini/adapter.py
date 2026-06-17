@@ -25,6 +25,7 @@ from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.chat.gemini.error import generate_with_retries
 from aidial_adapter_vertexai.chat.gemini.finish_reason import (
     genai_to_openai_finish_reason,
+    invalid_tool_call_message,
 )
 from aidial_adapter_vertexai.chat.gemini.generation_config import (
     create_genai_count_tokens_config,
@@ -345,11 +346,17 @@ class GeminiGenAIChatCompletionAdapter(
                 )
 
                 await create_citations(candidate, consumer)
-                if openai_reason := genai_to_openai_finish_reason(
+                openai_reason = genai_to_openai_finish_reason(
                     candidate.finish_reason,
                     candidate.finish_message,
                     consumer.is_empty(),
-                ):
+                )
+                if openai_reason:
+                    recovery = invalid_tool_call_message(
+                        candidate.finish_reason, candidate.finish_message
+                    )
+                    if recovery and consumer.is_empty():
+                        await consumer.append_content(recovery)
                     await consumer.set_finish_reason(openai_reason)
         finally:
             thinking_stage.close()
