@@ -22,6 +22,14 @@ def test_audio_processor_supports_documented_mime_types():
         assert mime_type in processor.mime_types
 
 
+def test_audio_processor_supports_aac():
+    processor = get_audio_processor()
+
+    assert "audio/aac" in processor.mime_types
+    assert "audio/x-aac" in processor.mime_types
+    assert "audio/acc" not in processor.mime_types
+
+
 def test_audio_processor_rejects_unsupported_mime_type():
     processor = get_audio_processor()
 
