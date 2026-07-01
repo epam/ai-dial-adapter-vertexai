@@ -10,6 +10,18 @@ def test_audio_processor_supports_webm():
     assert "webm" in processor.file_exts
 
 
+def test_audio_processor_supports_documented_mime_types():
+    processor = get_audio_processor()
+
+    for mime_type in [
+        "audio/m4a",
+        "audio/mpga",
+        "audio/mp4",
+        "audio/pcm",
+    ]:
+        assert mime_type in processor.mime_types
+
+
 def test_audio_processor_rejects_unsupported_mime_type():
     processor = get_audio_processor()
 
