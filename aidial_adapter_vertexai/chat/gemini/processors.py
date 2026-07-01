@@ -89,6 +89,7 @@ def get_audio_processor(
             "audio/acc": "acc",
             "audio/ogg": "ogg",
             "audio/flac": "flac",
+            "audio/webm": "webm",
         },
         init_validator=init_validator,
     )
