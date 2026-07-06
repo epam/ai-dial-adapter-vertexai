@@ -372,9 +372,9 @@ Gemini models support [Grounding with Google Search](https://ai.google.dev/gemin
 
 ```json
 {
-  "message": [
+  "messages": [
     {
-      "user": "role",
+      "role": "user",
       "content": "What are the latest GenAI news?"
     }
   ],
@@ -399,9 +399,9 @@ Gemini models support [Code Interpreter tool](https://ai.google.dev/gemini-api/d
 
 ```json
 {
-  "message": [
+  "messages": [
     {
-      "user": "role",
+      "role": "user",
       "content": "What is the sum of the first 50 prime numbers? Generate and run code for the calculation, and make sure you get all 50."
     }
   ],
