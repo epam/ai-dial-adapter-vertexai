@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 from mistralai.client import Mistral
 
 import aidial_adapter_vertexai.upstream_config as upstream_config_module
@@ -8,7 +6,7 @@ from aidial_adapter_vertexai.upstream_config import parse_upstream_config
 
 class _RequestStub:
     def __init__(self, headers: dict[str, str]):
-        self.original_request = SimpleNamespace(headers=headers)
+        self.headers = headers
 
 
 def _fake_get_genai_client(called: dict[str, str]):

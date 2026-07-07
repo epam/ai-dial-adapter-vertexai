@@ -24,7 +24,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 aidial-sdk = { version = "0.37.0", extras = ["telemetry"] }
-aidial-adapter-anthropic = { version = "0.10.0" }
+aidial-adapter-anthropic = { branch = "feat/anthropic-api-passthrough", git = "https://github.com/epam/ai-dial-adapter-anthropic.git" }
 anthropic = { version = "0.95.0", extras = ["vertex"] }
 fastapi = "0.135.1"
 google-cloud-aiplatform = "1.138.0"
