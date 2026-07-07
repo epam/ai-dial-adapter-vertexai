@@ -1013,23 +1013,23 @@ Copy [`.env.claude.example`](./.env.claude.example) to `.env.claude` and adjust 
 ```ini
 # Point Claude Code at the adapter's Anthropic passthrough.
 # Claude Code appends /v1/messages, so this must be the /anthropic base path.
-ANTHROPIC_BASE_URL=http://localhost:5001/anthropic
+ANTHROPIC_BASE_URL="http://localhost:5001/anthropic"
 
 # Sent to the adapter as the X-Api-Key header. When calling the adapter
 # directly (as here), any placeholder works, because the adapter authenticates
 # to GCP Vertex AI with its own credentials. When routing through DIAL Core,
 # set this to your DIAL API key instead.
-ANTHROPIC_API_KEY=dummy-api-key
+ANTHROPIC_API_KEY="dummy-api-key"
 
 # Add a ready-to-pick entry to the Claude Code `/model` selector. The value is
 # a GCP Vertex AI Claude model name.
-ANTHROPIC_CUSTOM_MODEL_OPTION=claude-opus-4-6
-ANTHROPIC_CUSTOM_MODEL_OPTION_NAME=Opus via VertexAI adapter
-ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION=Custom deployment routed through DIAL VertexAI adapter
+ANTHROPIC_CUSTOM_MODEL_OPTION="claude-opus-4-6"
+ANTHROPIC_CUSTOM_MODEL_OPTION_NAME="Opus via VertexAI adapter"
+ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION="Custom deployment routed through DIAL VertexAI adapter"
 
 # The "small/fast" model Claude Code uses for lightweight background tasks.
 # Also given as a GCP Vertex AI Claude model name.
-ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-haiku-4-5@20251001
+ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-4-5@20251001"
 ```
 
 Notes:
