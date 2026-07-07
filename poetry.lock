@@ -24,8 +24,8 @@ bedrock = ["botocore (>=1.10.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/epam/ai-dial-adapter-anthropic.git"
-reference = "feat/anthropic-api-passthrough"
-resolved_reference = "d32d964a3449b5ed717f59a4c89613666d5f4ee2"
+reference = "feat/customize-passthrough-api"
+resolved_reference = "ad50a60e8fc7db2f1039d185b0a8c5aee61ed2d3"
 
 [[package]]
 name = "aidial-sdk"
@@ -3837,4 +3837,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "d4cc3a86d1dae6965a063a2030a13d71b176eaf59da23c42afe6211de6be65cf"
+content-hash = "2eb31517c49fe35940c4e0cdeca5853d292ec4e1333a263bdff2e6fa187eb343"

@@ -1,13 +1,11 @@
 from contextlib import asynccontextmanager
 
-from aidial_adapter_anthropic.passthrough import (
-    AnthropicClient,
-    mount_anthropic_api,
-)
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
-from fastapi import Request
 
+from aidial_adapter_vertexai.anthropic_passthrough import (
+    mount_anthropic_passthrough,
+)
 from aidial_adapter_vertexai.app_config import (
     get_anthropic_httpx_client,
     get_anthropic_vertex_client,
@@ -22,7 +20,6 @@ from aidial_adapter_vertexai.dial_api.response import (
     ModelsResponse,
 )
 from aidial_adapter_vertexai.embeddings import VertexAIEmbeddings
-from aidial_adapter_vertexai.upstream_config import parse_upstream_config
 from aidial_adapter_vertexai.utils.adapter_deployments import (
     get_static_deployments,
 )
@@ -69,15 +66,4 @@ async def models():
 app.add_chat_completion("{deployment_id}", VertexAIChatCompletion())
 app.add_embeddings("{deployment_id}", VertexAIEmbeddings())
 
-
-async def _get_anthropic_client(request: Request) -> AnthropicClient:
-    upstream_config = parse_upstream_config(request)
-    return await upstream_config.get_anthropic_client()
-
-
-mount_anthropic_api(
-    app,
-    _get_anthropic_client,
-    path="/anthropic",
-    name="Claude API passthrough",
-)
+mount_anthropic_passthrough(app, path="/anthropic")

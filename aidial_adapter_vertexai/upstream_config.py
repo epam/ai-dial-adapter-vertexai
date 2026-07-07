@@ -31,14 +31,12 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 MistralClient: TypeAlias = Mistral | MistralGCP
 
+AnthropicClient = AsyncAnthropicVertex | AsyncAnthropic | AsyncAnthropicFoundry
+
 
 class UpstreamConfig(Protocol):
     async def get_genai_client(self) -> GenAIClient: ...
-
-    async def get_anthropic_client(
-        self,
-    ) -> AsyncAnthropicVertex | AsyncAnthropic | AsyncAnthropicFoundry: ...
-
+    async def get_anthropic_client(self) -> AnthropicClient: ...
     async def get_mistral_client(self) -> MistralClient: ...
 
 
