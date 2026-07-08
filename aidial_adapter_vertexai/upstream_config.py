@@ -11,6 +11,7 @@ from anthropic import (
     AsyncAnthropicFoundry,
     AsyncAnthropicVertex,
 )
+from fastapi import Request
 from google.genai.client import Client as GenAIClient
 from mistralai.client import Mistral
 from mistralai.gcp.client import MistralGCP
@@ -30,20 +31,16 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 MistralClient: TypeAlias = Mistral | MistralGCP
 
+AnthropicClient = AsyncAnthropicVertex | AsyncAnthropic | AsyncAnthropicFoundry
+
 
 class UpstreamConfig(Protocol):
     async def get_genai_client(self) -> GenAIClient: ...
-
-    async def get_anthropic_client(
-        self,
-    ) -> AsyncAnthropicVertex | AsyncAnthropic | AsyncAnthropicFoundry: ...
-
+    async def get_anthropic_client(self) -> AnthropicClient: ...
     async def get_mistral_client(self) -> MistralClient: ...
 
 
-def parse_upstream_config(
-    request: FromRequestDeploymentMixin,
-) -> UpstreamConfig:
+def parse_upstream_config(request: Request) -> UpstreamConfig:
     if (conf := _AzureFoundryUpstreamConfig.from_request(request)) is not None:
         log.debug("accessing deployment via Azure Foundry")
         return conf
@@ -68,14 +65,10 @@ class _AzureFoundryUpstreamConfig(BaseModel):
 
     @classmethod
     def from_request(
-        cls, request: FromRequestDeploymentMixin
+        cls, request: Request
     ) -> _AzureFoundryUpstreamConfig | None:
-        api_key = request.original_request.headers.get(
-            _UPSTREAM_API_KEY_HEADER_NAME
-        )
-        endpoint = request.original_request.headers.get(
-            _UPSTREAM_ENDPOINT_HEADER_NAME
-        )
+        api_key = request.headers.get(_UPSTREAM_API_KEY_HEADER_NAME)
+        endpoint = request.headers.get(_UPSTREAM_ENDPOINT_HEADER_NAME)
         if (
             endpoint is None
             or (m := re.match(r"(.*/anthropic)/v1/messages", endpoint)) is None
@@ -104,12 +97,8 @@ class _ApiKeyUpstreamConfig(BaseModel):
     api_key: str
 
     @classmethod
-    def from_request(
-        cls, request: FromRequestDeploymentMixin
-    ) -> _ApiKeyUpstreamConfig | None:
-        key = request.original_request.headers.get(
-            _UPSTREAM_API_KEY_HEADER_NAME
-        )
+    def from_request(cls, request: Request) -> _ApiKeyUpstreamConfig | None:
+        key = request.headers.get(_UPSTREAM_API_KEY_HEADER_NAME)
         return None if key is None else cls(api_key=key)
 
     async def get_genai_client(self) -> GenAIClient:
@@ -127,12 +116,8 @@ class _CloudUpstreamConfig(BaseModel):
     project: str
 
     @classmethod
-    def from_request(
-        cls, request: FromRequestDeploymentMixin
-    ) -> UpstreamConfig:
-        conf = request.original_request.headers.get(
-            _UPSTREAM_CONFIG_HEADER_NAME
-        )
+    def from_request(cls, request: Request) -> UpstreamConfig:
+        conf = request.headers.get(_UPSTREAM_CONFIG_HEADER_NAME)
         try:
             conf = json.loads(conf or "{}")
         except Exception:

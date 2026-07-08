@@ -18,6 +18,6 @@ class VertexAIEmbeddings(Embeddings):
         model = await get_embeddings_model(
             api_key=request.api_key,
             deployment=deployment,
-            upstream_config=parse_upstream_config(request),
+            upstream_config=parse_upstream_config(request.original_request),
         )
         return await model.embeddings(request)

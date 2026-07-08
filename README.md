@@ -39,8 +39,11 @@
     - [Implicit caching](#implicit-caching)
   - [Authentication](#authentication)
     - [GCP Vertex AI](#gcp-vertex-ai)
-    - [Anthropic API / Google AI Platform](#anthropic-api--google-ai-platform)
+      - [Workload Identity Federation on AWS container runtimes](#workload-identity-federation-on-aws-container-runtimes)
+    - [Anthropic API / Mistral API / Google AI Platform](#anthropic-api--mistral-api--google-ai-platform)
     - [Anthropic Foundry](#anthropic-foundry)
+  - [Anthropic API Passthrough](#anthropic-api-passthrough)
+    - [Using Claude Code with the adapter](#using-claude-code-with-the-adapter)
   - [Development](#development)
     - [Development Environment](#development-environment)
     - [Setup](#setup)
@@ -985,6 +988,62 @@ Since the models names in Azure Foundry are different from the ones in GCP Verte
 
 ```txt
 COMPATIBILITY_MAPPING={"claude-sonnet-4-520250929":"claude-sonnet-4-5@20250929"}
+```
+
+---
+
+## Anthropic API Passthrough
+
+The adapter exposes the native [Claude API](https://platform.claude.com/docs/en/api/overview#available-apis) at the `/anthropic` path, proxying requests transparently to the corresponding model vendor. This allows applications built against the Anthropic SDK or the native Anthropic HTTP API to route through the adapter without protocol translation.
+
+The upstream is selected per request the same way as for chat completions (see [Authentication](#authentication)): Google Cloud credentials by default, a Platform API key via the `x-upstream-key` header, or Azure Foundry via the `x-upstream-endpoint` header.
+
+|Method|Endpoint|
+|---|---|
+|`POST`|[/anthropic/v1/messages](https://platform.claude.com/docs/en/api/messages/create)|
+|`POST`|[/anthropic/v1/messages/batches](https://platform.claude.com/docs/en/api/messages/batches/create)|
+|`POST`|[/anthropic/v1/messages/count_tokens](https://platform.claude.com/docs/en/api/messages/count_tokens)|
+
+### Using Claude Code with the adapter
+
+Because the passthrough exposes the native `/v1/messages` endpoint, [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) can talk to Claude models running on GCP Vertex AI by pointing it at the adapter — no Anthropic API key or direct Anthropic access required.
+
+Copy [`.env.claude.example`](./.env.claude.example) to `.env.claude` and adjust it for your setup:
+
+```ini
+# Point Claude Code at the adapter's Anthropic passthrough.
+# Claude Code appends /v1/messages, so this must be the /anthropic base path.
+ANTHROPIC_BASE_URL="http://localhost:5001/anthropic"
+
+# Sent to the adapter as the X-Api-Key header. When calling the adapter
+# directly (as here), any placeholder works, because the adapter authenticates
+# to GCP Vertex AI with its own credentials. When routing through DIAL Core,
+# set this to your DIAL API key instead.
+ANTHROPIC_API_KEY="dummy-api-key"
+
+# Add a ready-to-pick entry to the Claude Code `/model` selector. The value is
+# a GCP Vertex AI Claude model name.
+ANTHROPIC_CUSTOM_MODEL_OPTION="claude-opus-4-6"
+ANTHROPIC_CUSTOM_MODEL_OPTION_NAME="Opus via VertexAI adapter"
+ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION="Custom deployment routed through DIAL VertexAI adapter"
+
+# The "small/fast" model Claude Code uses for lightweight background tasks.
+# Also given as a GCP Vertex AI Claude model name.
+ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-4-5@20251001"
+```
+
+Notes:
+
+- `ANTHROPIC_BASE_URL` must match the host and port the adapter is served on (the `make serve` default is `5001`; adjust the port accordingly).
+- The model passed to the adapter is a **GCP Vertex AI** model name (see [Supported models](#supported-models)), _not_ a Claude API alias.
+- The default project and region are taken from the `GCP_PROJECT_ID` and `DEFAULT_REGION` environment variables; override them per request via the `x-upstream-extra-data` header (see [Load balancing](#load-balancing)).
+- `ANTHROPIC_DEFAULT_HAIKU_MODEL` sets a lightweight model Claude Code uses for background tasks. Point it at a fast Claude model the adapter serves.
+
+Export the variables into your shell and start Claude Code:
+
+```sh
+set -a & source .env.claude & set +a
+claude --model claude-opus-4-6
 ```
 
 ---

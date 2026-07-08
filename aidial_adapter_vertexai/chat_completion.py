@@ -70,7 +70,7 @@ class VertexAIChatCompletion(ChatCompletion):
         return await get_chat_completion_model(
             api_key=request.api_key,
             deployment=self._get_deployment(request),
-            upstream_config=parse_upstream_config(request),
+            upstream_config=parse_upstream_config(request.original_request),
         )
 
     @override

@@ -3,6 +3,7 @@ __pycache__
 .venv
 .env
 .env.dev
+.env.claude
 .history
 secret
 .nox
