@@ -2,13 +2,15 @@
 
 [[package]]
 name = "aidial-adapter-anthropic"
-version = "0.0.0"
+version = "0.14.0"
 description = "Package implementing adapter from DIAL Chat Completions API to Anthropic API"
 optional = false
-python-versions = ">=3.11,<4.0"
+python-versions = "<4.0,>=3.11"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "aidial_adapter_anthropic-0.14.0-py3-none-any.whl", hash = "sha256:9e6839976c822417d9d7acc0faaf7c5c53bfd97cb9a9f1b12565232645e5c179"},
+    {file = "aidial_adapter_anthropic-0.14.0.tar.gz", hash = "sha256:faf2cbc49950d0adb59fb5fd8f5faeab18c2c9a3110544f8c89bb1ad2bed9aa4"},
+]
 
 [package.dependencies]
 aidial-sdk = ">=0.37.0,<1"
@@ -20,12 +22,6 @@ pydantic = ">=2.8.2,<3"
 
 [package.extras]
 bedrock = ["botocore (>=1.10.0)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/epam/ai-dial-adapter-anthropic.git"
-reference = "feat/customize-passthrough-api"
-resolved_reference = "ad50a60e8fc7db2f1039d185b0a8c5aee61ed2d3"
 
 [[package]]
 name = "aidial-sdk"
@@ -3837,4 +3833,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "2eb31517c49fe35940c4e0cdeca5853d292ec4e1333a263bdff2e6fa187eb343"
+content-hash = "45e85c01b12b4da05df83d3bf4c0d7182792842cfd0540859900bc73e46a05da"
