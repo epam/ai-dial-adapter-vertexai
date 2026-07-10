@@ -1,11 +1,14 @@
-from collections.abc import Mapping
-
 import pytest
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 from aidial_adapter_vertexai.dial_api import storage as storage_module
-from aidial_adapter_vertexai.dial_api.ssrf import validate_public_url
-from aidial_adapter_vertexai.dial_api.storage import FileStorage, download_file
+from aidial_adapter_vertexai.dial_api.storage import FileStorage
+from aidial_adapter_vertexai.utils import url as url_module
+from aidial_adapter_vertexai.utils.url import (
+    download_public_file,
+    has_same_origin,
+    validate_public_url,
+)
 
 
 @pytest.mark.parametrize(
@@ -57,6 +60,24 @@ async def test_allows_public_address(url: str):
 
 
 @pytest.mark.parametrize(
+    ("a", "b", "expected"),
+    [
+        ("http://dial-core/v1/files/x", "http://dial-core", True),
+        ("http://dial-core:80/v1/", "http://dial-core", True),
+        ("https://dial-core/v1/", "http://dial-core", False),
+        ("http://dial-core:8080/v1/", "http://dial-core", False),
+        # ``userinfo`` trick: the string starts with the dial_url, but the
+        # real host is the cloud metadata endpoint.
+        ("http://dial-core@169.254.169.254/x", "http://dial-core", False),
+        # Look-alike host that merely starts with the dial_url string.
+        ("http://dial-core.attacker.example/x", "http://dial-core", False),
+    ],
+)
+def test_has_same_origin(a: str, b: str, expected: bool):
+    assert has_same_origin(a, b) is expected
+
+
+@pytest.mark.parametrize(
     "link",
     [
         # ``userinfo`` trick: prefix matches dial_url but the real host is
@@ -96,11 +117,11 @@ class _FakeResponse:
 
 class _FakeSession:
     """Minimal stand-in for ``aiohttp.ClientSession`` used to exercise the
-    manual redirect handling without touching the network."""
+    download logic without touching the network."""
 
     def __init__(self, routes: dict[str, _FakeResponse]):
         self._routes = routes
-        self.calls: list[tuple[str, Mapping[str, str]]] = []
+        self.calls: list[tuple[str, object]] = []
 
     async def __aenter__(self) -> "_FakeSession":
         return self
@@ -108,19 +129,16 @@ class _FakeSession:
     async def __aexit__(self, *exc) -> bool:
         return False
 
-    def get(self, url, *, headers, allow_redirects):
-        assert allow_redirects is False
+    def get(self, url, *, headers=None, allow_redirects=True):
         self.calls.append((url, headers))
         return self._routes[url]
 
 
 def _install_fake_session(
-    monkeypatch, routes: dict[str, _FakeResponse]
+    monkeypatch, module, routes: dict[str, _FakeResponse]
 ) -> _FakeSession:
     session = _FakeSession(routes)
-    monkeypatch.setattr(
-        storage_module.aiohttp, "ClientSession", lambda: session
-    )
+    monkeypatch.setattr(module.aiohttp, "ClientSession", lambda: session)
     return session
 
 
@@ -132,41 +150,56 @@ def _ok(body: bytes) -> _FakeResponse:
     return _FakeResponse(status=200, headers={}, body=body)
 
 
-async def test_download_follows_public_redirect(monkeypatch):
+async def test_public_download_follows_public_redirect(monkeypatch):
     _install_fake_session(
         monkeypatch,
+        url_module,
         {
             "http://8.8.8.8/a": _redirect("http://1.1.1.1/b"),
             "http://1.1.1.1/b": _ok(b"redirected-bytes"),
         },
     )
-    assert await download_file("http://8.8.8.8/a") == b"redirected-bytes"
+    assert await download_public_file("http://8.8.8.8/a") == b"redirected-bytes"
 
 
-async def test_download_blocks_redirect_into_internal(monkeypatch):
+async def test_public_download_blocks_redirect_into_internal(monkeypatch):
     _install_fake_session(
         monkeypatch,
+        url_module,
         {"http://8.8.8.8/a": _redirect("http://169.254.169.254/secret")},
     )
     # The redirect target is re-validated before the next request is made.
     with pytest.raises(ValidationError, match="non-public address"):
-        await download_file("http://8.8.8.8/a")
+        await download_public_file("http://8.8.8.8/a")
 
 
-async def test_download_rejects_redirect_loop(monkeypatch):
+async def test_public_download_rejects_redirect_loop(monkeypatch):
     _install_fake_session(
         monkeypatch,
+        url_module,
         {"http://8.8.8.8/loop": _redirect("http://8.8.8.8/loop")},
     )
     with pytest.raises(ValidationError, match="too many redirects"):
-        await download_file("http://8.8.8.8/loop")
+        await download_public_file("http://8.8.8.8/loop")
 
 
-async def test_trusted_origin_skips_validation_and_receives_auth(monkeypatch):
+async def test_public_download_sends_no_credentials(monkeypatch):
+    session = _install_fake_session(
+        monkeypatch,
+        url_module,
+        {"http://8.8.8.8/file": _ok(b"public-bytes")},
+    )
+    assert await download_public_file("http://8.8.8.8/file") == b"public-bytes"
+    # The untrusted path must never attach any headers.
+    assert session.calls == [("http://8.8.8.8/file", None)]
+
+
+async def test_trusted_origin_receives_auth_and_skips_validation(monkeypatch):
     # The trusted storage origin may live on a private address and must stay
     # reachable, and it is the only origin allowed to receive the api-key.
     session = _install_fake_session(
         monkeypatch,
+        storage_module,
         {"http://10.0.0.5:1234/v1/files/x": _ok(b"trusted-bytes")},
     )
     storage = FileStorage(dial_url="http://10.0.0.5:1234", api_key="secret")
@@ -176,24 +209,3 @@ async def test_trusted_origin_skips_validation_and_receives_auth(monkeypatch):
     url, headers = session.calls[0]
     assert url == "http://10.0.0.5:1234/v1/files/x"
     assert headers == {"api-key": "secret"}
-
-
-async def test_redirect_off_trusted_origin_drops_auth(monkeypatch):
-    session = _install_fake_session(
-        monkeypatch,
-        {
-            "http://10.0.0.5:1234/v1/files/x": _redirect(
-                "http://8.8.8.8/public"
-            ),
-            "http://8.8.8.8/public": _ok(b"public-bytes"),
-        },
-    )
-    storage = FileStorage(dial_url="http://10.0.0.5:1234", api_key="secret")
-
-    assert await storage.download_file("files/x") == b"public-bytes"
-
-    # First (trusted) hop carries the api-key; the redirect leaving the
-    # trusted origin must not.
-    assert session.calls[0][1] == {"api-key": "secret"}
-    assert session.calls[1][0] == "http://8.8.8.8/public"
-    assert session.calls[1][1] == {}

@@ -1,7 +1,9 @@
 import asyncio
 import ipaddress
 import socket
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
+
+import aiohttp
 
 from aidial_adapter_vertexai.chat.errors import ValidationError
 
@@ -9,6 +11,33 @@ from aidial_adapter_vertexai.chat.errors import ValidationError
 # ``ftp``, ``gopher``) could be abused to reach local files or internal
 # services.
 _ALLOWED_SCHEMES = frozenset({"http", "https"})
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+# Redirects have to be followed manually so that every hop can be validated
+# against SSRF, otherwise a public URL could redirect to an internal address.
+_MAX_REDIRECTS = 5
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+
+
+def _origin(url: str) -> tuple[str, str, int | None]:
+    parsed = urlsplit(url)
+    scheme = parsed.scheme.lower()
+    return (
+        scheme,
+        (parsed.hostname or "").lower(),
+        parsed.port or _DEFAULT_PORTS.get(scheme),
+    )
+
+
+def has_same_origin(a: str, b: str) -> bool:
+    """Whether two URLs share the same origin (scheme, host and port).
+
+    Origins are compared field by field. A string-prefix check must never be
+    used instead: e.g. ``http://<host>@169.254.169.254`` and
+    ``http://<host>.attacker.example`` both start with ``http://<host>`` yet
+    resolve to a completely different host.
+    """
+    return _origin(a) == _origin(b)
 
 
 def _is_public_ip(ip: str) -> bool:
@@ -64,3 +93,28 @@ async def validate_public_url(url: str) -> None:
                 "Downloading files from a non-public address "
                 f"({ip}) is not allowed"
             )
+
+
+async def download_public_file(url: str) -> bytes:
+    """Download a file from an untrusted, user-supplied URL.
+
+    Every hop (including redirect targets) is validated to point at a public
+    address before the request is made, so a public URL cannot bounce into an
+    internal one. No credentials are ever sent along this path.
+    """
+    async with aiohttp.ClientSession() as session:
+        for _ in range(_MAX_REDIRECTS + 1):
+            await validate_public_url(url)
+
+            async with session.get(url, allow_redirects=False) as response:
+                if response.status in _REDIRECT_STATUSES and (
+                    location := response.headers.get("Location")
+                ):
+                    # Re-validate the redirect target on the next iteration.
+                    url = urljoin(url, location)
+                    continue
+
+                response.raise_for_status()
+                return await response.read()
+
+    raise ValidationError("The file URL has too many redirects")
