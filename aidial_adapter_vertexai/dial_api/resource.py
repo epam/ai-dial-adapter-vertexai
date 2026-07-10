@@ -5,10 +5,11 @@ from abc import ABC, abstractmethod
 from aidial_sdk.chat_completion import Attachment
 from pydantic import BaseModel, field_validator, model_validator
 
-from aidial_adapter_vertexai.dial_api.storage import FileStorage, download_file
+from aidial_adapter_vertexai.dial_api.storage import FileStorage
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 from aidial_adapter_vertexai.utils.resource import Resource
 from aidial_adapter_vertexai.utils.text import truncate_string
+from aidial_adapter_vertexai.utils.url import download_public_file
 
 # Python<=3.11 doesn't include .md in mimetypes by default
 # It was added in Python 3.12: https://github.com/python/cpython/pull/118594
@@ -202,4 +203,4 @@ async def _download_url(file_storage: FileStorage | None, url: str) -> bytes:
     if file_storage:
         return await file_storage.download_file(url)
     else:
-        return await download_file(url)
+        return await download_public_file(url)
