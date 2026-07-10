@@ -10,6 +10,10 @@ from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
+from aidial_adapter_vertexai.utils.url import (
+    download_public_file,
+    has_same_origin,
+)
 
 
 class FileMetadata(TypedDict):
@@ -98,10 +102,21 @@ class FileStorage(BaseModel):
 
     async def download_file(self, link: str) -> bytes:
         url = self.attachment_link_to_url(link)
-        headers: Mapping[str, str] = {}
-        if url.lower().startswith(self.dial_url.lower()):
-            headers = self.auth_headers
-        return await download_file(url, headers)
+
+        # DIAL Core is the only origin allowed to receive the api-key, and it
+        # may legitimately live on a private address. Trust is decided by
+        # origin (scheme/host/port), never by string prefix, otherwise a URL
+        # like ``http://<dial_url>@169.254.169.254`` would bypass the SSRF
+        # check and leak the api-key.
+        if not has_same_origin(url, self.dial_url):
+            return await download_public_file(url)
+
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(url, headers=self.auth_headers) as response,
+        ):
+            response.raise_for_status()
+            return await response.read()
 
     async def get_human_readable_name(self, link: str) -> str:
         url = self.attachment_link_to_url(link)
@@ -118,15 +133,6 @@ class FileStorage(BaseModel):
         link = link.removeprefix(f"{bucket}/")
         decoded_link = unquote(link)
         return link if link == decoded_link else repr(decoded_link)
-
-
-async def download_file(url: str, headers: Mapping[str, str] = {}) -> bytes:
-    async with (
-        aiohttp.ClientSession() as session,
-        session.get(url, headers=headers) as response,
-    ):
-        response.raise_for_status()
-        return await response.read()
 
 
 def compute_hash_digest(data: bytes) -> str:
