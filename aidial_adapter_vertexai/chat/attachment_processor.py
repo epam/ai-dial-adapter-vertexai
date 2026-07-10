@@ -97,9 +97,10 @@ class AttachmentProcessor(BaseModel):
             if isinstance(e, ResourceValidationError):
                 # Errors specific to a particular resource
                 return e.message
-            elif isinstance(e, UserError):
+            elif isinstance(e, UserError | ValidationError):
                 # Errors not specific to any particular resource
-                # typically raised by validators
+                # (e.g. UserError from validators, or a request-validation
+                # error such as an SSRF-rejected URL) must reach the client.
                 raise e
             else:
                 # Unexpected runtime exceptions
