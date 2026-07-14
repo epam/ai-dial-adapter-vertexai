@@ -38,8 +38,11 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
     ChatCompletionAdapter,
 )
 from aidial_adapter_vertexai.chat.consumer import Consumer
-from aidial_adapter_vertexai.chat.errors import UserError
-from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
+from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.chat.static_tools import (
+    StaticToolsConfig,
+    ToolName,
+)
 from aidial_adapter_vertexai.chat.tools import ToolsConfig, ToolsMode
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.deployments import ClaudeDeployment
@@ -71,8 +74,44 @@ def _to_tool_config(c: ToolsConfig) -> AnthropicToolsConfig:
     )
 
 
+def _to_web_search_configuration(
+    static_tools: StaticToolsConfig,
+) -> dict | None:
+    """
+    Convert the OpenAI-style `web_search` static tool into the Anthropic
+    web search server-tool definition expected under `configuration.web_search`.
+    """
+    web_search: dict | None = None
+    for static_function in static_tools.functions:
+        if static_function.name != ToolName.WEB_SEARCH:
+            raise ValidationError(
+                f"Unsupported static function: {static_function.name}"
+            )
+        tool_definition = dict(static_function.configuration or {})
+        tool_definition.setdefault("name", static_function.name)
+        web_search = tool_definition
+    return web_search
+
+
+def _to_configuration(
+    params: ModelParameters, static_tools: StaticToolsConfig
+) -> dict | None:
+    web_search = _to_web_search_configuration(static_tools)
+    if web_search is None:
+        return params.configuration
+
+    configuration = dict(params.configuration or {})
+    if configuration.get("web_search") is not None:
+        raise ValidationError(
+            "Web search must be configured either via the 'web_search' static "
+            "tool or 'custom_fields.configuration.web_search', not both."
+        )
+    configuration["web_search"] = web_search
+    return configuration
+
+
 def _to_model_params(
-    params: ModelParameters, c: ToolsConfig
+    params: ModelParameters, c: ToolsConfig, configuration: dict | None
 ) -> AnthropicModelParameters:
     return AnthropicModelParameters(
         temperature=params.temperature,
@@ -84,7 +123,7 @@ def _to_model_params(
         max_prompt_tokens=params.max_prompt_tokens,
         stream=params.stream,
         tool_config=_to_tool_config(c),
-        configuration=params.configuration,
+        configuration=configuration,
     )
 
 
@@ -224,8 +263,8 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         static_tools: StaticToolsConfig,
         messages: list[Message],
     ) -> ClaudePrompt | UserError:
-        static_tools.not_supported()
-        model_params = _to_model_params(params, tools)
+        configuration = _to_configuration(params, static_tools)
+        model_params = _to_model_params(params, tools, configuration)
         return ClaudePrompt(model_params, messages)
 
     async def chat(

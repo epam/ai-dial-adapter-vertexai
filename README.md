@@ -369,6 +369,57 @@ The most notable beta flags are:
 
 Not every model supports all flags. Refer to the official documentation before utilizing any flags.
 
+The Claude models also support [web search](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool), an Anthropic server-side tool that gives Claude direct access to real-time web content. The searches are executed on Anthropic's side, and the response includes citations for the sources used. It's enabled by the `web_search` static tool, whose `configuration` is the Anthropic web search tool definition:
+
+```json
+{
+  "messages": [
+    { "role": "user", "content": "What is the weather in NYC?" }
+  ],
+  "tools": [
+    {
+      "type": "static_function",
+      "static_function": {
+        "name": "web_search",
+        "configuration": { "type": "web_search_20250305" }
+      }
+    }
+  ]
+}
+```
+
+The tool definition supports optional fields such as `max_uses`, `allowed_domains`, `blocked_domains`, and `user_location`. See the [tool definition](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool#tool-definition) in the Anthropic docs:
+
+```json
+{
+  "messages": [
+    { "role": "user", "content": "What is the weather in San Francisco?" }
+  ],
+  "tools": [
+    {
+      "type": "static_function",
+      "static_function": {
+        "name": "web_search",
+        "configuration": {
+          "type": "web_search_20250305",
+          "max_uses": 5,
+          "allowed_domains": ["example.com", "trusteddomain.org"],
+          "user_location": {
+            "type": "approximate",
+            "city": "San Francisco",
+            "region": "California",
+            "country": "US",
+            "timezone": "America/Los_Angeles"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+The search queries are reported into a dedicated `Web Search` stage, and the sources are returned as attachments. Not every Claude model supports web search; refer to the official documentation before enabling it.
+
 #### Google Search grounding
 
 Gemini models support [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search?lang=python#google-search-retrieval). It's enabled by the `google_search` static tool:
