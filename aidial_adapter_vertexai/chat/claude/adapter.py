@@ -74,13 +74,9 @@ def _to_tool_config(c: ToolsConfig) -> AnthropicToolsConfig:
     )
 
 
-def _to_web_search_configuration(
+def _to_claude_web_search(
     static_tools: StaticToolsConfig,
 ) -> dict | None:
-    """
-    Convert the OpenAI-style `web_search` static tool into the Anthropic
-    web search server-tool definition expected under `configuration.web_search`.
-    """
     web_search: dict | None = None
     for static_function in static_tools.functions:
         if static_function.name != ToolName.WEB_SEARCH:
@@ -96,7 +92,7 @@ def _to_web_search_configuration(
 def _to_configuration(
     params: ModelParameters, static_tools: StaticToolsConfig
 ) -> dict | None:
-    web_search = _to_web_search_configuration(static_tools)
+    web_search = _to_claude_web_search(static_tools)
     if web_search is None:
         return params.configuration
 
