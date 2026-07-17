@@ -28,6 +28,7 @@
     - [Embedding models](#embedding-models)
       - [Gemini Embedding 2](#gemini-embedding-2)
   - [Environment variables](#environment-variables)
+    - [Logging](#logging)
     - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
   - [Compatibility mode](#compatibility-mode)
     - [Compatibility configuration in DIAL Core config](#compatibility-configuration-in-dial-core-config)
@@ -677,14 +678,45 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |GOOGLE_APPLICATION_CREDENTIALS||Filepath to JSON with [credentials](https://cloud.google.com/docs/authentication/application-default-credentials#GAC)|
 |DEFAULT_REGION||Default region for Vertex AI (e.g. "us-central1")|
 |GCP_PROJECT_ID||GCP project ID|
-|LOG_LEVEL|INFO|Log level. Use DEBUG for dev purposes and INFO in prod|
-|AIDIAL_LOG_LEVEL|WARNING|AI DIAL SDK log level|
+|LOG_LEVEL|INFO|Application log level. Use DEBUG for dev purposes and INFO in prod|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 |COMPATIBILITY_MAPPING|{}|**Deprecated** in favour of [compatibility configuration in DIAL Core config](#compatibility-configuration-in-dial-core-config). A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-configuration-in-adapter) section.|
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 |GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
 |ANTHROPIC_MAX_RETRY_ATTEMPTS|0|How many times to retry Anthropic chat model requests when the provider returns a retriable error|
+
+### Logging
+
+Logging is provided by the DIAL SDK. The `LOG_LEVEL` variable sets the severity threshold for the adapter's logs (`INFO` by default; use `DEBUG` for development).
+
+By default logs are emitted as human-readable text.
+Set `DIAL_SDK_LOG_FORMAT=json` for structured JSON logging.
+The format is controlled by `DIAL_SDK_TEXT_LOG_FORMAT` / `DIAL_SDK_JSON_LOG_FORMAT` (both optional),
+which use Python's `%`-style [logging attributes](https://docs.python.org/3/library/logging.html#logrecord-attributes)
+and default to the values shown below.
+
+Text logging (default):
+
+```txt
+DIAL_SDK_LOG_FORMAT=text
+DIAL_SDK_TEXT_LOG_FORMAT='%(levelprefix)s | %(asctime)s | %(name)s | %(process)d | %(message)s'
+```
+
+Structured JSON logging:
+
+```txt
+DIAL_SDK_LOG_FORMAT=json
+DIAL_SDK_JSON_LOG_FORMAT='{"level": "%(levelname)s", "time": "%(asctime)s", "logger": "%(name)s", "process": "%(process)d", "message": "%(message)s"}'
+```
+
+See the [full logging documentation](https://github.com/epam/ai-dial-sdk/blob/0.38.0/docs/logging.md) for details.
+
+To enable logs from the underlying Anthropic SDK, set:
+
+```txt
+ANTHROPIC_LOG=debug
+```
 
 ### Default `max_tokens` for Claude models
 
