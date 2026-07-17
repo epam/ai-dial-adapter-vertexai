@@ -21,8 +21,6 @@ class ToolName(str, Enum):
     # https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/code-execution-api
     # https://ai.google.dev/gemini-api/docs/code-execution?lang=python
     CODE_EXECUTION = "code_execution"
-    # https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool
-    WEB_SEARCH = "web_search"
 
 
 class GenAIGoogleSearchTool:
