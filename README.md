@@ -369,6 +369,8 @@ The most notable beta flags are:
 
 Not every model supports all flags. Refer to the official documentation before utilizing any flags.
 
+Claude models also support [web search](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool). See the [Web search](https://github.com/epam/ai-dial-adapter-anthropic#web-search) section of the `aidial-adapter-anthropic` README for the request signature and optional fields.
+
 #### Google Search grounding
 
 Gemini models support [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search?lang=python#google-search-retrieval). It's enabled by the `google_search` static tool:

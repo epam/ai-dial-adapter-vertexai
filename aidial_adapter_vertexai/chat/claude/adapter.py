@@ -32,6 +32,7 @@ from aidial_sdk.chat_completion import (
     Response,
     ToolCall,
 )
+from aidial_sdk.chat_completion.request import StaticTool
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
@@ -62,17 +63,25 @@ def _to_tools_mode(c: ToolsMode) -> AnthropicToolsMode:
     )
 
 
-def _to_tool_config(c: ToolsConfig) -> AnthropicToolsConfig:
+def _to_tool_config(
+    tools: ToolsConfig, static_tools: StaticToolsConfig
+) -> AnthropicToolsConfig:
     return AnthropicToolsConfig(
-        tools=c.tools,
-        tools_mode=_to_tools_mode(c.tools_mode),
-        tool_choice=c.tool_choice,
-        tool_ids=c.tool_ids,
+        tools=tools.tools,
+        static_tools=[
+            StaticTool(type="static_function", static_function=function)
+            for function in static_tools.functions
+        ],
+        tools_mode=_to_tools_mode(tools.tools_mode),
+        tool_choice=tools.tool_choice,
+        tool_ids=tools.tool_ids,
     )
 
 
 def _to_model_params(
-    params: ModelParameters, c: ToolsConfig
+    params: ModelParameters,
+    tools: ToolsConfig,
+    static_tools: StaticToolsConfig,
 ) -> AnthropicModelParameters:
     return AnthropicModelParameters(
         temperature=params.temperature,
@@ -83,7 +92,7 @@ def _to_model_params(
         max_tokens=params.max_tokens,
         max_prompt_tokens=params.max_prompt_tokens,
         stream=params.stream,
-        tool_config=_to_tool_config(c),
+        tool_config=_to_tool_config(tools, static_tools),
         configuration=params.configuration,
     )
 
@@ -224,8 +233,7 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         static_tools: StaticToolsConfig,
         messages: list[Message],
     ) -> ClaudePrompt | UserError:
-        static_tools.not_supported()
-        model_params = _to_model_params(params, tools)
+        model_params = _to_model_params(params, tools, static_tools)
         return ClaudePrompt(model_params, messages)
 
     async def chat(
