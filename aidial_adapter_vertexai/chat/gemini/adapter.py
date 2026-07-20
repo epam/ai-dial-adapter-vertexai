@@ -13,7 +13,11 @@ from google.genai.types import (
 from google.genai.types import (
     GenerateContentResponse as GenAIGenerateContentResponse,
 )
-from google.genai.types import ImageConfigDict, ThinkingConfigDict
+from google.genai.types import (
+    ImageConfigDict,
+    SafetySettingDict,
+    ThinkingConfigDict,
+)
 from pydantic import Field
 from typing_extensions import override
 
@@ -114,6 +118,13 @@ class ThinkingConfig(ExtraAllowModel):
 class GeminiConfigurationModel(ExtraForbidModel):
     thinking: ThinkingConfig | None = None
     image_config: ImageConfig | None = None
+    safety_settings: list[SafetySettingDict] | None = Field(
+        default=None,
+        description=(
+            "The safety settings controlling content filtering. "
+            "See https://ai.google.dev/gemini-api/docs/safety-settings"
+        ),
+    )
 
 
 @dataclass
@@ -229,6 +240,10 @@ class GeminiGenAIChatCompletionAdapter(
                 thinking_config | configuration.thinking.to_thinking_config()
             )
 
+        safety_settings: list[SafetySettingDict] | None = None
+        if configuration and configuration.safety_settings:
+            safety_settings = configuration.safety_settings
+
         return create_genai_generation_config(
             params,
             supports_image_generation=self.supports_image_generation,
@@ -237,6 +252,7 @@ class GeminiGenAIChatCompletionAdapter(
             system_instruction=prompt.system,
             thinking_config=thinking_config,
             image_config=image_config,
+            safety_settings=safety_settings,
         )
 
     def _get_token_count_config(

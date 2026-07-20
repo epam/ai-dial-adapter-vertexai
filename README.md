@@ -323,6 +323,31 @@ The Gemini 3 series model also supports [thinking_level](https://ai.google.dev/g
 > [!NOTE]
 > You cannot use both `reasoning_effort` and the `thinking_budget` parameters in the same request.
 
+##### Gemini safety settings
+
+The Gemini models accept [safety settings](https://ai.google.dev/gemini-api/docs/safety-settings) that control content filtering per harm category:
+
+```json
+{
+  "custom_fields": {
+    "configuration": {
+      "safety_settings": [
+        {
+          "category": "HARM_CATEGORY_HARASSMENT",
+          "threshold": "BLOCK_ONLY_HIGH"
+        },
+        {
+          "category": "HARM_CATEGORY_HATE_SPEECH",
+          "threshold": "BLOCK_NONE"
+        }
+      ]
+    }
+  }
+}
+```
+
+Consult the [documentation](https://ai.google.dev/gemini-api/docs/safety-settings) for the supported harm categories and block thresholds.
+
 ##### Gemini 2.5 Flash Image model
 
 The Gemini 2.5 Flash Image support configuration of parameters controlling generation of images:

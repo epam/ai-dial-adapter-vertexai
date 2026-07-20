@@ -3,7 +3,9 @@ from dataclasses import dataclass
 import httpx
 import openai
 import pytest
+from pydantic import ValidationError
 
+from aidial_adapter_vertexai.chat.gemini.adapter import GeminiConfigurationModel
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
 from tests.conftest import get_extra_headers
 from tests.utils.exception import ExpectedException, expected_exception
@@ -83,6 +85,18 @@ async def test_gemini_supports_image_config(
     )
 
 
+@pytest.mark.parametrize(
+    "deployment",
+    _gemini_deployments_with_thinking + _gemini_deployments_with_imagen,
+)
+async def test_gemini_supports_safety_settings(
+    test_http_client: httpx.AsyncClient, deployment: D
+):
+    assert await _configuration_has_field(
+        test_http_client, deployment, "safety_settings"
+    )
+
+
 @pytest.mark.parametrize("deployment", _claude_deployments)
 async def test_claude_supports_citations(
     test_http_client: httpx.AsyncClient, deployment: D
@@ -90,6 +104,45 @@ async def test_claude_supports_citations(
     assert await _configuration_has_field(
         test_http_client, deployment, "enable_citations"
     )
+
+
+def test_gemini_safety_settings_must_be_a_list():
+    with pytest.raises(ValidationError) as exc_info:
+        GeminiConfigurationModel.model_validate(
+            {
+                "safety_settings": {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_ONLY_HIGH",
+                }
+            }
+        )
+
+    errors = exc_info.value.errors()
+    assert len(errors) == 1
+    assert errors[0]["loc"] == ("safety_settings",)
+    assert errors[0]["type"] == "list_type"
+    assert errors[0]["msg"] == "Input should be a valid list"
+
+
+def test_gemini_safety_settings_reject_extra_fields():
+    with pytest.raises(ValidationError) as exc_info:
+        GeminiConfigurationModel.model_validate(
+            {
+                "safety_settings": [
+                    {
+                        "category": "HARM_CATEGORY_HATE_SPEECH",
+                        "threshold": "BLOCK_ONLY_HIGH",
+                        "extra_field": "value",
+                    }
+                ]
+            }
+        )
+
+    errors = exc_info.value.errors()
+    assert len(errors) == 1
+    assert errors[0]["loc"] == ("safety_settings", 0, "extra_field")
+    assert errors[0]["type"] == "extra_forbidden"
+    assert errors[0]["msg"] == "Extra inputs are not permitted"
 
 
 @dataclass
