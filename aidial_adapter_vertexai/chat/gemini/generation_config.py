@@ -4,7 +4,11 @@ from google.genai.types import CountTokensConfigDict as GenAICountTokensConfig
 from google.genai.types import (
     GenerateContentConfigDict as GenAIGenerationConfig,
 )
-from google.genai.types import ImageConfigDict, ThinkingConfigDict
+from google.genai.types import (
+    ImageConfigDict,
+    SafetySettingDict,
+    ThinkingConfigDict,
+)
 from google.genai.types import Part as GenAIPart
 from google.genai.types import ToolDict as GenAITool
 
@@ -29,6 +33,7 @@ def create_genai_generation_config(
     system_instruction: list[GenAIPart] | None,
     thinking_config: ThinkingConfigDict | None,
     image_config: ImageConfigDict | None,
+    safety_settings: list[SafetySettingDict] | None,
 ) -> GenAIGenerationConfig:
     validate_n_parameter(params)
 
@@ -59,6 +64,7 @@ def create_genai_generation_config(
         response_modalities=response_modalities,
         thinking_config=thinking_config,
         image_config=image_config,
+        safety_settings=safety_settings,
     )
 
 
