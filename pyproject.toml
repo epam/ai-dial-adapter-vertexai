@@ -33,7 +33,7 @@ google-genai = "1.72.0"
 openai = "1.107.3"
 pydantic = "2.11.2"
 uvicorn = "0.22.0"
-pillow = "12.2.0"
+pillow = "12.3.0"
 pypdf = { version = "6.13.3", extras = ["crypto"] }
 numpy = "2.0.0"
 aiohttp = "3.14.1"
