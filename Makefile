@@ -10,7 +10,6 @@ VENV_DIR ?= .venv
 # Check for CI environment
 # Empty string means false in Makefile
 CI ?=
-NOX_DEFAULT_VENV_BACKEND := $(if $(CI),none,virtualenv)
 
 .PHONY: all init_env install build serve clean lint format test integration_tests docker_build docker_run
 

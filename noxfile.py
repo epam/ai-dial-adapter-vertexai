@@ -1,6 +1,11 @@
+import os
 import nox
 
 nox.options.reuse_existing_virtualenvs = True
+# Use passthrough (no venv) backend in CI, isolated venv locally
+nox.options.default_venv_backend = (
+    "none" if os.environ.get("CI") else "virtualenv"
+)
 
 SRC = ["aidial_adapter_vertexai", "tests", "noxfile.py"]
 
