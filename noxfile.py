@@ -1,7 +1,6 @@
 import nox
 
 nox.options.reuse_existing_virtualenvs = True
-nox.options.default_venv_backend = "none"
 
 SRC = ["aidial_adapter_vertexai", "tests", "noxfile.py"]
 
