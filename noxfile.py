@@ -1,6 +1,7 @@
 import nox
 
 nox.options.reuse_existing_virtualenvs = True
+nox.options.default_venv_backend = "none"
 
 SRC = ["aidial_adapter_vertexai", "tests", "noxfile.py"]
 
@@ -23,7 +24,7 @@ def lint(session: nox.Session):
 @nox.session
 def format(session: nox.Session):
     """Runs linters and fixers"""
-    session.run("poetry", "install", "--only", "lint", external=True)
+    session.run("poetry", "install", "--with", "lint", external=True)
     session.run("ruff", "check", "--fix", *SRC)
     session.run("ruff", "format", *SRC)
 

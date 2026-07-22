@@ -7,6 +7,10 @@ POETRY_PYTHON ?= python
 PYDANTIC_V2 ?= 1
 VENV_DIR ?= .venv
 
+# Check for CI environment
+# Empty string means false in Makefile
+CI ?=
+
 .PHONY: all init_env install build serve clean lint format test integration_tests docker_build docker_run
 
 -include .env.dev
@@ -15,7 +19,7 @@ export
 all: build
 
 init_env:
-	$(POETRY) env use $(POETRY_PYTHON)
+	$(if $(CI),,$(POETRY) env use $(POETRY_PYTHON))
 
 install: init_env
 	$(POETRY) install
