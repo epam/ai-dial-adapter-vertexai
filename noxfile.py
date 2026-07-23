@@ -27,7 +27,7 @@ def lint(session: nox.Session):
 @nox.session
 def format(session: nox.Session):
     """Runs linters and fixers"""
-    session.run("poetry", "install", "--with", "lint", external=True)
+    session.run("poetry", "install", "--only", "lint", external=True)
     session.run("ruff", "check", "--fix", *SRC)
     session.run("ruff", "format", *SRC)
 
