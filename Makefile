@@ -8,7 +8,7 @@ PYDANTIC_V2 ?= 1
 VENV_DIR ?= .venv
 
 # Check for CI environment
-# Empty string means false in Makefile
+# Any non-empty CI value (even 'false' or '0') means that CI is enabled
 CI ?=
 
 .PHONY: all init_env install build serve clean lint format test integration_tests docker_build docker_run
