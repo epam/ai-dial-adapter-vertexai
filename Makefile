@@ -7,7 +7,6 @@ POETRY_PYTHON ?= python
 PYDANTIC_V2 ?= 1
 VENV_DIR ?= .venv
 
-# Check for CI environment
 # Any non-empty CI value (even 'false' or '0') means that CI is enabled
 CI ?=
 
