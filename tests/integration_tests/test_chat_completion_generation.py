@@ -558,6 +558,13 @@ class TestThinking:
         assert response.usage is not None, "Usage is missing"
         assert response.usage.completion_tokens > 10
 
+        details = response.usage.completion_tokens_details
+        assert details is not None, "Completion tokens details are missing"
+        assert (reasoning_tokens := details.reasoning_tokens), (
+            "Reasoning tokens are missing"
+        )
+        assert reasoning_tokens <= response.usage.completion_tokens
+
         stages = response.stages
         assert stages is not None, "Stages are missing"
         assert len(stages) == 1
