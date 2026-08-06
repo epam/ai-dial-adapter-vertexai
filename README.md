@@ -64,6 +64,8 @@ LLM Adapters unify the APIs of respective LLMs to align with the Unified Protoco
 
 The project implements [AI DIAL API](https://dialx.ai/dial_api) for language models and embedding models from [Vertex AI](https://console.cloud.google.com/vertex-ai).
 
+Claude models are served by the [aidial-adapter-anthropic](https://github.com/epam/ai-dial-adapter-anthropic/blob/0.16.0/README.md). Its README documents the Claude-specific request/response API and is referenced throughout this document instead of being duplicated here.
+
 ---
 
 ## Supported models
@@ -369,33 +371,9 @@ Consult the [documentation](https://ai.google.dev/gemini-api/docs/image-generati
 
 ##### Claude models
 
-The Claude models accept a configuration flag that enables document citations in the generated output. The flag is false by default.
+The configuration of the Claude models _(extended thinking, reasoning level, beta feature flags, citations)_ is documented in the [Anthropic adapter README](https://github.com/epam/ai-dial-adapter-anthropic/blob/0.16.0/README.md#configuration).
 
-```json
-{
-  "custom_fields": {
-    "configuration": {
-      "enable_citations": true
-    }
-  }
-}
-```
-
-Not every Claude model supports citations. Refer to the [official documentation](https://docs.anthropic.com/en/docs/build-with-claude/citations) before utilizing any flags.
-
-Besides that Claude models support beta flags.
-The whole list of flags could be found in the [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/types/anthropic_beta_param.py).
-
-The most notable beta flags are:
-
-|Configuration|Comment|Scope|
-|---|---|---|
-|`{"betas": ["token-efficient-tools-2025-02-19"]}`|[Token-efficient tool use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use/token-efficient-tool-use)|Claude 3.7 Sonnet|
-|`{"betas": ["output-128k-2025-02-19"]}`|[Extended output length](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#extended-output-capabilities-beta)|Claude 3.7 Sonnet|
-
-Not every model supports all flags. Refer to the official documentation before utilizing any flags.
-
-Claude models also support [web search](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool). See the [Web search](https://github.com/epam/ai-dial-adapter-anthropic#web-search) section of the `aidial-adapter-anthropic` README for the request signature and optional fields.
+Claude models also support [web search](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool). See the [Web search](https://github.com/epam/ai-dial-adapter-anthropic/blob/0.16.0/README.md#web-search) section of the Anthropic adapter README for the request signature and optional fields.
 
 #### Google Search grounding
 
@@ -715,27 +693,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 
 Logging is provided by the DIAL SDK. The `LOG_LEVEL` variable sets the severity threshold for the adapter's logs (`INFO` by default; use `DEBUG` for development).
 
-By default logs are emitted as human-readable text.
-Set `DIAL_SDK_LOG_FORMAT=json` for structured JSON logging.
-The format is controlled by `DIAL_SDK_TEXT_LOG_FORMAT` / `DIAL_SDK_JSON_LOG_FORMAT` (both optional),
-which use Python's `%`-style [logging attributes](https://docs.python.org/3/library/logging.html#logrecord-attributes)
-and default to the values shown below.
-
-Text logging (default):
-
-```txt
-DIAL_SDK_LOG_FORMAT=text
-DIAL_SDK_TEXT_LOG_FORMAT='%(levelprefix)s | %(asctime)s | %(name)s | %(process)d | %(message)s'
-```
-
-Structured JSON logging:
-
-```txt
-DIAL_SDK_LOG_FORMAT=json
-DIAL_SDK_JSON_LOG_FORMAT='{"level": "%(levelname)s", "time": "%(asctime)s", "logger": "%(name)s", "process": "%(process)d", "message": "%(message)s"}'
-```
-
-See the [full logging documentation](https://github.com/epam/ai-dial-sdk/blob/0.38.0/docs/logging.md) for details.
+Everything else — the log format _(human-readable text or structured JSON)_, the `DIAL_SDK_*` variables controlling it, the trace/span id correlation and the OTel log export — is documented in the [DIAL SDK logging documentation](https://github.com/epam/ai-dial-sdk/blob/0.39.0/docs/logging.md).
 
 To enable logs from the underlying Anthropic SDK, set:
 
@@ -1055,13 +1013,9 @@ COMPATIBILITY_MAPPING={"claude-sonnet-4-520250929":"claude-sonnet-4-5@20250929"}
 
 The adapter exposes the native [Claude API](https://platform.claude.com/docs/en/api/overview#available-apis) at the `/anthropic` path, proxying requests transparently to the corresponding model vendor. This allows applications built against the Anthropic SDK or the native Anthropic HTTP API to route through the adapter without protocol translation.
 
-The upstream is selected per request the same way as for chat completions (see [Authentication](#authentication)): Google Cloud credentials by default, a Platform API key via the `x-upstream-key` header, or Azure Foundry via the `x-upstream-endpoint` header.
+The passthrough itself — the list of the proxied endpoints, the error schema and the client compatibility — is documented in the [Anthropic adapter README](https://github.com/epam/ai-dial-adapter-anthropic/blob/0.16.0/README.md#anthropic-api).
 
-|Method|Endpoint|
-|---|---|
-|`POST`|[/anthropic/v1/messages](https://platform.claude.com/docs/en/api/messages/create)|
-|`POST`|[/anthropic/v1/messages/batches](https://platform.claude.com/docs/en/api/messages/batches/create)|
-|`POST`|[/anthropic/v1/messages/count_tokens](https://platform.claude.com/docs/en/api/messages/count_tokens)|
+The upstream is selected per request the same way as for chat completions (see [Authentication](#authentication)): Google Cloud credentials by default, a Platform API key via the `x-upstream-key` header, or Azure Foundry via the `x-upstream-endpoint` header.
 
 ### Using Claude Code with the adapter
 
