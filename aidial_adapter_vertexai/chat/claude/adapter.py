@@ -135,6 +135,8 @@ class _ConsumerAdapter(AnthropicConsumer):
                 prompt_tokens=usage.prompt_tokens,
                 completion_tokens=usage.completion_tokens,
                 prompt_cached_tokens=usage.cache_read_input_tokens,
+                prompt_cache_write_tokens=usage.cache_write_input_tokens,
+                completion_reasoning_tokens=usage.reasoning_tokens,
             )
         )
 
