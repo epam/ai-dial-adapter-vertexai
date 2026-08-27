@@ -933,6 +933,8 @@ When the adapter container is deployed on AWS ECS Fargate, ECS EC2 with task rol
 |---|---|
 |`AWS_CONTAINER_CREDENTIALS_RELATIVE_URI`|Set by the ECS runtime for task roles. Combined with `http://169.254.170.2` to fetch credentials.|
 |`AWS_CONTAINER_CREDENTIALS_FULL_URI`|Set by EKS Pod Identity (and similar non-loopback runtimes). Used as-is to fetch credentials.|
+|`AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE`|Set by EKS Pod Identity. Points to the token file whose content is sent in the `Authorization` header. Re-read on every credentials refresh, since the token is rotated.|
+|`AWS_CONTAINER_AUTHORIZATION_TOKEN`|Alternative to the `_FILE` variant: the token value itself. Ignored when `AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE` is set.|
 |`GOOGLE_APPLICATION_CREDENTIALS`|Points to a Workload Identity Federation credential configuration file with `type=external_account`.|
 
 At least one of `AWS_CONTAINER_CREDENTIALS_*_URI` must be set, as well as `GOOGLE_APPLICATION_CREDENTIALS`. Otherwise, the adapter fails with the 401 authentication error:
