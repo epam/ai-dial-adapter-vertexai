@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 import urllib.request
 from urllib.parse import urljoin
 
@@ -11,7 +12,16 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as _log
 _RELATIVE = "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"
 _FULL = "AWS_CONTAINER_CREDENTIALS_FULL_URI"
 _AUTH = "AWS_CONTAINER_AUTHORIZATION_TOKEN"
+_AUTH_FILE = "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE"
 _ECS_AGENT = "http://169.254.170.2"
+
+
+def _read_auth_token() -> str | None:
+    # EKS Pod Identity passes the token via a file which is rotated,
+    # so it must be re-read on every credentials refresh.
+    if token_file := os.environ.get(_AUTH_FILE):
+        return pathlib.Path(token_file).read_text().strip()
+    return os.environ.get(_AUTH)
 
 
 class _CredentialsSupplier(aws.AwsSecurityCredentialsSupplier):
@@ -22,7 +32,7 @@ class _CredentialsSupplier(aws.AwsSecurityCredentialsSupplier):
         self, context, request
     ) -> aws.AwsSecurityCredentials:
         headers = {}
-        if (token := os.environ.get(_AUTH)) is not None:
+        if (token := _read_auth_token()) is not None:
             headers["Authorization"] = token
         # URL was resolved at startup from AWS_CONTAINER_CREDENTIALS_{FULL,RELATIVE}_URI
         # (link-local for ECS, FQDN for EKS Pod Identity). Not user input.
