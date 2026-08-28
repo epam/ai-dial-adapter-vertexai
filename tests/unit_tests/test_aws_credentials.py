@@ -98,3 +98,23 @@ def test_supplier_reads_from_full_uri_with_auth_token(monkeypatch):
 
     assert captured["url"] == "http://eks.example/creds"
     assert captured["headers"].get("Authorization") == "Bearer xyz"
+
+
+def test_supplier_reads_auth_token_from_file(monkeypatch, tmp_path):
+    token_path = tmp_path / "eks-pod-identity-token"
+    token_path.write_text("eks-token\n")
+    monkeypatch.delenv("AWS_CONTAINER_AUTHORIZATION_TOKEN", raising=False)
+    monkeypatch.setenv(
+        "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE", str(token_path)
+    )
+    captured = {}
+
+    def fake_urlopen(req, timeout=None):
+        captured["headers"] = dict(req.header_items())
+        return io.BytesIO(json.dumps(_AWS_CREDS_JSON).encode())
+
+    with patch("urllib.request.urlopen", fake_urlopen):
+        supplier = _CredentialsSupplier("http://169.254.170.23/v1/credentials")
+        supplier.get_aws_security_credentials(None, None)
+
+    assert captured["headers"].get("Authorization") == "eks-token"
