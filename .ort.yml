@@ -1,78 +1,14 @@
 ---
+analyzer:
+  skip_excluded: true
 excludes:
   scopes:
-  - pattern: "dev"
-    reason: "DEV_DEPENDENCY_OF"
-    comment: "Packages for development only."
-  - pattern: "lint"
-    reason: "DEV_DEPENDENCY_OF"
-    comment: "Packages for static code analysis only."
-  - pattern: "test"
-    reason: "TEST_DEPENDENCY_OF"
-    comment: "Packages for testing only."
-license_choices:
-  repository_license_choices:
-  - given: FTL OR GPL-2.0-or-later
-    choice: FTL
-resolutions:
-  rule_violations:
-    - message: ".*PyPI::setuptools:78\\.1\\.1.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "BSD 3-Clause New or Revised License: https://github.com/pypa/setuptools/blob/v78.1.1/LICENSE"
-    - message: ".*PyPI::aiocache:0\\.12\\.2.*"
-      reason: 'CANT_FIX_EXCEPTION'
-      comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/aio-libs/aiocache/blob/v0.12.2/LICENSE'
-    - message: ".*PyPI::httpcore:1\\.0\\.9.*"
-      reason: 'CANT_FIX_EXCEPTION'
-      comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/encode/httpcore/blob/1.0.9/LICENSE.md'
-    - message: ".*PyPI::httpx:0\\.28\\.1.*"
-      reason: 'CANT_FIX_EXCEPTION'
-      comment: 'BSD 3-Clause "New" or "Revised" License: https://github.com/encode/httpx/blob/0.28.1/LICENSE.md'
-    - message: ".*PyPI::numpy:2\\.0\\.0.*"
-      reason: 'CANT_FIX_EXCEPTION'
-      comment: 'BSD License: https://github.com/numpy/numpy/blob/v2.0.0/LICENSE.txt'
-    - message: ".*PyPI::setuptools:78\\.1\\.1.*"
-      reason: 'CANT_FIX_EXCEPTION'
-      comment: 'MIT License: https://github.com/pypa/setuptools/blob/v78.1.1/LICENSE'
-    - message: ".*PyPI::pillow:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::opentelemetry.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::google-genai:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::azure-identity:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::pypdf:.*"
-      reason: 'CANT_FIX_EXCEPTION'
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::starlette:.*"
-      reason: 'CANT_FIX_EXCEPTION'
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::urllib3:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::fastapi:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::cryptography:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::cffi:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::pyjwt:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::aidial-sdk:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::aidial-adapter-anthropic:.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
-    - message: ".*PyPI::(anthropic|typing-extensions|mistralai|google-auth|typing-inspection|idna):.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pick up license information"
+    - pattern: "dev"
+      reason: "DEV_DEPENDENCY_OF"
+      comment: "Packages for development only."
+    - pattern: "lint"
+      reason: "DEV_DEPENDENCY_OF"
+      comment: "Packages for static code analysis only."
+    - pattern: "test"
+      reason: "TEST_DEPENDENCY_OF"
+      comment: "Packages for testing only."
