@@ -11,7 +11,7 @@ from aidial_sdk.utils.merge_chunks import (
     merge_chat_completion_chunks,
 )
 from openai import AsyncAzureOpenAI, AsyncStream
-from openai._types import NOT_GIVEN
+from openai._types import omit
 from openai.types import CompletionUsage
 from openai.types.chat import (
     ChatCompletion,
@@ -353,10 +353,10 @@ async def chat_completion(
             reasoning_effort=kwargs.get("reasoning_effort"),
             temperature=0.0,
             n=kwargs.get("n"),
-            function_call=NOT_GIVEN,
-            functions=functions or NOT_GIVEN,
-            tool_choice=tool_choice or NOT_GIVEN,
-            tools=tools or NOT_GIVEN,
+            function_call=omit,
+            functions=functions or omit,
+            tool_choice=tool_choice or omit,
+            tools=tools or omit,
             extra_body=extra_body,
         )
 
