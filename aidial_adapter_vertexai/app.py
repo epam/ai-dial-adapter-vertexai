@@ -1,11 +1,10 @@
 from contextlib import asynccontextmanager
 
+from aidial_adapter_anthropic.passthrough import mount_anthropic_api
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
 
-from aidial_adapter_vertexai.anthropic_passthrough import (
-    mount_anthropic_passthrough,
-)
+from aidial_adapter_vertexai.anthropic_passthrough import get_anthropic_client
 from aidial_adapter_vertexai.app_config import (
     get_anthropic_httpx_client,
     get_anthropic_vertex_client,
@@ -66,4 +65,4 @@ async def models():
 app.add_chat_completion("{deployment_id}", VertexAIChatCompletion())
 app.add_embeddings("{deployment_id}", VertexAIEmbeddings())
 
-mount_anthropic_passthrough(app, path="/anthropic")
+mount_anthropic_api(app, get_anthropic_client, path="/anthropic")
