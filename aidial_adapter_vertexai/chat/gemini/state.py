@@ -77,7 +77,7 @@ class MessageState(_StateModel):
                 return
 
         # Otherwise, attach to the last block
-        if not content_parts:
+        if content_parts:
             content_parts[-1].thought_signature = thought_signature
 
     def update_content(self, content: GenAIContent):
