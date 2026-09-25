@@ -39,9 +39,9 @@ class _MockChatCompletionAdapter(ChatCompletionAdapter[_MockPrompt]):
         self.deployment = deployment
 
     async def parse_prompt(
-        self, params: ModelParameters, tools, static_tools, messages
+        self, params: ModelParameters, tools, static_tools, request
     ) -> _MockPrompt | UserError:
-        return str(messages[-1].content), params.configuration
+        return str(request.messages[-1].content), params.configuration
 
     async def chat(
         self, params, consumer: Consumer, prompt: _MockPrompt

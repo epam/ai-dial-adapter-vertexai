@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Protocol, TypeVar
 
-from aidial_sdk.chat_completion import Message
+from aidial_sdk.chat_completion.request import ChatCompletionRequest
 
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
@@ -25,7 +25,7 @@ class ChatCompletionAdapter(ABC, Generic[P]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: list[Message],
+        request: ChatCompletionRequest,
     ) -> P | UserError:
         pass
 
