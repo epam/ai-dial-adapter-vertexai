@@ -1,10 +1,11 @@
 from aidial_sdk.chat_completion.request import (
-    AzureChatCompletionRequest,
+    ChatCompletionRequest,
+    ReasoningEffort,
     StaticFunction,
     StaticTool,
 )
 
-from aidial_adapter_vertexai.chat.claude.adapter import _to_model_params
+from aidial_adapter_vertexai.chat.claude.adapter import _to_adapter_request
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
@@ -24,11 +25,13 @@ def test_web_search_static_tool_passed_through_to_sdk():
             configuration=WEB_SEARCH_CONFIGURATION,
         ),
     )
-    request = AzureChatCompletionRequest(messages=[], tools=[web_search])
+    request = ChatCompletionRequest(messages=[], tools=[web_search])
     tools = ToolsConfig.from_request(request)
     static_tools = StaticToolsConfig.from_request(request)
 
-    params = _to_model_params(ModelParameters(), tools, static_tools)
+    params = _to_adapter_request(
+        request, ModelParameters(), tools, static_tools
+    )
 
     assert params.tool_config is not None
     assert params.tool_config.tools == []
@@ -37,10 +40,12 @@ def test_web_search_static_tool_passed_through_to_sdk():
 
 
 def test_no_static_tools_keeps_empty_static_tools_list():
+    request = ChatCompletionRequest(messages=[])
     tools = ToolsConfig.noop()
     static_tools = StaticToolsConfig.noop()
 
-    params = _to_model_params(
+    params = _to_adapter_request(
+        request,
         ModelParameters(configuration={"enable_citations": True}),
         tools,
         static_tools,
@@ -49,3 +54,23 @@ def test_no_static_tools_keeps_empty_static_tools_list():
     assert params.tool_config is not None
     assert params.tool_config.static_tools == []
     assert params.configuration == {"enable_citations": True}
+
+
+def test_request_fields_forwarded_to_sdk():
+    request = ChatCompletionRequest.model_validate(
+        {
+            "messages": [{"role": "user", "content": "hi"}],
+            "reasoning_effort": "high",
+            "response_format": {"type": "json_object"},
+            "custom_fields": {"cache_breakpoint": {"type": "ephemeral"}},
+        }
+    )
+
+    params = _to_adapter_request(
+        request, ModelParameters(), ToolsConfig.noop(), StaticToolsConfig.noop()
+    )
+
+    assert request.custom_fields is not None
+    assert params.reasoning_effort is ReasoningEffort.HIGH
+    assert params.response_format == request.response_format
+    assert params.cache_breakpoint == request.custom_fields.cache_breakpoint

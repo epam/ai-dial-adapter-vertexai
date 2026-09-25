@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from logging import DEBUG
 from typing import Any
 
-from aidial_sdk.chat_completion import FinishReason, Message
+from aidial_sdk.chat_completion import FinishReason
+from aidial_sdk.chat_completion.request import ChatCompletionRequest
 from aidial_sdk.exceptions import RuntimeServerError
 from google.genai.client import Client as GenAIClient
 from google.genai.types import CountTokensConfigDict as GenAICountTokensConfig
@@ -212,10 +213,10 @@ class GeminiGenAIChatCompletionAdapter(
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: list[Message],
+        request: ChatCompletionRequest,
     ) -> GeminiPromptGenAI | UserError:
         return await Gemini_2_Prompt.parse(
-            self.file_storage, tools, static_tools, messages
+            self.file_storage, tools, static_tools, request.messages
         )
 
     async def _get_generation_config(

@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from logging import DEBUG
 from typing import assert_never
 
-from aidial_sdk.chat_completion import FinishReason, Message
+from aidial_sdk.chat_completion import FinishReason
+from aidial_sdk.chat_completion.request import ChatCompletionRequest
 from mistralai.client import models as models
 from mistralai.client.types import basemodel as models_base
 from mistralai.gcp.client import models as gcp_models
@@ -79,11 +80,11 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: list[Message],
+        request: ChatCompletionRequest,
     ) -> MistralPrompt:
         static_tools.not_supported()
         return await MistralPromptParser.parse(
-            params, tools, self.file_storage, messages
+            params, tools, self.file_storage, request.messages
         )
 
     @override
