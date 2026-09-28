@@ -54,8 +54,22 @@ async def test_truncate_prompt_omits_discarded_messages():
     assert claude_adapter.seen_max_prompt_tokens == 100
 
     assert truncated.discarded_messages == [1, 2]
-    assert [m.content for m in truncated.prompt.dial_request.messages] == [
+    assert [m[0].content for m in truncated.prompt.messages.lst] == [
         "system",
         "three",
     ]
-    assert len(truncated.prompt.request.messages) == 2
+    assert len(truncated.prompt.messages) == 2
+
+
+async def test_parse_prompt_defers_n_and_truncation_to_the_caller():
+    # n>1 is emulated by calling the model n times and the truncation is
+    # driven via `truncate_prompt`, so neither must reach the Claude adapter.
+    request = ChatCompletionRequest(
+        messages=[Message(role=Role.USER, content="one")],
+        n=3,
+        max_prompt_tokens=50,
+    )
+    _, prompt = await _parse(request, _StubClaudeAdapter(discarded=[]))
+
+    assert prompt.n == 1
+    assert prompt.max_prompt_tokens is None
