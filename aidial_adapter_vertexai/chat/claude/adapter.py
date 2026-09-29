@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import TracebackType
 
 from aidial_adapter_anthropic.adapter import (
@@ -12,27 +12,25 @@ from aidial_adapter_anthropic.adapter.claude import (
 from aidial_adapter_anthropic.dial.consumer import Consumer as AnthropicConsumer
 from aidial_adapter_anthropic.dial.consumer import ToolUseMessage
 from aidial_adapter_anthropic.dial.request import (
-    ModelParameters as AnthropicModelParameters,
+    AdapterRequest as AnthropicAdapterRequest,
 )
+from aidial_adapter_anthropic.dial.request import ListProjection
 from aidial_adapter_anthropic.dial.storage import (
     FileStorage as AnthropicFileStorage,
 )
 from aidial_adapter_anthropic.dial.token_usage import (
     TokenUsage as AnthropicTokenUsage,
 )
-from aidial_adapter_anthropic.dial.tools import (
-    ToolsConfig as AnthropicToolsConfig,
-)
-from aidial_adapter_anthropic.dial.tools import ToolsMode as AnthropicToolsMode
 from aidial_sdk.chat_completion import (
     Attachment,
     FinishReason,
     FunctionCall,
-    Message,
     Response,
     ToolCall,
 )
-from aidial_sdk.chat_completion.request import StaticTool
+from aidial_sdk.chat_completion.request import (
+    ChatCompletionRequest,
+)
 from pydantic import BaseModel
 
 from aidial_adapter_vertexai.chat.chat_completion_adapter import (
@@ -41,7 +39,7 @@ from aidial_adapter_vertexai.chat.chat_completion_adapter import (
 from aidial_adapter_vertexai.chat.consumer import Consumer
 from aidial_adapter_vertexai.chat.errors import UserError
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
-from aidial_adapter_vertexai.chat.tools import ToolsConfig, ToolsMode
+from aidial_adapter_vertexai.chat.tools import ToolsConfig
 from aidial_adapter_vertexai.chat.truncate_prompt import TruncatedPrompt
 from aidial_adapter_vertexai.deployments import ClaudeDeployment
 from aidial_adapter_vertexai.dial_api.request import ModelParameters
@@ -50,51 +48,8 @@ from aidial_adapter_vertexai.dial_api.token_usage import TokenUsage
 from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from aidial_adapter_vertexai.utils.adapter_deployment import AdapterDeployment
 from aidial_adapter_vertexai.utils.env import get_env_int
-from aidial_adapter_vertexai.utils.list import omit_by_indices
 
 _CLAUDE_DEFAULT_MAX_TOKENS = get_env_int("CLAUDE_DEFAULT_MAX_TOKENS", 1536)
-
-
-def _to_tools_mode(c: ToolsMode) -> AnthropicToolsMode:
-    return (
-        AnthropicToolsMode.FUNCTIONS
-        if c == ToolsMode.FUNCTIONS
-        else AnthropicToolsMode.TOOLS
-    )
-
-
-def _to_tool_config(
-    tools: ToolsConfig, static_tools: StaticToolsConfig
-) -> AnthropicToolsConfig:
-    return AnthropicToolsConfig(
-        tools=tools.tools,
-        static_tools=[
-            StaticTool(type="static_function", static_function=function)
-            for function in static_tools.functions
-        ],
-        tools_mode=_to_tools_mode(tools.tools_mode),
-        tool_choice=tools.tool_choice,
-        tool_ids=tools.tool_ids,
-    )
-
-
-def _to_model_params(
-    params: ModelParameters,
-    tools: ToolsConfig,
-    static_tools: StaticToolsConfig,
-) -> AnthropicModelParameters:
-    return AnthropicModelParameters(
-        temperature=params.temperature,
-        top_p=params.top_p,
-        n=params.n or 1,
-        stop=params.stop or [],
-        seed=params.seed,
-        max_tokens=params.max_tokens,
-        max_prompt_tokens=params.max_prompt_tokens,
-        stream=params.stream,
-        tool_config=_to_tool_config(tools, static_tools),
-        configuration=params.configuration,
-    )
 
 
 @dataclass
@@ -192,10 +147,7 @@ class _ConsumerAdapter(AnthropicConsumer):
         return self.consumer.__exit__(exc_type, exc, traceback)
 
 
-@dataclass
-class ClaudePrompt:
-    params: AnthropicModelParameters
-    messages: list[Message]
+ClaudePrompt = AnthropicAdapterRequest
 
 
 @dataclass
@@ -233,17 +185,21 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: list[Message],
+        request: ChatCompletionRequest,
     ) -> ClaudePrompt | UserError:
-        model_params = _to_model_params(params, tools, static_tools)
-        return ClaudePrompt(model_params, messages)
+        # `n` and `max_prompt_tokens` are handled by the caller:
+        # n>1 is emulated by calling the model n times and
+        # the truncation is driven via `truncate_prompt`.
+        return replace(
+            AnthropicAdapterRequest.create(request),
+            n=params.n or 1,
+            max_prompt_tokens=params.max_prompt_tokens,
+        )
 
     async def chat(
         self, params: ModelParameters, consumer: Consumer, prompt: ClaudePrompt
     ) -> None:
-        await self.claude_adapter.chat(
-            _ConsumerAdapter(consumer), prompt.params, prompt.messages
-        )
+        await self.claude_adapter.chat(_ConsumerAdapter(consumer), prompt)
 
     async def configuration(self) -> type[BaseModel] | None:
         return await self.claude_adapter.configuration()
@@ -253,19 +209,34 @@ class ClaudeChatCompletionAdapter(ChatCompletionAdapter[ClaudePrompt]):
     ) -> TruncatedPrompt[ClaudePrompt]:
         discarded_indices = (
             await self.claude_adapter.compute_discarded_messages(
-                prompt.params, prompt.messages
+                replace(prompt, max_prompt_tokens=max_prompt_tokens)
             )
         ) or []
-        prompt.messages = omit_by_indices(prompt.messages, discarded_indices)
+
+        truncated = _truncate_adapter_request(prompt, discarded_indices)
+
         return TruncatedPrompt(
-            prompt=prompt,
-            discarded_messages=discarded_indices,
+            prompt=truncated, discarded_messages=discarded_indices
         )
 
     async def count_prompt_tokens(self, prompt: ClaudePrompt) -> int:
-        return await self.claude_adapter.count_prompt_tokens(
-            prompt.params, prompt.messages
-        )
+        return await self.claude_adapter.count_prompt_tokens(prompt)
 
     async def count_completion_tokens(self, string: str) -> int:
         return await self.claude_adapter.count_completion_tokens(string)
+
+
+def _truncate_adapter_request(
+    request: ClaudePrompt, discarded_indices: list[int]
+) -> ClaudePrompt:
+    discarded = set(discarded_indices)
+    return replace(
+        request,
+        messages=ListProjection(
+            [
+                (message, indices)
+                for message, indices in request.messages.lst
+                if not indices & discarded
+            ]
+        ),
+    )

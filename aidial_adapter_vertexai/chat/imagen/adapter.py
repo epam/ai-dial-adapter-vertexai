@@ -1,6 +1,7 @@
 from logging import DEBUG
 
-from aidial_sdk.chat_completion import Attachment, Message
+from aidial_sdk.chat_completion import Attachment
+from aidial_sdk.chat_completion.request import ChatCompletionRequest
 from aidial_sdk.exceptions import InvalidRequestError
 from google.genai.client import Client as GenAIClient
 from google.genai.types import GenerateImagesConfigDict, GenerateImagesResponse
@@ -65,14 +66,14 @@ class ImagenChatCompletionAdapter(ChatCompletionAdapter[ImagenPrompt]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: list[Message],
+        request: ChatCompletionRequest,
     ) -> ImagenPrompt:
         tools.not_supported()
         static_tools.not_supported()
-        if len(messages) == 0:
+        if len(request.messages) == 0:
             raise ValidationError("The list of messages must not be empty")
 
-        content = messages[-1].content
+        content = request.messages[-1].content
         if content is None:
             raise ValidationError("The last message must have content")
 
