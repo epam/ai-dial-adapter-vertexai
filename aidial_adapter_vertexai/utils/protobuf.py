@@ -9,6 +9,4 @@ def message_to_string(message: proto.Message) -> str:
 
 
 def message_to_dict(message: proto.Message) -> dict:
-    # MessageToDict is untyped; its inferred return widens to the union its
-    # recursive helper returns.
     return cast(dict, json_format.MessageToDict(message._pb))
