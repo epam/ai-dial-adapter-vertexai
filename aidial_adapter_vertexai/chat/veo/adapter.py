@@ -3,9 +3,9 @@ from logging import DEBUG
 
 from aidial_sdk.chat_completion import (
     Attachment,
-    Message,
     Status,
 )
+from aidial_sdk.chat_completion.request import ChatCompletionRequest
 from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
 from google.genai.client import Client as GenAIClient
 from google.genai.types import (
@@ -70,11 +70,11 @@ class VeoChatCompletionAdapter(ChatCompletionAdapter[VeoPrompt]):
         params: ModelParameters,
         tools: ToolsConfig,
         static_tools: StaticToolsConfig,
-        messages: list[Message],
+        request: ChatCompletionRequest,
     ) -> VeoPrompt:
         tools.not_supported()
         static_tools.not_supported()
-        return await VeoPromptParser.parse(self.file_storage, messages)
+        return await VeoPromptParser.parse(self.file_storage, request.messages)
 
     @override
     async def truncate_prompt(

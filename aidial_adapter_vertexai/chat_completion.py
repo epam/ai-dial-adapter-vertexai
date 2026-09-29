@@ -100,9 +100,7 @@ class VertexAIChatCompletion(ChatCompletion):
         model = await self._get_model(request)
         tools = ToolsConfig.from_request(request)
         static_tools = StaticToolsConfig.from_request(request)
-        prompt = await model.parse_prompt(
-            params, tools, static_tools, request.messages
-        )
+        prompt = await model.parse_prompt(params, tools, static_tools, request)
 
         if isinstance(prompt, UserError):
             await prompt.report_usage(response)
@@ -204,7 +202,7 @@ class VertexAIChatCompletion(ChatCompletion):
             tools = ToolsConfig.from_request(request)
             static_tools = StaticToolsConfig.from_request(request)
             prompt = await model.parse_prompt(
-                params, tools, static_tools, request.messages
+                params, tools, static_tools, request
             )
             if isinstance(prompt, UserError):
                 raise prompt
@@ -241,7 +239,7 @@ class VertexAIChatCompletion(ChatCompletion):
             tools = ToolsConfig.from_request(request)
             static_tools = StaticToolsConfig.from_request(request)
             prompt = await model.parse_prompt(
-                params, tools, static_tools, request.messages
+                params, tools, static_tools, request
             )
 
             truncated_prompt = await model.truncate_prompt(
