@@ -1,3 +1,5 @@
+from typing import cast
+
 import proto
 from google.protobuf import json_format
 
@@ -7,4 +9,4 @@ def message_to_string(message: proto.Message) -> str:
 
 
 def message_to_dict(message: proto.Message) -> dict:
-    return json_format.MessageToDict(message._pb)
+    return cast(dict, json_format.MessageToDict(message._pb))
