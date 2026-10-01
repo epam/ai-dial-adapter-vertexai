@@ -88,17 +88,7 @@ async def _close_httpx_client(client: httpx.AsyncClient) -> None:
 
 @cache(_close_httpx_client)
 async def get_httpx_client() -> httpx.AsyncClient:
-    """
-    A single connection pool shared by all the upstream SDK clients
-    which are created per-request.
-
-    Giving such a client its own pool isn't an option, since nothing holds it
-    past the request handler, so the garbage collector closes the pool
-    in the middle of the streaming response.
-    """
-    return httpx.AsyncClient(
-        timeout=_get_default_anthropic_timeout(), follow_redirects=True
-    )
+    return httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
 
 
 async def get_anthropic_foundry_client(
