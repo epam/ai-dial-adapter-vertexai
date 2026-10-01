@@ -123,16 +123,17 @@ class MessageState(_StateModel):
         2. If there are any function call blocks, attach the thought signature to the *first* function block.
         3. If there are no function call blocks, attach the thought signature to the *last* block.
 
-        Besides that, the generated images get back their own thought signatures.
+        Besides that, the generated images get back their own thought signatures,
+        which take precedence over the signature attached to the last block.
         """
-        self._set_image_thought_signatures(content)
-
         thought_signature = self._get_thought_signature()
 
         if thought_signature is None:
             self._disable_thought_signature_validation(content)
         else:
             self._set_thought_signature(content, thought_signature)
+
+        self._set_image_thought_signatures(content)
 
     def to_json(self) -> dict:
         return self.model_dump(exclude_none=True, mode="json")

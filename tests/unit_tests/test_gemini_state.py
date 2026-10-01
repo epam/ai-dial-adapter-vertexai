@@ -143,3 +143,15 @@ def test_state_without_image_signatures_leaves_images_intact():
 
     parts = content.parts or []
     assert [part.thought_signature for part in parts] == [None, None]
+
+
+def test_image_signature_is_not_overwritten_in_image_only_content():
+    state = MessageState()
+    state.set_thought_signature(_SIGNATURE)
+    state.set_image_thought_signature(_IMAGE, _IMAGE_SIGNATURE)
+
+    content = _content(_image())
+    state.update_content(content)
+
+    parts = content.parts or []
+    assert [part.thought_signature for part in parts] == [_IMAGE_SIGNATURE]
