@@ -82,13 +82,23 @@ async def get_anthropic_vertex_client(
     )
 
 
-async def _close_anthropic_httpx_client(client: httpx.AsyncClient) -> None:
+async def _close_httpx_client(client: httpx.AsyncClient) -> None:
     await client.aclose()
 
 
-@cache(_close_anthropic_httpx_client)
-async def get_anthropic_httpx_client(base_url: str) -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
+@cache(_close_httpx_client)
+async def get_httpx_client() -> httpx.AsyncClient:
+    """
+    A single connection pool shared by all the upstream SDK clients
+    which are created per-request.
+
+    Giving such a client its own pool isn't an option, since nothing holds it
+    past the request handler, so the garbage collector closes the pool
+    in the middle of the streaming response.
+    """
+    return httpx.AsyncClient(
+        timeout=_get_default_anthropic_timeout(), follow_redirects=True
+    )
 
 
 async def get_anthropic_foundry_client(
@@ -99,7 +109,7 @@ async def get_anthropic_foundry_client(
         api_key=api_key,
         base_url=base_url,
         azure_ad_token_provider=token_provider,
-        http_client=await get_anthropic_httpx_client(base_url),
+        http_client=await get_httpx_client(),
         max_retries=ANTHROPIC_MAX_RETRY_ATTEMPTS,
     )
 
