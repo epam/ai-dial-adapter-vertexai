@@ -3,6 +3,7 @@ from aidial_sdk.chat_completion import Message as DialMessage
 from google.genai.types import Content as GenAIContent
 from pydantic import BaseModel
 
+from aidial_adapter_vertexai.dial_api.storage import compute_hash_digest
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
@@ -27,6 +28,36 @@ class Content(_StateModel):
 
 class MessageState(_StateModel):
     gemini_message_content: Content | None = None
+
+    image_thought_signatures: dict[str, bytes] | None = None
+    """
+    Thought signatures of the generated images keyed by the SHA-256 digest of the image data.
+
+    Every generated image carries its own signature, which must be sent back
+    on the very same image part in follow-up requests (e.g. multi-turn image editing).
+    The images are returned as attachments and are converted back to parts
+    in a different order (attachments go before the text),
+    so the signatures are matched to the parts by the image data rather than by position.
+    """
+
+    def set_image_thought_signature(
+        self, data: bytes, thought_signature: bytes
+    ) -> None:
+        if self.image_thought_signatures is None:
+            self.image_thought_signatures = {}
+        self.image_thought_signatures[compute_hash_digest(data)] = (
+            thought_signature
+        )
+
+    def _set_image_thought_signatures(self, content: GenAIContent):
+        if not self.image_thought_signatures:
+            return
+
+        for part in content.parts or []:
+            if (image := part.inline_data) and image.data:
+                digest = compute_hash_digest(image.data)
+                if signature := self.image_thought_signatures.get(digest):
+                    part.thought_signature = signature
 
     def set_thought_signature(self, thought_signature: bytes) -> None:
         if self.gemini_message_content:
@@ -91,6 +122,9 @@ class MessageState(_StateModel):
             Therefore, we guard against it by setting a fake signature to relax this validation.
         2. If there are any function call blocks, attach the thought signature to the *first* function block.
         3. If there are no function call blocks, attach the thought signature to the *last* block.
+
+        Besides that, the generated images get back their own thought signatures,
+        which take precedence over the signature attached to the last block.
         """
         thought_signature = self._get_thought_signature()
 
@@ -98,6 +132,8 @@ class MessageState(_StateModel):
             self._disable_thought_signature_validation(content)
         else:
             self._set_thought_signature(content, thought_signature)
+
+        self._set_image_thought_signatures(content)
 
     def to_json(self) -> dict:
         return self.model_dump(exclude_none=True, mode="json")
