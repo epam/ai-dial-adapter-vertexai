@@ -32,7 +32,7 @@ google-auth = "2.49.0"
 google-genai = "1.72.0"
 openai = "2.48.0"
 pydantic = "2.11.2"
-uvicorn = "0.23.2"
+uvicorn = { version = "0.23.2", extras = ["standard"] }
 pillow = "12.3.0"
 pypdf = { version = "6.16.1", extras = ["crypto"] }
 numpy = "2.0.0"
