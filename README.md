@@ -683,11 +683,28 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |GCP_PROJECT_ID||GCP project ID|
 |LOG_LEVEL|INFO|Application log level. Use DEBUG for dev purposes and INFO in prod|
 |WEB_CONCURRENCY|1|Number of workers for the server|
+|TIMEOUT_KEEP_ALIVE|70|How long in seconds the server keeps an idle HTTP keep-alive connection open before closing it. Must be greater than the caller's pooled-connection timeout — see [Keep-alive timeout](#keep-alive-timeout)|
 |DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
 |COMPATIBILITY_MAPPING|{}|**Deprecated** in favour of [compatibility configuration in DIAL Core config](#compatibility-configuration-in-dial-core-config). A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-configuration-in-adapter) section.|
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 |GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
 |ANTHROPIC_MAX_RETRY_ATTEMPTS|0|How many times to retry Anthropic chat model requests when the provider returns a retriable error|
+
+### Keep-alive timeout
+
+`TIMEOUT_KEEP_ALIVE` is passed to uvicorn as [`--timeout-keep-alive`](https://www.uvicorn.org/settings/#timeouts). It sets how long, in seconds, the adapter keeps an idle HTTP keep-alive connection open before closing it.
+
+The caller must give up on an idle connection *before* the adapter closes it. On the DIAL Core side the matching setting is `client.keepAliveTimeout` — the [Vert.x HTTP client option](https://vertx.io/docs/apidocs/io/vertx/core/http/HttpClientOptions.html) that controls how long Core keeps an idle connection in its pool. It is also expressed in seconds and defaults to **60**; DIAL Core does not override that default.
+
+**Keep `TIMEOUT_KEEP_ALIVE` at DIAL Core's `client.keepAliveTimeout` plus 10 seconds:**
+
+|DIAL Core `client.keepAliveTimeout`|`TIMEOUT_KEEP_ALIVE`|
+|---|---|
+|60 _(default)_|70 _(default)_|
+
+The default of 70 already covers an unmodified DIAL Core, so change it only if you have changed `client.keepAliveTimeout`.
+
+Note that uvicorn's own default of 5 seconds is **not** safe here. The adapter would close idle connections long before Core expires them; Core would eventually hand a request to a connection the adapter had already closed; and that request — written into a half-closed socket and never read — would fail with `Connection was closed`. The 10 second margin keeps Core the side that always closes first, which removes the race.
 
 ### Logging
 

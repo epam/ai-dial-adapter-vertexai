@@ -46,5 +46,3 @@ ENTRYPOINT ["/docker_entrypoint.sh"]
 
 HEALTHCHECK  --interval=10s --timeout=5s --start-period=30s --retries=6 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
-
-CMD ["uvicorn", "aidial_adapter_vertexai.app:app", "--host", "0.0.0.0", "--port", "5000"]
