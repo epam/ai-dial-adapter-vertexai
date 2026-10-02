@@ -13,6 +13,7 @@ from anthropic import (
 )
 from fastapi import Request
 from google.genai.client import Client as GenAIClient
+from google.genai.types import HttpOptions
 from mistralai.client import Mistral
 from mistralai.gcp.client import MistralGCP
 from pydantic import BaseModel
@@ -25,6 +26,7 @@ from aidial_adapter_vertexai.app_config import (
     get_default_project,
     get_default_region,
     get_genai_client,
+    get_httpx_client,
     get_mistral_gcp_client,
 )
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -102,13 +104,22 @@ class _ApiKeyUpstreamConfig(BaseModel):
         return None if key is None else cls(api_key=key)
 
     async def get_genai_client(self) -> GenAIClient:
-        return GenAIClient(api_key=self.api_key)
+        return GenAIClient(
+            api_key=self.api_key,
+            http_options=HttpOptions(
+                httpx_async_client=await get_httpx_client()
+            ),
+        )
 
     async def get_anthropic_client(self) -> AsyncAnthropic:
-        return AsyncAnthropic(api_key=self.api_key)
+        return AsyncAnthropic(
+            api_key=self.api_key, http_client=await get_httpx_client()
+        )
 
     async def get_mistral_client(self) -> Mistral:
-        return Mistral(api_key=self.api_key)
+        return Mistral(
+            api_key=self.api_key, async_client=await get_httpx_client()
+        )
 
 
 class _CloudUpstreamConfig(BaseModel):
