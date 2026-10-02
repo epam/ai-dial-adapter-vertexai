@@ -694,7 +694,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 
 `TIMEOUT_KEEP_ALIVE` is passed to uvicorn as [`--timeout-keep-alive`](https://www.uvicorn.org/settings/#timeouts). It sets how long, in seconds, the adapter keeps an idle HTTP keep-alive connection open before closing it.
 
-The caller must give up on an idle connection *before* the adapter closes it. On the DIAL Core side the matching setting is `client.keepAliveTimeout` — the [Vert.x HTTP client option](https://vertx.io/docs/apidocs/io/vertx/core/http/HttpClientOptions.html) that controls how long Core keeps an idle connection in its pool. It is also expressed in seconds and defaults to **60**; DIAL Core does not override that default.
+The caller must give up on an idle connection *before* the adapter closes it. On the DIAL Core side the matching setting is `client.keepAliveTimeout` — the [Vert.x HTTP client option](https://vertx.io/docs/apidocs/io/vertx/core/http/HttpClientOptions.html) that controls how long Core keeps an idle connection in its pool. It is also expressed in seconds and defaults to **60**.
 
 **Keep `TIMEOUT_KEEP_ALIVE` at DIAL Core's `client.keepAliveTimeout` plus 10 seconds:**
 

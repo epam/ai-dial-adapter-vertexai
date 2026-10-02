@@ -42,7 +42,8 @@ ENV PYDANTIC_V2=1
 EXPOSE 5000
 
 USER appuser
-ENTRYPOINT ["/docker_entrypoint.sh"]
 
 HEALTHCHECK  --interval=10s --timeout=5s --start-period=30s --retries=6 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+
+ENTRYPOINT ["/docker_entrypoint.sh"]
