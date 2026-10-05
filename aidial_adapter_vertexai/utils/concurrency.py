@@ -4,15 +4,11 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import TypeVar
 
-from aidial_adapter_vertexai.utils.env import get_env_int
-
 T = TypeVar("T")
 A = TypeVar("A")
 
 # A single shared pool for all the blocking calls.
-_THREAD_POOL = ThreadPoolExecutor(
-    max_workers=get_env_int("THREAD_POOL_SIZE", 512)
-)
+_THREAD_POOL = ThreadPoolExecutor(max_workers=512)
 
 _thread_lock = threading.Lock()
 
