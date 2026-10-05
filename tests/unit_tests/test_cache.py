@@ -296,3 +296,58 @@ async def test_same_key_after_clear_recomputes_once_under_concurrency() -> None:
 
         assert results == [gen] * 5
         assert calls == gen
+
+
+async def test_cancelled_caller_does_not_poison_the_cache():
+    """
+    The task is shared, so a caller cancelled while awaiting it -- a client
+    disconnect, "stop generating" -- must not cancel it for everyone else.
+    An unshielded `await` left the cancelled task cached, and every later
+    caller got `CancelledError` for the lifetime of the process.
+    """
+    calls = 0
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    @cache()
+    async def f(key: str) -> int:
+        nonlocal calls
+        calls += 1
+        entered.set()
+        await release.wait()
+        return 10
+
+    cancelled = asyncio.create_task(f("x"))
+    await entered.wait()
+
+    cancelled.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await cancelled
+
+    later = asyncio.create_task(f("x"))
+    await asyncio.sleep(0)
+    release.set()
+
+    assert await later == 10
+    # The abandoned call was reused, not restarted.
+    assert calls == 1
+
+
+async def test_cancelled_caller_does_not_cancel_a_concurrent_one():
+    release = asyncio.Event()
+
+    @cache()
+    async def f(key: str) -> int:
+        await release.wait()
+        return 10
+
+    survivor = asyncio.create_task(f("x"))
+    cancelled = asyncio.create_task(f("x"))
+    await asyncio.sleep(0)
+
+    cancelled.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await cancelled
+
+    release.set()
+    assert await survivor == 10
