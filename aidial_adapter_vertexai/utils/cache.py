@@ -42,7 +42,7 @@ def cache(
                         )
 
                 try:
-                    return await task
+                    return await asyncio.shield(task)
                 except Exception:
                     async with self._lock:
                         if self._tasks.get(key) is task:
