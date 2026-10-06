@@ -328,8 +328,13 @@ class GeminiGenAIChatCompletionAdapter(
                 candidate = chunk.candidates[0]
                 if candidate.content and candidate.content.parts:
                     for part in candidate.content.parts:
-                        if part.thought_signature:
-                            state.set_thought_signature(part.thought_signature)
+                        if signature := part.thought_signature:
+                            if (image := part.inline_data) and image.data:
+                                state.set_image_thought_signature(
+                                    image.data, signature
+                                )
+                            else:
+                                state.set_thought_signature(signature)
 
                         await create_function_calls_from_genai(
                             part, consumer, tools
