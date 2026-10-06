@@ -1,3 +1,5 @@
+import anthropic
+import httpx
 from anthropic import AsyncAnthropic
 from google.genai.client import Client as GenAIClient
 from mistralai.client import Mistral
@@ -6,8 +8,10 @@ import aidial_adapter_vertexai.upstream_config as upstream_config_module
 from aidial_adapter_vertexai.app_config import (
     HTTP_MAX_CONNECTIONS,
     HTTP_MAX_KEEPALIVE_CONNECTIONS,
+    HTTP_POOL_TIMEOUT,
     get_httpx_client,
 )
+from aidial_adapter_vertexai.dial_api.exceptions import to_dial_exception
 from aidial_adapter_vertexai.upstream_config import (
     _ApiKeyUpstreamConfig,
     parse_upstream_config,
@@ -102,3 +106,20 @@ async def test_shared_httpx_client_uses_configured_connection_limits():
     pool = client._transport._pool  # type: ignore[attr-defined]
     assert pool._max_connections == HTTP_MAX_CONNECTIONS
     assert pool._max_keepalive_connections == HTTP_MAX_KEEPALIVE_CONNECTIONS
+
+
+async def test_shared_httpx_client_uses_configured_pool_timeout():
+    client = await get_httpx_client()
+    assert client.timeout.pool == HTTP_POOL_TIMEOUT
+
+
+def test_pool_timeout_maps_to_503():
+    request = httpx.Request("POST", "https://example.com")
+    pool_timeout = httpx.PoolTimeout("pool exhausted", request=request)
+    try:
+        raise anthropic.APITimeoutError(request=request) from pool_timeout
+    except anthropic.APITimeoutError as wrapped:
+        anthropic_error = wrapped
+
+    for e in [pool_timeout, anthropic_error]:
+        assert to_dial_exception(e).status_code == 503

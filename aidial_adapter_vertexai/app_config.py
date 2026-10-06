@@ -35,6 +35,7 @@ HTTP_MAX_CONNECTIONS = get_env_int("HTTP_MAX_CONNECTIONS", 250)
 HTTP_MAX_KEEPALIVE_CONNECTIONS = get_env_int(
     "HTTP_MAX_KEEPALIVE_CONNECTIONS", 75
 )
+HTTP_POOL_TIMEOUT = get_env_int("HTTP_POOL_TIMEOUT", 10)
 
 
 def init_vertex_ai():
@@ -143,4 +144,7 @@ def _get_default_anthropic_timeout() -> httpx.Timeout:
 
     timeout = anthropic._constants.DEFAULT_TIMEOUT.as_dict()
     timeout["connect"] *= 1.0001  # type: ignore
+    # Fail fast when the connection pool is exhausted instead of queueing
+    # for the Anthropic default of 10 minutes.
+    timeout["pool"] = HTTP_POOL_TIMEOUT
     return httpx.Timeout(**timeout)
