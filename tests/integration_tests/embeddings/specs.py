@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment as D
 
+_CENTRAL = "us-central1"
+
 
 @dataclass
 class ModelSpec:
@@ -11,6 +13,7 @@ class ModelSpec:
     supports_instr: bool
     default_dimensions: int
     supports_dimensions: bool
+    region: str = _CENTRAL
 
 
 _BASIC_EMBEDDING_TYPES: list[str] = [
