@@ -9,8 +9,8 @@ from google.api_core.exceptions import GoogleAPICallError, PermissionDenied
 from google.auth.exceptions import GoogleAuthError
 from google.genai.errors import APIError
 
-from aidial_adapter_vertexai.app_config import HTTP_MAX_CONNECTIONS
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
+from aidial_adapter_vertexai.utils.constants import HTTP_MAX_CONNECTIONS
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
