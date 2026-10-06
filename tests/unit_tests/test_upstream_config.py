@@ -3,7 +3,11 @@ from google.genai.client import Client as GenAIClient
 from mistralai.client import Mistral
 
 import aidial_adapter_vertexai.upstream_config as upstream_config_module
-from aidial_adapter_vertexai.app_config import get_httpx_client
+from aidial_adapter_vertexai.app_config import (
+    HTTP_MAX_CONNECTIONS,
+    HTTP_MAX_KEEPALIVE_CONNECTIONS,
+    get_httpx_client,
+)
 from aidial_adapter_vertexai.upstream_config import (
     _ApiKeyUpstreamConfig,
     parse_upstream_config,
@@ -91,3 +95,10 @@ async def test_api_key_mistral_client_uses_shared_httpx_client():
     config = _ApiKeyUpstreamConfig(api_key="test-key")
     client: Mistral = await config.get_mistral_client()
     assert client.sdk_configuration.async_client is await get_httpx_client()
+
+
+async def test_shared_httpx_client_uses_configured_connection_limits():
+    client = await get_httpx_client()
+    pool = client._transport._pool  # type: ignore[attr-defined]
+    assert pool._max_connections == HTTP_MAX_CONNECTIONS
+    assert pool._max_keepalive_connections == HTTP_MAX_KEEPALIVE_CONNECTIONS
