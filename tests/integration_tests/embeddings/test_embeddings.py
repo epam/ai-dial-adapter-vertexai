@@ -59,7 +59,7 @@ def spec(request) -> ModelSpec:
 @pytest.fixture
 def client(spec: ModelSpec, get_openai_client) -> AsyncAzureOpenAI:
     model_id = spec.deployment.value
-    return get_openai_client(model_id)
+    return get_openai_client(model_id, region=spec.region)
 
 
 async def test_embeddings_one_text(client, spec: ModelSpec):
