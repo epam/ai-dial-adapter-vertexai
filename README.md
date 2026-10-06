@@ -21,6 +21,7 @@
         - [Imagen models](#imagen-models)
         - [Veo models](#veo-models)
         - [Gemini 2.5, Gemini 3 models](#gemini-25-gemini-3-models)
+        - [Gemini safety settings](#gemini-safety-settings)
         - [Gemini 2.5 Flash Image model](#gemini-25-flash-image-model)
         - [Claude models](#claude-models)
       - [Google Search grounding](#google-search-grounding)
@@ -28,6 +29,7 @@
     - [Embedding models](#embedding-models)
       - [Gemini Embedding 2](#gemini-embedding-2)
   - [Environment variables](#environment-variables)
+    - [Keep-alive timeout](#keep-alive-timeout)
     - [Logging](#logging)
     - [Default `max_tokens` for Claude models](#default-max_tokens-for-claude-models)
   - [Compatibility mode](#compatibility-mode)
@@ -689,8 +691,8 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 |GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
 |ANTHROPIC_MAX_RETRY_ATTEMPTS|0|How many times to retry Anthropic chat model requests when the provider returns a retriable error|
-|HTTP_MAX_CONNECTIONS|250|Maximum number of concurrent connections each upstream HTTP client opens (Anthropic, Mistral, and API-key based Google GenAI). Requests above the limit wait for a free connection|
-|HTTP_MAX_KEEPALIVE_CONNECTIONS|75|Maximum number of idle connections each upstream HTTP client keeps open for reuse|
+|HTTP_MAX_CONNECTIONS|250|Maximum number of concurrent connections the adapter opens to the upstreams. All the SDK clients *(Anthropic, Mistral and Google GenAI)* share a single connection pool, so the limit caps the total upstream concurrency of the process. Requests above the limit wait for a free connection|
+|HTTP_MAX_KEEPALIVE_CONNECTIONS|75|Maximum number of idle connections the shared pool keeps open for reuse|
 |HTTP_POOL_TIMEOUT|10|How long in seconds a request waits for a free upstream connection when `HTTP_MAX_CONNECTIONS` is reached. On timeout the adapter returns 503|
 
 ### Keep-alive timeout

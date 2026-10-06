@@ -5,14 +5,14 @@ from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
 
 from aidial_adapter_vertexai.anthropic_passthrough import get_anthropic_client
-from aidial_adapter_vertexai.app_config import (
+from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
+from aidial_adapter_vertexai.clients import (
     get_anthropic_vertex_client,
     get_genai_client,
     get_httpx_client,
     get_mistral_gcp_client,
     init_vertex_ai,
 )
-from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
 from aidial_adapter_vertexai.dial_api.exceptions import dial_exception_decorator
 from aidial_adapter_vertexai.dial_api.response import (
     ModelObject,
@@ -31,10 +31,10 @@ from aidial_adapter_vertexai.vertex_ai import get_multi_modal_embedding_model
 async def lifespan(_: DIALApp):
     init_vertex_ai()
     yield
+    await get_httpx_client.clear()
     await get_genai_client.clear()
     await get_anthropic_vertex_client.clear()
     await get_multi_modal_embedding_model.clear()
-    await get_httpx_client.clear()
     await get_mistral_gcp_client.clear()
     await close_azure_credential()
 

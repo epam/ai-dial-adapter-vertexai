@@ -18,9 +18,7 @@ from mistralai.client import Mistral
 from mistralai.gcp.client import MistralGCP
 from pydantic import BaseModel
 
-from aidial_adapter_vertexai.app_config import (
-    DEFAULT_PROJECT_ENV_VAR,
-    DEFAULT_REGION_ENV_VAR,
+from aidial_adapter_vertexai.clients import (
     get_anthropic_foundry_client,
     get_anthropic_vertex_client,
     get_default_project,
@@ -28,6 +26,10 @@ from aidial_adapter_vertexai.app_config import (
     get_genai_client,
     get_httpx_client,
     get_mistral_gcp_client,
+)
+from aidial_adapter_vertexai.utils.constants import (
+    DEFAULT_PROJECT_ENV_VAR,
+    DEFAULT_REGION_ENV_VAR,
 )
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 

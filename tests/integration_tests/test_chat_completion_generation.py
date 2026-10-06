@@ -1366,7 +1366,7 @@ async def test_block_and_large_max_tokens_success(chat: Chat):
 @pytest.mark.parametrize("stream", [False], ids=["block"])
 async def test_block_and_large_max_tokens_fail(chat: Chat):
     with patch(
-        "aidial_adapter_vertexai.app_config._get_default_anthropic_timeout",
+        "aidial_adapter_vertexai.clients._get_http_timeouts",
         return_value=anthropic._constants.DEFAULT_TIMEOUT,
     ):
         with pytest.raises(openai.InternalServerError) as exc:
