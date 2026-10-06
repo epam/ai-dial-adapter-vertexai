@@ -31,6 +31,12 @@ GOOGLE_GENAI_MAX_RETRY_ATTEMPTS = get_env_int(
     "GOOGLE_GENAI_MAX_RETRY_ATTEMPTS", 0
 )
 
+HTTP_MAX_CONNECTIONS = get_env_int("HTTP_MAX_CONNECTIONS", 250)
+HTTP_MAX_KEEPALIVE_CONNECTIONS = get_env_int(
+    "HTTP_MAX_KEEPALIVE_CONNECTIONS", 75
+)
+HTTP_POOL_TIMEOUT = get_env_int("HTTP_POOL_TIMEOUT", 10)
+
 
 def init_vertex_ai():
     if (region := get_default_region()) and (project := get_default_project()):
@@ -71,7 +77,9 @@ async def _close_anthropic_client(client: AsyncAnthropicVertex) -> None:
 async def get_anthropic_vertex_client(
     project: str, region: str
 ) -> AsyncAnthropicVertex:
-    http_client = httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
+    http_client = httpx.AsyncClient(
+        timeout=_get_default_anthropic_timeout(), limits=_get_http_limits()
+    )
     creds = maybe_make_aws_credentials()
     return AsyncAnthropicVertex(
         project_id=project,
@@ -88,7 +96,9 @@ async def _close_httpx_client(client: httpx.AsyncClient) -> None:
 
 @cache(_close_httpx_client)
 async def get_httpx_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=_get_default_anthropic_timeout())
+    return httpx.AsyncClient(
+        timeout=_get_default_anthropic_timeout(), limits=_get_http_limits()
+    )
 
 
 async def get_anthropic_foundry_client(
@@ -111,8 +121,19 @@ async def _close_mistral_gcp_client(client: MistralGCP):
 
 @cache(_close_mistral_gcp_client)
 async def get_mistral_gcp_client(project_id: str, region: str) -> MistralGCP:
-    async_client = httpx.AsyncClient(follow_redirects=True)
+    async_client = httpx.AsyncClient(
+        follow_redirects=True, limits=_get_http_limits()
+    )
     return MistralGCP(project_id, region, async_client=async_client)
+
+
+def _get_http_limits() -> httpx.Limits:
+    # httpx defaults (100 connections, 20 keep-alive) cap the upstream
+    # concurrency per adapter process and force reconnects under load.
+    return httpx.Limits(
+        max_connections=HTTP_MAX_CONNECTIONS,
+        max_keepalive_connections=HTTP_MAX_KEEPALIVE_CONNECTIONS,
+    )
 
 
 def _get_default_anthropic_timeout() -> httpx.Timeout:
@@ -123,4 +144,7 @@ def _get_default_anthropic_timeout() -> httpx.Timeout:
 
     timeout = anthropic._constants.DEFAULT_TIMEOUT.as_dict()
     timeout["connect"] *= 1.0001  # type: ignore
+    # Fail fast when the connection pool is exhausted instead of queueing
+    # for the Anthropic default of 10 minutes.
+    timeout["pool"] = HTTP_POOL_TIMEOUT
     return httpx.Timeout(**timeout)
