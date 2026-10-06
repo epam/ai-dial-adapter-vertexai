@@ -56,6 +56,20 @@ def spec(request) -> ModelSpec:
     return request.param
 
 
+@pytest.fixture(autouse=True)
+def pin_region(request, monkeypatch):
+    """
+    The multi-modal embedding path goes through the deprecated vertexai SDK,
+    which resolves publisher models against the location given to
+    vertexai.init() and ignores the per-request region. Pin the env var as
+    well, so the spec's region drives both: init_vertex_ai() reads it from the
+    environment inside the app lifespan, which test_http_client starts per test.
+    """
+    if "spec" in request.fixturenames:
+        spec: ModelSpec = request.getfixturevalue("spec")
+        monkeypatch.setenv("DEFAULT_REGION", spec.region)
+
+
 @pytest.fixture
 def client(spec: ModelSpec, get_openai_client) -> AsyncAzureOpenAI:
     model_id = spec.deployment.value
