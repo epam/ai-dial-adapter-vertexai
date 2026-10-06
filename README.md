@@ -689,6 +689,9 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 |GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
 |ANTHROPIC_MAX_RETRY_ATTEMPTS|0|How many times to retry Anthropic chat model requests when the provider returns a retriable error|
+|HTTP_MAX_CONNECTIONS|250|Maximum number of concurrent connections each upstream HTTP client opens (Anthropic, Mistral, and API-key based Google GenAI). Requests above the limit wait for a free connection|
+|HTTP_MAX_KEEPALIVE_CONNECTIONS|75|Maximum number of idle connections each upstream HTTP client keeps open for reuse|
+|HTTP_POOL_TIMEOUT|10|How long in seconds a request waits for a free upstream connection when `HTTP_MAX_CONNECTIONS` is reached. On timeout the adapter returns 503|
 
 ### Keep-alive timeout
 

@@ -1,6 +1,7 @@
 from functools import wraps
 
 import anthropic
+import httpx
 import pydantic
 from aidial_sdk.exceptions import HTTPException as DialException
 from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
@@ -8,6 +9,7 @@ from google.api_core.exceptions import GoogleAPICallError, PermissionDenied
 from google.auth.exceptions import GoogleAuthError
 from google.genai.errors import APIError
 
+from aidial_adapter_vertexai.app_config import HTTP_MAX_CONNECTIONS
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
@@ -20,6 +22,16 @@ _CONTENT_FILTER_MSG = "The response is blocked, as it may violate our policies."
 
 
 def to_dial_exception(e: Exception) -> DialException:
+    if isinstance(e, httpx.PoolTimeout) or isinstance(
+        e.__cause__, httpx.PoolTimeout
+    ):
+        return DialException(
+            status_code=503,
+            type="internal_server_error",
+            message="No free upstream connection: the adapter connection pool "
+            f"is exhausted (HTTP_MAX_CONNECTIONS={HTTP_MAX_CONNECTIONS})",
+        )
+
     if isinstance(e, GoogleAuthError):
         return DialException(
             status_code=401,
