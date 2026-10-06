@@ -106,7 +106,13 @@ if spec := DeploymentSpec.compat_foundry(
 def is_broken_model(deployment: D) -> bool:
     # For models declared to be deprecated and no longer functioning,
     # but still responding with non-404 codes.
-    return deployment in {D.CLAUDE_3_OPUS, D.GEMINI_2_0_FLASH_EXP}
+    return deployment in {
+        D.GEMINI_2_0_FLASH_EXP,
+        D.CLAUDE_3_OPUS,
+        D.CLAUDE_3_HAIKU,
+        D.CLAUDE_4_SONNET,
+        D.CLAUDE_4_OPUS,
+    }
 
 
 def is_retired_model(deployment: D) -> bool:
@@ -117,14 +123,20 @@ def is_retired_model(deployment: D) -> bool:
     # available only for the existing customers.
     # https://docs.cloud.google.com/vertex-ai/generative-ai/docs/deprecations/partner-models
     return deployment in {
+        D.GEMINI_2_0_FLASH_001,
+        D.GEMINI_2_0_FLASH_LITE_1,
         D.GEMINI_2_5_PRO_PREVIEW_03_25,
         D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         D.GEMINI_3_PRO,
         D.GEMINI_3_PRO_PREVIEW,
+        D.GEMINI_3_PRO_IMAGE_PREVIEW,
+        D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
+        D.GEMINI_3_1_FLASH_LITE_PREVIEW,
         D.CLAUDE_3_5_HAIKU,
         D.CLAUDE_3_5_SONNET,
         D.CLAUDE_3_5_SONNET_V2,
         D.CLAUDE_3_7_SONNET,
+        D.CLAUDE_4_1_OPUS,
     }
 
 
@@ -177,7 +189,9 @@ deployments = select(
 )
 retired_deployments = select(pred(is_retired_model), _DEPLOYMENTS)
 vision_deployments = select(pred(is_vision_model), deployments)
-sample_deployment = select(pred(lambda d: d == D.CLAUDE_4_SONNET), deployments)
+sample_deployment = select(
+    pred(lambda d: d == D.CLAUDE_4_5_SONNET), deployments
+)
 
 
 def supports_json_object_response_format(deployment: D) -> bool:
@@ -815,8 +829,6 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
         )
 
     if deployment in (
-        D.GEMINI_2_5_PRO,
-        D.GEMINI_2_5_FLASH,
         D.GEMINI_3_PRO,
         D.GEMINI_3_PRO_PREVIEW,
         D.GEMINI_3_FLASH_PREVIEW,
@@ -841,6 +853,8 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
 
         # These models return tool call even if undeclared
         expects_tool_calls = deployment in (
+            D.GEMINI_2_5_PRO,
+            D.GEMINI_2_5_FLASH,
             D.GEMINI_3_1_FLASH_LITE,
             D.GEMINI_3_5_FLASH,
         )
@@ -1378,7 +1392,10 @@ async def test_compatible_deployment_id(get_openai_client, stream: bool):
         extra_headers={"x-upstream-extra-data": json.dumps(upstream_config)},
     )
 
-    msg = r"Publisher Model `projects/[^/]+/locations/[^/]+/publishers/anthropic/models/xxx` was not found."
+    # Match only the stable part of the upstream message: its exact wording
+    # ("Publisher Model ... was not found." vs "Publisher model ... was not
+    # found or your project does not have access to it.") drifts over time.
+    msg = r"Publisher [Mm]odel `projects/[^/]+/locations/[^/]+/publishers/anthropic/models/xxx` was not found"
     with pytest.raises(openai.NotFoundError, match=msg):
         await chat_completion(
             openai_client, stream=stream, messages=[user("test")]
