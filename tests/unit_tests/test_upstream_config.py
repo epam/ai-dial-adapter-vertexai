@@ -1,12 +1,17 @@
+import asyncio
+
 import anthropic
 import httpx
+import pytest
+from aiohttp import web
 from anthropic import AsyncAnthropic
 from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions
+from httpx_aiohttp import AiohttpTransport
 from mistralai.client import Mistral
 
 import aidial_adapter_vertexai.upstream_config as upstream_config_module
-from aidial_adapter_vertexai.clients import get_httpx_client
+from aidial_adapter_vertexai.clients import _AiohttpTransport, get_httpx_client
 from aidial_adapter_vertexai.dial_api.exceptions import to_dial_exception
 from aidial_adapter_vertexai.upstream_config import (
     _ApiKeyUpstreamConfig,
@@ -16,6 +21,7 @@ from aidial_adapter_vertexai.utils.constants import (
     HTTP_MAX_CONNECTIONS,
     HTTP_MAX_KEEPALIVE_CONNECTIONS,
     HTTP_POOL_TIMEOUT,
+    HTTP_TRANSPORT,
 )
 
 
@@ -133,9 +139,63 @@ async def test_genai_client_doesnt_disable_shared_httpx_timeouts():
 
 async def test_shared_httpx_client_uses_configured_connection_limits():
     client = await get_httpx_client()
-    pool = client._transport._pool  # type: ignore[attr-defined]
-    assert pool._max_connections == HTTP_MAX_CONNECTIONS
-    assert pool._max_keepalive_connections == HTTP_MAX_KEEPALIVE_CONNECTIONS
+    transport = client._transport  # type: ignore[attr-defined]
+    if HTTP_TRANSPORT == "aiohttp":
+        assert isinstance(transport, _AiohttpTransport)
+        assert transport.limits.max_connections == HTTP_MAX_CONNECTIONS
+    else:
+        pool = transport._pool  # type: ignore[attr-defined]
+        assert pool._max_connections == HTTP_MAX_CONNECTIONS
+        assert pool._max_keepalive_connections == HTTP_MAX_KEEPALIVE_CONNECTIONS
+
+
+async def test_aiohttp_pool_exhaustion_is_pool_timeout(unused_tcp_port: int):
+    release = asyncio.Event()
+
+    async def slow(_: web.Request) -> web.Response:
+        await release.wait()
+        return web.Response(text="ok")
+
+    app = web.Application()
+    app.router.add_get("/", slow)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, "127.0.0.1", unused_tcp_port).start()
+
+    client = httpx.AsyncClient(
+        transport=_AiohttpTransport(limits=httpx.Limits(max_connections=1)),
+        timeout=httpx.Timeout(5.0, pool=0.2),
+    )
+    url = f"http://127.0.0.1:{unused_tcp_port}/"
+    holder = asyncio.create_task(client.get(url))
+    try:
+        await asyncio.sleep(0.1)  # the only connection is now in use
+
+        with pytest.raises(httpx.PoolTimeout) as exc_info:
+            await client.get(url)
+        assert to_dial_exception(exc_info.value).status_code == 503
+    finally:
+        release.set()
+        assert (await holder).status_code == 200
+        await client.aclose()
+        await runner.cleanup()
+
+
+async def test_aiohttp_connect_timeout_without_queueing_stays_connect_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    async def _connect_timeout(self, request: httpx.Request):
+        raise httpx.ConnectTimeout("slow connect", request=request)
+
+    monkeypatch.setattr(
+        AiohttpTransport, "handle_async_request", _connect_timeout
+    )
+    transport = _AiohttpTransport()
+    with pytest.raises(httpx.ConnectTimeout) as exc_info:
+        await transport.handle_async_request(
+            httpx.Request("GET", "http://example.com")
+        )
+    assert not isinstance(exc_info.value, httpx.PoolTimeout)
 
 
 async def test_shared_httpx_client_uses_configured_pool_timeout():
