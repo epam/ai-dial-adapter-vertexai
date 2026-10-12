@@ -1,3 +1,5 @@
+import os
+
 from aidial_adapter_vertexai.utils.env import get_env_int
 
 DEFAULT_REGION_ENV_VAR = "DEFAULT_REGION"
@@ -13,6 +15,8 @@ HTTP_MAX_KEEPALIVE_CONNECTIONS = get_env_int(
     "HTTP_MAX_KEEPALIVE_CONNECTIONS", 75
 )
 HTTP_POOL_TIMEOUT = get_env_int("HTTP_POOL_TIMEOUT", 10)
+# "httpx" (httpcore pool) or "aiohttp" (the transport of the Anthropic SDK's DefaultAioHttpClient)
+HTTP_TRANSPORT = os.getenv("HTTP_TRANSPORT", "httpx")
 
 HTTP_CONNECT_TIMEOUT = 5.0
 HTTP_READ_TIMEOUT = 10 * 60

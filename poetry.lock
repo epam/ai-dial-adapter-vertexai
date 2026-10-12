@@ -300,11 +300,13 @@ files = [
 ]
 
 [package.dependencies]
+aiohttp = {version = "*", optional = true, markers = "extra == \"aiohttp\""}
 anyio = ">=3.5.0,<5"
 distro = ">=1.7.0,<2"
 docstring-parser = ">=0.15,<1"
 google-auth = {version = ">=2,<3", extras = ["requests"], optional = true, markers = "extra == \"vertex\""}
 httpx = ">=0.25.0,<1"
+httpx-aiohttp = {version = ">=0.1.9", optional = true, markers = "extra == \"aiohttp\""}
 jiter = ">=0.4.0,<1"
 pydantic = ">=1.9.0,<3"
 sniffio = "*"
@@ -1565,6 +1567,25 @@ cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<14)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
 zstd = ["zstandard (>=0.18.0)"]
+
+[[package]]
+name = "httpx-aiohttp"
+version = "0.2.0"
+description = "Aiohttp transport for HTTPX"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "httpx_aiohttp-0.2.0-py3-none-any.whl", hash = "sha256:ccd6eb19ba18805476096e8ef0b369a6beda3955db145a538979eface2fce7ff"},
+    {file = "httpx_aiohttp-0.2.0.tar.gz", hash = "sha256:d4796b981f04734f1d1db9b4d9326ea16bc994f126460b93b69036262cd4a9d8"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.10.0,<4"
+httpx = ">=0.27.0"
+
+[package.extras]
+httpx2 = ["httpx2 (>=2,<3)"]
 
 [[package]]
 name = "identify"
@@ -4116,4 +4137,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "4c318be0929d1ac27dc77543dc305fada48308d2475f41ef9b0c5a81e37ae413"
+content-hash = "ebda93523e4819fc4230c0dd3508a6de7e63550d0df7c8d5cda2c85fefa23992"
