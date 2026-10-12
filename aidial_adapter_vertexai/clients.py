@@ -6,6 +6,7 @@ import vertexai
 from anthropic import AsyncAnthropicFoundry, AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions, HttpRetryOptions
+from httpx_aiohttp import HttpxAiohttpClient
 from mistralai.gcp.client import MistralGCP
 
 from aidial_adapter_vertexai.aws_credentials import maybe_make_aws_credentials
@@ -21,6 +22,7 @@ from aidial_adapter_vertexai.utils.constants import (
     HTTP_MAX_KEEPALIVE_CONNECTIONS,
     HTTP_POOL_TIMEOUT,
     HTTP_READ_TIMEOUT,
+    HTTP_TRANSPORT,
     HTTP_WRITE_TIMEOUT,
 )
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -97,13 +99,31 @@ class _SharedAsyncClient(httpx.AsyncClient):
         return super().build_request(*args, timeout=timeout, **kwargs)
 
 
+class _SharedAiohttpClient(HttpxAiohttpClient, _SharedAsyncClient):
+    """
+    The same client on aiohttp's connection pool instead of httpcore's.
+    httpcore scans every pooled connection on each request event.
+    `max_connections` becomes the aiohttp connector limit;
+    `max_keepalive_connections` has no aiohttp equivalent.
+    """
+
+    # ponytail: a pool timeout arrives as httpx.ConnectTimeout (no 503 from
+    # dial_api/exceptions.py); map it there if this transport becomes the default
+
+
 async def _close_httpx_client(client: httpx.AsyncClient) -> None:
     await client.aclose()
 
 
 @cache(_close_httpx_client)
 async def get_httpx_client() -> httpx.AsyncClient:
-    return _SharedAsyncClient(
+    client_cls = (
+        _SharedAiohttpClient
+        if HTTP_TRANSPORT == "aiohttp"
+        else _SharedAsyncClient
+    )
+    log.info(f"HTTP transport: {HTTP_TRANSPORT}")
+    return client_cls(
         follow_redirects=True,
         timeout=_get_http_timeouts(),
         limits=_get_http_limits(),
