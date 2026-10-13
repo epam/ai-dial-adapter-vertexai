@@ -161,18 +161,17 @@ async def _close_httpx_client(client: httpx.AsyncClient) -> None:
 @cache(_close_httpx_client)
 async def get_httpx_client() -> httpx.AsyncClient:
     log.info(f"Upstream HTTP transport: {HTTP_TRANSPORT}")
-    limits = _get_http_limits()
     if HTTP_TRANSPORT == "aiohttp":
         return _SharedAiohttpClient(
             follow_redirects=True,
             timeout=_get_http_timeouts(),
-            limits=limits,
-            transport=_AiohttpTransport(limits=limits),
+            limits=_get_http_limits(),
+            transport=_AiohttpTransport(limits=_get_http_limits()),
         )
     return _SharedAsyncClient(
         follow_redirects=True,
         timeout=_get_http_timeouts(),
-        limits=limits,
+        limits=_get_http_limits(),
     )
 
 

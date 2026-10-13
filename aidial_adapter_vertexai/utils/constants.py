@@ -16,7 +16,7 @@ HTTP_MAX_KEEPALIVE_CONNECTIONS = get_env_int(
 )
 HTTP_POOL_TIMEOUT = get_env_int("HTTP_POOL_TIMEOUT", 10)
 HTTP_TRANSPORT = os.getenv("HTTP_TRANSPORT") or "aiohttp"
-if HTTP_TRANSPORT not in ("aiohttp", "httpx"):
+if HTTP_TRANSPORT not in {"aiohttp", "httpx"}:
     raise ValueError(
         f"HTTP_TRANSPORT must be 'aiohttp' or 'httpx', got {HTTP_TRANSPORT!r}"
     )
