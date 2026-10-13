@@ -1,11 +1,14 @@
 import os
+from contextvars import ContextVar
 
+import aiohttp
 import anthropic
 import httpx
 import vertexai
 from anthropic import AsyncAnthropicFoundry, AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions, HttpRetryOptions
+from httpx_aiohttp import AiohttpTransport, HttpxAiohttpClient
 from mistralai.gcp.client import MistralGCP
 
 from aidial_adapter_vertexai.aws_credentials import maybe_make_aws_credentials
@@ -21,6 +24,7 @@ from aidial_adapter_vertexai.utils.constants import (
     HTTP_MAX_KEEPALIVE_CONNECTIONS,
     HTTP_POOL_TIMEOUT,
     HTTP_READ_TIMEOUT,
+    HTTP_TRANSPORT,
     HTTP_WRITE_TIMEOUT,
 )
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
@@ -97,12 +101,73 @@ class _SharedAsyncClient(httpx.AsyncClient):
         return super().build_request(*args, timeout=timeout, **kwargs)
 
 
+class _SharedAiohttpClient(HttpxAiohttpClient, _SharedAsyncClient):
+    """
+    The shared client on aiohttp's connection pool. httpcore's pool scans
+    every pooled connection on each request event, which costs a lot of CPU
+    with hundreds of concurrent streams.
+    """
+
+
+# Set while a request waits for a free pooled connection
+_waiting_for_connection: ContextVar[list[bool]] = ContextVar(
+    "_waiting_for_connection"
+)
+
+
+async def _on_connection_queued(*_) -> None:
+    _waiting_for_connection.get()[0] = True
+
+
+async def _on_connection_dequeued(*_) -> None:
+    _waiting_for_connection.get()[0] = False
+
+
+class _AiohttpTransport(AiohttpTransport):
+    """
+    aiohttp raises the same timeout for a request that waited too long for a
+    pooled connection as for a slow connect. Report the first as
+    `httpx.PoolTimeout`, as httpcore does, so it maps to 503.
+    """
+
+    def get_client(self) -> aiohttp.ClientSession:
+        trace = aiohttp.TraceConfig()
+        trace.on_connection_queued_start.append(_on_connection_queued)
+        trace.on_connection_queued_end.append(_on_connection_dequeued)
+        connector = aiohttp.TCPConnector(
+            limit=self.limits.max_connections or 0,
+            keepalive_timeout=self.limits.keepalive_expiry,
+            ssl=self.ssl_context,
+        )
+        return aiohttp.ClientSession(connector=connector, trace_configs=[trace])
+
+    async def handle_async_request(
+        self, request: httpx.Request
+    ) -> httpx.Response:
+        waiting = [False]
+        _waiting_for_connection.set(waiting)
+        try:
+            return await super().handle_async_request(request)
+        except httpx.ConnectTimeout as e:
+            if waiting[0]:
+                raise httpx.PoolTimeout(str(e), request=request) from e
+            raise
+
+
 async def _close_httpx_client(client: httpx.AsyncClient) -> None:
     await client.aclose()
 
 
 @cache(_close_httpx_client)
 async def get_httpx_client() -> httpx.AsyncClient:
+    log.info(f"Upstream HTTP transport: {HTTP_TRANSPORT}")
+    if HTTP_TRANSPORT == "aiohttp":
+        return _SharedAiohttpClient(
+            follow_redirects=True,
+            timeout=_get_http_timeouts(),
+            limits=_get_http_limits(),
+            transport=_AiohttpTransport(limits=_get_http_limits()),
+        )
     return _SharedAsyncClient(
         follow_redirects=True,
         timeout=_get_http_timeouts(),
