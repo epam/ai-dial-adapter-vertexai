@@ -15,8 +15,8 @@ RUN poetry install --no-interaction --no-ansi --no-cache --no-root --no-director
 COPY . .
 RUN poetry install --no-interaction --no-ansi --no-cache --only main
 
-# fix CVE-2026-1703, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643, CVE-2026-13346 in the venv's pip
-RUN .venv/bin/python -m pip install --no-cache-dir --upgrade "pip>=26.2.0"
+# pip is not needed at runtime; its vendored deps (msgpack, urllib3, setuptools) carry CVEs
+RUN .venv/bin/python -m pip uninstall -y pip
 
 FROM python:3.11-alpine3.20 AS server
 
@@ -25,10 +25,12 @@ RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
 RUN apk upgrade --no-cache libexpat
 # fix CVE-2026-23949
 RUN pip install setuptools==83.0.0
-# fix CVE-2025-8869, CVE-2026-1703, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643, CVE-2026-13346
-RUN pip install --upgrade "pip>=26.2.0"
 # fix CVE-2026-24049
 RUN pip install wheel==0.46.2
+# pip is not needed at runtime; removing it fixes all pip CVEs, incl. those in its
+# vendored copies of msgpack, urllib3 and pkg_resources (setuptools 70.3.0, not the
+# standalone setuptools installed above). Must stay after the last pip usage.
+RUN pip uninstall -y pip
 # fix CVE-2025-6965 and CVE-2026-22184 and CVE-2026-22184
 RUN apk upgrade --no-cache sqlite-libs zlib musl musl-utils
 
