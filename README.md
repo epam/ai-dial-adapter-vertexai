@@ -16,6 +16,7 @@
 - [Overview](#overview)
   - [Supported models](#supported-models)
     - [Chat completion models](#chat-completion-models)
+      - [Audio transcription in Gemini 3.5 Transcribe](#audio-transcription-in-gemini-35-transcribe)
       - [Image editing in Gemini 2.5 Flash Image](#image-editing-in-gemini-25-flash-image)
       - [Configurable models](#configurable-models)
         - [Imagen models](#imagen-models)
@@ -83,6 +84,7 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 |Model|Model ID| Modality                                     |`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|----------------------------------------------|---|---|---|---|
 |[Gemini 3.5 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-5-flash)|gemini-3.5-flash| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 3.5 Transcribe](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-transcribe)|gemini-3.5-transcribe-preview| audio-to-text                                |✅|✅|❌|❌|
 |[Gemini 3.1 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-pro)|gemini-3.1-pro-preview| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
 |[Gemini 3.1 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-lite)|gemini-3.1-flash-lite[-preview]| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
 |[Gemini 3.1 Flash Image](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-image)|gemini-3.1-flash-image-preview| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
@@ -121,6 +123,16 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 |[Codestral 2](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/mistral/codestral-2)|codestral-2| text-to-text                                 |❌|❌|✅|❌|
 
 The models that support `/truncate_prompt` do also support `max_prompt_tokens` chat completion request parameter.
+
+#### Audio transcription in Gemini 3.5 Transcribe
+
+Gemini 3.5 Transcribe accepts audio attachments only.
+
+The model supports neither system messages nor multi-turn chat. Therefore, the adapter:
+
+* rejects requests with system messages,
+* rejects messages with text input, since the model doesn't follow text instructions,
+* sends only the last message of the chat history to the model, so that every message in a DIAL Chat conversation is transcribed independently of the previous ones.
 
 #### Image editing in Gemini 2.5 Flash Image
 

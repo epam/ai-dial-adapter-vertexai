@@ -45,6 +45,9 @@ from aidial_adapter_vertexai.chat.gemini.output import (
 )
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
+from aidial_adapter_vertexai.chat.gemini.prompt.gemini_transcribe import (
+    GeminiTranscribePrompt,
+)
 from aidial_adapter_vertexai.chat.gemini.stage import (
     CodeExecutionStage,
     LazyStage,
@@ -169,10 +172,18 @@ class GeminiGenAIChatCompletionAdapter(
             D.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
             D.GEMINI_2_5_FLASH_IMAGE,
             D.GEMINI_3_1_FLASH_IMAGE_PREVIEW,
+            D.GEMINI_3_5_TRANSCRIBE_PREVIEW,
         ):
             return False
         return (
             "gemini-2.5" in deployment.value or "gemini-3" in deployment.value
+        )
+
+    @property
+    def is_transcription_model(self) -> bool:
+        return (
+            self.deployment.reference_deployment_id
+            == D.GEMINI_3_5_TRANSCRIBE_PREVIEW
         )
 
     @property
@@ -215,7 +226,12 @@ class GeminiGenAIChatCompletionAdapter(
         static_tools: StaticToolsConfig,
         request: ChatCompletionRequest,
     ) -> GeminiPromptGenAI | UserError:
-        return await Gemini_2_Prompt.parse(
+        prompt_cls = (
+            GeminiTranscribePrompt
+            if self.is_transcription_model
+            else Gemini_2_Prompt
+        )
+        return await prompt_cls.parse(
             self.file_storage, tools, static_tools, request.messages
         )
 
