@@ -67,9 +67,12 @@ async def set_usage(
     if is_grounding_added:
         completion_tokens += google_search_grounding_tokens(deployment)
 
+    prompt_tokens = usage.prompt_token_count or 0
+    prompt_tokens += usage.tool_use_prompt_token_count or 0
+
     await consumer.set_usage(
         TokenUsage(
-            prompt_tokens=usage.prompt_token_count or 0,
+            prompt_tokens=prompt_tokens,
             prompt_cached_tokens=usage.cached_content_token_count or 0,
             completion_tokens=completion_tokens,
             completion_reasoning_tokens=usage.thoughts_token_count or 0,
