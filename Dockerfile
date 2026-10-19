@@ -33,6 +33,8 @@ RUN pip install wheel==0.46.2
 RUN pip uninstall -y pip
 # fix CVE-2025-6965 and CVE-2026-22184 and CVE-2026-22184
 RUN apk upgrade --no-cache sqlite-libs zlib musl musl-utils
+# fix CVE-2024-58251 and CVE-2025-46394 (busybox) and CVE-2026-34743 (xz-libs)
+RUN apk upgrade --no-cache busybox busybox-binsh ssl_client xz-libs
 
 WORKDIR /app
 
