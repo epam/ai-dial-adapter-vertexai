@@ -75,7 +75,7 @@ async def test_parse_upstream_config_falls_back_to_default_env(
 ):
     called: dict[str, str] = {}
 
-    monkeypatch.setenv("DEFAULT_REGION", "global")
+    monkeypatch.setenv("GCP_DEFAULT_REGION", "global")
     monkeypatch.setenv("GCP_PROJECT_ID", "project_id")
     monkeypatch.setattr(
         upstream_config_module,

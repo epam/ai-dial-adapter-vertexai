@@ -693,7 +693,8 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |Variable|Default|Description|
 |---|---|---|
 |GOOGLE_APPLICATION_CREDENTIALS||Filepath to JSON with [credentials](https://cloud.google.com/docs/authentication/application-default-credentials#GAC)|
-|DEFAULT_REGION||Default region for Vertex AI (e.g. "us-central1")|
+|GCP_DEFAULT_REGION||Default region for Vertex AI (e.g. "us-central1")|
+|DEFAULT_REGION||**Deprecated**. Use `GCP_DEFAULT_REGION` instead. Ignored when `GCP_DEFAULT_REGION` is set|
 |GCP_PROJECT_ID||GCP project ID|
 |LOG_LEVEL|INFO|Application log level. Use DEBUG for dev purposes and INFO in prod|
 |WEB_CONCURRENCY|1|Number of workers for the server|
@@ -871,7 +872,7 @@ The fields in the extra data override the corresponding environment variables:
 
 |`extraData` field|Env variable|
 |---|---|
-|`region`|`DEFAULT_REGION`|
+|`region`|`GCP_DEFAULT_REGION`|
 |`project`|`GCP_PROJECT_ID`|
 
 > [!NOTE]
@@ -957,7 +958,7 @@ On a cache hit, `usage.prompt_tokens_details.cached_tokens` field reports the nu
 
 Access to GCP Vertex AI is authenticated via Application Default Credentials ([ADC](https://cloud.google.com/docs/authentication/application-default-credentials)) with region and project configured either:
 
-1. globally via `DEFAULT_REGION` and `GCP_PROJECT_ID` environment vars, or
+1. globally via `GCP_DEFAULT_REGION` and `GCP_PROJECT_ID` environment vars, or
 2. on a [per upstream basis](#load-balancing) via `upstreams.extraData` fields in DIAL Core Config.
 
 #### Workload Identity Federation on AWS container runtimes
@@ -1086,7 +1087,7 @@ Notes:
 
 - `ANTHROPIC_BASE_URL` must match the host and port the adapter is served on (the `make serve` default is `5001`; adjust the port accordingly).
 - The model passed to the adapter is a **GCP Vertex AI** model name (see [Supported models](#supported-models)), _not_ a Claude API alias.
-- The default project and region are taken from the `GCP_PROJECT_ID` and `DEFAULT_REGION` environment variables; override them per request via the `x-upstream-extra-data` header (see [Load balancing](#load-balancing)).
+- The default project and region are taken from the `GCP_PROJECT_ID` and `GCP_DEFAULT_REGION` environment variables; override them per request via the `x-upstream-extra-data` header (see [Load balancing](#load-balancing)).
 - `ANTHROPIC_DEFAULT_HAIKU_MODEL` sets a lightweight model Claude Code uses for background tasks. Point it at a fast Claude model the adapter serves.
 
 Export the variables into your shell and start Claude Code:

@@ -16,7 +16,7 @@ def configure_unit_tests(monkeypatch, request):
     """
     if "tests/unit_tests" in request.node.nodeid:
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "test-creds")
-        monkeypatch.setenv("DEFAULT_REGION", DEFAULT_REGION)
+        monkeypatch.setenv("GCP_DEFAULT_REGION", DEFAULT_REGION)
         monkeypatch.setenv("GCP_PROJECT_ID", "test-project-id")
 
 
