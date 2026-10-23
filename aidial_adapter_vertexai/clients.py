@@ -18,6 +18,7 @@ from aidial_adapter_vertexai.utils.constants import (
     ANTHROPIC_MAX_RETRY_ATTEMPTS,
     DEFAULT_PROJECT_ENV_VAR,
     DEFAULT_REGION_ENV_VAR,
+    DEPRECATED_DEFAULT_REGION_ENV_VAR,
     GOOGLE_GENAI_MAX_RETRY_ATTEMPTS,
     HTTP_CONNECT_TIMEOUT,
     HTTP_MAX_CONNECTIONS,
@@ -31,7 +32,9 @@ from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 
 def get_default_region() -> str | None:
-    return os.getenv(DEFAULT_REGION_ENV_VAR)
+    return os.getenv(DEFAULT_REGION_ENV_VAR) or os.getenv(
+        DEPRECATED_DEFAULT_REGION_ENV_VAR
+    )
 
 
 def get_default_project() -> str | None:
@@ -39,6 +42,12 @@ def get_default_project() -> str | None:
 
 
 def init_vertex_ai():
+    if os.getenv(DEPRECATED_DEFAULT_REGION_ENV_VAR):
+        log.warning(
+            f"{DEPRECATED_DEFAULT_REGION_ENV_VAR!r} is deprecated, "
+            f"use {DEFAULT_REGION_ENV_VAR!r} instead."
+        )
+
     if (region := get_default_region()) and (project := get_default_project()):
         creds = maybe_make_aws_credentials()
         vertexai.init(project=project, location=region, credentials=creds)

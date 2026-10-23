@@ -67,7 +67,7 @@ def pin_region(request, monkeypatch):
     """
     if "spec" in request.fixturenames:
         spec: ModelSpec = request.getfixturevalue("spec")
-        monkeypatch.setenv("DEFAULT_REGION", spec.region)
+        monkeypatch.setenv("GCP_DEFAULT_REGION", spec.region)
 
 
 @pytest.fixture
