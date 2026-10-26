@@ -2,7 +2,7 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from logging import DEBUG
-from typing import assert_never
+from typing import Any, assert_never
 
 from aidial_sdk.chat_completion import FinishReason
 from aidial_sdk.chat_completion.request import ChatCompletionRequest
@@ -118,16 +118,7 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
         response = await self.client.chat.complete_async(
             model=self.model_id,
             messages=prompt.messages_unwrap,
-            temperature=params.temperature,
-            top_p=params.top_p,
-            max_tokens=params.max_tokens,
-            stop=params.stop,
-            random_seed=params.seed,
-            response_format=prompt.response_format_unwrap,
-            tools=prompt.tools_unwrap,
-            tool_choice=prompt.tool_choice_unwrap,
-            presence_penalty=params.presence_penalty,
-            frequency_penalty=params.frequency_penalty,
+            **_to_request_params(params, prompt),
         )
         if log.isEnabledFor(DEBUG):
             log.debug(f"predict response: {json_dumps_short(response)}")
@@ -170,16 +161,7 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
         stream = await self.client.chat.stream_async(
             model=self.model_id,
             messages=prompt.messages_unwrap,
-            temperature=params.temperature,
-            top_p=params.top_p,
-            max_tokens=params.max_tokens,
-            stop=params.stop,
-            random_seed=params.seed,
-            response_format=prompt.response_format_unwrap,
-            tools=prompt.tools_unwrap,
-            tool_choice=prompt.tool_choice_unwrap,
-            presence_penalty=params.presence_penalty,
-            frequency_penalty=params.frequency_penalty,
+            **_to_request_params(params, prompt),
         )
         async with stream as events:
             async for event in events:
@@ -210,6 +192,29 @@ class MistralChatCompletionAdapter(ChatCompletionAdapter[MistralPrompt]):
                     tool_calls_emitted = True
 
         return usage
+
+
+def _to_request_params(
+    params: ModelParameters, prompt: MistralPrompt
+) -> dict[str, Any]:
+    """
+    The Mistral SDK serializes an explicitly passed `None` as `null`,
+    which the upstream rejects. So the unset parameters are omitted
+    from the request altogether.
+    """
+    request_params = {
+        "temperature": params.temperature,
+        "top_p": params.top_p,
+        "max_tokens": params.max_tokens,
+        "stop": params.stop,
+        "random_seed": params.seed,
+        "response_format": prompt.response_format_unwrap,
+        "tools": prompt.tools_unwrap,
+        "tool_choice": prompt.tool_choice_unwrap,
+        "presence_penalty": params.presence_penalty,
+        "frequency_penalty": params.frequency_penalty,
+    }
+    return {k: v for k, v in request_params.items() if v is not None}
 
 
 async def consume_stream_chunk(
