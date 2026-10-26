@@ -1,8 +1,7 @@
-FROM python:3.11-alpine3.20 AS builder
+FROM python:3.11-alpine AS builder
 
 RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
-# geos-dev is required for https://pypi.org/project/shapely/2.0.5/
-RUN apk add --no-cache alpine-sdk linux-headers geos-dev
+RUN apk add --no-cache alpine-sdk linux-headers
 RUN pip install poetry==2.1.1
 
 WORKDIR /app
@@ -18,7 +17,7 @@ RUN poetry install --no-interaction --no-ansi --no-cache --only main
 # pip is not needed at runtime; its vendored deps (msgpack, urllib3, setuptools) carry CVEs
 RUN .venv/bin/python -m pip uninstall -y pip
 
-FROM python:3.11-alpine3.20 AS server
+FROM python:3.11-alpine AS server
 
 RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
 # fix CVE-2023-52425
