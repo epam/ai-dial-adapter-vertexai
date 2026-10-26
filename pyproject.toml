@@ -83,6 +83,11 @@ filterwarnings = [
     "ignore:This feature is deprecated as of June 24:UserWarning",
     # Warnings from the anthropic adapter:
     "ignore:Pydantic serializer warnings:UserWarning",
+    # google-api-core warns a year ahead of the running Python's EOL; for 3.11
+    # (EOL 2027-10-24) that started on 2026-10-24. Each google package names
+    # itself at the end of the message, so the pattern stops before that.
+    # Remove once CI moves off 3.11.
+    "ignore:You are using a Python version .* which Google will stop supporting in new releases of:FutureWarning",
 ]
 markers = ["slow: marker for slow running tests"]
 
