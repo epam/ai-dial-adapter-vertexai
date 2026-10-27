@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Generic, Self, TypeVar
 
@@ -53,6 +54,15 @@ class BaseConversation(Generic[SystemT, MessageT]):
                 init=lambda x: x,
                 merge=_merge,
             ),
+        )
+
+        return self
+
+    def map_messages(self, fn: Callable[[MessageT], MessageT]) -> Self:
+        self.messages = ListProjection(
+            self.messages.start_index,
+            self.messages.end_index,
+            [(fn(message), indices) for message, indices in self.messages.lst],
         )
 
         return self

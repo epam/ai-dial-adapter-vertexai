@@ -20,6 +20,7 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.message import (
     GenAIMessageMerger,
+    fold_text_into_function_response,
 )
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -62,7 +63,7 @@ class Gemini_2_Prompt(GeminiPromptGenAI):
         )
         conversation = conversation.merge_messages_with_same_role(
             GenAIMessageMerger
-        )
+        ).map_messages(fold_text_into_function_response)
 
         if error_message := processors.get_error_message():
             usage_message = get_usage_message(processors.get_file_exts())
