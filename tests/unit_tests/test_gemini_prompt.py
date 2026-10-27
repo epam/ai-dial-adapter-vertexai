@@ -15,6 +15,14 @@ def _user(text: str) -> Message:
     return Message.model_validate({"role": "user", "content": text})
 
 
+def _system(text: str, role: str = "system") -> Message:
+    return Message.model_validate({"role": role, "content": text})
+
+
+def _assistant(text: str) -> Message:
+    return Message.model_validate({"role": "assistant", "content": text})
+
+
 def _tool_calls(*call_ids: str) -> Message:
     return Message.model_validate(
         {
@@ -149,3 +157,59 @@ async def test_user_turn_without_tool_results_is_unchanged():
     prompt = await _parse([_user("first"), _user("second")])
 
     assert _texts(prompt.messages.raw_list[-1]) == ["first", "second"]
+
+
+async def test_leading_system_messages_make_the_system_instruction():
+    prompt = await _parse(
+        [_system("Be brief."), _system("Use English."), _user("hi")]
+    )
+
+    assert [part.text for part in prompt.system or []] == [
+        "Be brief.",
+        "Use English.",
+    ]
+    assert _texts(prompt.messages.raw_list[-1]) == ["hi"]
+
+
+async def test_inner_system_message_is_sent_as_user_text():
+    prompt = await _parse(
+        [
+            _system("Be brief."),
+            _user("hi"),
+            _assistant("hello"),
+            _system(_NOTE),
+            _user("go on"),
+        ]
+    )
+
+    assert [part.text for part in prompt.system or []] == ["Be brief."]
+    assert [content.role for content in prompt.messages.raw_list] == [
+        "user",
+        "model",
+        "user",
+    ]
+    assert _texts(prompt.messages.raw_list[-1]) == [_NOTE, "go on"]
+
+
+async def test_inner_developer_message_is_sent_as_user_text():
+    prompt = await _parse(
+        [_user("hi"), _assistant("hello"), _system(_NOTE, role="developer")]
+    )
+
+    assert prompt.system is None
+    assert _texts(prompt.messages.raw_list[-1]) == [_NOTE]
+
+
+async def test_inner_system_message_after_tool_result_is_folded():
+    prompt = await _parse(
+        [
+            _user("List the files"),
+            _tool_calls("call_1"),
+            _tool_result("call_1", "a.txt"),
+            _system(_NOTE),
+        ]
+    )
+
+    assert _responses(prompt.messages.raw_list[-1]) == [
+        {"output": f"a.txt\n\n{_NOTE}"}
+    ]

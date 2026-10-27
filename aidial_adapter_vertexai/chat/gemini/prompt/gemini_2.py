@@ -1,6 +1,6 @@
 from typing import Self
 
-from aidial_sdk.chat_completion import Message
+from aidial_sdk.chat_completion import Message, Role
 
 from aidial_adapter_vertexai.chat.conversation.converters import (
     messages_to_conversation,
@@ -24,6 +24,7 @@ from aidial_adapter_vertexai.chat.gemini.prompt.message import (
 )
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
+from aidial_adapter_vertexai.dial_api.request import is_system_role
 from aidial_adapter_vertexai.dial_api.storage import FileStorage
 
 
@@ -59,7 +60,10 @@ class Gemini_2_Prompt(GeminiPromptGenAI):
         )
 
         conversation = await messages_to_conversation(
-            conversation_factory, processors, tools, messages
+            conversation_factory,
+            processors,
+            tools,
+            _demote_inner_system_messages(messages),
         )
         conversation = conversation.merge_messages_with_same_role(
             GenAIMessageMerger
@@ -72,6 +76,31 @@ class Gemini_2_Prompt(GeminiPromptGenAI):
         return cls(
             conversation=conversation, tools=tools, static_tools=static_tools
         )
+
+
+def _demote_inner_system_messages(messages: list[Message]) -> list[Message]:
+    """
+    Turn the system and developer messages following the first message
+    of another role into user messages.
+
+    Gemini takes a single system instruction, built from the leading
+    system messages. A later one, such as a notice an agent harness sends
+    in the middle of a run, is sent as user text instead of being rejected.
+    """
+    first = next(
+        (
+            idx
+            for idx, message in enumerate(messages)
+            if not is_system_role(message.role)
+        ),
+        len(messages),
+    )
+    return [
+        message.model_copy(update={"role": Role.USER})
+        if idx > first and is_system_role(message.role)
+        else message
+        for idx, message in enumerate(messages)
+    ]
 
 
 def get_usage_message(exts: list[str]) -> str:
