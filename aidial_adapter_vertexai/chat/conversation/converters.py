@@ -2,6 +2,7 @@ from typing import Any, assert_never
 
 from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion import Role
+from aidial_sdk.chat_completion import Role as DialRole
 
 from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessorsBase,
@@ -164,3 +165,16 @@ def _separate_system_messages(
             break
 
     return system_messages or None, messages
+
+
+def inner_system_messages_to_user(messages: list[DialMessage]):
+    # Skip the initial stretch of the system messages
+    i = 0
+    while i < len(messages) and is_system_role(messages[i].role):
+        i += 1
+
+    # Convert to user role anything that goes after
+    while i < len(messages):
+        if is_system_role(messages[i].role):
+            messages[i].role = DialRole.USER
+        i += 1

@@ -3,6 +3,7 @@ from typing import Self
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.conversation.converters import (
+    inner_system_messages_to_user,
     messages_to_conversation,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
@@ -20,6 +21,7 @@ from aidial_adapter_vertexai.chat.gemini.processors import (
 from aidial_adapter_vertexai.chat.gemini.prompt.base import GeminiPromptGenAI
 from aidial_adapter_vertexai.chat.gemini.prompt.message import (
     GenAIMessageMerger,
+    fold_text_into_function_response,
 )
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig
@@ -57,12 +59,14 @@ class Gemini_2_Prompt(GeminiPromptGenAI):
             file_storage=file_storage,
         )
 
+        inner_system_messages_to_user(messages)
         conversation = await messages_to_conversation(
             conversation_factory, processors, tools, messages
         )
         conversation = conversation.merge_messages_with_same_role(
             GenAIMessageMerger
         )
+        conversation.for_each_message(fold_text_into_function_response)
 
         if error_message := processors.get_error_message():
             usage_message = get_usage_message(processors.get_file_exts())
