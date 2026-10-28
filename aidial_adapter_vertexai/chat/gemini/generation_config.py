@@ -5,6 +5,7 @@ from google.genai.types import (
     GenerateContentConfigDict as GenAIGenerationConfig,
 )
 from google.genai.types import (
+    HttpOptionsDict,
     ImageConfigDict,
     SafetySettingDict,
     ThinkingConfigDict,
@@ -34,6 +35,7 @@ def create_genai_generation_config(
     thinking_config: ThinkingConfigDict | None,
     image_config: ImageConfigDict | None,
     safety_settings: list[SafetySettingDict] | None,
+    headers: dict[str, str] | None = None,
 ) -> GenAIGenerationConfig:
     validate_n_parameter(params)
 
@@ -65,6 +67,7 @@ def create_genai_generation_config(
         thinking_config=thinking_config,
         image_config=image_config,
         safety_settings=safety_settings,
+        http_options=to_genai_http_options(headers),
     )
 
 
@@ -72,6 +75,7 @@ def create_genai_count_tokens_config(
     tools: ToolsConfig,
     static_tools: StaticToolsConfig,
     system_instruction: list[GenAIPart] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> GenAICountTokensConfig:
     toolset: GenAITool = tools.to_gemini_genai_tools() or GenAITool()
 
@@ -83,7 +87,14 @@ def create_genai_count_tokens_config(
             list(system_instruction) if system_instruction else None
         ),
         tools=[toolset] if toolset else None,
+        http_options=to_genai_http_options(headers),
     )
+
+
+def to_genai_http_options(
+    headers: dict[str, str] | None,
+) -> HttpOptionsDict | None:
+    return {"headers": headers} if headers else None
 
 
 def _get_response_format(

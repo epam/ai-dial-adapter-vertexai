@@ -34,6 +34,7 @@ from aidial_adapter_vertexai.chat.gemini.finish_reason import (
 from aidial_adapter_vertexai.chat.gemini.generation_config import (
     create_genai_count_tokens_config,
     create_genai_generation_config,
+    to_genai_http_options,
 )
 from aidial_adapter_vertexai.chat.gemini.grounding import create_grounding
 from aidial_adapter_vertexai.chat.gemini.input import to_genai_thinking_level
@@ -154,16 +155,19 @@ class GeminiGenAIChatCompletionAdapter(
 ):
     deployment: AdapterDeployment[GeminiDeployment]
     client: GenAIClient
+    headers: dict[str, str]
 
     def __init__(
         self,
         file_storage: FileStorage | None,
         deployment: AdapterDeployment[GeminiDeployment],
         client: GenAIClient,
+        headers: dict[str, str],
     ):
         self.file_storage = file_storage
         self.deployment = deployment
         self.client = client
+        self.headers = headers
 
     @property
     def supports_thinking(self) -> bool:
@@ -212,7 +216,8 @@ class GeminiGenAIChatCompletionAdapter(
         config: UpstreamConfig,
     ) -> "GeminiGenAIChatCompletionAdapter":
         client = await config.get_genai_client()
-        return cls(file_storage, deployment, client)
+        headers = config.get_headers()
+        return cls(file_storage, deployment, client, headers)
 
     @property
     def model_id(self) -> str:
@@ -270,6 +275,7 @@ class GeminiGenAIChatCompletionAdapter(
             thinking_config=thinking_config,
             image_config=image_config,
             safety_settings=safety_settings,
+            headers=self.headers,
         )
 
     def _get_token_count_config(
@@ -279,6 +285,7 @@ class GeminiGenAIChatCompletionAdapter(
             prompt.tools,
             prompt.static_tools,
             prompt.system,
+            headers=self.headers,
         )
 
     async def send_message_async(
@@ -443,6 +450,9 @@ class GeminiGenAIChatCompletionAdapter(
             resp = await self.client.aio.models.count_tokens(
                 model=self.model_id,
                 contents=string,
+                config=GenAICountTokensConfig(
+                    http_options=to_genai_http_options(self.headers)
+                ),
             )
             log.debug(f"count_tokens[completion] response: {json_dumps(resp)}")
             if resp.total_tokens is None:

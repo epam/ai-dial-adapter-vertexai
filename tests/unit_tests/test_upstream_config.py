@@ -11,6 +11,9 @@ from httpx_aiohttp import AiohttpTransport
 from mistralai.client import Mistral
 
 import aidial_adapter_vertexai.upstream_config as upstream_config_module
+from aidial_adapter_vertexai.chat.gemini.generation_config import (
+    to_genai_http_options,
+)
 from aidial_adapter_vertexai.clients import _AiohttpTransport, get_httpx_client
 from aidial_adapter_vertexai.dial_api.exceptions import to_dial_exception
 from aidial_adapter_vertexai.upstream_config import (
@@ -213,3 +216,53 @@ def test_pool_timeout_maps_to_503():
 
     for e in [pool_timeout, anthropic_error]:
         assert to_dial_exception(e).status_code == 503
+
+
+async def test_vertex_ai_headers_are_passed_on_to_genai():
+    config = parse_upstream_config(
+        _RequestStub(  # type: ignore[arg-type]
+            headers={
+                "x-upstream-extra-data": '{"region":"eu","project":"p"}',
+                "X-Vertex-AI-LLM-Request-Type": "shared",
+                "authorization": "secret",
+            }
+        )
+    )
+
+    sent: list[httpx.Headers] = []
+
+    class _SpyTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(
+            self, request: httpx.Request
+        ) -> httpx.Response:
+            sent.append(request.headers)
+            return httpx.Response(200, json={"candidates": []})
+
+    client = GenAIClient(
+        api_key="test-key",
+        http_options=HttpOptions(
+            httpx_async_client=httpx.AsyncClient(transport=_SpyTransport())
+        ),
+    )
+
+    await client.aio.models.generate_content(
+        model="gemini-2.5-flash",
+        contents="hello",
+        config={"http_options": to_genai_http_options(config.get_headers())},
+    )
+
+    assert sent[0]["x-vertex-ai-llm-request-type"] == "shared"
+    assert "authorization" not in sent[0]
+
+
+async def test_vertex_ai_headers_arent_passed_on_to_other_upstreams():
+    config = parse_upstream_config(
+        _RequestStub(  # type: ignore[arg-type]
+            headers={
+                "x-upstream-key": "test-key",
+                "X-Vertex-AI-LLM-Request-Type": "shared",
+            }
+        )
+    )
+
+    assert config.get_headers() == {}

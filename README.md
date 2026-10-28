@@ -952,6 +952,17 @@ Set `autoCachingSupported` flag in the DIAL Core config for a deployment of inte
 
 On a cache hit, `usage.prompt_tokens_details.cached_tokens` field reports the number of cached prompt tokens.
 
+## Vertex AI headers
+
+The request headers prefixed with `X-Vertex-AI-` are passed on to Vertex AI as is. Only the Gemini models support it, since they are the only ones the headers are meaningful for — see [provisioned throughput](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/priority-paygo):
+
+|Header|Comment|
+|---|---|
+|`X-Vertex-AI-LLM-Request-Type`|`dedicated` to use the provisioned throughput quota, `shared` to use the pay-as-you-go quota|
+|`X-Vertex-AI-LLM-Shared-Request-Type`|`priority` to use the priority pay-as-you-go quota|
+
+The headers are only sent when the model is accessed via Google Cloud credentials: the other upstreams (Platform API key, Azure Foundry) never receive them.
+
 ## Authentication
 
 ### GCP Vertex AI
