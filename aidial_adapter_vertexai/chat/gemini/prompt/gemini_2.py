@@ -3,7 +3,7 @@ from typing import Self
 from aidial_sdk.chat_completion import Message
 
 from aidial_adapter_vertexai.chat.conversation.converters import (
-    inner_system_messages_to_user,
+    convert_mid_conv_system_messages_to_user,
     messages_to_conversation,
 )
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
@@ -59,7 +59,7 @@ class Gemini_2_Prompt(GeminiPromptGenAI):
             file_storage=file_storage,
         )
 
-        inner_system_messages_to_user(messages)
+        convert_mid_conv_system_messages_to_user(messages)
         conversation = await messages_to_conversation(
             conversation_factory, processors, tools, messages
         )
