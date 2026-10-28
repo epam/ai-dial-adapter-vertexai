@@ -1,3 +1,4 @@
+from itertools import dropwhile
 from typing import Any, assert_never
 
 from aidial_sdk.chat_completion import Message as DialMessage
@@ -164,3 +165,9 @@ def _separate_system_messages(
             break
 
     return system_messages or None, messages
+
+
+def convert_mid_conv_system_messages_to_user(messages: list[DialMessage]):
+    for msg in dropwhile(lambda m: is_system_role(m.role), messages):
+        if is_system_role(msg.role):
+            msg.role = Role.USER

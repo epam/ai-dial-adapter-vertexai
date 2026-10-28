@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Generic, Self, TypeVar
 
@@ -56,3 +57,7 @@ class BaseConversation(Generic[SystemT, MessageT]):
         )
 
         return self
+
+    def for_each_message(self, on_message: Callable[[MessageT], None]):
+        for message, _indices in self.messages.lst:
+            on_message(message)
