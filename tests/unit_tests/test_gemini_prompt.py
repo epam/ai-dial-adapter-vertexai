@@ -8,7 +8,7 @@ from aidial_adapter_vertexai.chat.gemini.prompt.gemini_2 import Gemini_2_Prompt
 from aidial_adapter_vertexai.chat.static_tools import StaticToolsConfig
 from aidial_adapter_vertexai.chat.tools import ToolsConfig, ToolsMode
 
-_NOTE = "<system-reminder>The task list changed.</system-reminder>"
+_NOTE = "a user message commenting tool result"
 
 
 def _user(text: str) -> Message:
@@ -92,6 +92,21 @@ async def test_text_after_tool_result_is_folded_into_the_response():
 
     contents = prompt.messages.raw_list
     assert [content.role for content in contents] == ["user", "model", "user"]
+    assert _responses(contents[-1]) == [{"output": f"a.txt\n\n{_NOTE}"}]
+    assert _texts(contents[-1]) == []
+
+
+async def test_text_before_tool_result_is_folded_into_the_response():
+    prompt = await _parse(
+        [
+            _user("List the files"),
+            _tool_calls("call_1"),
+            _user(_NOTE),
+            _tool_result("call_1", "a.txt"),
+        ]
+    )
+
+    contents = prompt.messages.raw_list
     assert _responses(contents[-1]) == [{"output": f"a.txt\n\n{_NOTE}"}]
     assert _texts(contents[-1]) == []
 

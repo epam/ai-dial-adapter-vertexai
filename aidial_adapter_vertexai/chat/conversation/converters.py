@@ -2,7 +2,6 @@ from typing import Any, assert_never
 
 from aidial_sdk.chat_completion import Message as DialMessage
 from aidial_sdk.chat_completion import Role
-from aidial_sdk.chat_completion import Role as DialRole
 
 from aidial_adapter_vertexai.chat.attachment_processor import (
     AttachmentProcessorsBase,
@@ -176,5 +175,5 @@ def inner_system_messages_to_user(messages: list[DialMessage]):
     # Convert to user role anything that goes after
     while i < len(messages):
         if is_system_role(messages[i].role):
-            messages[i].role = DialRole.USER
+            messages[i].role = Role.USER
         i += 1
