@@ -39,6 +39,7 @@ AnthropicClient = AsyncAnthropicVertex | AsyncAnthropic | AsyncAnthropicFoundry
 
 
 class UpstreamConfig(Protocol):
+    def get_headers(self) -> dict[str, str]: ...
     async def get_genai_client(self) -> GenAIClient: ...
     async def get_anthropic_client(self) -> AnthropicClient: ...
     async def get_mistral_client(self) -> MistralClient: ...
@@ -56,6 +57,8 @@ def parse_upstream_config(request: Request) -> UpstreamConfig:
     log.debug("accessing deployment via Google Cloud creds")
     return _CloudUpstreamConfig.from_request(request)
 
+
+_VERTEX_AI_HEADER_PREFIX = "x-vertex-ai-"
 
 _UPSTREAM_CONFIG_HEADER_NAME = "x-upstream-extra-data"
 _UPSTREAM_API_KEY_HEADER_NAME = "x-upstream-key"
@@ -83,6 +86,9 @@ class _AzureFoundryUpstreamConfig(BaseModel):
 
         return cls(api_key=api_key, base_url=base_url)
 
+    def get_headers(self) -> dict[str, str]:
+        return {}
+
     async def get_genai_client(self) -> GenAIClient:
         raise NotImplementedError(
             "Azure Foundry doesn't provide Google GenAI client"
@@ -104,6 +110,9 @@ class _ApiKeyUpstreamConfig(BaseModel):
     def from_request(cls, request: Request) -> _ApiKeyUpstreamConfig | None:
         key = request.headers.get(_UPSTREAM_API_KEY_HEADER_NAME)
         return None if key is None else cls(api_key=key)
+
+    def get_headers(self) -> dict[str, str]:
+        return {}
 
     async def get_genai_client(self) -> GenAIClient:
         return GenAIClient(
@@ -127,6 +136,7 @@ class _ApiKeyUpstreamConfig(BaseModel):
 class _CloudUpstreamConfig(BaseModel):
     region: str
     project: str
+    headers: dict[str, str] = {}
 
     @classmethod
     def from_request(cls, request: Request) -> UpstreamConfig:
@@ -142,6 +152,12 @@ class _CloudUpstreamConfig(BaseModel):
             raise ValueError(
                 f"Header {_UPSTREAM_CONFIG_HEADER_NAME!r} isn't valid JSON dictionary"
             )
+
+        conf["headers"] = {
+            name: value
+            for name, value in request.headers.items()
+            if name.lower().startswith(_VERTEX_AI_HEADER_PREFIX)
+        }
 
         conf["region"] = conf.get("region") or get_default_region()
         conf["project"] = conf.get("project") or get_default_project()
@@ -159,6 +175,9 @@ class _CloudUpstreamConfig(BaseModel):
             )
 
         return cls.model_validate(conf)
+
+    def get_headers(self) -> dict[str, str]:
+        return self.headers
 
     async def get_genai_client(self) -> GenAIClient:
         return await get_genai_client(self.project, self.region)
