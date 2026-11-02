@@ -5,6 +5,7 @@ from typing import Any
 from aidial_sdk.chat_completion import Response
 
 from aidial_adapter_vertexai.deployments import ChatCompletionDeployment as D
+from aidial_adapter_vertexai.dial_api.exceptions import release_traceback_frames
 from aidial_adapter_vertexai.utils.log_config import app_logger as log
 
 _DIAL_CACHE_BREAKPOINT_PATH = "X-DIAL-CACHE-BREAKPOINT-PATH"
@@ -72,8 +73,9 @@ async def set_response_headers_for_caching(
         prompt_tokens = await get_request_tokens()
         if prompt_tokens < threshold:
             return
-    except Exception:
+    except Exception as e:
         log.exception("Unable to compute prompt tokens")
+        release_traceback_frames(e)
         return
 
     path = f"prefix.body.messages[{last_message_idx}]"

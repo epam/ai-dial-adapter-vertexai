@@ -1,3 +1,4 @@
+import traceback
 from functools import wraps
 
 import anthropic
@@ -96,6 +97,16 @@ def to_dial_exception(e: Exception) -> DialException:
     return InternalServerError(str(e))
 
 
+def release_traceback_frames(e: BaseException) -> None:
+    """
+    The traceback frames of an upstream error may hold the whole request payload
+    (e.g. inline attachments) within reference cycles (e.g. tenacity retry state),
+    which are freed only by the cyclic garbage collector at some later point.
+    Clearing the frame locals releases the payload right away.
+    """
+    traceback.clear_frames(e.__traceback__)
+
+
 def dial_exception_decorator(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -107,6 +118,11 @@ def dial_exception_decorator(func):
                 f"Caught exception: {type(e).__module__}.{type(e).__name__}. "
                 f"The exception converted to the dial exception: {dial_exception!r}."
             )
-            raise dial_exception from e
+            release_traceback_frames(e)
+
+        # Raising outside the except block, so that the dial exception
+        # doesn't reference the original exception (neither as a cause nor as a context),
+        # since the latter may hold the request payload (e.g. via the upstream HTTP response).
+        raise dial_exception
 
     return wrapper
