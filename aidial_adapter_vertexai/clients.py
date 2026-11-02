@@ -130,7 +130,6 @@ class _SharedAsyncClient(httpx.AsyncClient):
         assert isinstance(response.stream, httpx.AsyncByteStream)
         response.stream = _ReleasingStream(response.stream)
 
-        # Mirrors httpx.AsyncClient.send for stream=False
         if not stream:
             try:
                 await response.aread()
