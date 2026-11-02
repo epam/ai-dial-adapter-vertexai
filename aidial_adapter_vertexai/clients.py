@@ -125,12 +125,12 @@ def _with_chunked_body(request: httpx.Request) -> httpx.Request:
     try:
         body = request.content
     except httpx.RequestNotRead:
-        return request  # already streamed
+        # Means already streamed
+        return request
 
     if len(body) <= _UPLOAD_CHUNK_SIZE:
         return request
 
-    # The headers, including Content-Length, are kept as is
     return httpx.Request(
         method=request.method,
         url=request.url,
