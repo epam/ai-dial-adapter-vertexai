@@ -1,4 +1,5 @@
 import os
+from collections.abc import AsyncIterator
 from contextvars import ContextVar
 
 import aiohttp
@@ -97,7 +98,48 @@ async def get_anthropic_vertex_client(
     )
 
 
+class _ReleasingStream(httpx.AsyncByteStream):
+    """
+    httpx binds the response stream to the response itself, which forms
+    the reference cycle `Response -> BoundAsyncStream -> Response`.
+    The response references the request, so the request body (e.g. inline
+    attachments) survives until the cyclic garbage collection.
+    The stream breaks the cycle by dropping the bound stream once closed.
+    """
+
+    def __init__(self, stream: httpx.AsyncByteStream) -> None:
+        self._stream: httpx.AsyncByteStream | None = stream
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        if self._stream is None:
+            raise httpx.StreamClosed()
+        async for chunk in self._stream:
+            yield chunk
+
+    async def aclose(self) -> None:
+        if (stream := self._stream) is not None:
+            self._stream = None
+            await stream.aclose()
+
+
 class _SharedAsyncClient(httpx.AsyncClient):
+    async def send(
+        self, request: httpx.Request, *, stream: bool = False, **kwargs
+    ) -> httpx.Response:
+        response = await super().send(request, stream=True, **kwargs)
+        assert isinstance(response.stream, httpx.AsyncByteStream)
+        response.stream = _ReleasingStream(response.stream)
+
+        # Mirrors httpx.AsyncClient.send for stream=False
+        if not stream:
+            try:
+                await response.aread()
+            except BaseException:
+                await response.aclose()
+                raise
+
+        return response
+
     def build_request(
         self, *args, timeout=httpx.USE_CLIENT_DEFAULT, **kwargs
     ) -> httpx.Request:
