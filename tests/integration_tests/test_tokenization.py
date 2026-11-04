@@ -15,6 +15,7 @@ from tests.conftest import get_extra_headers
 from tests.integration_tests.constants import BLUE_PNG_PICTURE
 from tests.integration_tests.test_chat_completion_generation import (
     is_vision_model,
+    supports_temperature,
     supports_tools,
 )
 from tests.utils.openai import (
@@ -58,6 +59,7 @@ class TestCase:
 
 _CENTRAL = "us-central1"
 _EAST = "us-east5"
+_GLOBAL = "global"
 
 chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.GEMINI_2_5_FLASH: _CENTRAL,
@@ -66,6 +68,12 @@ chat_deployments: Mapping[ChatCompletionDeployment, str] = {
     ChatCompletionDeployment.CLAUDE_4_6_SONNET: _EAST,
     ChatCompletionDeployment.CLAUDE_4_6_OPUS: _EAST,
     ChatCompletionDeployment.CLAUDE_4_5_OPUS: _EAST,
+    ChatCompletionDeployment.CLAUDE_4_6_OPUS_DEFAULT: _EAST,
+    ChatCompletionDeployment.CLAUDE_5_OPUS: _GLOBAL,
+    ChatCompletionDeployment.CLAUDE_5_SONNET: _GLOBAL,
+    ChatCompletionDeployment.CLAUDE_5_5_OPUS: _GLOBAL,
+    ChatCompletionDeployment.CLAUDE_5_5_SONNET: _GLOBAL,
+    ChatCompletionDeployment.CLAUDE_5_5_HAIKU: _GLOBAL,
 }
 
 _tolerance: Mapping[ChatCompletionDeployment, int] = {
@@ -224,6 +232,7 @@ async def test_tokenize(
             messages=test.messages,
             stream=False,
             max_tokens=1,
+            temperature=0.0 if supports_temperature(test.deployment) else None,
             functions=test.functions,
             tools=test.tools,
         )

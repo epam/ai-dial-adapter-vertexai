@@ -73,6 +73,8 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.GEMINI_2_5_FLASH_IMAGE: _GLOBAL,
     D.GEMINI_3_1_FLASH_LITE: _GLOBAL,
     D.GEMINI_3_5_FLASH: _GLOBAL,
+    D.GEMINI_3_5_FLASH_LITE: _GLOBAL,
+    D.GEMINI_3_8_FLASH: _GLOBAL,
     D.CLAUDE_3_5_SONNET_V2: _EAST,
     D.CLAUDE_3_5_HAIKU: _EAST,
     D.CLAUDE_3_OPUS: _EAST,
@@ -87,6 +89,12 @@ _DEPLOYMENT_TO_REGION: dict[D, str] = {
     D.CLAUDE_4_6_SONNET: _EAST,
     D.CLAUDE_4_6_OPUS: _EAST,
     D.CLAUDE_4_5_OPUS: _EAST,
+    D.CLAUDE_4_6_OPUS_DEFAULT: _EAST,
+    D.CLAUDE_5_OPUS: _GLOBAL,
+    D.CLAUDE_5_SONNET: _GLOBAL,
+    D.CLAUDE_5_5_OPUS: _GLOBAL,
+    D.CLAUDE_5_5_SONNET: _GLOBAL,
+    D.CLAUDE_5_5_HAIKU: _GLOBAL,
     D.MISTRAL_MEDIUM_3: _CENTRAL,
     D.MISTRAL_SMALL: _CENTRAL,
     D.MISTRAL_CODESTRAL_2: _CENTRAL,
@@ -157,6 +165,8 @@ def is_vision_model(deployment: D) -> bool:
         D.GEMINI_2_0_FLASH_001,
         D.GEMINI_3_5_FLASH,
         D.GEMINI_3_1_FLASH_LITE,
+        D.GEMINI_3_5_FLASH_LITE,
+        D.GEMINI_3_8_FLASH,
         D.CLAUDE_3_5_SONNET_V2,
         # Upstream returns 'claude-3-5-haiku-20241022 does not support images.'
         # D.CLAUDE_3_5_HAIKU,
@@ -173,6 +183,12 @@ def is_vision_model(deployment: D) -> bool:
         D.CLAUDE_4_6_SONNET,
         D.CLAUDE_4_6_OPUS,
         D.CLAUDE_4_5_OPUS,
+        D.CLAUDE_4_6_OPUS_DEFAULT,
+        D.CLAUDE_5_OPUS,
+        D.CLAUDE_5_SONNET,
+        D.CLAUDE_5_5_OPUS,
+        D.CLAUDE_5_5_SONNET,
+        D.CLAUDE_5_5_HAIKU,
         D.MISTRAL_MEDIUM_3,
         D.MISTRAL_SMALL,
     ]
@@ -230,6 +246,8 @@ def supports_functions(deployment: D) -> bool:
         D.GEMINI_3_FLASH_PREVIEW,
         D.GEMINI_3_1_FLASH_LITE,
         D.GEMINI_3_5_FLASH,
+        D.GEMINI_3_5_FLASH_LITE,
+        D.GEMINI_3_8_FLASH,
     ]
 
 
@@ -259,10 +277,17 @@ def supports_parallel_tool_calls(deployment: D) -> bool:
         D.GEMINI_3_1_PRO_PREVIEW,
         D.GEMINI_3_1_FLASH_LITE,
         D.GEMINI_3_5_FLASH,
+        D.GEMINI_3_5_FLASH_LITE,
+        D.GEMINI_3_8_FLASH,
         D.MISTRAL_MEDIUM_3,
         D.MISTRAL_SMALL,
         D.MISTRAL_CODESTRAL_2,
     ]
+
+
+def supports_forced_tool_choice(deployment: D) -> bool:
+    # Upstream returns 'tool_choice: type "tool" and "any" are not supported for this model.'
+    return deployment not in (D.CLAUDE_5_5_OPUS, D.CLAUDE_5_5_SONNET)
 
 
 def supports_tool_call_ids(deployment: D) -> bool:
@@ -295,6 +320,8 @@ def supports_thinking(deployment: D) -> bool:
         D.GEMINI_3_1_PRO_PREVIEW,
         D.GEMINI_3_1_FLASH_LITE,
         D.GEMINI_3_5_FLASH,
+        D.GEMINI_3_5_FLASH_LITE,
+        D.GEMINI_3_8_FLASH,
         # These models do not reliably produce thinking tokens,
         # even though they support reasoning.
         # D.GEMINI_3_FLASH_PREVIEW,
@@ -308,10 +335,24 @@ def supports_thinking_level(deployment: D) -> bool:
         D.GEMINI_3_1_PRO_PREVIEW,
         D.GEMINI_3_1_FLASH_LITE,
         D.GEMINI_3_5_FLASH,
+        D.GEMINI_3_5_FLASH_LITE,
+        D.GEMINI_3_8_FLASH,
         # These models do not reliably produce thinking tokens,
         # even though they support reasoning.
         # D.GEMINI_3_FLASH_PREVIEW,
         # D.GEMINI_3_1_FLASH_LITE_PREVIEW,
+    )
+
+
+def supports_temperature(deployment: D) -> bool:
+    # Upstream returns '`temperature` is deprecated for this model.'
+    # for any value other than the default one.
+    return deployment not in (
+        D.CLAUDE_5_OPUS,
+        D.CLAUDE_5_SONNET,
+        D.CLAUDE_5_5_OPUS,
+        D.CLAUDE_5_5_SONNET,
+        D.CLAUDE_5_5_HAIKU,
     )
 
 
@@ -375,10 +416,12 @@ class Chat(Protocol):
 
 
 @pytest.fixture
-def chat(openai_client: openai.AsyncAzureOpenAI, stream: bool):
+def chat(openai_client: openai.AsyncAzureOpenAI, stream: bool, deployment: D):
     async def _inner(
         **kwargs: Unpack[ChatCompletionArgs],
     ) -> ChatCompletionResult:
+        if not supports_temperature(deployment):
+            kwargs.setdefault("temperature", None)
         return await chat_completion(openai_client, stream=stream, **kwargs)
 
     return _inner
@@ -488,6 +531,20 @@ async def test_multiple_candidates(deployment: D, chat: Chat):
     assert len(response.contents) == n
     for content in response.contents:
         assert "9" in content
+
+
+@pytest.mark.parametrize(
+    "deployment_spec",
+    select(~pred(supports_temperature), deployments),
+    ids=display_deployment,
+)
+async def test_unsupported_temperature(chat: Chat):
+    async with expected_exception(
+        cls=openai.BadRequestError,
+        status_code=400,
+        message="`temperature` is deprecated for this model.",
+    ):
+        await chat(messages=[user("2+3=?")], temperature=0.0, max_tokens=1)
 
 
 @pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
@@ -846,7 +903,7 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
             ]
         ):
             await _run()
-    elif deployment == D.MISTRAL_MEDIUM_3:
+    elif deployment in (D.MISTRAL_MEDIUM_3, D.GEMINI_3_8_FLASH):
         pytest.skip("Extremely flaky behavior when tool undeclared.")
     else:
         response = await _run()
@@ -857,6 +914,7 @@ async def test_tool_call_undeclared_tool(deployment: D, chat: Chat):
             D.GEMINI_2_5_FLASH,
             D.GEMINI_3_1_FLASH_LITE,
             D.GEMINI_3_5_FLASH,
+            D.GEMINI_3_5_FLASH_LITE,
         )
         expected_finish_reason = "tool_calls" if expects_tool_calls else "stop"
 
@@ -1145,20 +1203,31 @@ async def test_tool_call_with_vacuous_description(
     select(pred(supports_tools), deployments),
     ids=display_deployment,
 )
-async def test_tool_call_required(chat: Chat):
-    response = await chat(
-        messages=[user("How are you?")],
-        tools=[
-            function_to_tool(
-                {
-                    "name": "get_current_time",
-                    "description": "return the current time",
-                }
-            )
-        ],
-        tool_choice="required",
-    )
+async def test_tool_call_required(deployment: D, chat: Chat):
+    async def _run():
+        return await chat(
+            messages=[user("How are you?")],
+            tools=[
+                function_to_tool(
+                    {
+                        "name": "get_current_time",
+                        "description": "return the current time",
+                    }
+                )
+            ],
+            tool_choice="required",
+        )
 
+    if not supports_forced_tool_choice(deployment):
+        async with expected_exception(
+            cls=openai.BadRequestError,
+            status_code=400,
+            message='tool_choice: type "tool" and "any" are not supported for this model.',
+        ):
+            await _run()
+        return
+
+    response = await _run()
     tool_calls = response.tool_calls
     assert tool_calls is not None, "Tool call is missing"
     assert tool_calls[0].function.name == "get_current_time"

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from aidial_adapter_vertexai.deployments import EmbeddingsDeployment as D
 
 _CENTRAL = "us-central1"
+_GLOBAL = "global"
 
 
 @dataclass
@@ -44,6 +45,16 @@ GEMINI_MULTI_MODAL_SPEC = ModelSpec(
     supports_instr=False,
     default_dimensions=3072,
     supports_dimensions=True,
+)
+
+GEMINI_2_MULTI_MODAL_SPEC = ModelSpec(
+    deployment=D.GEMINI_EMBEDDING_2,
+    supports_types=EMBEDDING_TYPES,
+    supports_titles=True,
+    supports_instr=False,
+    default_dimensions=3072,
+    supports_dimensions=True,
+    region=_GLOBAL,
 )
 
 SPECS: list[ModelSpec] = [
@@ -89,4 +100,5 @@ SPECS: list[ModelSpec] = [
     ),
     MULTI_MODAL_SPEC,
     GEMINI_MULTI_MODAL_SPEC,
+    GEMINI_2_MULTI_MODAL_SPEC,
 ]

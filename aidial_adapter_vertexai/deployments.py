@@ -35,6 +35,8 @@ class ChatCompletionDeployment(DeploymentEnum):
     GEMINI_3_1_FLASH_LITE_PREVIEW = "gemini-3.1-flash-lite-preview"
     GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite"
     GEMINI_3_5_FLASH = "gemini-3.5-flash"
+    GEMINI_3_5_FLASH_LITE = "gemini-3.5-flash-lite"
+    GEMINI_3_8_FLASH = "gemini-3.8-flash"
     GEMINI_3_5_TRANSCRIBE_PREVIEW = "gemini-3.5-transcribe-preview"
 
     IMAGEN_005 = "imagegeneration@005"
@@ -63,6 +65,12 @@ class ChatCompletionDeployment(DeploymentEnum):
     CLAUDE_4_5_OPUS = "claude-opus-4-5@20251101"
     CLAUDE_4_6_SONNET = "claude-sonnet-4-6"
     CLAUDE_4_6_OPUS = "claude-opus-4-6"
+    CLAUDE_4_6_OPUS_DEFAULT = "claude-opus-4-6@default"
+    CLAUDE_5_OPUS = "claude-opus-5@default"
+    CLAUDE_5_SONNET = "claude-sonnet-5@default"
+    CLAUDE_5_5_OPUS = "claude-opus-5-5@default"
+    CLAUDE_5_5_SONNET = "claude-sonnet-5-5@default"
+    CLAUDE_5_5_HAIKU = "claude-haiku-5-5@default"
 
     VEO_3_0_GENERATE = "veo-3.0-generate-001"
     VEO_3_0_GENERATE_PREVIEW = "veo-3.0-generate-preview"
@@ -106,6 +114,12 @@ ClaudeDeployment = Literal[
     ChatCompletionDeployment.CLAUDE_4_6_SONNET,
     ChatCompletionDeployment.CLAUDE_4_6_OPUS,
     ChatCompletionDeployment.CLAUDE_4_5_OPUS,
+    ChatCompletionDeployment.CLAUDE_4_6_OPUS_DEFAULT,
+    ChatCompletionDeployment.CLAUDE_5_OPUS,
+    ChatCompletionDeployment.CLAUDE_5_SONNET,
+    ChatCompletionDeployment.CLAUDE_5_5_OPUS,
+    ChatCompletionDeployment.CLAUDE_5_5_SONNET,
+    ChatCompletionDeployment.CLAUDE_5_5_HAIKU,
 ]
 
 GeminiDeployment = Literal[
@@ -126,6 +140,8 @@ GeminiDeployment = Literal[
     ChatCompletionDeployment.GEMINI_3_1_FLASH_LITE_PREVIEW,
     ChatCompletionDeployment.GEMINI_3_1_FLASH_LITE,
     ChatCompletionDeployment.GEMINI_3_5_FLASH,
+    ChatCompletionDeployment.GEMINI_3_5_FLASH_LITE,
+    ChatCompletionDeployment.GEMINI_3_8_FLASH,
     ChatCompletionDeployment.GEMINI_3_5_TRANSCRIBE_PREVIEW,
 ]
 
@@ -162,6 +178,7 @@ class EmbeddingsDeployment(DeploymentEnum):
     # Text/Image models
     MULTI_MODAL_EMBEDDING_1 = "multimodalembedding@001"
     GEMINI_EMBEDDING_2_PREVIEW = "gemini-embedding-2-preview"
+    GEMINI_EMBEDDING_2 = "gemini-embedding-2"
 
 
 GenAIEmbeddingDeployment = Literal[
@@ -173,4 +190,5 @@ GenAIEmbeddingDeployment = Literal[
     EmbeddingsDeployment.TEXT_MULTILINGUAL_EMBEDDING_2,
     EmbeddingsDeployment.TEXT_GEMINI_EMBEDDING_1,
     EmbeddingsDeployment.GEMINI_EMBEDDING_2_PREVIEW,
+    EmbeddingsDeployment.GEMINI_EMBEDDING_2,
 ]
