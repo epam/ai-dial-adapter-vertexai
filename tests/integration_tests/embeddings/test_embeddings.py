@@ -17,6 +17,7 @@ from tests.integration_tests.constants import (
 )
 from tests.integration_tests.embeddings.specs import (
     EMBEDDING_TYPES,
+    GEMINI_2_MULTI_MODAL_SPEC,
     GEMINI_MULTI_MODAL_SPEC,
     MULTI_MODAL_SPEC,
     SPECS,
@@ -249,9 +250,12 @@ class TestMultiModalEmbeddings:
 
 
 class TestGeminiMultiModalEmbeddings:
-    @pytest.fixture
-    def spec(self):
-        return GEMINI_MULTI_MODAL_SPEC
+    @pytest.fixture(
+        params=[GEMINI_MULTI_MODAL_SPEC, GEMINI_2_MULTI_MODAL_SPEC],
+        ids=_display_spec,
+    )
+    def spec(self, request):
+        return request.param
 
     @pytest.mark.parametrize(
         "custom_input",

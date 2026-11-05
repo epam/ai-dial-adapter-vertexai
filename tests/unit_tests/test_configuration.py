@@ -26,6 +26,12 @@ _claude_deployments: list[D] = [
     D.CLAUDE_4_6_SONNET,
     D.CLAUDE_4_6_OPUS,
     D.CLAUDE_4_5_OPUS,
+    D.CLAUDE_4_6_OPUS_DEFAULT,
+    D.CLAUDE_5_OPUS,
+    D.CLAUDE_5_SONNET,
+    D.CLAUDE_5_5_OPUS,
+    D.CLAUDE_5_5_SONNET,
+    D.CLAUDE_5_5_HAIKU,
 ]
 
 _gemini_deployments_with_thinking: list[D] = [

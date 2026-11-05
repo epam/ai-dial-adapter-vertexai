@@ -300,6 +300,7 @@ class ChatCompletionArgs(TypedDict, total=False):
     messages: Required[list[ChatCompletionMessageParam]]
     stop: list[str] | None
     max_tokens: int | None
+    temperature: float | None
     n: int | None
     functions: list[FunctionDefinition] | None
     tools: list[ChatCompletionToolParam] | None
@@ -351,7 +352,7 @@ async def chat_completion(
             stop=kwargs.get("stop"),
             max_tokens=kwargs.get("max_tokens"),
             reasoning_effort=kwargs.get("reasoning_effort"),
-            temperature=0.0,
+            temperature=kwargs.get("temperature"),
             n=kwargs.get("n"),
             function_call=omit,
             functions=functions or omit,
