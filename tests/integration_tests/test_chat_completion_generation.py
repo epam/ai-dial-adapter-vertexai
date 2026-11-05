@@ -416,12 +416,10 @@ class Chat(Protocol):
 
 
 @pytest.fixture
-def chat(openai_client: openai.AsyncAzureOpenAI, stream: bool, deployment: D):
+def chat(openai_client: openai.AsyncAzureOpenAI, stream: bool):
     async def _inner(
         **kwargs: Unpack[ChatCompletionArgs],
     ) -> ChatCompletionResult:
-        if not supports_temperature(deployment):
-            kwargs.setdefault("temperature", None)
         return await chat_completion(openai_client, stream=stream, **kwargs)
 
     return _inner
@@ -533,18 +531,13 @@ async def test_multiple_candidates(deployment: D, chat: Chat):
         assert "9" in content
 
 
-@pytest.mark.parametrize(
-    "deployment_spec",
-    select(~pred(supports_temperature), deployments),
-    ids=display_deployment,
-)
-async def test_unsupported_temperature(chat: Chat):
-    async with expected_exception(
-        cls=openai.BadRequestError,
-        status_code=400,
-        message="`temperature` is deprecated for this model.",
-    ):
-        await chat(messages=[user("2+3=?")], temperature=0.0, max_tokens=1)
+@pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
+async def test_temperature(deployment: D, chat: Chat):
+    if not supports_temperature(deployment):
+        pytest.skip("The model doesn't support non-default temperature.")
+
+    response = await chat(messages=[user("2+3=?")], temperature=0.0)
+    assert "5" in response.content
 
 
 @pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)

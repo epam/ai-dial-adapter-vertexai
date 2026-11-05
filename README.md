@@ -83,9 +83,9 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 
 |Model|Model ID| Modality                                     |`/tokenize`|`/truncate_prompt`|tools/functions support|`/configuration`|
 |---|---|----------------------------------------------|---|---|---|---|
-|Gemini 3.8 Flash|gemini-3.8-flash| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 3.8 Flash](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-8-flash)|gemini-3.8-flash| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
 |[Gemini 3.5 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-5-flash)|gemini-3.5-flash| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
-|Gemini 3.5 Flash Lite|gemini-3.5-flash-lite| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
+|[Gemini 3.5 Flash Lite](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash-lite)|gemini-3.5-flash-lite| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
 |[Gemini 3.5 Transcribe](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-transcribe)|gemini-3.5-transcribe-preview| audio-to-text                                |✅|✅|❌|❌|
 |[Gemini 3.1 Pro](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-pro)|gemini-3.1-pro-preview| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
 |[Gemini 3.1 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-lite)|gemini-3.1-flash-lite[-preview]| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|✅|
@@ -99,11 +99,11 @@ The following models support `POST $SERVER_ORIGIN/openai/deployments/$MODEL_ID/c
 |[Gemini 2.0 Flash Lite](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash-lite)|gemini-2.0-flash-lite-001| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|❌|
 |[Gemini 2.0 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash)|gemini-2.0-flash-exp| (text/pdf/image/audio/video)-to-(text/image) |✅|✅|✅|❌|
 |[Gemini 2.0 Flash](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-0-flash)|gemini-2.0-flash-001| (text/pdf/image/audio/video)-to-text         |✅|✅|✅|❌|
-|Claude 5.5 Opus|claude-opus-5-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
-|Claude 5.5 Sonnet|claude-sonnet-5-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
-|Claude 5.5 Haiku|claude-haiku-5-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
-|Claude 5 Opus|claude-opus-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
-|Claude 5 Sonnet|claude-sonnet-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 5.5 Opus](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/opus-5-5)|claude-opus-5-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 5.5 Sonnet](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/sonnet-5-5)|claude-sonnet-5-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 5.5 Haiku](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-5-5)|claude-haiku-5-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 5 Opus](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/opus-5)|claude-opus-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
+|[Claude 5 Sonnet](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/sonnet-5)|claude-sonnet-5@default| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
 |[Claude 4.6 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-6)|claude-opus-4-6[@default]| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
 |[Claude 4.6 Sonnet](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/sonnet-4-6)|claude-sonnet-4-6| (pdf/text/image)-to-text                     |✅|✅|✅|✅|
 |[Claude 4.5 Opus](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/opus-4-5)|claude-opus-4-5@20251101| (pdf/text/image)-to-text                     |✅|✅|✅|✅|

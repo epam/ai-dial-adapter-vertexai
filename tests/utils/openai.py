@@ -344,8 +344,6 @@ async def chat_completion(
         functions = kwargs.get("functions")
         tools = kwargs.get("tools")
         tool_choice = kwargs.get("tool_choice")
-        # None omits the parameter
-        temperature = kwargs.get("temperature", 0.0)
 
         response = await client.chat.completions.create(
             model="dummy-model",
@@ -354,7 +352,7 @@ async def chat_completion(
             stop=kwargs.get("stop"),
             max_tokens=kwargs.get("max_tokens"),
             reasoning_effort=kwargs.get("reasoning_effort"),
-            temperature=omit if temperature is None else temperature,
+            temperature=kwargs.get("temperature"),
             n=kwargs.get("n"),
             function_call=omit,
             functions=functions or omit,

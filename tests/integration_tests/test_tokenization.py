@@ -15,7 +15,6 @@ from tests.conftest import get_extra_headers
 from tests.integration_tests.constants import BLUE_PNG_PICTURE
 from tests.integration_tests.test_chat_completion_generation import (
     is_vision_model,
-    supports_temperature,
     supports_tools,
 )
 from tests.utils.openai import (
@@ -232,7 +231,6 @@ async def test_tokenize(
             messages=test.messages,
             stream=False,
             max_tokens=1,
-            temperature=0.0 if supports_temperature(test.deployment) else None,
             functions=test.functions,
             tools=test.tools,
         )
