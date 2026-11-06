@@ -48,6 +48,7 @@
     - [Anthropic Foundry](#anthropic-foundry)
   - [Anthropic API Passthrough](#anthropic-api-passthrough)
     - [Using Claude Code with the adapter](#using-claude-code-with-the-adapter)
+  - [Anthropic Messages to Chat Completions translator](#anthropic-messages-to-chat-completions-translator)
   - [Development](#development)
     - [Development Environment](#development-environment)
     - [Setup](#setup)
@@ -706,7 +707,8 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |LOG_LEVEL|INFO|Application log level. Use DEBUG for dev purposes and INFO in prod|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |TIMEOUT_KEEP_ALIVE|70|How long in seconds the server keeps an idle HTTP keep-alive connection open before closing it. Must be greater than the caller's pooled-connection timeout — see [Keep-alive timeout](#keep-alive-timeout)|
-|DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage|
+|DIAL_URL||URL of the core DIAL server. Optional. Used to access images stored in the DIAL File storage. The same URL is called back by the [Anthropic Messages to Chat Completions translator](#anthropic-messages-to-chat-completions-translator), which is unavailable when the variable is unset.|
+|DIAL_API_VERSION|2025-01-01-preview|The `api-version` query parameter that the [translator](#anthropic-messages-to-chat-completions-translator) sends to DIAL Core on its legacy `/openaiChatCompletions/legacy` endpoint|
 |COMPATIBILITY_MAPPING|{}|**Deprecated** in favour of [compatibility configuration in DIAL Core config](#compatibility-configuration-in-dial-core-config). A JSON dictionary that maps VertexAI deployments that **aren't supported** by the Adapter to the VertexAI deployments that **are supported** by the Adapter _(see the [Supported models](#supported-models)_ section). Find more details in the [compatibility mode](#compatibility-configuration-in-adapter) section.|
 |CLAUDE_DEFAULT_MAX_TOKENS|1536|The default value of `max_tokens` chat completion parameter if it is not provided in the request.<br>**:warning: Using the variable is discouraged**.<br>Consider configuring the default in the DIAL Core Config instead as demonstrated in the [example below](#default-max_tokens-for-claude-models).|
 |GOOGLE_GENAI_MAX_RETRY_ATTEMPTS|0|How many times to retry Google GenAI chat model requests when the provider returns a retriable error|
@@ -1114,6 +1116,39 @@ Export the variables into your shell and start Claude Code:
 set -a & source .env.claude & set +a
 claude --model claude-opus-4-6
 ```
+
+---
+
+## Anthropic Messages to Chat Completions translator
+
+The `${ADAPTER_ORIGIN}/openaiChatCompletions` base URL exposes the [Anthropic Messages API](https://platform.claude.com/docs/en/api/messages) on top of any Chat Completions model available in DIAL Core, so it can be used in the DIAL Core config like so:
+
+<details>
+<summary>DIAL Core config</summary>
+
+```json
+{
+  "models": {
+    "gemini-3.1-pro-preview": {
+      "type": "chat",
+      "interfaces": {
+        "openaiChatCompletions": {
+          "base_url": "${ADAPTER_ORIGIN}"
+        },
+        "anthropicMessages": {
+          "base_url": "${ADAPTER_ORIGIN}/openaiChatCompletions"
+        }
+      }
+    }
+  }
+}
+```
+
+</details>
+
+Set `LOG_LEVEL=DEBUG` to log inbound requests and outgoing responses or SSE chunks through the SDK's `aidial_sdk` logger.
+
+See the [translation guide](https://github.com/epam/ai-dial-sdk/blob/0.47.0/docs/messages-to-chat-translation.md) for the details and limitations.
 
 ---
 

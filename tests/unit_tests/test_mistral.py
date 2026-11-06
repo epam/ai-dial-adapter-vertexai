@@ -58,7 +58,11 @@ from aidial_adapter_vertexai.utils.resource import Resource
 
 
 def _make_consumer_response() -> tuple[ChoiceConsumer, Response]:
-    response = Response(Request.model_construct(stream=True, n=1))
+    response = Response(
+        Request.model_construct(
+            stream=True, n=1, headers={"X-DIAL-DEPLOYMENT-ID": "test"}
+        )
+    )
     return ChoiceConsumer(response=response), response
 
 

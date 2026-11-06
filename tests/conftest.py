@@ -59,6 +59,8 @@ def get_openai_client(test_http_client: httpx.AsyncClient):
         default_headers = (extra_headers or {}) | (
             get_extra_headers(region) if region else {}
         )
+        if deployment_id:
+            default_headers["X-DIAL-DEPLOYMENT-ID"] = deployment_id
         return AsyncAzureOpenAI(
             azure_endpoint=str(test_http_client.base_url),
             azure_deployment=deployment_id,
