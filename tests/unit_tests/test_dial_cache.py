@@ -141,7 +141,7 @@ class _TestCase:
     ids=lambda x: x.get_name(),
 )
 async def test_dial_cache(test_http_client: httpx.AsyncClient, ts: _TestCase):
-    headers = {}
+    headers = {"X-DIAL-DEPLOYMENT-ID": ts.deployment.value}
     if ts.caching_enabled:
         headers["X-DIAL-CACHE-BREAKPOINT-PATH"] = "whatever"
 

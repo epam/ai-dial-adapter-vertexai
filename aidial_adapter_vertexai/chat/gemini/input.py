@@ -21,7 +21,7 @@ def to_genai_thinking_level(
             return ThinkingLevel.LOW
         case ReasoningEffort.MEDIUM:
             return ThinkingLevel.MEDIUM
-        case ReasoningEffort.HIGH:
+        case ReasoningEffort.HIGH | ReasoningEffort.XHIGH | ReasoningEffort.MAX:
             return ThinkingLevel.HIGH
         case _:
             assert_never(reasoning_effort)
