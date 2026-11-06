@@ -14,7 +14,10 @@ async def test_streaming_tool_call_finish_reason_is_not_overwritten(
 ):
     response = Response(
         Request.model_construct(
-            stream=True, n=1, headers={"X-DIAL-DEPLOYMENT-ID": "test"}
+            stream=True,
+            n=1,
+            deployment_id="test",
+            headers={"X-DIAL-DEPLOYMENT-ID": "test"},
         )
     )
 
