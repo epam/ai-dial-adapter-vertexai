@@ -74,7 +74,7 @@ async def set_response_headers_for_caching(
         if prompt_tokens < threshold:
             return
     except Exception as e:
-        log.exception("Unable to compute prompt tokens")
+        log.error("Unable to compute prompt tokens")
         release_traceback_frames(e)
         return
 
