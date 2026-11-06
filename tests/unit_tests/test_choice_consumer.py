@@ -12,7 +12,11 @@ from aidial_adapter_vertexai.chat.consumer import ChoiceConsumer
 async def test_streaming_tool_call_finish_reason_is_not_overwritten(
     finish_reason: FinishReason,
 ):
-    response = Response(Request.model_construct(stream=True, n=1))
+    response = Response(
+        Request.model_construct(
+            stream=True, n=1, headers={"X-DIAL-DEPLOYMENT-ID": "test"}
+        )
+    )
 
     with ChoiceConsumer(response=response) as consumer:
         await consumer.create_tool_call(

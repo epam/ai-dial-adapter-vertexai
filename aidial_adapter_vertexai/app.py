@@ -1,8 +1,13 @@
 from contextlib import asynccontextmanager
 
+import httpx
 from aidial_adapter_anthropic.passthrough import mount_anthropic_api
 from aidial_sdk import DIALApp
 from aidial_sdk.telemetry.types import TelemetryConfig
+from aidial_sdk.translators.messages_to_chat_completions import (
+    mount_translator,
+)
+from fastapi import Request
 
 from aidial_adapter_vertexai.anthropic_passthrough import get_anthropic_client
 from aidial_adapter_vertexai.chat_completion import VertexAIChatCompletion
@@ -65,4 +70,10 @@ async def models():
 app.add_chat_completion("{deployment_id}", VertexAIChatCompletion())
 app.add_embeddings("{deployment_id}", VertexAIEmbeddings())
 
+
+async def get_dial_client(_: Request) -> httpx.AsyncClient:
+    return await get_httpx_client()
+
+
 mount_anthropic_api(app, get_anthropic_client, path="/anthropic")
+mount_translator(app, get_dial_client, path="/openaiChatCompletions")
