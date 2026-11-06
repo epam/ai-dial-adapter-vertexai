@@ -4,9 +4,9 @@ import weakref
 import httpx
 import pytest
 
-from aidial_adapter_vertexai.clients import (
-    _SharedAiohttpClient,
-    _SharedAsyncClient,
+from aidial_adapter_vertexai.utils.httpx import (
+    SharedAiohttpClient,
+    SharedAsyncClient,
 )
 
 
@@ -18,9 +18,7 @@ def _transport() -> httpx.MockTransport:
 
 
 @pytest.mark.parametrize("stream", [False, True], ids=["block", "stream"])
-@pytest.mark.parametrize(
-    "client_cls", [_SharedAsyncClient, _SharedAiohttpClient]
-)
+@pytest.mark.parametrize("client_cls", [SharedAsyncClient, SharedAiohttpClient])
 async def test_request_is_released_without_gc(
     client_cls: type[httpx.AsyncClient], stream: bool
 ):
