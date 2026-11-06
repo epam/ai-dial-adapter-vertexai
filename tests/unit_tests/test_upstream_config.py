@@ -14,7 +14,7 @@ import aidial_adapter_vertexai.upstream_config as upstream_config_module
 from aidial_adapter_vertexai.chat.gemini.generation_config import (
     to_genai_http_options,
 )
-from aidial_adapter_vertexai.clients import _AiohttpTransport, get_httpx_client
+from aidial_adapter_vertexai.clients import get_httpx_client
 from aidial_adapter_vertexai.dial_api.exceptions import to_dial_exception
 from aidial_adapter_vertexai.upstream_config import (
     _ApiKeyUpstreamConfig,
@@ -26,6 +26,7 @@ from aidial_adapter_vertexai.utils.constants import (
     HTTP_POOL_TIMEOUT,
     HTTP_TRANSPORT,
 )
+from aidial_adapter_vertexai.utils.httpx import SharedAiohttpTransport
 
 
 class _RequestStub:
@@ -144,7 +145,7 @@ async def test_shared_httpx_client_uses_configured_connection_limits():
     client = await get_httpx_client()
     transport = client._transport  # type: ignore[attr-defined]
     if HTTP_TRANSPORT == "aiohttp":
-        assert isinstance(transport, _AiohttpTransport)
+        assert isinstance(transport, SharedAiohttpTransport)
         assert transport.limits.max_connections == HTTP_MAX_CONNECTIONS
     else:
         pool = transport._pool  # type: ignore[attr-defined]
@@ -166,7 +167,9 @@ async def test_aiohttp_pool_exhaustion_is_pool_timeout(unused_tcp_port: int):
     await web.TCPSite(runner, "127.0.0.1", unused_tcp_port).start()
 
     client = httpx.AsyncClient(
-        transport=_AiohttpTransport(limits=httpx.Limits(max_connections=1)),
+        transport=SharedAiohttpTransport(
+            limits=httpx.Limits(max_connections=1)
+        ),
         timeout=httpx.Timeout(5.0, pool=0.2),
     )
     url = f"http://127.0.0.1:{unused_tcp_port}/"
@@ -193,7 +196,7 @@ async def test_aiohttp_connect_timeout_without_queueing_stays_connect_timeout(
     monkeypatch.setattr(
         AiohttpTransport, "handle_async_request", _connect_timeout
     )
-    transport = _AiohttpTransport()
+    transport = SharedAiohttpTransport()
     with pytest.raises(httpx.ConnectTimeout) as exc_info:
         await transport.handle_async_request(
             httpx.Request("GET", "http://example.com")
