@@ -5,6 +5,47 @@ import aiohttp
 import httpx
 from httpx_aiohttp import AiohttpTransport, HttpxAiohttpClient
 
+_UPLOAD_CHUNK_SIZE = 1024 * 1024
+
+
+class _ChunkedByteStream(httpx.AsyncByteStream):
+    """
+    The request body in chunks, which are views of the body (no copying).
+
+    The transports copy a body passed as a whole several times on its way
+    to the socket: aiohttp joins it with the headers, asyncio TLS encrypts
+    it at once and the socket transport buffers its unsent remainder.
+    With chunks, these copies are bounded by the chunk size, since
+    the transport waits for the socket to drain between the chunks.
+    """
+
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        view = memoryview(self._body)
+        for start in range(0, len(view), _UPLOAD_CHUNK_SIZE):
+            yield view[start : start + _UPLOAD_CHUNK_SIZE]  # type: ignore
+
+
+def _with_chunked_body(request: httpx.Request) -> httpx.Request:
+    try:
+        body = request.content
+    except httpx.RequestNotRead:
+        # Means already streamed
+        return request
+
+    if len(body) <= _UPLOAD_CHUNK_SIZE:
+        return request
+
+    return httpx.Request(
+        method=request.method,
+        url=request.url,
+        headers=request.headers,
+        stream=_ChunkedByteStream(body),
+        extensions=request.extensions,
+    )
+
 
 class _ReleasingStream(httpx.AsyncByteStream):
     """
@@ -34,7 +75,9 @@ class SharedAsyncClient(httpx.AsyncClient):
     async def send(
         self, request: httpx.Request, *, stream: bool = False, **kwargs
     ) -> httpx.Response:
-        response = await super().send(request, stream=True, **kwargs)
+        response = await super().send(
+            _with_chunked_body(request), stream=True, **kwargs
+        )
         assert isinstance(response.stream, httpx.AsyncByteStream)
         response.stream = _ReleasingStream(response.stream)
 
