@@ -34,6 +34,10 @@ RUN pip uninstall -y pip
 RUN apk upgrade --no-cache sqlite-libs zlib musl musl-utils
 # fix CVE-2024-58251 and CVE-2025-46394 (busybox) and CVE-2026-34743 (xz-libs)
 RUN apk upgrade --no-cache busybox busybox-binsh ssl_client xz-libs
+# fix CVE-2026-40355, CVE-2026-40356, CVE-2026-71199, CVE-2026-71200, CVE-2026-107364,
+# CVE-2026-107708, CVE-2026-107778, CVE-2026-107884, CVE-2026-111423, CVE-2026-112314..112323,
+# CVE-2026-118380 and CVE-2026-119079 (krb5-libs, fixed in 1.22.3-r0)
+RUN apk upgrade --no-cache krb5-libs
 
 WORKDIR /app
 
