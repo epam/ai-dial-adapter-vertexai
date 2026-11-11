@@ -44,6 +44,8 @@ def get_plain_text_processor(
             "text/xml": "xml",
             "application/rtf": "rtf",
             "text/rtf": "rtf",
+            "application/msword": "doc",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
         },
         init_validator=init_validator,
     )
