@@ -1,6 +1,19 @@
 from aidial_adapter_vertexai.chat.gemini.processors import (
     get_audio_processor,
+    get_plain_text_processor,
 )
+
+
+def test_plain_text_processor_supports_word():
+    processor = get_plain_text_processor()
+
+    assert "application/msword" in processor.mime_types
+    assert (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        in processor.mime_types
+    )
+    assert "doc" in processor.file_exts
+    assert "docx" in processor.file_exts
 
 
 def test_audio_processor_supports_webm():
