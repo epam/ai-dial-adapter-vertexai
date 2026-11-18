@@ -77,8 +77,6 @@ def create_genai_count_tokens_config(
     system_instruction: list[GenAIPart] | None = None,
     headers: dict[str, str] | None = None,
 ) -> GenAICountTokensConfig:
-    # Static tools must be separate entries: google-genai keeps only
-    # function_declarations of a Tool that has them, dropping other fields.
     toolsets: list[GenAITool] = []
     if function_toolset := tools.to_gemini_genai_tools():
         toolsets.append(function_toolset)
