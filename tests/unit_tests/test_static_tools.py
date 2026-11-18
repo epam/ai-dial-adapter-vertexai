@@ -6,6 +6,8 @@ from aidial_sdk.chat_completion.request import (
     StaticTool,
     Tool,
 )
+from google.genai._transformers import t_tools
+from google.genai.types import ToolDict as GenAITool
 
 from aidial_adapter_vertexai.chat.gemini.generation_config import (
     create_genai_count_tokens_config,
@@ -20,16 +22,9 @@ def test_no_tools():
     assert config.functions == []
 
 
-@pytest.mark.parametrize(
-    ("function_names", "expected_count"),
-    [
-        (["weather"], 1),
-        (["weather", "news"], 2),
-    ],
-)
-def test_merge_function_tools_and_static_tool_for_gemini_config(
-    function_names: list[str], expected_count: int
-):
+def _create_tools_config(
+    function_names: list[str], static_tool_name: str
+) -> list[GenAITool]:
     request = AzureChatCompletionRequest(
         messages=[],
         tools=[
@@ -42,7 +37,7 @@ def test_merge_function_tools_and_static_tool_for_gemini_config(
             ],
             StaticTool(
                 type="static_function",
-                static_function=StaticFunction(name="google_search"),
+                static_function=StaticFunction(name=static_tool_name),
             ),
         ],
     )
@@ -53,13 +48,42 @@ def test_merge_function_tools_and_static_tool_for_gemini_config(
 
     toolsets = config.get("tools")
     assert toolsets is not None
-    assert len(toolsets) == 1
+    return toolsets
 
-    merged_toolset = toolsets[0]
-    assert "google_search" in merged_toolset
-    function_declarations = merged_toolset.get("function_declarations")
+
+@pytest.mark.parametrize(
+    "function_names",
+    [["weather"], ["weather", "news"]],
+)
+def test_separate_function_tools_and_static_tool_for_gemini_config(
+    function_names: list[str],
+):
+    toolsets = _create_tools_config(function_names, "google_search")
+    assert len(toolsets) == 2
+
+    function_toolset, static_toolset = toolsets
+    assert static_toolset == {"google_search": {}}
+    function_declarations = function_toolset.get("function_declarations")
     assert function_declarations is not None
-    assert len(function_declarations) == expected_count
-    assert {decl.get("name") for decl in function_declarations} == set(
+    assert [decl.get("name") for decl in function_declarations] == (
         function_names
+    )
+
+
+@pytest.mark.parametrize(
+    "static_tool_name", ["google_search", "code_execution"]
+)
+def test_static_tool_survives_genai_tools_normalization(
+    static_tool_name: str,
+):
+    toolsets = _create_tools_config(["weather"], static_tool_name)
+
+    normalized = t_tools(None, toolsets)  # type: ignore
+    assert len(normalized) == 2
+    assert any(
+        getattr(tool, static_tool_name) is not None for tool in normalized
+    )
+    assert any(
+        [decl.name for decl in tool.function_declarations or []] == ["weather"]
+        for tool in normalized
     )
