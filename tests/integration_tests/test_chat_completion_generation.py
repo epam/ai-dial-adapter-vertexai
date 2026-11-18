@@ -486,16 +486,7 @@ async def test_empty_assistant_message(deployment: D, chat: Chat):
         ai(""),
         user("please come again?"),
     ]
-
-    expected = None
-    if is_claude(deployment):
-        expected = ExpectedException(
-            type=openai.BadRequestError,
-            message="messages: text content blocks must contain non-whitespace text",
-            status_code=400,
-        )
-
-    await _run_test(deployment, chat, messages, expected)
+    await _run_test(deployment, chat, messages, None)
 
 
 @pytest.mark.parametrize("deployment_spec", deployments, ids=display_deployment)
