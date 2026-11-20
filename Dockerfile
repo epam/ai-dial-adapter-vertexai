@@ -17,6 +17,9 @@ RUN poetry install --no-interaction --no-ansi --no-cache --only main
 # pip is not needed at runtime; its vendored deps (msgpack, urllib3, setuptools) carry CVEs
 RUN .venv/bin/python -m pip uninstall -y pip
 
+# Precompile bytecode, so containers don't compile every imported module on startup
+RUN .venv/bin/python -m compileall -q -j0 --invalidation-mode unchecked-hash .venv/lib aidial_adapter_vertexai
+
 FROM python:3.11-alpine AS server
 
 RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
