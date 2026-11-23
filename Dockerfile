@@ -9,16 +9,13 @@ WORKDIR /app
 # Install split into two steps (the dependencies and the sources)
 # in order to leverage the Docker caching
 COPY pyproject.toml poetry.lock poetry.toml ./
-RUN poetry install --no-interaction --no-ansi --no-cache --no-root --no-directory --only main
+RUN poetry install --no-interaction --no-ansi --no-cache --no-root --no-directory --only main --compile
 
 COPY . .
 RUN poetry install --no-interaction --no-ansi --no-cache --only main
 
 # pip is not needed at runtime; its vendored deps (msgpack, urllib3, setuptools) carry CVEs
 RUN .venv/bin/python -m pip uninstall -y pip
-
-# Precompile bytecode, so containers don't compile every imported module on startup
-RUN .venv/bin/python -m compileall -q -j0 --invalidation-mode unchecked-hash .venv/lib aidial_adapter_vertexai
 
 FROM python:3.11-alpine AS server
 
@@ -47,6 +44,9 @@ WORKDIR /app
 # Copy the sources and virtual env. No poetry.
 RUN adduser -u 1001 --disabled-password --gecos "" appuser
 COPY --chown=appuser --from=builder /app .
+
+# Precompile bytecode, so containers don't compile every imported module on startup
+RUN .venv/bin/python -m compileall -q aidial_adapter_vertexai
 
 COPY ./scripts/docker_entrypoint.sh /docker_entrypoint.sh
 RUN chmod +x /docker_entrypoint.sh
