@@ -5,9 +5,11 @@ from dataclasses import dataclass
 from logging import DEBUG
 from typing import NotRequired
 
+import pydantic
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings.request import EmbeddingsRequest
+from aidial_sdk.exceptions import InternalServerError
 from google.genai.client import Client as GenAIClient
 from pydantic import BaseModel
 from typing_extensions import TypedDict
@@ -117,15 +119,16 @@ async def compute_embeddings(
     if log.isEnabledFor(DEBUG):
         log.debug(f"request: {json_dumps_short(body)}")
 
-    # NOTE: google-genai doesn't support the model natively
-    # (https://github.com/googleapis/python-genai/issues/2262),
-    # so we call the predict endpoint via the client's transport.
     response = await client.aio._api_client.async_request(
         "post", f"publishers/google/models/{model_id}:predict", dict(body)
     )
-    prediction = PredictResponse.model_validate_json(
-        response.body or ""
-    ).predictions[0]
+    try:
+        prediction = PredictResponse.model_validate_json(
+            response.body or ""
+        ).predictions[0]
+    except (pydantic.ValidationError, IndexError) as e:
+        log.error(f"Invalid upstream response: {e}")
+        raise InternalServerError("Invalid upstream response") from e
 
     if log.isEnabledFor(DEBUG):
         log.debug(f"response: {json_dumps_short(prediction)}")

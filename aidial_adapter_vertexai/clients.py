@@ -49,11 +49,6 @@ def check_default_config():
             f"use {DEFAULT_REGION_ENV_VAR!r} instead."
         )
 
-    if not (get_default_region() and get_default_project()):
-        log.warning(
-            f"{DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} aren't configured."
-        )
-
 
 async def _close_genai_client(client: GenAIClient) -> None:
     await client.aio.aclose()
