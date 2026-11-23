@@ -10,13 +10,11 @@ from dataclasses import asdict, is_dataclass
 from enum import Enum
 from typing import Any, TypeVar
 
-import proto
 from openai import Omit
 from pydantic import BaseModel
 from pydantic import BaseModel as BaseModelV1
 
 from aidial_adapter_vertexai.utils.decorator import fail_safe
-from aidial_adapter_vertexai.utils.protobuf import message_to_dict
 
 _T = TypeVar("_T", dict, list, str, int, float, bool, None)
 _RECURSIVE_JSON_NOT_SUPPORTED = "Recursive JSON schemas aren't supported"
@@ -83,9 +81,6 @@ def _to_dict(obj: Any, **kwargs) -> Any:
 
     if isinstance(obj, BaseModel):
         return rec(obj.model_dump())
-
-    if isinstance(obj, proto.Message):
-        return rec(message_to_dict(obj))
 
     if isinstance(obj, Omit):
         return "omit"

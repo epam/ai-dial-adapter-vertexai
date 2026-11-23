@@ -1,16 +1,18 @@
-from collections.abc import AsyncIterator, Callable
+import asyncio
+import base64
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from logging import DEBUG
+from typing import NotRequired
 
+import pydantic
 from aidial_sdk.chat_completion.request import Attachment
 from aidial_sdk.embeddings import Response as EmbeddingsResponse
 from aidial_sdk.embeddings.request import EmbeddingsRequest
-from pydantic import BaseModel, ConfigDict
-from vertexai.vision_models import (
-    Image,
-    MultiModalEmbeddingModel,
-    MultiModalEmbeddingResponse,
-)
+from aidial_sdk.exceptions import InternalServerError
+from google.genai.client import Client as GenAIClient
+from pydantic import BaseModel
+from typing_extensions import TypedDict
 
 from aidial_adapter_vertexai.chat.errors import UserError, ValidationError
 from aidial_adapter_vertexai.dial_api.embedding_inputs import (
@@ -27,20 +29,45 @@ from aidial_adapter_vertexai.embedding.types import (
     make_embeddings_response,
     vector_to_embedding,
 )
-from aidial_adapter_vertexai.utils.concurrency import gather_sync
+from aidial_adapter_vertexai.upstream_config import UpstreamConfig
 from aidial_adapter_vertexai.utils.json import json_dumps_short
 from aidial_adapter_vertexai.utils.log_config import vertex_ai_logger as log
-from aidial_adapter_vertexai.vertex_ai import get_multi_modal_embedding_model
+from aidial_adapter_vertexai.utils.pydantic import ExtraAllowModel
 
 # See the documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-embeddings-api
 
 SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png"]
 
 
-class ModelRequest(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+class ImageInput(TypedDict):
+    bytesBase64Encoded: str
 
-    image: Image | None = None
+
+class Instance(TypedDict):
+    image: NotRequired[ImageInput]
+    text: NotRequired[str]
+
+
+class Parameters(TypedDict):
+    dimension: int
+
+
+class PredictRequest(TypedDict):
+    instances: list[Instance]
+    parameters: NotRequired[Parameters]
+
+
+class Prediction(ExtraAllowModel):
+    textEmbedding: list[float] | None = None
+    imageEmbedding: list[float] | None = None
+
+
+class PredictResponse(ExtraAllowModel):
+    predictions: list[Prediction]
+
+
+class ModelRequest(BaseModel):
+    image: bytes | None = None
     contextual_text: str | None = None
 
     def count_input_tokens(self) -> int:
@@ -53,14 +80,24 @@ class ModelRequest(BaseModel):
             ret += 500
         return ret
 
+    def to_instance(self) -> Instance:
+        instance: Instance = {}
+        if self.image:
+            instance["image"] = {
+                "bytesBase64Encoded": base64.b64encode(self.image).decode()
+            }
+        if self.contextual_text:
+            instance["text"] = self.contextual_text
+        return instance
+
     def extract_embeddings(
-        self, response: MultiModalEmbeddingResponse
+        self, prediction: Prediction
     ) -> tuple[list[float], int]:
         vector: list[float] | None = None
         if self.image:
-            vector = response.image_embedding
+            vector = prediction.imageEmbedding
         else:
-            vector = response.text_embedding
+            vector = prediction.textEmbedding
 
         if vector is None:
             raise ValueError("No embeddings returned")
@@ -68,33 +105,35 @@ class ModelRequest(BaseModel):
         return vector, self.count_input_tokens()
 
 
-def compute_embeddings(
+async def compute_embeddings(
     request: ModelRequest,
-    model: MultiModalEmbeddingModel,
+    client: GenAIClient,
+    model_id: str,
     base64_encode: bool,
     dimensions: int | None,
 ) -> tuple[Embedding, int]:
-    if log.isEnabledFor(DEBUG):
-        msg = json_dumps_short(
-            {
-                "image": request.image,
-                "contextual_text": request.contextual_text,
-                "dimension": dimensions,
-            }
-        )
-        log.debug(f"request: {msg}")
+    body: PredictRequest = {"instances": [request.to_instance()]}
+    if dimensions:
+        body["parameters"] = {"dimension": dimensions}
 
-    response: MultiModalEmbeddingResponse = model.get_embeddings(
-        image=request.image,
-        contextual_text=request.contextual_text,
-        dimension=dimensions,
+    if log.isEnabledFor(DEBUG):
+        log.debug(f"request: {json_dumps_short(body)}")
+
+    response = await client.aio._api_client.async_request(
+        "post", f"publishers/google/models/{model_id}:predict", dict(body)
     )
+    try:
+        prediction = PredictResponse.model_validate_json(
+            response.body or ""
+        ).predictions[0]
+    except (pydantic.ValidationError, IndexError) as e:
+        log.error(f"Invalid upstream response: {e}")
+        raise InternalServerError("Invalid upstream response") from e
 
     if log.isEnabledFor(DEBUG):
-        msg = json_dumps_short(response)
-        log.debug(f"response: {msg}")
+        log.debug(f"response: {json_dumps_short(prediction)}")
 
-    vec, tokens = request.extract_embeddings(response)
+    vec, tokens = request.extract_embeddings(prediction)
 
     return vector_to_embedding(base64_encode, vec), tokens
 
@@ -121,12 +160,12 @@ def _validate_content_type(content_type: str, supported_types: list[str]):
 async def get_requests(
     storage: FileStorage | None, request: EmbeddingsRequest
 ) -> AsyncIterator[ModelRequest]:
-    async def download_image(attachment: Attachment) -> Image:
+    async def download_image(attachment: Attachment) -> bytes:
         resource = await AttachmentResource(attachment=attachment).download(
             storage
         )
         _validate_content_type(resource.type, SUPPORTED_IMAGE_TYPES)
-        return Image(image_bytes=resource.data)
+        return resource.data
 
     async def on_text(text: str):
         return ModelRequest(contextual_text=text)
@@ -175,15 +214,15 @@ async def get_requests(
 @dataclass
 class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
     model_id: str
-    model: MultiModalEmbeddingModel
+    client: GenAIClient
     storage: FileStorage | None
 
     @classmethod
     async def create(
-        cls, storage: FileStorage | None, model_id: str
+        cls, storage: FileStorage | None, model_id: str, config: UpstreamConfig
     ) -> "EmbeddingsAdapter":
-        model = await get_multi_modal_embedding_model(model_id)
-        return cls(model_id=model_id, model=model, storage=storage)
+        client = await config.get_genai_client()
+        return cls(model_id=model_id, client=client, storage=storage)
 
     async def embeddings(
         self, request: EmbeddingsRequest
@@ -192,22 +231,27 @@ class MultiModalEmbeddingsAdapter(EmbeddingsAdapter):
 
         base64_encode = request.encoding_format == "base64"
 
+        sub_requests = [
+            sub_request
+            async for sub_request in await get_requests(self.storage, request)
+        ]
+
         # NOTE: The model doesn't support batched inputs
-        tasks: list[Callable[[], tuple[Embedding, int]]] = []
-        async for sub_request in await get_requests(self.storage, request):
-            tasks.append(
-                lambda sub_req=sub_request: compute_embeddings(
-                    sub_req,
-                    self.model,
-                    base64_encode=base64_encode,
-                    dimensions=request.dimensions,
-                )
+        tasks = [
+            compute_embeddings(
+                sub_request,
+                self.client,
+                self.model_id,
+                base64_encode=base64_encode,
+                dimensions=request.dimensions,
             )
+            for sub_request in sub_requests
+        ]
 
         embeddings: list[Embedding] = []
         total_tokens = 0
 
-        for embedding, tokens in await gather_sync(tasks):
+        for embedding, tokens in await asyncio.gather(*tasks):
             embeddings.append(embedding)
             total_tokens += tokens
 
