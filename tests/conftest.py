@@ -5,7 +5,6 @@ import httpx
 import openai
 import pytest
 from asgi_lifespan import LifespanManager
-from google.cloud.aiplatform.constants.base import DEFAULT_REGION
 from httpx import ASGITransport
 
 
@@ -16,7 +15,7 @@ def configure_unit_tests(monkeypatch, request):
     """
     if "tests/unit_tests" in request.node.nodeid:
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "test-creds")
-        monkeypatch.setenv("GCP_DEFAULT_REGION", DEFAULT_REGION)
+        monkeypatch.setenv("GCP_DEFAULT_REGION", "us-central1")
         monkeypatch.setenv("GCP_PROJECT_ID", "test-project-id")
 
 

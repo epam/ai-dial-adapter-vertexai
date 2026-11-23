@@ -2,7 +2,6 @@ import os
 
 import anthropic
 import httpx
-import vertexai
 from anthropic import AsyncAnthropicFoundry, AsyncAnthropicVertex
 from google.genai.client import Client as GenAIClient
 from google.genai.types import HttpOptions, HttpRetryOptions
@@ -43,19 +42,11 @@ def get_default_project() -> str | None:
     return os.getenv(DEFAULT_PROJECT_ENV_VAR)
 
 
-def init_vertex_ai():
+def check_default_config():
     if os.getenv(DEPRECATED_DEFAULT_REGION_ENV_VAR):
         log.warning(
             f"{DEPRECATED_DEFAULT_REGION_ENV_VAR!r} is deprecated, "
             f"use {DEFAULT_REGION_ENV_VAR!r} instead."
-        )
-
-    if (region := get_default_region()) and (project := get_default_project()):
-        creds = maybe_make_aws_credentials()
-        vertexai.init(project=project, location=region, credentials=creds)
-    else:
-        log.warning(
-            f"{DEFAULT_REGION_ENV_VAR!r} and {DEFAULT_PROJECT_ENV_VAR!r} aren't configured."
         )
 
 

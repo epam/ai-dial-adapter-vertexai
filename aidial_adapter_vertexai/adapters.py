@@ -165,7 +165,7 @@ async def get_embeddings_model(
             )
         case E.MULTI_MODAL_EMBEDDING_1:
             return await MultiModalEmbeddingsAdapter.create(
-                storage, deployment.upstream_deployment_id
+                storage, deployment.upstream_deployment_id, upstream_config
             )
         case _:
             assert_never(deployment)

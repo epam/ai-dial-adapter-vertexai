@@ -6,7 +6,6 @@ import httpx
 import pydantic
 from aidial_sdk.exceptions import HTTPException as DialException
 from aidial_sdk.exceptions import InternalServerError, InvalidRequestError
-from google.api_core.exceptions import GoogleAPICallError, PermissionDenied
 from google.auth.exceptions import GoogleAuthError
 from google.genai.errors import APIError
 
@@ -41,15 +40,7 @@ def to_dial_exception(e: Exception) -> DialException:
             code="invalid_api_key",
         )
 
-    if isinstance(e, PermissionDenied):
-        return DialException(
-            status_code=403,
-            type="invalid_request_error",
-            message=f"Permission denied: {str(e)}",
-            code="permission_denied",
-        )
-
-    if isinstance(e, GoogleAPICallError | APIError):
+    if isinstance(e, APIError):
         status_code = e.code or 500
         message = e.message or str(e)
 
