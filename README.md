@@ -716,7 +716,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |HTTP_MAX_CONNECTIONS|250|Maximum number of concurrent connections the adapter opens to the upstreams. All the SDK clients *(Anthropic, Mistral and Google GenAI)* share a single connection pool, so the limit caps the total upstream concurrency of the process. Requests above the limit wait for a free connection|
 |HTTP_MAX_KEEPALIVE_CONNECTIONS|75|Maximum number of idle connections the shared pool keeps open for reuse. Ignored if `HTTP_TRANSPORT=aiohttp`|
 |HTTP_POOL_TIMEOUT|10|How long in seconds a request waits for a free upstream connection when `HTTP_MAX_CONNECTIONS` is reached. On timeout the adapter returns 503|
-|HTTP_TRANSPORT|aiohttp|The connection pool behind the shared upstream client: `aiohttp` (aiohttp's pool, as in the Anthropic SDK's `DefaultAioHttpClient`) or `httpx` (httpcore's pool). httpcore checks every pooled connection on each request event, which costs a lot of CPU with many concurrent streams|
+|HTTP_TRANSPORT|aiohttp|The connection pool behind the shared upstream client: `aiohttp` (aiohttp's pool, as in the Anthropic SDK's `DefaultAioHttpClient`) or `httpx` (httpcore's pool). httpcore checks every pooled connection on each request event, which costs a lot of CPU with many concurrent streams. Both transports honor the `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` environment variables; `aiohttp` doesn't support `ALL_PROXY` and SOCKS proxies|
 
 ### Keep-alive timeout
 
