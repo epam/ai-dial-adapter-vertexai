@@ -26,7 +26,7 @@ bedrock = ["botocore (>=1.10.0)"]
 type = "git"
 url = "https://github.com/epam/ai-dial-adapter-anthropic.git"
 reference = "feat/passthrough-restore-cache-marker"
-resolved_reference = "04000248b2e03cb26496eaddb75cbcb19bfba95f"
+resolved_reference = "852b686f39244f1471ab880d6bf2e188685f32c7"
 
 [[package]]
 name = "aidial-sdk"
