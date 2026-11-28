@@ -2,15 +2,13 @@
 
 [[package]]
 name = "aidial-adapter-anthropic"
-version = "0.22.0"
+version = "0.0.0"
 description = "Package implementing adapter from DIAL Chat Completions API to Anthropic API"
 optional = false
-python-versions = "<4.0,>=3.11"
+python-versions = ">=3.11,<4.0"
 groups = ["main"]
-files = [
-    {file = "aidial_adapter_anthropic-0.22.0-py3-none-any.whl", hash = "sha256:05b056e55e4739c7f49381d6ecc1b79e01585fa7c89e8a74d197878ccd6c9e10"},
-    {file = "aidial_adapter_anthropic-0.22.0.tar.gz", hash = "sha256:3128d22a9b2ae128d0c33e87f70086cfa605aac8ffd2ab7eb207baedefa57ac4"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 aidial-sdk = ">=0.47.0,<1"
@@ -23,6 +21,12 @@ pydantic = ">=2.8.2,<3"
 
 [package.extras]
 bedrock = ["botocore (>=1.10.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/epam/ai-dial-adapter-anthropic.git"
+reference = "feat/passthrough-restore-cache-marker"
+resolved_reference = "04000248b2e03cb26496eaddb75cbcb19bfba95f"
 
 [[package]]
 name = "aidial-sdk"
@@ -3917,4 +3921,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "fe140c5608e6307c4f3648e5f10ccb03c11d865b7606e96a6562ac113d98f3a6"
+content-hash = "9536f83f748d5661a3a53ddf56c013d48196281a6d835f17609fb76b79436e03"

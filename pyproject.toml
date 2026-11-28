@@ -24,7 +24,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 aidial-sdk = { version = "0.47.1", extras = ["telemetry", "translators"] }
-aidial-adapter-anthropic = "0.22.0"
+aidial-adapter-anthropic = { git = "https://github.com/epam/ai-dial-adapter-anthropic.git", branch = "feat/passthrough-restore-cache-marker" }
 anthropic = { version = "0.105.0", extras = ["vertex", "aiohttp"] }
 fastapi = "0.136.3"
 google-auth = "2.49.0"
